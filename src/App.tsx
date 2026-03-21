@@ -25,6 +25,7 @@ import { LiveAttendancePage } from './pages/lecturer/LiveAttendancePage';
 import { ReportsPage } from './pages/lecturer/ReportsPage';
 import { MessagesPage } from './pages/lecturer/MessagesPage';
 import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
+import { LegalPage } from './pages/LegalPage';
 import { MajorsPage } from './pages/admin/MajorsPage';
 import { CohortsPage } from './pages/admin/CohortsPage';
 import { LevelsPage } from './pages/admin/LevelsPage';
@@ -71,6 +72,7 @@ export default function App() {
               <Route path="/live" element={<LiveAttendancePage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/legal" element={<LegalPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

@@ -7,7 +7,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
-  BarChart3, GraduationCap, Link2, Bluetooth, Smartphone, Bell, ShieldAlert,
+  BarChart3, GraduationCap, Link2, Bluetooth, Smartphone, Bell, ShieldAlert, Scale,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -50,6 +50,7 @@ const systemLinks: NavItem[] = [
   { to: '/admin/messages', icon: ShieldAlert, label: 'Message Oversight', superAdminOnly: true },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/settings', icon: Settings, label: 'Settings', superAdminOnly: true },
+  { to: '/legal', icon: Scale, label: 'Legal' },
 ];
 
 const lecturerLinks: NavItem[] = [
@@ -60,6 +61,7 @@ const lecturerLinks: NavItem[] = [
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/legal', icon: Scale, label: 'Legal' },
 ];
 
 function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavItem[]; isSuperAdmin: boolean }) {
