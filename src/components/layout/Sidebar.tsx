@@ -7,7 +7,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
-  BarChart3, GraduationCap, Link2, Bluetooth, Smartphone, Bell, ShieldAlert, Scale,
+  BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, ShieldAlert, Scale,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -15,26 +15,42 @@ interface NavItem {
   to: string;
   icon: React.ComponentType<{ size?: number }>;
   label: string;
-  superAdminOnly?: boolean;
   badge?: number;
 }
 
-const overviewLinks: NavItem[] = [
+/* ---- SUPER_ADMIN (Tallycheck Global) ---- */
+const superAdminOverview: NavItem[] = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
 ];
 
-const adminLinks: NavItem[] = [
-  { to: '/admin/schools', icon: School, label: 'Schools', superAdminOnly: true },
+const superAdminAdmin: NavItem[] = [
+  { to: '/admin/schools', icon: School, label: 'Schools' },
   { to: '/admin/users', icon: Users, label: 'User Management' },
-  { to: '/admin/students', icon: GraduationCap, label: 'All Students' },
-  { to: '/admin/majors', icon: BookOpen, label: 'Majors' },
-  { to: '/admin/cohorts', icon: Users, label: 'Cohorts' },
-  { to: '/admin/levels', icon: BarChart3, label: 'Levels' },
 ];
 
-const operationsLinks: NavItem[] = [
+const superAdminGeneral: NavItem[] = [
+  { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Beacon Manager' },
+  { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
+  { to: '/reports', icon: FileText, label: 'Reports' },
+  { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/admin/messages', icon: ShieldAlert, label: 'Message Oversight' },
+  { to: '/alerts', icon: Bell, label: 'Alerts' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings' },
+  { to: '/legal', icon: Scale, label: 'Legal' },
+];
+
+/* ---- ADMIN / SUB_ADMIN (University HOD) ---- */
+const hodOverview: NavItem[] = [
+  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+];
+
+const hodAdmin: NavItem[] = [
+  { to: '/admin/users', icon: Users, label: 'User Management' },
+  { to: '/admin/students', icon: GraduationCap, label: 'All Students' },
+];
+
+const hodOperations: NavItem[] = [
   { to: '/courses', icon: BookOpen, label: 'All Courses' },
-  { to: '/admin/course-assignments', icon: Link2, label: 'Course Assignments' },
   { to: '/classes', icon: Calendar, label: 'Classes' },
   { to: '/admin/attendance-overview', icon: ClipboardList, label: 'Attendance Overview' },
   { to: '/admin/attendance-analytics', icon: BarChart3, label: 'Attendance Analytics' },
@@ -42,17 +58,14 @@ const operationsLinks: NavItem[] = [
   { to: '/admin/lecturer-presence', icon: UserCheck, label: 'Lecturer Presence' },
 ];
 
-const systemLinks: NavItem[] = [
-  { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Beacon Manager', superAdminOnly: true },
-  { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification', superAdminOnly: true },
+const hodGeneral: NavItem[] = [
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/admin/messages', icon: ShieldAlert, label: 'Message Oversight', superAdminOnly: true },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings', superAdminOnly: true },
-  { to: '/legal', icon: Scale, label: 'Legal' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
+/* ---- LECTURER ---- */
 const lecturerLinks: NavItem[] = [
   { to: '/lecturer', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/courses', icon: BookOpen, label: 'Courses' },
@@ -64,16 +77,15 @@ const lecturerLinks: NavItem[] = [
   { to: '/legal', icon: Scale, label: 'Legal' },
 ];
 
-function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavItem[]; isSuperAdmin: boolean }) {
-  const visibleLinks = links.filter((l) => !l.superAdminOnly || isSuperAdmin);
-  if (visibleLinks.length === 0) return null;
+function NavSection({ title, links }: { title: string; links: NavItem[] }) {
+  if (links.length === 0) return null;
 
   return (
     <>
       <p className="px-3 pt-4 pb-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest first:pt-2">
         {title}
       </p>
-      {visibleLinks.map((link) => (
+      {links.map((link) => (
         <NavLink
           key={link.to}
           to={link.to}
@@ -122,6 +134,10 @@ export function Sidebar() {
 
   const roleLabel = isSuperAdmin ? 'Super Admin' : isAdmin ? 'Admin' : 'Lecturer';
 
+  // Inject unread badge into Alerts link
+  const addAlertBadge = (links: NavItem[]) =>
+    links.map((l) => l.to === '/alerts' ? { ...l, badge: unreadCount } : l);
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 glass-sidebar flex flex-col z-40">
       <div className="p-5 flex items-center gap-3 border-b border-gray-200 dark:border-white/5">
@@ -135,12 +151,19 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 pt-4 space-y-1 overflow-y-auto">
-        {isAdmin && (
+        {isSuperAdmin && (
           <>
-            <NavSection title="Overview" links={overviewLinks} isSuperAdmin={!!isSuperAdmin} />
-            <NavSection title="Administration" links={adminLinks} isSuperAdmin={!!isSuperAdmin} />
-            <NavSection title="Operations" links={operationsLinks} isSuperAdmin={!!isSuperAdmin} />
-            <NavSection title="General" links={systemLinks.map((l) => l.to === '/alerts' ? { ...l, badge: unreadCount } : l)} isSuperAdmin={!!isSuperAdmin} />
+            <NavSection title="Overview" links={superAdminOverview} />
+            <NavSection title="Administration" links={superAdminAdmin} />
+            <NavSection title="General" links={addAlertBadge(superAdminGeneral)} />
+          </>
+        )}
+        {isAdmin && !isSuperAdmin && (
+          <>
+            <NavSection title="Overview" links={hodOverview} />
+            <NavSection title="Administration" links={hodAdmin} />
+            <NavSection title="Operations" links={hodOperations} />
+            <NavSection title="General" links={addAlertBadge(hodGeneral)} />
           </>
         )}
         {!isAdmin && lecturerLinks.map((link) => (

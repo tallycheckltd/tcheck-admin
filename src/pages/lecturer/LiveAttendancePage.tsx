@@ -56,21 +56,32 @@ export function LiveAttendancePage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedClass || !socket) return;
-    socket.emit('join:class', selectedClass);
-    api.get<ClassAttendanceDetail>(`/attendance/class/${selectedClass}`).then(setClassDetail);
+    if (!selectedClass) return;
 
-    const handler = () => {
-      // Re-fetch to get computed punctuality data
+    const fetchDetail = () => {
       api.get<ClassAttendanceDetail>(`/attendance/class/${selectedClass}`).then(setClassDetail);
     };
-    socket.on('attendance:update', handler);
-    socket.on('attendance:checkout', handler);
+
+    // Initial fetch
+    fetchDetail();
+
+    // WebSocket real-time updates
+    if (socket) {
+      socket.emit('join:class', selectedClass);
+      socket.on('attendance:update', fetchDetail);
+      socket.on('attendance:checkout', fetchDetail);
+    }
+
+    // Fallback polling every 15s in case WebSocket events are missed
+    const interval = setInterval(fetchDetail, 15000);
 
     return () => {
-      socket.emit('leave:class', selectedClass);
-      socket.off('attendance:update', handler);
-      socket.off('attendance:checkout', handler);
+      clearInterval(interval);
+      if (socket) {
+        socket.emit('leave:class', selectedClass);
+        socket.off('attendance:update', fetchDetail);
+        socket.off('attendance:checkout', fetchDetail);
+      }
     };
   }, [selectedClass, socket]);
 
@@ -211,6 +222,8 @@ export function LiveAttendancePage() {
                         <button
                           onClick={async () => {
                             await manualCheckIn('/attendance/manual-check-in', { userId: s.id, classId: selectedClass });
+                            // Refetch to update UI immediately
+                            api.get<ClassAttendanceDetail>(`/attendance/class/${selectedClass}`).then(setClassDetail);
                           }}
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors cursor-pointer"
                           title="Mark Present"
