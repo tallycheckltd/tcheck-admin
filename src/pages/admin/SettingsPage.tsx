@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Settings, Shield, Clock, Wifi } from 'lucide-react';
+import { Shield, Clock, Wifi } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import type { School } from '../../types';
 
