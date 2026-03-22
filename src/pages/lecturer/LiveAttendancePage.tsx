@@ -5,7 +5,7 @@ import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
 import { Radio, Users, Bluetooth, QrCode, UserCheck, UserPlus, Clock } from 'lucide-react';
-import type { ClassSession, Course, ClassAttendanceDetail } from '../../types';
+import type { ClassSession, Course, ClassAttendanceDetail, School } from '../../types';
 import { api } from '../../lib/api';
 import { useMutation } from '../../hooks/useApi';
 
@@ -28,14 +28,20 @@ function getPunctualityBadge(punctuality?: string) {
 export function LiveAttendancePage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
+  const isLecturer = user?.role === 'LECTURER';
   const courseQuery = isAdmin ? '/courses' : `/courses?lecturerId=${user?.id}`;
   const { data: courses } = useApi<Course[]>(courseQuery);
   const { data: classes } = useApi<ClassSession[]>('/classes?date=' + new Date().toISOString().split('T')[0]);
+  const { data: schoolData } = useApi<School[]>('/schools');
 
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [classDetail, setClassDetail] = useState<ClassAttendanceDetail | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const { mutate: manualCheckIn } = useMutation('post');
+
+  // Determine if manual override is allowed for lecturer role
+  const userSchool = schoolData?.find((s) => s.id === user?.schoolId);
+  const canManualOverride = isAdmin || (isLecturer && userSchool?.allowManualLecturerOverride !== false);
 
   const myClasses = isAdmin
     ? (classes || [])
@@ -64,6 +70,7 @@ export function LiveAttendancePage() {
     return () => {
       socket.emit('leave:class', selectedClass);
       socket.off('attendance:update', handler);
+      socket.off('attendance:checkout', handler);
     };
   }, [selectedClass, socket]);
 
@@ -200,16 +207,18 @@ export function LiveAttendancePage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge color="red">ABSENT</Badge>
-                      <button
-                        onClick={async () => {
-                          await manualCheckIn('/attendance/manual-check-in', { userId: s.id, classId: selectedClass });
-                        }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors cursor-pointer"
-                        title="Mark Present"
-                      >
-                        <UserPlus size={12} />
-                        Mark Present
-                      </button>
+                      {canManualOverride && (
+                        <button
+                          onClick={async () => {
+                            await manualCheckIn('/attendance/manual-check-in', { userId: s.id, classId: selectedClass });
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors cursor-pointer"
+                          title="Mark Present"
+                        >
+                          <UserPlus size={12} />
+                          Mark Present
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
