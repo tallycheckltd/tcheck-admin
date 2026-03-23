@@ -7,7 +7,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
-  BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, ShieldAlert, Scale,
+  BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -20,21 +20,19 @@ interface NavItem {
 
 /* ---- SUPER_ADMIN (Tallycheck Global) ---- */
 const superAdminOverview: NavItem[] = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/admin', icon: LayoutDashboard, label: 'Overview' },
 ];
 
 const superAdminAdmin: NavItem[] = [
   { to: '/admin/schools', icon: School, label: 'Schools' },
-  { to: '/admin/users', icon: Users, label: 'User Management' },
+  { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
 ];
 
 const superAdminGeneral: NavItem[] = [
-  { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Beacon Manager' },
-  { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
-  { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/admin/messages', icon: ShieldAlert, label: 'Message Oversight' },
+  { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Manager' },
+  { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
+  { to: '/admin/system-announcements', icon: Megaphone, label: 'System Announcements' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
   { to: '/legal', icon: Scale, label: 'Legal' },
 ];
@@ -45,8 +43,8 @@ const hodOverview: NavItem[] = [
 ];
 
 const hodAdmin: NavItem[] = [
-  { to: '/admin/users', icon: Users, label: 'User Management' },
-  { to: '/admin/students', icon: GraduationCap, label: 'All Students' },
+  { to: '/admin/users', icon: Users, label: 'Users' },
+  { to: '/admin/students', icon: GraduationCap, label: 'Students' },
 ];
 
 const hodOperations: NavItem[] = [

@@ -24,6 +24,8 @@ import { LiveAttendancePage } from './pages/lecturer/LiveAttendancePage';
 import { ReportsPage } from './pages/lecturer/ReportsPage';
 import { MessagesPage } from './pages/lecturer/MessagesPage';
 import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
+import { SchoolAdminsPage } from './pages/admin/SchoolAdminsPage';
+import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
 import { LegalPage } from './pages/LegalPage';
 
 export default function App() {
@@ -48,9 +50,11 @@ export default function App() {
               {/* SUPER_ADMIN-only routes */}
               <Route element={<RequireSuperAdmin />}>
                 <Route path="/admin/schools" element={<SchoolsPage />} />
+                <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
                 <Route path="/admin/beacons" element={<BLEBeaconPage />} />
                 <Route path="/admin/device-verification" element={<DeviceVerificationPage />} />
                 <Route path="/admin/messages" element={<AdminMessagesPage />} />
+                <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               </Route>
 
               {/* Lecturer dashboard */}

@@ -2,11 +2,195 @@ import { useState, useMemo } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
-import { GraduationCap, Search, Filter, ChevronDown, ChevronRight, X, Mail } from 'lucide-react';
+import {
+  GraduationCap, Search, Filter, ChevronDown, ChevronRight, X,
+  BookOpen, AlertTriangle, TrendingDown, TrendingUp, Minus,
+} from 'lucide-react';
 import type { User, Course, Major, Cohort, Level } from '../../types';
+
+const RECENT_ABSENCE_DISPLAY_COUNT = 5;
+
+// Deterministic dummy attendance % from student ID
+function getDummyAttendancePct(id: string): number {
+  const hash = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return 45 + (hash % 54);
+}
+
+function getHealthStatus(pct: number): { label: string; color: 'green' | 'yellow' | 'red'; dot: string } {
+  if (pct >= 75) return { label: 'Safe', color: 'green', dot: 'bg-emerald-400' };
+  if (pct >= 60) return { label: 'Warning', color: 'yellow', dot: 'bg-amber-400' };
+  return { label: 'Critical', color: 'red', dot: 'bg-red-500' };
+}
+
+function getRiskScore(id: string): { score: number; trend: 'up' | 'stable' | 'down' } {
+  const hash = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const score = 30 + (hash % 70);
+  const trendN = hash % 3;
+  const trend = trendN === 0 ? 'up' : trendN === 1 ? 'stable' : 'down';
+  return { score, trend };
+}
+
+// Dummy per-course stats for the drawer
+function getDummyCourseStats(studentId: string, courses: { id: string; name: string; code: string }[]) {
+  return courses.slice(0, 4).map((c, i) => {
+    const hash = (studentId + c.id).split('').reduce((a, ch) => a + ch.charCodeAt(0), 0);
+    const pct = 45 + ((hash + i * 7) % 54);
+    return { courseId: c.id, courseName: c.name, courseCode: c.code, pct };
+  });
+}
+
+// Dummy recent absences
+const ABSENCE_DATES = [
+  '2026-03-18', '2026-03-14', '2026-03-11', '2026-03-07', '2026-03-04',
+];
+function getDummyAbsences(studentId: string, courses: { name: string; code: string }[]) {
+  const hash = studentId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const count = 2 + (hash % (RECENT_ABSENCE_DISPLAY_COUNT - 1));
+  return Array.from({ length: count }, (_, i) => ({
+    date: ABSENCE_DATES[i] || ABSENCE_DATES[0],
+    courseName: courses[(hash + i) % Math.max(courses.length, 1)]?.name || 'Unknown Course',
+  }));
+}
 
 interface StudentWithEnrollments extends User {
   enrollments?: { course: Course }[];
+}
+
+interface StudentDrawerProps {
+  student: StudentWithEnrollments;
+  onClose: () => void;
+}
+
+function StudentDrawer({ student, onClose }: StudentDrawerProps) {
+  const pct = getDummyAttendancePct(student.id);
+  const health = getHealthStatus(pct);
+  const { score: riskScore, trend } = getRiskScore(student.id);
+  const enrolledCourses = (student.enrollments || []).map((e) => e.course).filter(Boolean);
+  const courseStats = getDummyCourseStats(
+    student.id,
+    enrolledCourses.map((c) => ({ id: c.id, name: c.name, code: c.code })),
+  );
+  const absences = getDummyAbsences(
+    student.id,
+    enrolledCourses.map((c) => ({ name: c.name, code: c.code })),
+  );
+
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
+  const trendColor = trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
+  const riskLabel = riskScore > 75 ? 'On Track' : riskScore >= 50 ? 'Medium Risk' : 'High Risk';
+  const riskColor = riskScore > 75 ? 'text-emerald-600 dark:text-emerald-400' : riskScore >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden"
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div className="fixed bottom-0 left-0 right-0 md:right-0 md:top-0 md:left-auto md:bottom-0 md:w-[40vw] bg-white dark:bg-gray-900 border-t md:border-t-0 md:border-l border-gray-200 dark:border-white/10 z-50 flex flex-col shadow-2xl max-h-[90vh] md:max-h-screen overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-white/10 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+              {student.firstName?.[0]}{student.lastName?.[0]}
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                {student.firstName} {student.lastName}
+              </h3>
+              <p className="text-xs text-gray-500">{student.studentId || student.email}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Overview */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-gray-50 dark:bg-white/5 p-3 text-center">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{pct}%</p>
+              <p className="text-xs text-gray-500 mt-0.5">Overall</p>
+            </div>
+            <div className="rounded-xl bg-gray-50 dark:bg-white/5 p-3 text-center">
+              <p className={`text-2xl font-bold ${riskColor}`}>{riskScore}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Risk Score</p>
+            </div>
+            <div className="rounded-xl bg-gray-50 dark:bg-white/5 p-3 text-center">
+              <p className={`text-sm font-bold mt-1 ${riskColor}`}>{riskLabel}</p>
+              <div className={`flex items-center justify-center gap-1 mt-0.5 ${trendColor}`}>
+                <TrendIcon size={14} />
+                <span className="text-xs capitalize">{trend}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Health */}
+          <div className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${health.dot}`} />
+            <Badge color={health.color}>{health.label}</Badge>
+            <span className="text-xs text-gray-500">Attendance status</span>
+          </div>
+
+          {/* Per-course attendance */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <BookOpen size={12} /> Active Courses
+            </h4>
+            {courseStats.length === 0 ? (
+              <p className="text-sm text-gray-400">No enrolled courses.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {courseStats.map((cs) => {
+                  const barColor = cs.pct >= 75 ? 'bg-emerald-500' : cs.pct >= 60 ? 'bg-amber-400' : 'bg-red-500';
+                  return (
+                    <div key={cs.courseId}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate mr-2">
+                          {cs.courseName}
+                        </span>
+                        <span className="text-xs font-bold text-gray-900 dark:text-white flex-shrink-0">{cs.pct}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${cs.pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Recent absences */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <AlertTriangle size={12} /> Last {RECENT_ABSENCE_DISPLAY_COUNT} Absences
+            </h4>
+            {absences.length === 0 ? (
+              <p className="text-sm text-gray-400">No recent absences.</p>
+            ) : (
+              <div className="space-y-2">
+                {absences.map((ab, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-white/5 last:border-0">
+                    <span className="text-xs text-gray-600 dark:text-gray-400">{ab.courseName}</span>
+                    <span className="text-xs font-medium text-gray-500">
+                      {new Date(ab.date).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 export function AllStudentsPage() {
@@ -20,8 +204,8 @@ export function AllStudentsPage() {
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [selectedMajors, setSelectedMajors] = useState<string[]>([]);
   const [selectedCohorts, setSelectedCohorts] = useState<string[]>([]);
+  const [drawerStudent, setDrawerStudent] = useState<StudentWithEnrollments | null>(null);
 
-  // Extract facets from courses
   const facets = useMemo(() => {
     if (!courses) return { levels: [], majors: [], cohorts: [] };
     const levelsMap = new Map<string, Level>();
@@ -39,7 +223,6 @@ export function AllStudentsPage() {
     };
   }, [courses]);
 
-  // Build a map of courseId -> tags for filtering
   const courseTagMap = useMemo(() => {
     if (!courses) return new Map<string, { levelIds: string[]; majorIds: string[]; cohortIds: string[] }>();
     const map = new Map<string, { levelIds: string[]; majorIds: string[]; cohortIds: string[] }>();
@@ -53,11 +236,9 @@ export function AllStudentsPage() {
     return map;
   }, [courses]);
 
-  // Filter students
   const filtered = useMemo(() => {
     if (!students) return [];
     return students.filter((s) => {
-      // Text search
       if (search) {
         const q = search.toLowerCase();
         const matches =
@@ -66,12 +247,9 @@ export function AllStudentsPage() {
           (s.studentId || '').toLowerCase().includes(q);
         if (!matches) return false;
       }
-
-      // Tag filters - check if student is enrolled in any course matching the filter
       if (selectedLevels.length > 0 || selectedMajors.length > 0 || selectedCohorts.length > 0) {
         const studentCourseIds = s.enrollments?.map((e) => e.course?.id).filter(Boolean) ?? [];
         if (studentCourseIds.length === 0) return false;
-
         const matchesFilter = studentCourseIds.some((cid) => {
           const tags = courseTagMap.get(cid!);
           if (!tags) return false;
@@ -82,7 +260,6 @@ export function AllStudentsPage() {
         });
         if (!matchesFilter) return false;
       }
-
       return true;
     });
   }, [students, search, selectedLevels, selectedMajors, selectedCohorts, courseTagMap]);
@@ -104,7 +281,7 @@ export function AllStudentsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Student Directory</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Students</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {filtered.length} of {students?.length ?? 0} students
           </p>
@@ -123,7 +300,6 @@ export function AllStudentsPage() {
                 <button onClick={clearFilters} className="text-xs text-blue-500 hover:text-blue-600 cursor-pointer">Clear all</button>
               )}
             </div>
-
             <div className="relative">
               <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -134,7 +310,6 @@ export function AllStudentsPage() {
                 className="w-full pl-7 pr-3 py-1.5 rounded-lg text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
             </div>
-
             <FacetSection title="Level" items={facets.levels} selected={selectedLevels} onToggle={toggle(setSelectedLevels)} />
             <FacetSection title="Major" items={facets.majors} selected={selectedMajors} onToggle={toggle(setSelectedMajors)} />
             <FacetSection title="Cohort" items={facets.cohorts} selected={selectedCohorts} onToggle={toggle(setSelectedCohorts)} />
@@ -152,7 +327,7 @@ export function AllStudentsPage() {
               <Filter size={16} />
             </button>
             {activeFilterCount > 0 && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {selectedLevels.map((id) => {
                   const lvl = facets.levels.find((l) => l.id === id);
                   return lvl ? (
@@ -188,44 +363,70 @@ export function AllStudentsPage() {
             <table className="w-full text-sm gradient-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Student ID</th>
-                  <th>Email</th>
-                  <th>School</th>
-                  <th>Status</th>
-                  <th>Courses</th>
+                  <th>Student Name</th>
+                  <th>Major / Year</th>
+                  <th>Overall Attendance</th>
+                  <th>Health Status</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody className="text-gray-700 dark:text-gray-300">
-                {filtered.map((s) => (
-                  <tr key={s.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                          {s.firstName?.[0]}{s.lastName?.[0]}
+                {filtered.map((s) => {
+                  const pct = getDummyAttendancePct(s.id);
+                  const health = getHealthStatus(pct);
+                  const majorName = s.enrollments?.[0]?.course?.majors?.[0]?.major?.name;
+                  const cohortName = s.enrollments?.[0]?.course?.cohorts?.[0]?.cohort?.name;
+
+                  return (
+                    <tr key={s.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                            {s.firstName?.[0]}{s.lastName?.[0]}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">{s.firstName} {s.lastName}</p>
+                            <p className="text-xs text-gray-400">{s.studentId || s.email}</p>
+                          </div>
                         </div>
-                        <span className="font-medium text-gray-900 dark:text-white">{s.firstName} {s.lastName}</span>
-                      </div>
-                    </td>
-                    <td className="font-mono text-xs">{s.studentId || '-'}</td>
-                    <td>
-                      <span className="flex items-center gap-1 text-xs">
-                        <Mail size={12} className="text-gray-400" />
-                        {s.email}
-                      </span>
-                    </td>
-                    <td>{s.school?.name || '-'}</td>
-                    <td>
-                      <Badge color={s.status === 'APPROVED' ? 'green' : s.status === 'PENDING' ? 'yellow' : 'red'}>
-                        {s.status}
-                      </Badge>
-                    </td>
-                    <td className="font-medium">{s._count?.enrollments ?? 0}</td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        <div className="text-xs">
+                          <p className="font-medium text-gray-700 dark:text-gray-300">{majorName || '—'}</p>
+                          <p className="text-gray-400">{cohortName || '—'}</p>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-1.5 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${health.dot}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="font-semibold text-gray-900 dark:text-white text-xs">{pct}%</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium`}>
+                          <span className={`w-2 h-2 rounded-full ${health.dot}`} />
+                          <Badge color={health.color}>{health.label}</Badge>
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => setDrawerStudent(s)}
+                          className="text-xs font-medium text-blue-500 hover:text-blue-600 hover:underline cursor-pointer whitespace-nowrap"
+                        >
+                          View Profile →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-12">
+                    <td colSpan={5} className="text-center py-12">
                       <GraduationCap size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {activeFilterCount > 0 ? 'No students match the current filters.' : 'No students found.'}
@@ -243,16 +444,17 @@ export function AllStudentsPage() {
           </div>
         </div>
       </div>
+
+      {/* Slide-out drawer */}
+      {drawerStudent && (
+        <StudentDrawer student={drawerStudent} onClose={() => setDrawerStudent(null)} />
+      )}
     </div>
   );
 }
 
-// Reusable facet checkbox section
 function FacetSection({
-  title,
-  items,
-  selected,
-  onToggle,
+  title, items, selected, onToggle,
 }: {
   title: string;
   items: { id: string; name: string }[];
@@ -261,7 +463,6 @@ function FacetSection({
 }) {
   const [expanded, setExpanded] = useState(true);
   if (items.length === 0) return null;
-
   return (
     <div>
       <button
