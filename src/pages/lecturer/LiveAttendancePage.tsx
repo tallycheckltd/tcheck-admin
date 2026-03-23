@@ -4,7 +4,7 @@ import { createSocket } from '../../lib/socket';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
-import { Radio, Users, Bluetooth, QrCode, UserCheck, UserPlus, Clock, CheckCircle } from 'lucide-react';
+import { Radio, Users, Bluetooth, QrCode, UserCheck, UserPlus, Clock, CheckCircle, LogOut } from 'lucide-react';
 import type { ClassSession, Course, ClassAttendanceDetail, School } from '../../types';
 import { api } from '../../lib/api';
 import { useMutation } from '../../hooks/useApi';
@@ -163,27 +163,58 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
               ) : (
                 <>
                   {feedEvents.map((ev) => (
-                    <div key={ev.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-sm">
-                      <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-                      <span className="font-medium text-gray-900 dark:text-white flex-1">{ev.name}</span>
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <Clock size={10} /> {ev.time}
-                      </span>
+                    <div key={ev.id} className="flex items-start gap-2 py-1.5 px-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-sm">
+                      <CheckCircle size={14} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-gray-900 dark:text-white">{ev.name}</span>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                            <Clock size={9} /> In: {ev.time}
+                          </span>
+                          <span className="text-[10px] text-gray-400">Out: --:--</span>
+                        </div>
+                      </div>
                     </div>
                   ))}
                   {/* Seed feed with existing attendances on first load */}
-                  {feedEvents.length === 0 && classDetail.attendances.filter((a) => a.checkInAt).map((a) => (
-                    <div key={a.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-gray-50 dark:bg-white/3 text-sm">
-                      <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-                      <span className="font-medium text-gray-900 dark:text-white flex-1">
-                        {a.user?.firstName} {a.user?.lastName}
-                      </span>
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <Clock size={10} />
-                        {new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  ))}
+                  {feedEvents.length === 0 && classDetail.attendances.filter((a) => a.checkInAt).map((a) => {
+                    const punc = a.punctuality;
+                    const puncStyle =
+                      punc === 'ON_TIME'       ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' :
+                      punc === 'LATE'          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300' :
+                      punc === 'EXTREMELY_LATE'? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : '';
+                    const puncLabel =
+                      punc === 'ON_TIME' ? 'ON TIME' : punc === 'LATE' ? 'LATE' : punc === 'EXTREMELY_LATE' ? 'EXTREMELY LATE' : null;
+                    return (
+                      <div key={a.id} className="flex items-start gap-2 py-1.5 px-2 rounded-lg bg-gray-50 dark:bg-white/3 text-sm">
+                        <CheckCircle size={14} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium text-gray-900 dark:text-white truncate">
+                              {a.user?.firstName} {a.user?.lastName}
+                            </span>
+                            {puncLabel && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${puncStyle}`}>
+                                {puncLabel}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                              <Clock size={9} /> In: {new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {a.checkOutAt ? (
+                              <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                                <LogOut size={9} /> Out: {new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-300 dark:text-gray-600 italic">Out: Pending</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </>
               )}
             </div>
@@ -213,22 +244,48 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
                     </span>
                   </div>
                   <div className="divide-y divide-gray-100 dark:divide-white/5">
-                    {present.map((a) => (
-                      <div key={a.id} className="flex items-center gap-3 px-4 py-2.5">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                          {a.user?.firstName?.[0]}{a.user?.lastName?.[0]}
+                    {present.map((a) => {
+                      const punc = a.punctuality;
+                      const puncStyle =
+                        punc === 'ON_TIME'        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' :
+                        punc === 'LATE'           ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300' :
+                        punc === 'EXTREMELY_LATE' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : '';
+                      const puncLabel =
+                        punc === 'ON_TIME' ? 'ON TIME' : punc === 'LATE' ? 'LATE' : punc === 'EXTREMELY_LATE' ? 'EXTREMELY LATE' : null;
+                      return (
+                        <div key={a.id} className="px-4 py-2.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                              {a.user?.firstName?.[0]}{a.user?.lastName?.[0]}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                                  {a.user?.firstName} {a.user?.lastName}
+                                </p>
+                                {puncLabel && (
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${puncStyle}`}>
+                                    {puncLabel}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                                  <Clock size={8} /> {new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {a.checkOutAt ? (
+                                  <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                                    <LogOut size={8} /> {new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-gray-300 dark:text-gray-600 italic">Out: Pending</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
-                            {a.user?.firstName} {a.user?.lastName}
-                          </p>
-                          <p className="text-[10px] text-gray-400">{a.user?.studentId}</p>
-                        </div>
-                        <span className="text-[10px] text-gray-400 flex-shrink-0">
-                          {new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

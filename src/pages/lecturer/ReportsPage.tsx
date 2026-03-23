@@ -13,16 +13,20 @@ type ReportType = '' | 'semester-roster' | 'course-attendance' | 'at-risk';
 
 const SEMESTER_START = '2026-01-13';
 
-// Deterministic risk score
-function getDummyAttendancePct(id: string) {
-  const hash = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return 45 + (hash % 54);
+interface RosterRow {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  overallAttendancePct: number;
+  riskLevel: string;
 }
 
-function getRiskLabel(pct: number) {
-  if (pct >= 75) return 'On Track';
-  if (pct >= 60) return 'Medium Risk';
-  return 'High Risk';
+/** Escape a CSV field — wraps in quotes if it contains a comma, quote, or newline. */
+function csvField(v: string | number | null | undefined): string {
+  const s = String(v ?? '');
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }
 
 function HodReportsPage() {
@@ -33,56 +37,86 @@ function HodReportsPage() {
   const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   const schoolScope = user?.schoolId ? `?schoolId=${user.schoolId}` : '';
   const { data: courses } = useApi<Course[]>(`/courses${schoolScope}`);
-  const { data: students } = useApi<{ id: string; firstName: string; lastName: string; studentId?: string; email: string; enrollments?: { course: { id: string; name: string } }[] }[]>(
-    `/users?role=STUDENT&status=APPROVED${user?.schoolId ? `&schoolId=${user.schoolId}` : ''}`,
-  );
 
   const canExport = reportType !== '' && (reportType !== 'course-attendance' || selectedCourse !== '');
 
   const handleExport = async () => {
     if (!canExport) return;
     setExporting(true);
+    setExportError('');
 
     try {
       let csvContent = '';
       let filename = '';
 
-      if (reportType === 'semester-roster') {
-        csvContent = 'Student ID,Name,Email,Overall Attendance %,Status\n';
-        (students || []).forEach((s) => {
-          const pct = getDummyAttendancePct(s.id);
-          csvContent += `${s.studentId || ''},${s.firstName} ${s.lastName},${s.email},${pct}%,${getRiskLabel(pct)}\n`;
+      if (reportType === 'semester-roster' || reportType === 'at-risk') {
+        // Real data from the backend roster endpoint
+        const rows = await api.get<RosterRow[]>(
+          `/attendance/roster?from=${dateFrom}&to=${dateTo}`,
+        );
+
+        if (!rows || rows.length === 0) {
+          setExportError(
+            'No students found for your school in the selected date range. Ensure students are approved and linked to your school.',
+          );
+          return;
+        }
+
+        const filtered = reportType === 'at-risk'
+          ? rows.filter((r) => r.overallAttendancePct < 75).sort((a, b) => a.overallAttendancePct - b.overallAttendancePct)
+          : rows;
+
+        csvContent = 'Student ID,First Name,Last Name,Email,Overall Attendance %,Risk Level\n';
+        filtered.forEach((r) => {
+          csvContent += [
+            csvField(r.studentId),
+            csvField(r.firstName),
+            csvField(r.lastName),
+            csvField(r.email),
+            csvField(`${r.overallAttendancePct}%`),
+            csvField(r.riskLevel),
+          ].join(',') + '\n';
         });
-        filename = `semester-roster-${dateFrom}-to-${dateTo}.csv`;
+
+        filename = reportType === 'at-risk'
+          ? `at-risk-students-${dateTo}.csv`
+          : `semester-roster-${dateFrom}-to-${dateTo}.csv`;
       }
 
       if (reportType === 'course-attendance') {
-        const detail = await api.get<ClassAttendanceDetail>(`/attendance/course/${selectedCourse}?from=${dateFrom}&to=${dateTo}`).catch(() => null);
+        const detail = await api.get<ClassAttendanceDetail>(
+          `/attendance/class-stats?courseId=${selectedCourse}&from=${dateFrom}&to=${dateTo}`,
+        ).catch(() => null);
         const course = courses?.find((c) => c.id === selectedCourse);
-        csvContent = 'Student ID,Name,Check-In Date,Check-In Time,Method,Punctuality\n';
+
+        csvContent = 'Student ID,First Name,Last Name,Check-In Date,Check-In Time,Check-Out Time,Method,Punctuality\n';
         (detail?.attendances || []).forEach((r) => {
-          const d = new Date(r.checkInAt);
-          csvContent += `${r.user?.studentId || ''},${r.user?.firstName} ${r.user?.lastName},${d.toLocaleDateString()},${d.toLocaleTimeString()},${r.checkInType},${r.punctuality || ''}\n`;
+          const inDate  = new Date(r.checkInAt);
+          const outDate = r.checkOutAt ? new Date(r.checkOutAt) : null;
+          csvContent += [
+            csvField(r.user?.studentId),
+            csvField(r.user?.firstName),
+            csvField(r.user?.lastName),
+            csvField(inDate.toLocaleDateString()),
+            csvField(inDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
+            csvField(outDate ? outDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'),
+            csvField(r.checkInType),
+            csvField(r.punctuality ?? ''),
+          ].join(',') + '\n';
         });
         filename = `course-attendance-${course?.code || selectedCourse}-${dateFrom}.csv`;
       }
 
-      if (reportType === 'at-risk') {
-        csvContent = 'Student ID,Name,Email,Overall Attendance %,Risk Level\n';
-        (students || [])
-          .map((s) => ({ ...s, pct: getDummyAttendancePct(s.id) }))
-          .filter((s) => s.pct < 75)
-          .sort((a, b) => a.pct - b.pct)
-          .forEach((s) => {
-            csvContent += `${s.studentId || ''},${s.firstName} ${s.lastName},${s.email},${s.pct}%,${getRiskLabel(s.pct)}\n`;
-          });
-        filename = `at-risk-students-${dateTo}.csv`;
+      if (!csvContent || csvContent.split('\n').length <= 2) {
+        setExportError('No records found for the selected parameters. The CSV would be empty.');
+        return;
       }
 
-      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -91,6 +125,8 @@ function HodReportsPage() {
       URL.revokeObjectURL(url);
       setExported(true);
       setTimeout(() => setExported(false), 3000);
+    } catch (e) {
+      setExportError(`Export failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setExporting(false);
     }
@@ -190,9 +226,15 @@ function HodReportsPage() {
           {exported ? '✓ Exported Successfully' : exporting ? 'Generating…' : 'Export to CSV'}
         </button>
 
-        {reportType && (
+        {exportError && (
+          <div className="p-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+            <p className="text-xs text-red-600 dark:text-red-400">{exportError}</p>
+          </div>
+        )}
+
+        {reportType && !exportError && (
           <p className="text-xs text-gray-400 text-center">
-            ⚠️ Data is scoped to your department only. Backend enforces <code className="font-mono text-blue-500">WHERE departmentId = ?</code> on every export query.
+            ✅ Data is real and scoped to your school only — backed by <code className="font-mono text-blue-500">WHERE schoolId = ?</code> on every query.
           </p>
         )}
       </div>
