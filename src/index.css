@@ -101,6 +101,7 @@ html:not(.dark) option {
   border: 1px solid var(--app-border-soft);
   border-radius: 1rem;
   box-shadow: var(--app-shadow);
+  color: #0f172a;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
 }
 
@@ -113,6 +114,7 @@ html:not(.dark) option {
   background: var(--app-elevated);
   border: 1px solid var(--app-border);
   box-shadow: var(--app-shadow);
+  color: inherit;
 }
 
 .dark .glass-card:hover {
@@ -142,6 +144,7 @@ html:not(.dark) option {
   background: var(--app-elevated-solid);
   border: 1px solid var(--app-border-soft);
   box-shadow: var(--app-shadow);
+  color: #0f172a;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
 }
 
@@ -154,6 +157,7 @@ html:not(.dark) option {
   background: var(--app-elevated);
   border: 1px solid var(--app-border);
   box-shadow: var(--app-shadow);
+  color: inherit;
 }
 
 .dark .stat-card:hover {
