@@ -6,6 +6,7 @@ import { Modal } from '../../components/ui/Modal';
 import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download } from 'lucide-react';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { csvField } from '../../lib/csv';
 
 export function ClassAttendancePage() {
   const { classId } = useParams<{ classId: string }>();
@@ -33,14 +34,21 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
   const exportCSV = () => {
     if (!filtered) return;
     const headers = ['Class', 'Course', 'Date', 'Enrolled', 'Checked In', 'Rate', 'BLE', 'QR', 'Manual'];
-    const rows = filtered.map((s) => [
-      s.title, s.course.name,
-      new Date(s.date).toLocaleDateString(),
-      s.totalEnrolled, s.totalCheckedIn, `${s.attendanceRate}%`,
-      s.checkInBreakdown.BLE, s.checkInBreakdown.QR, s.checkInBreakdown.MANUAL,
-    ]);
-    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const rows = filtered.map((s) =>
+      [
+        csvField(s.title),
+        csvField(s.course.name),
+        csvField(new Date(s.date).toLocaleDateString()),
+        csvField(s.totalEnrolled),
+        csvField(s.totalCheckedIn),
+        csvField(`${s.attendanceRate}%`),
+        csvField(s.checkInBreakdown.BLE),
+        csvField(s.checkInBreakdown.QR),
+        csvField(s.checkInBreakdown.MANUAL),
+      ].join(','),
+    );
+    const csv = ['\uFEFF' + headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
