@@ -4,8 +4,9 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Download, FileText, Bluetooth, QrCode, UserCheck } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
-import type { Course, ClassSession, ClassAttendanceDetail } from '../../types';
+import type { Course, ClassSession, ClassAttendanceDetail, CourseAttendanceExportRow } from '../../types';
 import { api } from '../../lib/api';
+import { csvField } from '../../lib/csv';
 
 // ─── HOD Reports ──────────────────────────────────────────────────────────────
 
@@ -20,13 +21,6 @@ interface RosterRow {
   email: string;
   overallAttendancePct: number;
   riskLevel: string;
-}
-
-/** Escape a CSV field — wraps in quotes if it contains a comma, quote, or newline. */
-function csvField(v: string | number | null | undefined): string {
-  const s = String(v ?? '');
-  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
 }
 
 function HodReportsPage() {
@@ -88,27 +82,33 @@ function HodReportsPage() {
       }
 
       if (reportType === 'course-attendance') {
-        const detail = await api.get<ClassAttendanceDetail>(
-          `/attendance/class-stats?courseId=${selectedCourse}&from=${dateFrom}&to=${dateTo}`,
-        ).catch(() => null);
+        const rows = await api.get<CourseAttendanceExportRow[]>(
+          `/attendance/course-records?courseId=${encodeURIComponent(selectedCourse)}&from=${encodeURIComponent(dateFrom)}&to=${encodeURIComponent(dateTo)}`,
+        );
         const course = courses?.find((c) => c.id === selectedCourse);
 
-        csvContent = 'Student ID,First Name,Last Name,Check-In Date,Check-In Time,Check-Out Time,Method,Punctuality\n';
-        (detail?.attendances || []).forEach((r) => {
-          const inDate  = new Date(r.checkInAt);
+        csvContent =
+          'Class Session,Class Date,Room,Student ID,First Name,Last Name,Check-In Date,Check-In Time,Check-Out Time,Method,Punctuality\n';
+        (rows || []).forEach((r) => {
+          const inDate = new Date(r.checkInAt);
           const outDate = r.checkOutAt ? new Date(r.checkOutAt) : null;
-          csvContent += [
-            csvField(r.user?.studentId),
-            csvField(r.user?.firstName),
-            csvField(r.user?.lastName),
-            csvField(inDate.toLocaleDateString()),
-            csvField(inDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
-            csvField(outDate ? outDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'),
-            csvField(r.checkInType),
-            csvField(r.punctuality ?? ''),
-          ].join(',') + '\n';
+          const classDay = new Date(r.classDate);
+          csvContent +=
+            [
+              csvField(r.classTitle),
+              csvField(classDay.toLocaleDateString()),
+              csvField(r.room ?? ''),
+              csvField(r.studentId),
+              csvField(r.firstName),
+              csvField(r.lastName),
+              csvField(inDate.toLocaleDateString()),
+              csvField(inDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
+              csvField(outDate ? outDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'),
+              csvField(r.checkInType),
+              csvField(r.punctuality ?? ''),
+            ].join(',') + '\n';
         });
-        filename = `course-attendance-${course?.code || selectedCourse}-${dateFrom}.csv`;
+        filename = `course-attendance-${course?.code || selectedCourse}-${dateFrom}-to-${dateTo}.csv`;
       }
 
       if (!csvContent || csvContent.split('\n').length <= 2) {
@@ -264,9 +264,18 @@ function LecturerReportsPage() {
     const headers = 'Student ID,Name,Check In,Check Out,Method,Status,Punctuality\n';
     const rows = detail.attendances.map((r) => {
       const status = !r.checkInAt ? 'ABSENT' : r.checkOutAt ? 'CHECKED OUT' : 'IN CLASS';
-      return `${r.user?.studentId},${r.user?.firstName} ${r.user?.lastName},${new Date(r.checkInAt).toLocaleString()},${r.checkOutAt ? new Date(r.checkOutAt).toLocaleString() : ''},${r.checkInType},${status},${r.punctuality || ''}`;
+      const name = `${r.user?.firstName ?? ''} ${r.user?.lastName ?? ''}`.trim();
+      return [
+        csvField(r.user?.studentId),
+        csvField(name),
+        csvField(new Date(r.checkInAt).toLocaleString()),
+        csvField(r.checkOutAt ? new Date(r.checkOutAt).toLocaleString() : ''),
+        csvField(r.checkInType),
+        csvField(status),
+        csvField(r.punctuality || ''),
+      ].join(',');
     }).join('\n');
-    const blob = new Blob([headers + rows], { type: 'text/csv' });
+    const blob = new Blob(['\uFEFF' + headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

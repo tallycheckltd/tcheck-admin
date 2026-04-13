@@ -159,6 +159,20 @@ export interface ClassAttendanceDetail {
   absentStudents: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>[];
 }
 
+/** One row from GET /attendance/course-records (CSV export). */
+export interface CourseAttendanceExportRow {
+  classTitle: string;
+  classDate: string;
+  room?: string | null;
+  studentId?: string | null;
+  firstName: string;
+  lastName: string;
+  checkInAt: string;
+  checkOutAt: string | null;
+  checkInType: CheckInType | string;
+  punctuality: string;
+}
+
 export interface ClassAttendanceStat {
   id: string;
   title: string;
