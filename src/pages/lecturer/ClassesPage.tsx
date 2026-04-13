@@ -105,8 +105,8 @@ export function ClassesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Classes</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{myClasses.length} classes</p>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Classes</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{myClasses.length} classes</p>
         </div>
         <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Class</Button>
       </div>
@@ -128,8 +128,8 @@ export function ClassesPage() {
           <tbody className="text-slate-800 dark:text-gray-300">
             {myClasses.map((cls) => (
               <tr key={cls.id}>
-                <td className="font-medium text-gray-900 dark:text-white">{cls.title}</td>
-                <td>{cls.course?.name || '-'} <span className="text-gray-400">({cls.course?.code})</span></td>
+                <td className="font-medium text-slate-950 dark:text-white">{cls.title}</td>
+                <td>{cls.course?.name || '-'} <span className="text-slate-600 dark:text-slate-400">({cls.course?.code})</span></td>
                 <td>{fmtDate(cls.date)}</td>
                 <td>{fmt(cls.startTime)} - {fmt(cls.endTime)}</td>
                 <td>{cls.room || '-'}</td>
@@ -145,7 +145,7 @@ export function ClassesPage() {
                 <td>
                   <div className="flex items-center gap-1">
                     <button onClick={() => navigate(`/attendance/${cls.id}`)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer" title="View Attendance">
-                      <Eye size={15} className="text-gray-500" />
+                      <Eye size={15} className="text-slate-600" />
                     </button>
                     {user?.role !== 'LECTURER' && (
                       <button onClick={() => deleteClass(cls.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer" title="Delete">
@@ -157,7 +157,7 @@ export function ClassesPage() {
               </tr>
             ))}
             {myClasses.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-8 text-gray-400">No classes found</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-slate-600 dark:text-slate-400">No classes found</td></tr>
             )}
           </tbody>
         </table>
@@ -168,7 +168,7 @@ export function ClassesPage() {
           <div className="space-y-1">
             <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Course</label>
             <select value={form.courseId} onChange={(e) => handleCourseChange(e.target.value)}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
+              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
               <option value="">Select course</option>
               {courses?.map((c) => <option key={c.id} value={c.id}>{c.code} - {c.name}</option>)}
             </select>
@@ -193,10 +193,10 @@ export function ClassesPage() {
             <input
               value={form.beaconUUID}
               readOnly
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400"
+              className="w-full rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-400"
               placeholder="Auto-populated from course beacon"
             />
-            <p className="text-xs text-gray-400">Auto-populated from course beacon. Left blank if no beacon assigned.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Auto-populated from course beacon. Left blank if no beacon assigned.</p>
           </div>
           <Button onClick={handleCreate} className="w-full">Create Class</Button>
         </div>

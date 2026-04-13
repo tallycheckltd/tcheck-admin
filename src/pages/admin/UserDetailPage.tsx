@@ -25,7 +25,7 @@ export function UserDetailPage() {
 
   return (
     <div className="space-y-6">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-slate-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer">
         <ArrowLeft size={16} /> Back to Users
       </button>
 
@@ -37,16 +37,16 @@ export function UserDetailPage() {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.firstName} {user.lastName}</h1>
+              <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{user.firstName} {user.lastName}</h1>
               <Badge color={statusColor[user.status]}>{user.status}</Badge>
               <Badge color={user.role === 'LECTURER' ? 'blue' : 'gray'}>{user.role.replace('_', ' ')}</Badge>
             </div>
-            <div className="flex items-center gap-6 mt-3 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-6 mt-3 text-sm text-slate-600 dark:text-slate-400">
               <span className="flex items-center gap-1.5"><Mail size={14} /> {user.email}</span>
               {user.school && <span className="flex items-center gap-1.5"><School size={14} /> {user.school.name}</span>}
               {user.studentId && <span className="font-mono">{user.studentId}</span>}
             </div>
-            <p className="text-xs text-gray-400 mt-2">Joined {new Date(user.createdAt).toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">Joined {new Date(user.createdAt).toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
         </div>
       </div>
@@ -61,8 +61,8 @@ export function UserDetailPage() {
                   <BookOpen size={20} className="text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Enrolled Courses</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{user.enrollments?.length || 0}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Enrolled Courses</p>
+                  <p className="text-2xl font-bold text-slate-950 dark:text-white">{user.enrollments?.length || 0}</p>
                 </div>
               </div>
             </div>
@@ -72,8 +72,8 @@ export function UserDetailPage() {
                   <Calendar size={20} className="text-green-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Check-ins</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{user.attendances?.length || 0}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Check-ins</p>
+                  <p className="text-2xl font-bold text-slate-950 dark:text-white">{user.attendances?.length || 0}</p>
                 </div>
               </div>
             </div>
@@ -83,8 +83,8 @@ export function UserDetailPage() {
                   <TrendingUp size={20} className="text-purple-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Avg Attendance</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{overallAttendance}%</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Avg Attendance</p>
+                  <p className="text-2xl font-bold text-slate-950 dark:text-white">{overallAttendance}%</p>
                 </div>
               </div>
             </div>
@@ -97,8 +97,8 @@ export function UserDetailPage() {
                   <BookOpen size={20} className="text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Teaching Courses</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{user.taughtCourses?.length || 0}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Teaching Courses</p>
+                  <p className="text-2xl font-bold text-slate-950 dark:text-white">{user.taughtCourses?.length || 0}</p>
                 </div>
               </div>
             </div>
@@ -108,8 +108,8 @@ export function UserDetailPage() {
                   <Calendar size={20} className="text-green-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Students</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Students</p>
+                  <p className="text-2xl font-bold text-slate-950 dark:text-white">
                     {user.taughtCourses?.reduce((sum, c) => sum + (c._count?.enrollments || 0), 0) || 0}
                   </p>
                 </div>
@@ -121,8 +121,8 @@ export function UserDetailPage() {
                   <TrendingUp size={20} className="text-purple-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Classes</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Classes</p>
+                  <p className="text-2xl font-bold text-slate-950 dark:text-white">
                     {user.taughtCourses?.reduce((sum, c) => sum + (c._count?.classes || 0), 0) || 0}
                   </p>
                 </div>
@@ -136,7 +136,7 @@ export function UserDetailPage() {
       {user.role === 'STUDENT' && user.courseStats && user.courseStats.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-white/5">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Course Attendance</h3>
+            <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Course Attendance</h3>
           </div>
           <table className="w-full text-sm gradient-table">
             <thead>
@@ -151,7 +151,7 @@ export function UserDetailPage() {
             <tbody className="text-slate-800 dark:text-gray-300">
               {user.courseStats.map((cs) => (
                 <tr key={cs.courseId}>
-                  <td className="font-medium text-gray-900 dark:text-white">{cs.courseName}</td>
+                  <td className="font-medium text-slate-950 dark:text-white">{cs.courseName}</td>
                   <td>{cs.attended}</td>
                   <td>{cs.total}</td>
                   <td>
@@ -181,7 +181,7 @@ export function UserDetailPage() {
       {user.role === 'LECTURER' && user.taughtCourses && user.taughtCourses.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-white/5">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Teaching Courses</h3>
+            <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Teaching Courses</h3>
           </div>
           <table className="w-full text-sm gradient-table">
             <thead>
@@ -196,7 +196,7 @@ export function UserDetailPage() {
             <tbody className="text-slate-800 dark:text-gray-300">
               {user.taughtCourses.map((c) => (
                 <tr key={c.id}>
-                  <td className="font-medium text-gray-900 dark:text-white">{c.name}</td>
+                  <td className="font-medium text-slate-950 dark:text-white">{c.name}</td>
                   <td className="font-mono">{c.code}</td>
                   <td>{c.school?.name || '-'}</td>
                   <td>{c._count?.enrollments || 0}</td>
@@ -212,7 +212,7 @@ export function UserDetailPage() {
       {user.attendances && user.attendances.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-white/5">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Attendance</h3>
+            <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Recent Attendance</h3>
           </div>
           <table className="w-full text-sm gradient-table">
             <thead>
@@ -228,13 +228,13 @@ export function UserDetailPage() {
               {user.attendances.slice(0, 20).map((a) => (
                 <tr key={a.id}>
                   <td>{a.class?.course?.name || '-'}</td>
-                  <td className="font-medium text-gray-900 dark:text-white">{a.class?.title || '-'}</td>
+                  <td className="font-medium text-slate-950 dark:text-white">{a.class?.title || '-'}</td>
                   <td>{new Date(a.checkInAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                   <td>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
                       a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                      'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
+                      'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
                     }`}>
                       {a.checkInType}
                     </span>

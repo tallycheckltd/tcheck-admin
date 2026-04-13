@@ -22,7 +22,7 @@ function StatusPill({ status }: { status: ClassStatus }) {
     'On Track':    'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
     'Low Turnout': 'bg-amber-50 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
     'Critical':    'bg-red-50 text-red-700 dark:bg-red-500/20 dark:text-red-400',
-    'Not Started': 'bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400',
+    'Not Started': 'bg-gray-100 text-slate-600 dark:bg-white/5 dark:text-slate-500',
   };
   const emoji: Record<ClassStatus, string> = {
     'On Track': '🟢', 'Low Turnout': '🟡', 'Critical': '🔴', 'Not Started': '⬜',
@@ -117,13 +117,13 @@ export function AttendanceOverviewPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance Overview</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Attendance Overview</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             Today's command center —&nbsp;
             {new Date().toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
+        <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
           <RefreshCw size={12} />
           Updated {lastUpdated.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
         </div>
@@ -135,9 +135,9 @@ export function AttendanceOverviewPage() {
           <div key={k.label} className="glass-card p-5">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{k.label}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{k.value}</p>
-                {k.sub && <p className="text-xs text-gray-400 mt-1">{k.sub}</p>}
+                <p className="text-sm text-slate-600 dark:text-slate-400">{k.label}</p>
+                <p className="text-3xl font-bold text-slate-950 dark:text-white mt-1">{k.value}</p>
+                {k.sub && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{k.sub}</p>}
               </div>
               <div className={`w-12 h-12 rounded-xl ${k.bg} flex items-center justify-center flex-shrink-0`}>
                 {k.icon}
@@ -151,7 +151,7 @@ export function AttendanceOverviewPage() {
       <div className="glass-card overflow-hidden">
         <div className="p-4 border-b border-gray-100 dark:border-white/10 flex items-center gap-2">
           <Clock size={16} className="text-blue-500" />
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-sm font-semibold text-slate-950 dark:text-white">
             Today's Classes ({classes.length})
           </h2>
           <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
@@ -163,7 +163,7 @@ export function AttendanceOverviewPage() {
         {classes.length === 0 ? (
           <div className="p-12 text-center">
             <ClipboardList size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">No classes scheduled for today.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">No classes scheduled for today.</p>
           </div>
         ) : (
           <table className="w-full text-sm gradient-table">
@@ -190,18 +190,18 @@ export function AttendanceOverviewPage() {
                       {formatTime(cls.startTime)} – {formatTime(cls.endTime)}
                     </td>
                     <td>
-                      <p className="font-medium text-gray-900 dark:text-white">{cls.course?.name || cls.title}</p>
-                      <p className="text-xs text-gray-400">{cls.room || cls.course?.room || '—'}</p>
+                      <p className="font-medium text-slate-950 dark:text-white">{cls.course?.name || cls.title}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{cls.room || cls.course?.room || '—'}</p>
                     </td>
                     <td className="text-xs">{cls.lecturerName}</td>
                     <td className="text-center font-medium">{cls.expectedHeadcount}</td>
                     <td className="text-center">
                       <div className="flex flex-col items-center gap-0.5">
-                        <span className={`font-bold ${cls.isActive ? (rate >= 75 ? 'text-emerald-600 dark:text-emerald-400' : rate >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500') : 'text-gray-400'}`}>
+                        <span className={`font-bold ${cls.isActive ? (rate >= 75 ? 'text-emerald-600 dark:text-emerald-400' : rate >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500') : 'text-slate-600 dark:text-slate-400'}`}>
                           {cls.isActive ? cls.checkedIn : '—'}
                         </span>
                         {cls.isActive && (
-                          <span className="text-[10px] text-gray-400">{rate}%</span>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400">{rate}%</span>
                         )}
                       </div>
                     </td>

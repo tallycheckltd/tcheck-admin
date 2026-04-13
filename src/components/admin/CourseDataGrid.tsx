@@ -80,7 +80,7 @@ function FacetSection({
     <div>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1.5 w-full text-left text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        className="flex items-center gap-1.5 w-full text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
       >
         {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         {title}
@@ -138,12 +138,12 @@ function GroupHeader({
       className="flex items-center gap-2 w-full text-left px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200/60 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer mb-2"
     >
       {expanded ? (
-        <ChevronDown size={14} className="text-gray-400" />
+        <ChevronDown size={14} className="text-slate-600 dark:text-slate-400" />
       ) : (
-        <ChevronRight size={14} className="text-gray-400" />
+        <ChevronRight size={14} className="text-slate-600 dark:text-slate-400" />
       )}
-      <span className="text-sm font-semibold text-gray-900 dark:text-white">{label}</span>
-      <span className="ml-auto text-xs text-gray-400">{count} course{count !== 1 ? 's' : ''}</span>
+      <span className="text-sm font-semibold text-slate-950 dark:text-white">{label}</span>
+      <span className="ml-auto text-xs text-slate-600 dark:text-slate-400">{count} course{count !== 1 ? 's' : ''}</span>
     </button>
   );
 }
@@ -158,12 +158,12 @@ function CourseRow({ course }: { course: Course }) {
       {/* Info */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+          <span className="text-sm font-semibold text-slate-950 dark:text-white truncate">
             {course.name}
           </span>
           <Badge color="blue">{course.code}</Badge>
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
           {course.lecturer && (
             <span>
               {course.lecturer.firstName} {course.lecturer.lastName}
@@ -187,7 +187,7 @@ function CourseRow({ course }: { course: Course }) {
       </div>
 
       {/* Stats */}
-      <div className="flex items-center gap-4 text-xs text-gray-400 flex-shrink-0">
+      <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400 flex-shrink-0">
         <span className="flex items-center gap-1">
           <GraduationCap size={12} />
           {course._count?.enrollments ?? 0}
@@ -388,7 +388,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
             activeViewIndex === null && activeFilterCount === 0
               ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/25'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-slate-500 dark:hover:bg-white/10'
           }`}
         >
           All Courses
@@ -401,7 +401,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
               className={`px-3 py-1.5 rounded-l-lg text-xs font-medium transition-colors cursor-pointer ${
                 activeViewIndex === i
                   ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/25'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-slate-500 dark:hover:bg-white/10'
               }`}
             >
               {view.name}
@@ -414,7 +414,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
               className={`px-1.5 py-1.5 rounded-r-lg text-xs transition-colors cursor-pointer ${
                 activeViewIndex === i
                   ? 'bg-blue-600 text-blue-200 hover:text-white'
-                  : 'bg-gray-100 text-gray-400 hover:text-gray-600 dark:bg-white/5 dark:text-gray-500 dark:hover:text-gray-300'
+                  : 'bg-gray-100 text-slate-600 dark:text-slate-400 hover:text-gray-600 dark:bg-white/5 dark:text-slate-400 dark:hover:text-gray-300'
               }`}
               title="Remove view"
             >
@@ -438,7 +438,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
               }}
               placeholder="View name..."
               autoFocus
-              className="w-32 px-2.5 py-1.5 rounded-lg text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              className="w-32 px-2.5 py-1.5 rounded-lg text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
             <button
               onClick={saveCurrentView}
@@ -453,7 +453,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
                 setShowSaveInput(false);
                 setNewViewName('');
               }}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X size={12} />
             </button>
@@ -461,7 +461,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
         ) : (
           <button
             onClick={() => setShowSaveInput(true)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 border border-dashed border-gray-300 dark:border-white/10 transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 border border-dashed border-gray-300 dark:border-white/10 transition-colors cursor-pointer"
           >
             <Plus size={12} />
             Save View
@@ -479,7 +479,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
         >
           <div className="glass-card p-4 space-y-5 sticky top-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-950 dark:text-white flex items-center gap-1.5">
                 <Filter size={12} />
                 Filters
               </span>
@@ -495,13 +495,13 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
 
             {/* Search within filters */}
             <div className="relative">
-              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
               <input
                 type="text"
                 placeholder="Search courses..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 rounded-lg text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="w-full pl-7 pr-3 py-1.5 rounded-lg text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
             </div>
 
@@ -526,7 +526,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
 
             {/* Group By */}
             <div>
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 block">
                 Group By
               </span>
               <select
@@ -536,7 +536,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
                   setCollapsedGroups(new Set());
                   setActiveViewIndex(null);
                 }}
-                className="w-full rounded-lg px-3 py-1.5 text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+                className="w-full rounded-lg px-3 py-1.5 text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
               >
                 <option value="">None</option>
                 <option value="level">Level</option>
@@ -554,12 +554,12 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSidebarOpen((v) => !v)}
-                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 title={sidebarOpen ? 'Hide filters' : 'Show filters'}
               >
                 <Filter size={16} />
               </button>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-slate-600 dark:text-slate-400">
                 {filtered.length} of {courses.length} course{courses.length !== 1 ? 's' : ''}
               </span>
               {activeFilterCount > 0 && (
@@ -611,7 +611,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
             </div>
 
             {groupBy && (
-              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                 <Layers size={12} />
                 Grouped by {groupBy}
               </div>
@@ -622,7 +622,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
           {filtered.length === 0 ? (
             <div className="glass-card p-12 text-center">
               <Search size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 No courses match the current filters.
               </p>
               {activeFilterCount > 0 && (

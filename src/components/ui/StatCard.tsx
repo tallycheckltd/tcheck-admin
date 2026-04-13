@@ -16,7 +16,7 @@ export function StatCard({ title, value, icon, trend, color = 'blue' }: Props) {
       <GlassCard>
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm text-slate-600 dark:text-gray-400">{title}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-500">{title}</p>
             <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
             {trend && <p className="mt-1 text-sm text-green-500">{trend}</p>}
           </div>

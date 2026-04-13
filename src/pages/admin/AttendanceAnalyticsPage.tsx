@@ -68,7 +68,7 @@ const TRAJECTORY_DATA = [
 const TrendArrow = ({ trend }: { trend: 'up' | 'stable' | 'down' }) => {
   if (trend === 'up')     return <TrendingUp size={14} className="text-emerald-500" />;
   if (trend === 'down')   return <TrendingDown size={14} className="text-red-500" />;
-  return <Minus size={14} className="text-gray-400" />;
+  return <Minus size={14} className="text-slate-600 dark:text-slate-400" />;
 };
 
 function heatColor(pct: number): string {
@@ -103,8 +103,8 @@ function Section({ icon, title, subtitle, children }: {
       <div className="flex items-start gap-3">
         <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex-shrink-0">{icon}</div>
         <div>
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
+          <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{subtitle}</p>
         </div>
       </div>
       {children}
@@ -117,8 +117,8 @@ export function AttendanceAnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance Analytics</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Attendance Analytics</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
           Risk intelligence and macro trends — last 4 weeks
         </p>
       </div>
@@ -150,7 +150,7 @@ export function AttendanceAnalyticsPage() {
             />
           </LineChart>
         </ResponsiveContainer>
-        <p className="text-xs text-gray-400 text-center">
+        <p className="text-xs text-slate-600 dark:text-slate-400 text-center">
           Current trajectory: <span className="text-red-500 font-medium">↓ declining</span> — intervention recommended
         </p>
       </Section>
@@ -165,18 +165,18 @@ export function AttendanceAnalyticsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-white/10">
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Student</th>
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Semester %</th>
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Risk Score</th>
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Trend</th>
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Recent Missed</th>
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Student</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Semester %</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Risk Score</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Trend</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Recent Missed</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {AT_RISK_STUDENTS.map((s) => (
                 <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-white/3 transition-colors">
-                  <td className="py-3 font-medium text-gray-900 dark:text-white">{s.name}</td>
+                  <td className="py-3 font-medium text-slate-950 dark:text-white">{s.name}</td>
                   <td className="py-3">
                     <span className={`font-medium ${s.pct < 60 ? 'text-red-500' : s.pct < 75 ? 'text-amber-500' : 'text-emerald-500'}`}>
                       {s.pct}%
@@ -189,7 +189,7 @@ export function AttendanceAnalyticsPage() {
                   </td>
                   <td className="py-3"><TrendArrow trend={s.trend} /></td>
                   <td className="py-3">
-                    <span className={`text-sm font-medium ${s.recentMissed >= 4 ? 'text-red-500' : s.recentMissed >= 2 ? 'text-amber-500' : 'text-gray-600 dark:text-gray-400'}`}>
+                    <span className={`text-sm font-medium ${s.recentMissed >= 4 ? 'text-red-500' : s.recentMissed >= 2 ? 'text-amber-500' : 'text-slate-600 dark:text-slate-400'}`}>
                       {s.recentMissed} consecutive
                     </span>
                   </td>
@@ -211,18 +211,18 @@ export function AttendanceAnalyticsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-white/10">
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Course</th>
-                <th className="text-right pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Attendance %</th>
-                <th className="text-right pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Level Avg %</th>
-                <th className="text-right pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Delta</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Course</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Attendance %</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Level Avg %</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Delta</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {COHORT_BENCHMARK.map((row) => (
                 <tr key={row.course} className={`hover:bg-gray-50 dark:hover:bg-white/3 transition-colors ${row.delta <= -15 ? 'bg-red-50/50 dark:bg-red-500/5' : ''}`}>
-                  <td className="py-3 font-medium text-gray-900 dark:text-white">{row.course}</td>
+                  <td className="py-3 font-medium text-slate-950 dark:text-white">{row.course}</td>
                   <td className="py-3 text-right text-slate-800 dark:text-gray-300">{row.pct}%</td>
-                  <td className="py-3 text-right text-gray-500">{row.levelAvg}%</td>
+                  <td className="py-3 text-right text-slate-600">{row.levelAvg}%</td>
                   <td className={`py-3 text-right font-bold ${row.delta < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                     {row.delta > 0 ? '+' : ''}{row.delta} pts
                   </td>
@@ -245,13 +245,13 @@ export function AttendanceAnalyticsPage() {
             <div className="grid grid-cols-6 gap-1 mb-1">
               <div /> {/* empty slot column */}
               {HEATMAP_DAYS.map((d) => (
-                <div key={d} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 pb-1">{d}</div>
+                <div key={d} className="text-center text-xs font-semibold text-slate-600 dark:text-slate-400 pb-1">{d}</div>
               ))}
             </div>
             {/* Rows */}
             {HEATMAP_SLOTS.map((slot) => (
               <div key={slot} className="grid grid-cols-6 gap-1 mb-1">
-                <div className="text-xs text-gray-400 flex items-center justify-end pr-2">{slot}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-end pr-2">{slot}</div>
                 {HEATMAP_DAYS.map((day) => {
                   const pct = HEATMAP_DATA[day]?.[slot] ?? 0;
                   return (
@@ -270,9 +270,9 @@ export function AttendanceAnalyticsPage() {
         </div>
         {/* Legend */}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <span className="text-xs text-gray-400">Legend:</span>
+          <span className="text-xs text-slate-600 dark:text-slate-400">Legend:</span>
           {[['≥85%', 'bg-emerald-600'], ['75–84%', 'bg-emerald-400'], ['65–74%', 'bg-yellow-400'], ['55–64%', 'bg-orange-400'], ['<55%', 'bg-red-500']].map(([label, bg]) => (
-            <span key={label} className="flex items-center gap-1 text-xs text-gray-500">
+            <span key={label} className="flex items-center gap-1 text-xs text-slate-600">
               <span className={`w-3 h-3 rounded ${bg}`} />
               {label}
             </span>
@@ -290,17 +290,17 @@ export function AttendanceAnalyticsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-white/10">
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Lecturer</th>
-                <th className="text-right pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Classes Taught</th>
-                <th className="text-right pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Avg Attendance %</th>
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider pl-4">Trend</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Lecturer</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Classes Taught</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Avg Attendance %</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider pl-4">Trend</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {LECTURER_DATA.map((l) => (
                 <tr key={l.name} className="hover:bg-gray-50 dark:hover:bg-white/3 transition-colors">
-                  <td className="py-3 font-medium text-gray-900 dark:text-white">{l.name}</td>
-                  <td className="py-3 text-right text-gray-600 dark:text-gray-400">{l.classes}</td>
+                  <td className="py-3 font-medium text-slate-950 dark:text-white">{l.name}</td>
+                  <td className="py-3 text-right text-slate-600 dark:text-slate-400">{l.classes}</td>
                   <td className="py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <div className="w-24 h-1.5 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
@@ -332,29 +332,29 @@ export function AttendanceAnalyticsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-white/10">
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Course</th>
-                <th className="text-right pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Current Avg %</th>
-                <th className="text-right pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Projected Final %</th>
-                <th className="text-center pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Weeks Left</th>
-                <th className="text-left pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Course</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Current Avg %</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Projected Final %</th>
+                <th className="text-center pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Weeks Left</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {TRAJECTORY_DATA.map((row) => (
                 <tr key={row.course} className="hover:bg-gray-50 dark:hover:bg-white/3 transition-colors">
-                  <td className="py-3 font-medium text-gray-900 dark:text-white">{row.course}</td>
+                  <td className="py-3 font-medium text-slate-950 dark:text-white">{row.course}</td>
                   <td className="py-3 text-right text-slate-800 dark:text-gray-300">{row.current}%</td>
                   <td className={`py-3 text-right font-semibold ${row.projected >= MIN_ATTENDANCE_THRESHOLD ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
                     {row.projected}%
                   </td>
-                  <td className="py-3 text-center text-gray-500">{row.weeksLeft}</td>
+                  <td className="py-3 text-center text-slate-600">{row.weeksLeft}</td>
                   <td className="py-3">{trajectoryPill(row.status)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+        <div className="flex items-center gap-2 mt-1 text-xs text-slate-600 dark:text-slate-400">
           <Activity size={12} />
           Threshold variable: <code className="font-mono text-blue-500">MIN_ATTENDANCE_THRESHOLD = {MIN_ATTENDANCE_THRESHOLD}%</code>
         </div>

@@ -57,14 +57,14 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+      <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Settings</h1>
 
       <div className="max-w-xl space-y-6">
         {/* Global BLE Settings */}
         <GlassCard>
           <div className="flex items-center gap-3 mb-4">
             <Wifi size={20} className="text-blue-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">BLE Settings</h2>
+            <h2 className="text-lg font-semibold text-slate-950 dark:text-white">BLE Settings</h2>
           </div>
           <div className="space-y-4">
             <Input
@@ -73,7 +73,7 @@ export function SettingsPage() {
               value={rssi}
               onChange={(e) => setRssi(e.target.value)}
             />
-            <p className="text-xs text-gray-500">Minimum signal strength for check-in (-100 to 0). Default: -75</p>
+            <p className="text-xs text-slate-600">Minimum signal strength for check-in (-100 to 0). Default: -75</p>
 
             <Input
               label="Auto-checkout Timer (minutes)"
@@ -81,7 +81,7 @@ export function SettingsPage() {
               value={autoCheckout}
               onChange={(e) => setAutoCheckout(e.target.value)}
             />
-            <p className="text-xs text-gray-500">Auto checkout students after this many minutes. Default: 120</p>
+            <p className="text-xs text-slate-600">Auto checkout students after this many minutes. Default: 120</p>
           </div>
         </GlassCard>
 
@@ -97,7 +97,7 @@ export function SettingsPage() {
                   className="w-5 h-5 rounded-md"
                   style={{ backgroundColor: school.color || '#3B82F6' }}
                 />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{school.name}</h2>
+                <h2 className="text-lg font-semibold text-slate-950 dark:text-white">{school.name}</h2>
               </div>
 
               <div className="space-y-4">
@@ -120,7 +120,7 @@ export function SettingsPage() {
                     onChange={(e) => updateSchoolSetting(school.id, 'extremelyLateThresholdMinutes', e.target.value)}
                   />
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-600">
                   Students arriving after the &quot;Late&quot; threshold are marked LATE. After &quot;Extremely Late&quot; they&apos;re marked EXTREMELY LATE.
                 </p>
 
@@ -133,7 +133,7 @@ export function SettingsPage() {
                   <label className="flex items-center justify-between cursor-pointer py-2">
                     <div>
                       <p className="text-sm text-slate-800 dark:text-gray-300">Allow Manual Lecturer Override</p>
-                      <p className="text-xs text-gray-500">Let lecturers manually mark students as present (bypassing BLE requirement)</p>
+                      <p className="text-xs text-slate-600">Let lecturers manually mark students as present (bypassing BLE requirement)</p>
                     </div>
                     <div className="relative">
                       <input

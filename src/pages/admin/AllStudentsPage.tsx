@@ -76,7 +76,7 @@ function StudentDrawer({ student, onClose }: StudentDrawerProps) {
   );
 
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  const trendColor = trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
+  const trendColor = trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-slate-600 dark:text-slate-400';
   const riskLabel = riskScore > 75 ? 'On Track' : riskScore >= 50 ? 'Medium Risk' : 'High Risk';
   const riskColor = riskScore > 75 ? 'text-emerald-600 dark:text-emerald-400' : riskScore >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
 
@@ -96,15 +96,15 @@ function StudentDrawer({ student, onClose }: StudentDrawerProps) {
               {student.firstName?.[0]}{student.lastName?.[0]}
             </div>
             <div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-base font-semibold text-slate-950 dark:text-white">
                 {student.firstName} {student.lastName}
               </h3>
-              <p className="text-xs text-gray-500">{student.studentId || student.email}</p>
+              <p className="text-xs text-slate-600">{student.studentId || student.email}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -115,12 +115,12 @@ function StudentDrawer({ student, onClose }: StudentDrawerProps) {
           {/* Overview */}
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-gray-50 dark:bg-white/5 p-3 text-center">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{pct}%</p>
-              <p className="text-xs text-gray-500 mt-0.5">Overall</p>
+              <p className="text-2xl font-bold text-slate-950 dark:text-white">{pct}%</p>
+              <p className="text-xs text-slate-600 mt-0.5">Overall</p>
             </div>
             <div className="rounded-xl bg-gray-50 dark:bg-white/5 p-3 text-center">
               <p className={`text-2xl font-bold ${riskColor}`}>{riskScore}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Risk Score</p>
+              <p className="text-xs text-slate-600 mt-0.5">Risk Score</p>
             </div>
             <div className="rounded-xl bg-gray-50 dark:bg-white/5 p-3 text-center">
               <p className={`text-sm font-bold mt-1 ${riskColor}`}>{riskLabel}</p>
@@ -135,16 +135,16 @@ function StudentDrawer({ student, onClose }: StudentDrawerProps) {
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${health.dot}`} />
             <Badge color={health.color}>{health.label}</Badge>
-            <span className="text-xs text-gray-500">Attendance status</span>
+            <span className="text-xs text-slate-600">Attendance status</span>
           </div>
 
           {/* Per-course attendance */}
           <div>
-            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <BookOpen size={12} /> Active Courses
             </h4>
             {courseStats.length === 0 ? (
-              <p className="text-sm text-gray-400">No enrolled courses.</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">No enrolled courses.</p>
             ) : (
               <div className="space-y-2.5">
                 {courseStats.map((cs) => {
@@ -155,7 +155,7 @@ function StudentDrawer({ student, onClose }: StudentDrawerProps) {
                         <span className="text-xs font-medium text-slate-800 dark:text-gray-300 truncate mr-2">
                           {cs.courseName}
                         </span>
-                        <span className="text-xs font-bold text-gray-900 dark:text-white flex-shrink-0">{cs.pct}%</span>
+                        <span className="text-xs font-bold text-slate-950 dark:text-white flex-shrink-0">{cs.pct}%</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
                         <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${cs.pct}%` }} />
@@ -169,17 +169,17 @@ function StudentDrawer({ student, onClose }: StudentDrawerProps) {
 
           {/* Recent absences */}
           <div>
-            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <AlertTriangle size={12} /> Last {RECENT_ABSENCE_DISPLAY_COUNT} Absences
             </h4>
             {absences.length === 0 ? (
-              <p className="text-sm text-gray-400">No recent absences.</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">No recent absences.</p>
             ) : (
               <div className="space-y-2">
                 {absences.map((ab, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-white/5 last:border-0">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">{ab.courseName}</span>
-                    <span className="text-xs font-medium text-gray-500">
+                    <span className="text-xs text-slate-600 dark:text-slate-400">{ab.courseName}</span>
+                    <span className="text-xs font-medium text-slate-600">
                       {new Date(ab.date).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
@@ -281,8 +281,8 @@ export function AllStudentsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Students</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">All Students</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             {filtered.length} of {students?.length ?? 0} students
           </p>
         </div>
@@ -293,7 +293,7 @@ export function AllStudentsPage() {
         <div className={`flex-shrink-0 transition-all duration-200 ${sidebarOpen ? 'w-56' : 'w-0 overflow-hidden'}`}>
           <div className="glass-card p-4 space-y-5 sticky top-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-950 dark:text-white flex items-center gap-1.5">
                 <Filter size={12} /> Filters
               </span>
               {activeFilterCount > 0 && (
@@ -301,13 +301,13 @@ export function AllStudentsPage() {
               )}
             </div>
             <div className="relative">
-              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
               <input
                 type="text"
                 placeholder="Search students..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 rounded-lg text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="w-full pl-7 pr-3 py-1.5 rounded-lg text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
             </div>
             <FacetSection title="Level" items={facets.levels} selected={selectedLevels} onToggle={toggle(setSelectedLevels)} />
@@ -321,7 +321,7 @@ export function AllStudentsPage() {
           <div className="flex items-center gap-2 mb-3">
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
               title={sidebarOpen ? 'Hide filters' : 'Show filters'}
             >
               <Filter size={16} />
@@ -385,15 +385,15 @@ export function AllStudentsPage() {
                             {s.firstName?.[0]}{s.lastName?.[0]}
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900 dark:text-white">{s.firstName} {s.lastName}</p>
-                            <p className="text-xs text-gray-400">{s.studentId || s.email}</p>
+                            <p className="font-medium text-slate-950 dark:text-white">{s.firstName} {s.lastName}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">{s.studentId || s.email}</p>
                           </div>
                         </div>
                       </td>
                       <td>
                         <div className="text-xs">
                           <p className="font-medium text-slate-800 dark:text-gray-300">{majorName || '—'}</p>
-                          <p className="text-gray-400">{cohortName || '—'}</p>
+                          <p className="text-slate-600 dark:text-slate-400">{cohortName || '—'}</p>
                         </div>
                       </td>
                       <td>
@@ -404,7 +404,7 @@ export function AllStudentsPage() {
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <span className="font-semibold text-gray-900 dark:text-white text-xs">{pct}%</span>
+                          <span className="font-semibold text-slate-950 dark:text-white text-xs">{pct}%</span>
                         </div>
                       </td>
                       <td>
@@ -428,7 +428,7 @@ export function AllStudentsPage() {
                   <tr>
                     <td colSpan={5} className="text-center py-12">
                       <GraduationCap size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         {activeFilterCount > 0 ? 'No students match the current filters.' : 'No students found.'}
                       </p>
                       {activeFilterCount > 0 && (
@@ -467,7 +467,7 @@ function FacetSection({
     <div>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1.5 w-full text-left text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        className="flex items-center gap-1.5 w-full text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
       >
         {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         {title}

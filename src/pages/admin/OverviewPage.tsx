@@ -394,7 +394,7 @@ function HodOverviewDashboard() {
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                     a.checkInType === 'BLE'    ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
                     a.checkInType === 'QR'     ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                    'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
+                    'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
                   }`}>
                     {a.checkInType}
                   </span>

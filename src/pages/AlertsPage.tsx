@@ -121,8 +121,8 @@ function InfraAlertsView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Infrastructure Alerts</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Infrastructure Alerts</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             Platform-wide system events only. Academic alerts route to school admins separately.
             {active.length > 0 && (
               <span className="ml-2 text-red-500 font-medium">{active.length} unacknowledged</span>
@@ -140,8 +140,8 @@ function InfraAlertsView() {
         {active.length === 0 ? (
           <div className="glass-card p-12 text-center">
             <Cpu size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">No active infrastructure alerts</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Hardware failures, billing events, and security anomalies will appear here.</p>
+            <h3 className="text-base font-semibold text-slate-950 dark:text-white mb-1">No active infrastructure alerts</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Hardware failures, billing events, and security anomalies will appear here.</p>
           </div>
         ) : (
           active.map((alert) => {
@@ -152,13 +152,13 @@ function InfraAlertsView() {
                   <div className="mt-0.5 flex-shrink-0">{cfg.icon}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{cfg.label}</span>
-                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">{cfg.label}</span>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 flex items-center gap-0.5">
                         <Clock size={9} /> {timeAgo(alert.timestamp)}
                       </span>
                     </div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">{alert.message}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{alert.detail}</p>
+                    <p className="text-sm font-semibold text-slate-950 dark:text-white leading-snug">{alert.message}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{alert.detail}</p>
                   </div>
                   <button
                     onClick={() => acknowledge(alert.id)}
@@ -177,14 +177,14 @@ function InfraAlertsView() {
         <div>
           <button
             onClick={() => setShowDismissed((v) => !v)}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-medium transition-colors cursor-pointer mb-3"
+            className="flex items-center gap-2 text-sm text-slate-600 hover:text-gray-700 dark:hover:text-gray-300 font-medium transition-colors cursor-pointer mb-3"
           >
             {showDismissed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             View Dismissed ({dismissed.length})
           </button>
           {showDismissed && (
             <div className="space-y-2">
-              <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Audit Log — Read Only</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold mb-2">Audit Log — Read Only</p>
               {dismissed.map((alert) => {
                 const cfg = INFRA_CONFIG[alert.severity];
                 return (
@@ -193,8 +193,8 @@ function InfraAlertsView() {
                       <div className="mt-0.5 flex-shrink-0">{cfg.icon}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{cfg.label}</span>
-                          <span className="text-[10px] text-gray-400">Flagged {timeAgo(alert.timestamp)}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">{cfg.label}</span>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400">Flagged {timeAgo(alert.timestamp)}</span>
                           {alert.acknowledgedAt && (
                             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-0.5">
                               <CheckCircle size={9} /> Acknowledged {timeAgo(alert.acknowledgedAt)}
@@ -202,7 +202,7 @@ function InfraAlertsView() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs font-medium text-gray-700 dark:text-gray-400 leading-snug">{alert.message}</p>
+                        <p className="text-xs font-medium text-gray-700 dark:text-slate-500 leading-snug">{alert.message}</p>
                       </div>
                     </div>
                   </div>
@@ -316,8 +316,8 @@ function AcademicAlertsView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Alerts</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Alerts</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             Action feed — every card requires a decision.
             {active.length > 0 && (
               <span className="ml-2 text-red-500 font-medium">{active.length} unacknowledged</span>
@@ -335,8 +335,8 @@ function AcademicAlertsView() {
         {active.length === 0 ? (
           <div className="glass-card p-12 text-center">
             <Bell size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">No active alerts</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">New anomalies will appear here immediately.</p>
+            <h3 className="text-base font-semibold text-slate-950 dark:text-white mb-1">No active alerts</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">New anomalies will appear here immediately.</p>
           </div>
         ) : (
           active.map((alert) => {
@@ -347,13 +347,13 @@ function AcademicAlertsView() {
                   <div className="mt-0.5 flex-shrink-0">{cfg.icon}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{cfg.label}</span>
-                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">{cfg.label}</span>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 flex items-center gap-0.5">
                         <Clock size={9} /> {timeAgo(alert.timestamp)}
                       </span>
                     </div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">{alert.message}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{alert.detail}</p>
+                    <p className="text-sm font-semibold text-slate-950 dark:text-white leading-snug">{alert.message}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{alert.detail}</p>
                   </div>
                   <button
                     onClick={() => acknowledge(alert.id)}
@@ -372,14 +372,14 @@ function AcademicAlertsView() {
         <div>
           <button
             onClick={() => setShowDismissed((v) => !v)}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-medium transition-colors cursor-pointer mb-3"
+            className="flex items-center gap-2 text-sm text-slate-600 hover:text-gray-700 dark:hover:text-gray-300 font-medium transition-colors cursor-pointer mb-3"
           >
             {showDismissed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             View Dismissed ({dismissed.length})
           </button>
           {showDismissed && (
             <div className="space-y-2">
-              <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Audit Log — Read Only</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold mb-2">Audit Log — Read Only</p>
               {dismissed.map((alert) => {
                 const cfg = ACADEMIC_CONFIG[alert.severity];
                 return (
@@ -388,8 +388,8 @@ function AcademicAlertsView() {
                       <div className="mt-0.5 flex-shrink-0">{cfg.icon}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{cfg.label}</span>
-                          <span className="text-[10px] text-gray-400">Flagged {timeAgo(alert.timestamp)}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">{cfg.label}</span>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400">Flagged {timeAgo(alert.timestamp)}</span>
                           {alert.acknowledgedAt && (
                             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-0.5">
                               <CheckCircle size={9} /> Acknowledged {timeAgo(alert.acknowledgedAt)}
@@ -397,7 +397,7 @@ function AcademicAlertsView() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs font-medium text-gray-700 dark:text-gray-400 leading-snug">{alert.message}</p>
+                        <p className="text-xs font-medium text-gray-700 dark:text-slate-500 leading-snug">{alert.message}</p>
                       </div>
                     </div>
                   </div>

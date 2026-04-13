@@ -218,7 +218,7 @@ export function MessagesPage() {
             className={`flex-1 text-sm font-medium py-2 border-b-2 transition-colors cursor-pointer ${
               !showContacts
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-400 hover:text-gray-600'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             Chats
@@ -228,7 +228,7 @@ export function MessagesPage() {
             className={`flex-1 text-sm font-medium py-2 border-b-2 transition-colors cursor-pointer ${
               showContacts
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-400 hover:text-gray-600'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             {isLecturer ? 'My Students' : 'My Lecturers'}
@@ -247,36 +247,36 @@ export function MessagesPage() {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-slate-950 dark:text-white">
                     {c.otherUser.firstName} {c.otherUser.lastName}
                   </p>
                   {c.unreadCount > 0 && <Badge color="blue">{c.unreadCount}</Badge>}
                 </div>
                 {c.lastMessage && (
-                  <p className="text-xs text-gray-500 truncate mt-1">{c.lastMessage.content}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-1">{c.lastMessage.content}</p>
                 )}
               </button>
             ))}
             {(!conversations || conversations.length === 0) && (
-              <p className="text-center text-gray-400 py-8 text-sm">No conversations yet</p>
+              <p className="text-center text-slate-600 dark:text-slate-400 py-8 text-sm">No conversations yet</p>
             )}
           </div>
         ) : (
           /* Contacts list */
           <div className="flex-1 overflow-y-auto">
             <div className="relative mb-3">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
               <input
                 value={contactSearch}
                 onChange={(e) => setContactSearch(e.target.value)}
                 placeholder="Search..."
-                className="w-full rounded-xl pl-9 pr-4 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full rounded-xl pl-9 pr-4 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               />
             </div>
             <div className="space-y-3">
               {filteredContacts.map((group) => (
                 <div key={group.courseId}>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 px-2">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5 px-2">
                     {group.courseName}
                   </p>
                   <div className="space-y-0.5">
@@ -289,7 +289,7 @@ export function MessagesPage() {
                         <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                           <UserIcon size={14} className="text-blue-500" />
                         </div>
-                        <span className="text-sm text-gray-900 dark:text-white truncate">
+                        <span className="text-sm text-slate-950 dark:text-white truncate">
                           {c.firstName} {c.lastName}
                         </span>
                       </button>
@@ -298,7 +298,7 @@ export function MessagesPage() {
                 </div>
               ))}
               {filteredContacts.length === 0 && (
-                <p className="text-center text-gray-400 py-4 text-sm">
+                <p className="text-center text-slate-600 dark:text-slate-400 py-4 text-sm">
                   {contactSearch ? 'No matching contacts' : 'No new contacts to message'}
                 </p>
               )}
@@ -313,9 +313,9 @@ export function MessagesPage() {
             {chatTitle && (
               <div className="pb-3 mb-3 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{chatTitle}</p>
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white">{chatTitle}</p>
                   {pendingRecipient && (
-                    <p className="text-xs text-gray-400 mt-0.5">New conversation</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">New conversation</p>
                   )}
                   {typingUser && !pendingRecipient && (
                     <p className="text-xs text-blue-500 mt-0.5 animate-pulse">Typing...</p>
@@ -338,10 +338,10 @@ export function MessagesPage() {
                   <div className={`max-w-xs px-4 py-2 rounded-2xl text-sm ${
                     m.senderId === user?.id
                       ? 'bg-blue-500 text-white rounded-br-md'
-                      : 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white rounded-bl-md'
+                      : 'bg-gray-100 dark:bg-white/10 text-slate-950 dark:text-white rounded-bl-md'
                   }`}>
                     {m.content}
-                    <p className={`text-xs mt-1 ${m.senderId === user?.id ? 'text-blue-200' : 'text-gray-400'}`}>
+                    <p className={`text-xs mt-1 ${m.senderId === user?.id ? 'text-blue-200' : 'text-slate-600 dark:text-slate-400'}`}>
                       {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -349,7 +349,7 @@ export function MessagesPage() {
               ))}
               {pendingRecipient && messages.length === 0 && (
                 <div className="flex-1 flex items-center justify-center py-12">
-                  <p className="text-sm text-gray-400">Send a message to start the conversation</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Send a message to start the conversation</p>
                 </div>
               )}
               <div ref={bottomRef} />
@@ -372,7 +372,7 @@ export function MessagesPage() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <MessageSquare size={48} className="mx-auto mb-4 text-slate-400 dark:text-gray-600" />
-              <p className="text-gray-500">Select a conversation or start a new one</p>
+              <p className="text-slate-600">Select a conversation or start a new one</p>
             </div>
           </div>
         )}
@@ -381,7 +381,7 @@ export function MessagesPage() {
       {/* Flag / Escalation Modal */}
       <Modal open={flagModal} onClose={() => { setFlagModal(false); setFlagReason(''); }} title="Escalate to Admin">
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Report this conversation to the admin. Please describe the issue so the admin can review it.
           </p>
           <div className="space-y-1">
@@ -391,7 +391,7 @@ export function MessagesPage() {
               onChange={(e) => setFlagReason(e.target.value)}
               placeholder="e.g. Student not attending classes, inappropriate messages..."
               rows={3}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
             />
           </div>
           <Button onClick={handleFlag} disabled={!flagReason.trim() || flagging} className="w-full">

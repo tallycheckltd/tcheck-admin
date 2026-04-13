@@ -112,8 +112,8 @@ export function SystemAnnouncementsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">System Announcements</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">System Announcements</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
           Broadcast platform-wide warnings to all university tenants. No direct messaging — platform notices only.
         </p>
       </div>
@@ -122,7 +122,7 @@ export function SystemAnnouncementsPage() {
       <div className="glass-card p-6 space-y-4">
         <div className="flex items-center gap-2 mb-1">
           <Megaphone size={18} className="text-blue-500" />
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">New Announcement</h2>
+          <h2 className="text-base font-semibold text-slate-950 dark:text-white">New Announcement</h2>
         </div>
 
         <div className="space-y-3">
@@ -131,18 +131,18 @@ export function SystemAnnouncementsPage() {
             placeholder="Announcement title..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
           <textarea
             placeholder="Write your platform message here..."
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={3}
-            className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
+            className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
           />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-gray-500">Severity:</span>
+              <span className="text-xs font-medium text-slate-600">Severity:</span>
               {(['info', 'warning', 'critical'] as Severity[]).map((s) => (
                 <button
                   key={s}
@@ -152,7 +152,7 @@ export function SystemAnnouncementsPage() {
                       ? s === 'info' ? 'bg-blue-500 text-white'
                         : s === 'warning' ? 'bg-amber-500 text-white'
                         : 'bg-red-500 text-white'
-                      : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                      : 'bg-gray-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-white/10'
                   }`}
                 >
                   {s}
@@ -176,7 +176,7 @@ export function SystemAnnouncementsPage() {
 
       {/* History */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-3">Announcement History</h2>
+        <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-3">Announcement History</h2>
         <div className="space-y-3">
           {announcements.map((a) => {
             const cfg = severityConfig[a.severity];
@@ -186,9 +186,9 @@ export function SystemAnnouncementsPage() {
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className={`p-2 rounded-lg ${cfg.bg} flex-shrink-0`}>{cfg.icon}</div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{a.title}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{a.body}</p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                      <p className="text-sm font-semibold text-slate-950 dark:text-white">{a.title}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">{a.body}</p>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-600 dark:text-slate-400">
                         <span className="flex items-center gap-1"><Clock size={10} /> {timeAgo(a.sentAt)}</span>
                         <span>· Sent by {a.sentBy}</span>
                         <span className={`font-semibold capitalize ${cfg.text}`}>{a.severity}</span>

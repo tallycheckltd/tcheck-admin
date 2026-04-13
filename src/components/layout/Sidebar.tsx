@@ -80,7 +80,7 @@ function NavSection({ title, links }: { title: string; links: NavItem[] }) {
 
   return (
     <>
-      <p className="px-3 pt-4 pb-1 text-[10px] font-semibold text-slate-500 dark:text-gray-500 uppercase tracking-widest first:pt-2">
+      <p className="px-3 pt-4 pb-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest first:pt-2">
         {title}
       </p>
       {links.map((link) => (
@@ -93,7 +93,7 @@ function NavSection({ title, links }: { title: string; links: NavItem[] }) {
               'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
               isActive
                 ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm'
-                : 'text-slate-700 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5',
+                : 'text-slate-700 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5',
             )
           }
         >
@@ -174,7 +174,7 @@ export function Sidebar() {
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
                 isActive
                   ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-700 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5',
+                  : 'text-slate-700 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5',
               )
             }
           >
@@ -193,12 +193,12 @@ export function Sidebar() {
             <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
               {user?.firstName} {user?.lastName}
             </p>
-            <p className="text-[11px] text-slate-600 dark:text-gray-400 truncate">{user?.email}</p>
+            <p className="text-[11px] text-slate-600 dark:text-slate-500 truncate">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={toggle}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
         >
           {dark ? <Sun size={18} /> : <Moon size={18} />}
           {dark ? 'Light Mode' : 'Dark Mode'}

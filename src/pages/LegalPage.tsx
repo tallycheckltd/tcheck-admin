@@ -8,8 +8,8 @@ export function LegalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Legal</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Privacy Policy & Terms of Service</p>
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Legal</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Privacy Policy & Terms of Service</p>
       </div>
 
       <div className="flex gap-2">
@@ -46,14 +46,14 @@ function SectionHeader({ number, title }: { number: string; title: string }) {
   return (
     <div className="flex items-center gap-3 mb-3">
       <span className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500 text-white text-xs font-bold">{number}</span>
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+      <h3 className="text-lg font-semibold text-slate-950 dark:text-white">{title}</h3>
     </div>
   );
 }
 
 function Bullet({ label, detail }: { label: string; detail: string }) {
   return (
-    <p className="text-sm text-gray-600 dark:text-gray-400 pl-4 mt-1">
+    <p className="text-sm text-slate-600 dark:text-slate-400 pl-4 mt-1">
       <span className="text-blue-500 mr-1">•</span>
       <span className="font-semibold text-gray-800 dark:text-gray-200">{label}:</span> {detail}
     </p>
@@ -62,10 +62,10 @@ function Bullet({ label, detail }: { label: string; detail: string }) {
 
 function PrivacyPolicy() {
   return (
-    <div className="space-y-8 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+    <div className="space-y-8 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
       <div className="text-center pb-4 border-b border-gray-100 dark:border-white/5">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Tcheck Privacy Policy</h2>
-        <p className="text-xs text-gray-400 mt-1">KDPA 2019 Compliant · Last Updated: March 18, 2026 · Tallycheck Ltd</p>
+        <h2 className="text-xl font-bold text-slate-950 dark:text-white">Tcheck Privacy Policy</h2>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">KDPA 2019 Compliant · Last Updated: March 18, 2026 · Tallycheck Ltd</p>
       </div>
 
       <div>
@@ -119,10 +119,10 @@ function PrivacyPolicy() {
 
 function TermsOfService() {
   return (
-    <div className="space-y-8 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+    <div className="space-y-8 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
       <div className="text-center pb-4 border-b border-gray-100 dark:border-white/5">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">End User License Agreement (EULA) & Terms of Service</h2>
-        <p className="text-xs text-gray-400 mt-1">Last Updated: March 18, 2026 · Tallycheck Ltd</p>
+        <h2 className="text-xl font-bold text-slate-950 dark:text-white">End User License Agreement (EULA) & Terms of Service</h2>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Last Updated: March 18, 2026 · Tallycheck Ltd</p>
       </div>
 
       <div>

@@ -48,6 +48,11 @@ body {
   color: var(--app-text);
 }
 
+/* Light mode: main content defaults — pages use slate-* utilities; avoid faint gray-400 for body copy */
+html:not(.dark) main {
+  color: #0f172a;
+}
+
 /* Native selects: explicit light-mode colors (avoids washed-out text on some OS/browser combos) */
 html:not(.dark) select,
 html:not(.dark) option {

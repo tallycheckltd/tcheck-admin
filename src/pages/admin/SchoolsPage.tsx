@@ -39,7 +39,7 @@ export function SchoolsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Schools</h1>
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Schools</h1>
         <Button onClick={openCreate}><Plus size={16} className="mr-1" /> Add School</Button>
       </div>
 
@@ -47,16 +47,16 @@ export function SchoolsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-white/10">
-              <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Name</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Code</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Color</th>
-              <th className="text-right py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Actions</th>
+              <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
+              <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Code</th>
+              <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Color</th>
+              <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Actions</th>
             </tr>
           </thead>
           <tbody>
             {schools?.map((s) => (
               <tr key={s.id} className="border-b border-gray-100 dark:border-white/5">
-                <td className="py-3 px-4 text-gray-900 dark:text-white font-medium">{s.name}</td>
+                <td className="py-3 px-4 text-slate-950 dark:text-white font-medium">{s.name}</td>
                 <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{s.code}</td>
                 <td className="py-3 px-4"><div className="w-6 h-6 rounded-full" style={{ backgroundColor: s.color }} /></td>
                 <td className="py-3 px-4 text-right space-x-2">

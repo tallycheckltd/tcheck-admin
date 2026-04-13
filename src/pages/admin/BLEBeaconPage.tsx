@@ -76,8 +76,8 @@ export function BLEBeaconPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">BLE Beacon Manager</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">BLE Beacon Manager</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             {beacons?.length || 0} beacons configured
           </p>
         </div>
@@ -102,7 +102,7 @@ export function BLEBeaconPage() {
           <tbody className="text-slate-800 dark:text-gray-300">
             {beacons?.map((b) => (
               <tr key={b.id}>
-                <td className="font-medium text-gray-900 dark:text-white">
+                <td className="font-medium text-slate-950 dark:text-white">
                   <span className="flex items-center gap-2">
                     <Bluetooth size={14} className="text-blue-500" />
                     {b.name}
@@ -121,13 +121,13 @@ export function BLEBeaconPage() {
                 <td>
                   {b.courses && b.courses.length > 0
                     ? b.courses.map((c) => c.code).join(', ')
-                    : <span className="text-gray-400">None</span>
+                    : <span className="text-slate-600 dark:text-slate-400">None</span>
                   }
                 </td>
                 <td>
                   <div className="flex items-center gap-1">
                     <button onClick={() => openEdit(b)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer" title="Edit">
-                      <Pencil size={15} className="text-gray-500" />
+                      <Pencil size={15} className="text-slate-600" />
                     </button>
                     <button onClick={() => handleDelete(b.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer" title="Delete">
                       <Trash2 size={15} className="text-red-400" />
@@ -137,7 +137,7 @@ export function BLEBeaconPage() {
               </tr>
             ))}
             {(!beacons || beacons.length === 0) && (
-              <tr><td colSpan={9} className="text-center py-8 text-gray-400">No beacons configured yet</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-slate-600 dark:text-slate-400">No beacons configured yet</td></tr>
             )}
           </tbody>
         </table>

@@ -21,24 +21,24 @@ export function SchoolAdminsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">School Admins</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">School Admins</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
           Direct clients — University IT Directors and HODs only. Student records are never shown here.
         </p>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
           <input
             type="text"
             placeholder="Search admins..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
         </div>
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <span className="text-sm text-slate-600 dark:text-slate-400">
           {filtered.length} admin{filtered.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -67,21 +67,21 @@ export function SchoolAdminsPage() {
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                         {admin.firstName?.[0]}{admin.lastName?.[0]}
                       </div>
-                      <span className="font-medium text-gray-900 dark:text-white">
+                      <span className="font-medium text-slate-950 dark:text-white">
                         {admin.firstName} {admin.lastName}
                       </span>
                     </div>
                   </td>
                   <td>
                     <span className="flex items-center gap-1.5 text-xs">
-                      <Mail size={12} className="text-gray-400" />
+                      <Mail size={12} className="text-slate-600 dark:text-slate-400" />
                       {admin.email}
                     </span>
                   </td>
                   <td>
                     <span className="flex items-center gap-1.5 text-xs">
-                      <School size={12} className="text-gray-400" />
-                      {admin.school?.name || <span className="text-gray-400">—</span>}
+                      <School size={12} className="text-slate-600 dark:text-slate-400" />
+                      {admin.school?.name || <span className="text-slate-600 dark:text-slate-400">—</span>}
                     </span>
                   </td>
                   <td>
@@ -89,7 +89,7 @@ export function SchoolAdminsPage() {
                       {admin.status}
                     </Badge>
                   </td>
-                  <td className="text-xs text-gray-400">
+                  <td className="text-xs text-slate-600 dark:text-slate-400">
                     {new Date(admin.createdAt).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
                 </tr>
@@ -98,7 +98,7 @@ export function SchoolAdminsPage() {
                 <tr>
                   <td colSpan={5} className="text-center py-12">
                     <Users size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No school admins found.</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">No school admins found.</p>
                   </td>
                 </tr>
               )}

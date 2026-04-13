@@ -100,8 +100,8 @@ export function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{users?.length || 0} total users</p>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Users</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{users?.length || 0} total users</p>
         </div>
         <div className="flex gap-2">
           {isSuperAdmin && (
@@ -120,13 +120,13 @@ export function UsersPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
           <input
             type="text"
             placeholder="Search by name, email, or student ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400"
+            className="w-full pl-10 pr-4 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500"
           />
         </div>
         <div className="flex gap-2">
@@ -155,7 +155,7 @@ export function UsersPage() {
           <tbody className="text-slate-800 dark:text-gray-300">
             {filtered?.map((u) => (
               <tr key={u.id}>
-                <td className="font-medium text-gray-900 dark:text-white">{u.firstName} {u.lastName}</td>
+                <td className="font-medium text-slate-950 dark:text-white">{u.firstName} {u.lastName}</td>
                 <td>{u.email}</td>
                 <td>{u.studentId || '-'}</td>
                 <td><Badge color={roleColor[u.role]}>{u.role.replace('_', ' ')}</Badge></td>
@@ -164,7 +164,7 @@ export function UsersPage() {
                 <td className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <button onClick={() => navigate(`/admin/users/${u.id}`)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer" title="View Details">
-                      <Eye size={15} className="text-gray-500" />
+                      <Eye size={15} className="text-slate-600" />
                     </button>
                     {u.status === 'PENDING' && (
                       <>
@@ -186,7 +186,7 @@ export function UsersPage() {
               </tr>
             ))}
             {filtered?.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-8 text-gray-400">No users found</td></tr>
+              <tr><td colSpan={7} className="text-center py-8 text-slate-600 dark:text-slate-400">No users found</td></tr>
             )}
           </tbody>
         </table>
@@ -214,7 +214,7 @@ export function UsersPage() {
               <select
                 value={form.schoolId}
                 onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
-                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
               >
                 <option value="">Select school</option>
                 {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

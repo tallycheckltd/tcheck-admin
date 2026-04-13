@@ -131,10 +131,10 @@ export function CourseAssignmentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Course Assignments</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage course-lecturer assignments and student enrollments</p>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Course Assignments</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Manage course-lecturer assignments and student enrollments</p>
         </div>
-        <div className="flex items-center gap-3 text-sm text-gray-500">
+        <div className="flex items-center gap-3 text-sm text-slate-600">
           <span className="flex items-center gap-1.5"><BookOpen size={14} /> {courses?.length || 0} courses</span>
           <span className="flex items-center gap-1.5"><GraduationCap size={14} /> {lecturers?.length || 0} lecturers</span>
         </div>
@@ -142,13 +142,13 @@ export function CourseAssignmentsPage() {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
         <input
           type="text"
           placeholder="Search courses, codes, or lecturers..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
         />
       </div>
 
@@ -159,31 +159,31 @@ export function CourseAssignmentsPage() {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{course.name}</h3>
+                  <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{course.name}</h3>
                   <Badge color="blue">{course.code}</Badge>
                 </div>
                 {course.school && (
-                  <p className="text-xs text-gray-400">{course.school.name}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">{course.school.name}</p>
                 )}
               </div>
               <div className="flex gap-1">
                 <button
                   onClick={() => openBeaconModal(course)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-400 hover:text-purple-500 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-purple-500 transition-colors cursor-pointer"
                   title="Assign BLE beacon"
                 >
                   <Bluetooth size={14} />
                 </button>
                 <button
                   onClick={() => openReassign(course)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-blue-500 transition-colors cursor-pointer"
                   title="Reassign lecturer"
                 >
                   <Edit2 size={14} />
                 </button>
                 <button
                   onClick={() => openEnroll(course)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-400 hover:text-green-500 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-green-500 transition-colors cursor-pointer"
                   title="Manage students"
                 >
                   <Users size={14} />
@@ -206,7 +206,7 @@ export function CourseAssignmentsPage() {
                 ? 'bg-purple-50 dark:bg-purple-500/5 border border-purple-100 dark:border-purple-500/10'
                 : 'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 border-dashed'
             }`}>
-              <Bluetooth size={14} className={course.beacon ? 'text-purple-500 flex-shrink-0' : 'text-gray-400 flex-shrink-0'} />
+              <Bluetooth size={14} className={course.beacon ? 'text-purple-500 flex-shrink-0' : 'text-slate-600 dark:text-slate-400 flex-shrink-0'} />
               {course.beacon ? (
                 <>
                   <span className="text-sm font-medium text-purple-700 dark:text-purple-400">
@@ -220,7 +220,7 @@ export function CourseAssignmentsPage() {
               ) : (
                 <button
                   onClick={() => openBeaconModal(course)}
-                  className="text-sm text-gray-400 hover:text-purple-500 transition-colors cursor-pointer"
+                  className="text-sm text-slate-600 dark:text-slate-400 hover:text-purple-500 transition-colors cursor-pointer"
                 >
                   No beacon assigned — click to assign
                 </button>
@@ -228,7 +228,7 @@ export function CourseAssignmentsPage() {
             </div>
 
             {/* Stats */}
-            <div className="flex items-center gap-4 text-xs text-gray-500">
+            <div className="flex items-center gap-4 text-xs text-slate-600">
               <span className="flex items-center gap-1">
                 <GraduationCap size={12} />
                 {course._count?.enrollments || 0} students
@@ -248,7 +248,7 @@ export function CourseAssignmentsPage() {
       {filtered.length === 0 && (
         <div className="glass-card p-12 text-center">
           <Link2 size={48} className="mx-auto text-slate-400 dark:text-gray-600 mb-4" />
-          <p className="text-sm text-gray-500">No courses found</p>
+          <p className="text-sm text-slate-600">No courses found</p>
         </div>
       )}
 
@@ -257,8 +257,8 @@ export function CourseAssignmentsPage() {
         <div className="space-y-4">
           {selectedCourse && (
             <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-400 mb-1">Course</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Course</p>
+              <p className="text-sm font-medium text-slate-950 dark:text-white">
                 {selectedCourse.name} ({selectedCourse.code})
               </p>
             </div>
@@ -268,7 +268,7 @@ export function CourseAssignmentsPage() {
             <select
               value={newLecturerId}
               onChange={(e) => setNewLecturerId(e.target.value)}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             >
               <option value="">Select lecturer...</option>
               {lecturers?.map((l) => (
@@ -289,24 +289,24 @@ export function CourseAssignmentsPage() {
         <div className="space-y-4">
           {enrollCourse && (
             <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-400 mb-1">Course</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Course</p>
+              <p className="text-sm font-medium text-slate-950 dark:text-white">
                 {enrollCourse.name} ({enrollCourse.code})
               </p>
-              <p className="text-xs text-gray-400 mt-1">{enrollCourseDetail?.enrollments?.length || 0} students enrolled</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{enrollCourseDetail?.enrollments?.length || 0} students enrolled</p>
             </div>
           )}
 
           {/* Current enrollments */}
           {enrollCourseDetail?.enrollments && enrollCourseDetail.enrollments.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Enrolled Students</p>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Enrolled Students</p>
               <div className="max-h-40 overflow-y-auto space-y-1">
                 {enrollCourseDetail.enrollments.map((e) => (
                   <div key={e.user.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/5">
-                    <span className="text-sm text-gray-900 dark:text-white">
+                    <span className="text-sm text-slate-950 dark:text-white">
                       {e.user.firstName} {e.user.lastName}
-                      {e.user.studentId && <span className="text-gray-400 ml-1.5">({e.user.studentId})</span>}
+                      {e.user.studentId && <span className="text-slate-600 dark:text-slate-400 ml-1.5">({e.user.studentId})</span>}
                     </span>
                     <button
                       onClick={() => handleUnenroll(e.user.id, enrollCourse!.id)}
@@ -324,21 +324,21 @@ export function CourseAssignmentsPage() {
           {!enrollCourseDetail && enrollCourse && (
             <div className="text-center py-4">
               <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full mx-auto" />
-              <p className="text-xs text-gray-400 mt-2">Loading enrollment data...</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">Loading enrollment data...</p>
             </div>
           )}
 
           {/* Add student */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Add Student</p>
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Add Student</p>
             <div className="relative mb-2">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
               <input
                 type="text"
                 placeholder="Search students..."
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full pl-9 pr-4 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               />
             </div>
             <div className="max-h-40 overflow-y-auto space-y-1">
@@ -349,15 +349,15 @@ export function CourseAssignmentsPage() {
                   disabled={enrolling}
                   className="w-full text-left flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
                 >
-                  <span className="text-sm text-gray-900 dark:text-white">
+                  <span className="text-sm text-slate-950 dark:text-white">
                     {s.firstName} {s.lastName}
-                    {s.studentId && <span className="text-gray-400 ml-1.5">({s.studentId})</span>}
+                    {s.studentId && <span className="text-slate-600 dark:text-slate-400 ml-1.5">({s.studentId})</span>}
                   </span>
                   <span className="text-xs text-blue-500">+ Enroll</span>
                 </button>
               ))}
               {filteredStudents.length === 0 && (
-                <p className="text-center text-gray-400 py-3 text-xs">
+                <p className="text-center text-slate-600 dark:text-slate-400 py-3 text-xs">
                   {studentSearch ? 'No matching students' : 'All students are already enrolled'}
                 </p>
               )}
@@ -371,8 +371,8 @@ export function CourseAssignmentsPage() {
         <div className="space-y-4">
           {beaconCourse && (
             <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-400 mb-1">Course</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Course</p>
+              <p className="text-sm font-medium text-slate-950 dark:text-white">
                 {beaconCourse.name} ({beaconCourse.code})
               </p>
               {beaconCourse.beacon && (
@@ -388,7 +388,7 @@ export function CourseAssignmentsPage() {
             <select
               value={selectedBeaconId}
               onChange={(e) => setSelectedBeaconId(e.target.value)}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
             >
               <option value="">No beacon (remove assignment)</option>
               {beacons?.map((b) => (
@@ -405,13 +405,13 @@ export function CourseAssignmentsPage() {
             return (
               <div className="bg-purple-50 dark:bg-purple-500/5 rounded-xl px-4 py-3 space-y-1">
                 <p className="text-xs font-semibold text-purple-600 dark:text-purple-400">Beacon Details</p>
-                <div className="grid grid-cols-2 gap-1 text-xs text-gray-600 dark:text-gray-400">
-                  <span>UUID: <span className="font-mono text-gray-900 dark:text-white">{beacon.uuid}</span></span>
-                  <span>Major: <span className="font-mono text-gray-900 dark:text-white">{beacon.major}</span></span>
-                  <span>Minor: <span className="font-mono text-gray-900 dark:text-white">{beacon.minor}</span></span>
-                  <span>RSSI Threshold: <span className="font-mono text-gray-900 dark:text-white">{beacon.rssiThreshold}</span></span>
+                <div className="grid grid-cols-2 gap-1 text-xs text-slate-600 dark:text-slate-400">
+                  <span>UUID: <span className="font-mono text-slate-950 dark:text-white">{beacon.uuid}</span></span>
+                  <span>Major: <span className="font-mono text-slate-950 dark:text-white">{beacon.major}</span></span>
+                  <span>Minor: <span className="font-mono text-slate-950 dark:text-white">{beacon.minor}</span></span>
+                  <span>RSSI Threshold: <span className="font-mono text-slate-950 dark:text-white">{beacon.rssiThreshold}</span></span>
                   {beacon.location && (
-                    <span className="col-span-2">Location: <span className="text-gray-900 dark:text-white">{beacon.location}</span></span>
+                    <span className="col-span-2">Location: <span className="text-slate-950 dark:text-white">{beacon.location}</span></span>
                   )}
                 </div>
               </div>

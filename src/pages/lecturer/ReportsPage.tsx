@@ -135,8 +135,8 @@ function HodReportsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Reports</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
           Export attendance data scoped to your department only.
         </p>
       </div>
@@ -150,7 +150,7 @@ function HodReportsPage() {
           <select
             value={reportType}
             onChange={(e) => { setReportType(e.target.value as ReportType); setSelectedCourse(''); }}
-            className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+            className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
           >
             <option value="">Select a report type…</option>
             <option value="semester-roster">End of Semester Master Roster</option>
@@ -158,7 +158,7 @@ function HodReportsPage() {
             <option value="at-risk">At-Risk Student List</option>
           </select>
           {reportType && (
-            <p className="mt-1.5 text-xs text-gray-400">
+            <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">
               {reportType === 'semester-roster' && 'All students in your department with their overall attendance % for the selected date range.'}
               {reportType === 'course-attendance' && 'All attendance records for a specific course, filtered by date range.'}
               {reportType === 'at-risk' && 'Students with attendance below 75%, flagged by risk score. Scoped to your department only.'}
@@ -175,7 +175,7 @@ function HodReportsPage() {
             <select
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+              className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
             >
               <option value="">Select a course…</option>
               {(courses || []).map((c) => (
@@ -192,21 +192,21 @@ function HodReportsPage() {
           </label>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs text-gray-400 mb-1">From</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">From</p>
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
             </div>
             <div>
-              <p className="text-xs text-gray-400 mb-1">To</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">To</p>
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
             </div>
           </div>
@@ -233,7 +233,7 @@ function HodReportsPage() {
         )}
 
         {reportType && !exportError && (
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-xs text-slate-600 dark:text-slate-400 text-center">
             ✅ Data is real and scoped to your school only — backed by <code className="font-mono text-blue-500">WHERE schoolId = ?</code> on every query.
           </p>
         )}
@@ -287,8 +287,8 @@ function LecturerReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Generate attendance reports per class</p>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Reports</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Generate attendance reports per class</p>
         </div>
         {detail && (
           <Button onClick={exportCSV} variant="secondary"><Download size={16} className="mr-1" /> Export CSV</Button>
@@ -313,8 +313,8 @@ function LecturerReportsPage() {
               { label: 'Rate',     value: `${detail.totalEnrolled > 0 ? Math.round((detail.totalCheckedIn / detail.totalEnrolled) * 100) : 0}%`, color: 'text-blue-600' },
             ].map((s) => (
               <div key={s.label} className="glass-card p-4 text-center">
-                <p className="text-sm text-gray-500">{s.label}</p>
-                <p className={`text-2xl font-bold text-gray-900 dark:text-white ${s.color}`}>{s.value}</p>
+                <p className="text-sm text-slate-600">{s.label}</p>
+                <p className={`text-2xl font-bold text-slate-950 dark:text-white ${s.color}`}>{s.value}</p>
               </div>
             ))}
           </div>
@@ -329,16 +329,16 @@ function LecturerReportsPage() {
               <tbody className="text-slate-800 dark:text-gray-300">
                 {detail.attendances.map((r, i) => (
                   <tr key={r.id}>
-                    <td className="text-gray-400">{i + 1}</td>
+                    <td className="text-slate-600 dark:text-slate-400">{i + 1}</td>
                     <td className="font-mono text-xs">{r.user?.studentId || '-'}</td>
-                    <td className="font-medium text-gray-900 dark:text-white">{r.user?.firstName} {r.user?.lastName}</td>
+                    <td className="font-medium text-slate-950 dark:text-white">{r.user?.firstName} {r.user?.lastName}</td>
                     <td>{new Date(r.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                     <td>{r.checkOutAt ? new Date(r.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                     <td>
                       <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
                         r.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
                         r.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                        'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
+                        'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
                       }`}>
                         {r.checkInType === 'BLE' && <Bluetooth size={10} />}
                         {r.checkInType === 'QR' && <QrCode size={10} />}
@@ -360,7 +360,7 @@ function LecturerReportsPage() {
                   </tr>
                 ))}
                 {detail.attendances.length === 0 && (
-                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">No attendance records</td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-slate-600 dark:text-slate-400">No attendance records</td></tr>
                 )}
               </tbody>
             </table>
@@ -384,7 +384,7 @@ function LecturerReportsPage() {
       ) : (
         <div className="glass-card text-center py-12">
           <FileText size={48} className="mx-auto mb-4 text-slate-400 dark:text-gray-600" />
-          <p className="text-gray-500">Select a class to view report</p>
+          <p className="text-slate-600">Select a class to view report</p>
         </div>
       )}
     </div>

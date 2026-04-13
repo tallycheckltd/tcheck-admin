@@ -109,7 +109,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
         <select
           value={selectedClass}
           onChange={(e) => { setSelectedClass(e.target.value); setFeedEvents([]); setClassDetail(null); setUserScrolled(false); }}
-          className="flex-1 max-w-xs px-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+          className="flex-1 max-w-xs px-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
         >
           {classes.map((cls) => (
             <option key={cls.id} value={cls.id}>
@@ -126,14 +126,14 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
       {classDetail && (
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: 'Enrolled',    value: classDetail.totalEnrolled,  color: 'text-gray-900 dark:text-white' },
+            { label: 'Enrolled',    value: classDetail.totalEnrolled,  color: 'text-slate-950 dark:text-white' },
             { label: 'Present',     value: present.length,              color: 'text-emerald-600 dark:text-emerald-400' },
             { label: 'Absent',      value: absent.length,               color: 'text-red-500' },
             { label: 'Rate',        value: `${classDetail.totalEnrolled > 0 ? Math.round((classDetail.totalCheckedIn / classDetail.totalEnrolled) * 100) : 0}%`, color: 'text-blue-600 dark:text-blue-400' },
           ].map((s) => (
             <div key={s.label} className="glass-card p-3 text-center">
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+              <p className="text-xs text-slate-600 mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
@@ -146,9 +146,9 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
             <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/10 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Radio size={15} className="text-blue-500 animate-pulse" />
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">Live Feed</span>
+                <span className="text-sm font-semibold text-slate-950 dark:text-white">Live Feed</span>
               </div>
-              <span className="text-xs text-gray-400">{present.length} check-ins</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">{present.length} check-ins</span>
             </div>
             <div
               ref={feedRef}
@@ -158,7 +158,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
               {feedEvents.length === 0 && classDetail.attendances.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full py-8 text-center">
                   <Radio size={32} className="text-slate-400 dark:text-gray-600 mb-2" />
-                  <p className="text-sm text-gray-400">Waiting for check-ins…</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Waiting for check-ins…</p>
                 </div>
               ) : (
                 <>
@@ -166,12 +166,12 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
                     <div key={ev.id} className="flex items-start gap-2 py-1.5 px-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-sm">
                       <CheckCircle size={14} className="text-emerald-500 flex-shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium text-gray-900 dark:text-white">{ev.name}</span>
+                        <span className="font-medium text-slate-950 dark:text-white">{ev.name}</span>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <span className="text-[10px] text-slate-600 flex items-center gap-0.5">
                             <Clock size={9} /> In: {ev.time}
                           </span>
-                          <span className="text-[10px] text-gray-400">Out: --:--</span>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400">Out: --:--</span>
                         </div>
                       </div>
                     </div>
@@ -190,7 +190,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
                         <CheckCircle size={14} className="text-emerald-500 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-medium text-gray-900 dark:text-white truncate">
+                            <span className="font-medium text-slate-950 dark:text-white truncate">
                               {a.user?.firstName} {a.user?.lastName}
                             </span>
                             {puncLabel && (
@@ -200,11 +200,11 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                            <span className="text-[10px] text-slate-600 flex items-center gap-0.5">
                               <Clock size={9} /> In: {new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {a.checkOutAt ? (
-                              <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                              <span className="text-[10px] text-slate-600 dark:text-slate-400 flex items-center gap-0.5">
                                 <LogOut size={9} /> Out: {new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             ) : (
@@ -231,8 +231,8 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
           {/* RIGHT — Present / Absent roster */}
           <div className="glass-card flex flex-col" style={{ minHeight: '420px' }}>
             <div className="p-4 border-b border-gray-100 dark:border-white/10 flex-shrink-0">
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">Class Roster</span>
-              <p className="text-xs text-gray-400 mt-0.5">{selectedCls?.course?.name || selectedCls?.title}</p>
+              <span className="text-sm font-semibold text-slate-950 dark:text-white">Class Roster</span>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{selectedCls?.course?.name || selectedCls?.title}</p>
             </div>
             <div className="flex-1 overflow-y-auto">
               {/* Present */}
@@ -260,7 +260,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                                <p className="text-xs font-medium text-slate-950 dark:text-white truncate">
                                   {a.user?.firstName} {a.user?.lastName}
                                 </p>
                                 {puncLabel && (
@@ -270,11 +270,11 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
                                 )}
                               </div>
                               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                                <span className="text-[10px] text-slate-600 dark:text-slate-400 flex items-center gap-0.5">
                                   <Clock size={8} /> {new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                                 {a.checkOutAt ? (
-                                  <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                                  <span className="text-[10px] text-slate-600 dark:text-slate-400 flex items-center gap-0.5">
                                     <LogOut size={8} /> {new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                                   </span>
                                 ) : (
@@ -294,21 +294,21 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
               {absent.length > 0 && (
                 <div>
                   <div className="px-4 py-2 bg-gray-50 dark:bg-white/3 border-b border-gray-100 dark:border-white/10">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
                       ⬜ Absent / Pending ({absent.length})
                     </span>
                   </div>
                   <div className="divide-y divide-gray-100 dark:divide-white/5">
                     {absent.map((s) => (
                       <div key={s.id} className="flex items-center gap-3 px-4 py-2.5 opacity-60">
-                        <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center text-gray-500 text-[10px] font-bold flex-shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center text-slate-600 text-[10px] font-bold flex-shrink-0">
                           {s.firstName?.[0]}{s.lastName?.[0]}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-700 dark:text-gray-400 truncate">
+                          <p className="text-xs font-medium text-gray-700 dark:text-slate-500 truncate">
                             {s.firstName} {s.lastName}
                           </p>
-                          <p className="text-[10px] text-gray-400">{s.studentId}</p>
+                          <p className="text-[10px] text-slate-600 dark:text-slate-400">{s.studentId}</p>
                         </div>
                       </div>
                     ))}
@@ -321,7 +321,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
       ) : (
         <div className="glass-card text-center py-12">
           <Radio size={40} className="mx-auto mb-3 text-slate-400 dark:text-gray-600" />
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Select a class above to start monitoring</p>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">Select a class above to start monitoring</p>
         </div>
       )}
     </div>
@@ -391,7 +391,7 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
           </button>
         ))}
         {myClasses.length === 0 && (
-          <p className="text-sm text-gray-400">No classes scheduled for today</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">No classes scheduled for today</p>
         )}
       </div>
 
@@ -399,13 +399,13 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
         <div className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Enrolled',   value: classDetail.totalEnrolled,   color: 'text-gray-900 dark:text-white' },
+              { label: 'Enrolled',   value: classDetail.totalEnrolled,   color: 'text-slate-950 dark:text-white' },
               { label: 'Checked In', value: classDetail.totalCheckedIn,   color: 'text-emerald-600' },
               { label: 'Absent',     value: classDetail.absentStudents.length, color: 'text-red-500' },
               { label: 'Rate',       value: `${classDetail.totalEnrolled > 0 ? Math.round((classDetail.totalCheckedIn / classDetail.totalEnrolled) * 100) : 0}%`, color: 'text-blue-600' },
             ].map((s) => (
               <div key={s.label} className="glass-card p-4 text-center">
-                <p className="text-sm text-gray-500">{s.label}</p>
+                <p className="text-sm text-slate-600">{s.label}</p>
                 <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
               </div>
             ))}
@@ -434,10 +434,10 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
                         {a.user?.firstName?.[0]}{a.user?.lastName?.[0]}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        <p className="text-sm font-medium text-slate-950 dark:text-white">
                           {a.user?.firstName} {a.user?.lastName}
                         </p>
-                        <p className="text-xs text-gray-500">{a.user?.studentId}</p>
+                        <p className="text-xs text-slate-600">{a.user?.studentId}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -446,7 +446,7 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
                       <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
                         a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
                         a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                        'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
+                        'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
                       }`}>
                         {a.checkInType === 'BLE' && <Bluetooth size={10} />}
                         {a.checkInType === 'QR' && <QrCode size={10} />}
@@ -462,7 +462,7 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
                 );
               })}
               {classDetail.attendances.length === 0 && (
-                <p className="text-center text-gray-400 py-8">Waiting for students to check in...</p>
+                <p className="text-center text-slate-600 dark:text-slate-400 py-8">Waiting for students to check in...</p>
               )}
             </div>
           </div>
@@ -483,8 +483,8 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
                         {s.firstName?.[0]}{s.lastName?.[0]}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{s.firstName} {s.lastName}</p>
-                        <p className="text-xs text-gray-500">{s.studentId}</p>
+                        <p className="text-sm font-medium text-slate-950 dark:text-white">{s.firstName} {s.lastName}</p>
+                        <p className="text-xs text-slate-600">{s.studentId}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -511,7 +511,7 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
       ) : (
         <div className="glass-card text-center py-12">
           <Radio size={48} className="mx-auto mb-4 text-slate-400 dark:text-gray-600" />
-          <p className="text-gray-500 dark:text-gray-400">Select a class to view live attendance</p>
+          <p className="text-slate-600 dark:text-slate-400">Select a class to view live attendance</p>
         </div>
       )}
     </div>
@@ -533,14 +533,14 @@ export function LiveAttendancePage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Radio size={24} className="text-green-500 animate-pulse" />
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Live Attendance</h1>
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Live Attendance</h1>
       </div>
 
       {isAdmin ? (
         todayClasses.length === 0 ? (
           <div className="glass-card text-center py-12">
             <Radio size={40} className="mx-auto mb-3 text-slate-400 dark:text-gray-600" />
-            <p className="text-sm text-gray-400">No classes scheduled for today.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">No classes scheduled for today.</p>
           </div>
         ) : (
           <HodLiveView classes={todayClasses} courses={courses || []} />

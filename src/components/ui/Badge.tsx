@@ -5,7 +5,7 @@ const colors = {
   red: 'bg-red-50 text-red-700 ring-1 ring-red-600/10 dark:bg-red-500/20 dark:text-red-400 dark:ring-0',
   yellow: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/10 dark:bg-yellow-500/20 dark:text-yellow-400 dark:ring-0',
   blue: 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/10 dark:bg-blue-500/20 dark:text-blue-400 dark:ring-0',
-  gray: 'bg-gray-100 text-gray-600 ring-1 ring-gray-500/10 dark:bg-gray-500/20 dark:text-gray-400 dark:ring-0',
+  gray: 'bg-slate-100 text-slate-700 ring-1 ring-slate-400/25 dark:bg-gray-500/20 dark:text-slate-400 dark:ring-0',
   purple: 'bg-purple-50 text-purple-700 ring-1 ring-purple-600/10 dark:bg-purple-500/20 dark:text-purple-400 dark:ring-0',
 };
 

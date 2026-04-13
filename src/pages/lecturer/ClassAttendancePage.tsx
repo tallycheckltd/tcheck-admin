@@ -60,8 +60,8 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Class Attendance</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">View check-in details per class</p>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Class Attendance</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">View check-in details per class</p>
         </div>
         <Button variant="secondary" onClick={exportCSV}>
           <Download size={16} className="mr-1" /> Export CSV
@@ -69,13 +69,13 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
       </div>
 
       <div className="relative max-w-md">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
         <input
           type="text"
           placeholder="Search by class or course..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400"
+          className="w-full pl-10 pr-4 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500"
         />
       </div>
 
@@ -98,7 +98,7 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
           <tbody className="text-slate-800 dark:text-gray-300">
             {filtered?.map((s) => (
               <tr key={s.id}>
-                <td className="font-medium text-gray-900 dark:text-white">{s.title}</td>
+                <td className="font-medium text-slate-950 dark:text-white">{s.title}</td>
                 <td>{s.course.name} ({s.course.code})</td>
                 <td>{new Date(s.date).toLocaleDateString()}</td>
                 <td>{s.totalEnrolled}</td>
@@ -120,7 +120,7 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
                 </td>
                 <td>
                   <span className="inline-flex items-center gap-1 text-xs">
-                    <UserCheck size={12} className="text-gray-500" /> {s.checkInBreakdown.MANUAL}
+                    <UserCheck size={12} className="text-slate-600" /> {s.checkInBreakdown.MANUAL}
                   </span>
                 </td>
                 <td>
@@ -131,7 +131,7 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
               </tr>
             ))}
             {(!filtered || filtered.length === 0) && (
-              <tr><td colSpan={10} className="text-center py-8 text-gray-400">No class attendance data found</td></tr>
+              <tr><td colSpan={10} className="text-center py-8 text-slate-600 dark:text-slate-400">No class attendance data found</td></tr>
             )}
           </tbody>
         </table>
@@ -168,7 +168,7 @@ function ClassDetailView({ classId }: { classId: string }) {
 
   return (
     <div className="space-y-6">
-      <a href="/attendance" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+      <a href="/attendance" className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:hover:text-slate-300 transition-colors">
         &larr; Back to Attendance
       </a>
 
@@ -176,11 +176,11 @@ function ClassDetailView({ classId }: { classId: string }) {
       <div className="glass-card p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{data.classInfo.title}</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{data.classInfo.title}</h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">
               {data.classInfo.courseName} ({data.classInfo.courseCode})
             </p>
-            <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+            <div className="flex items-center gap-4 mt-3 text-sm text-slate-600">
               <span className="flex items-center gap-1"><Clock size={14} /> {new Date(data.classInfo.date).toLocaleDateString()}</span>
               <span>{new Date(data.classInfo.startTime).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })} - {new Date(data.classInfo.endTime).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</span>
               {data.classInfo.room && <span>Room: {data.classInfo.room}</span>}
@@ -195,31 +195,31 @@ function ClassDetailView({ classId }: { classId: string }) {
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="glass-card p-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Enrolled</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{data.totalEnrolled}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Enrolled</p>
+          <p className="text-2xl font-bold text-slate-950 dark:text-white">{data.totalEnrolled}</p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Checked In</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Checked In</p>
           <p className="text-2xl font-bold text-green-600 dark:text-green-400">{data.totalCheckedIn}</p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1"><Bluetooth size={14} /> BLE</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center justify-center gap-1"><Bluetooth size={14} /> BLE</p>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{bleCount}</p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1"><QrCode size={14} /> QR Code</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center justify-center gap-1"><QrCode size={14} /> QR Code</p>
           <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{qrCount}</p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1"><UserCheck size={14} /> Manual</p>
-          <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">{manualCount}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center justify-center gap-1"><UserCheck size={14} /> Manual</p>
+          <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{manualCount}</p>
         </div>
       </div>
 
       {/* Checked-in Students */}
       <div className="glass-card overflow-hidden">
         <div className="p-5 border-b border-gray-100 dark:border-white/5">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-slate-950 dark:text-white flex items-center gap-2">
             <Users size={20} /> Checked-in Students ({data.totalCheckedIn})
           </h3>
         </div>
@@ -238,8 +238,8 @@ function ClassDetailView({ classId }: { classId: string }) {
           <tbody className="text-slate-800 dark:text-gray-300">
             {data.attendances.map((a, i) => (
               <tr key={a.id}>
-                <td className="text-gray-400">{i + 1}</td>
-                <td className="font-medium text-gray-900 dark:text-white">{a.user?.firstName} {a.user?.lastName}</td>
+                <td className="text-slate-600 dark:text-slate-400">{i + 1}</td>
+                <td className="font-medium text-slate-950 dark:text-white">{a.user?.firstName} {a.user?.lastName}</td>
                 <td className="font-mono text-xs">{a.user?.studentId || '-'}</td>
                 <td>{new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
                 <td>{a.checkOutAt ? new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
@@ -247,7 +247,7 @@ function ClassDetailView({ classId }: { classId: string }) {
                   <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
                     a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
                     a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                    'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
+                    'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
                   }`}>
                     {a.checkInType === 'BLE' && <Bluetooth size={12} />}
                     {a.checkInType === 'QR' && <QrCode size={12} />}
@@ -259,7 +259,7 @@ function ClassDetailView({ classId }: { classId: string }) {
               </tr>
             ))}
             {data.attendances.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-8 text-gray-400">No check-ins yet</td></tr>
+              <tr><td colSpan={7} className="text-center py-8 text-slate-600 dark:text-slate-400">No check-ins yet</td></tr>
             )}
           </tbody>
         </table>
@@ -285,8 +285,8 @@ function ClassDetailView({ classId }: { classId: string }) {
             <tbody className="text-slate-800 dark:text-gray-300">
               {data.absentStudents.map((s, i) => (
                 <tr key={s.id}>
-                  <td className="text-gray-400">{i + 1}</td>
-                  <td className="font-medium text-gray-900 dark:text-white">{s.firstName} {s.lastName}</td>
+                  <td className="text-slate-600 dark:text-slate-400">{i + 1}</td>
+                  <td className="font-medium text-slate-950 dark:text-white">{s.firstName} {s.lastName}</td>
                   <td className="font-mono text-xs">{s.studentId || '-'}</td>
                   <td>
                     <button
@@ -306,13 +306,13 @@ function ClassDetailView({ classId }: { classId: string }) {
       {/* Manual Check-in Modal */}
       <Modal open={manualModal} onClose={() => { setManualModal(false); setSelectedStudent(''); }} title="Manual Check-in">
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Select a student to manually check in for this class.
           </p>
           <select
             value={selectedStudent}
             onChange={(e) => setSelectedStudent(e.target.value)}
-            className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+            className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
           >
             <option value="">Select student</option>
             {data.absentStudents.map((s) => (
