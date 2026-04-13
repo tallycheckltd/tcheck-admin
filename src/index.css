@@ -11,18 +11,18 @@
   --color-accent: #8B5CF6;
 }
 
-/* Matte enterprise light / dark tokens — single source for surfaces & text */
+/* Light mode: high-contrast, readable (WCAG-friendly body text on solid surfaces) */
 :root {
-  --app-bg: #e8ecf1;
-  --app-bg-subtle: linear-gradient(155deg, #e4e9ef 0%, #dfe5ec 50%, #d8dee6 100%);
-  --app-elevated: #f4f6f9;
-  --app-elevated-solid: #f8f9fb;
-  --app-border: #c9d1dc;
-  --app-border-soft: rgba(15, 23, 42, 0.08);
+  --app-bg: #f1f5f9;
+  --app-bg-subtle: linear-gradient(160deg, #f8fafc 0%, #f1f5f9 45%, #e2e8f0 100%);
+  --app-elevated: #ffffff;
+  --app-elevated-solid: #ffffff;
+  --app-border: #cbd5e1;
+  --app-border-soft: #e2e8f0;
   --app-text: #0f172a;
-  --app-text-secondary: #475569;
+  --app-text-secondary: #334155;
   --app-text-muted: #64748b;
-  --app-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.05);
+  --app-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 14px rgba(15, 23, 42, 0.06);
 }
 
 html.dark {
@@ -46,6 +46,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--app-bg);
   color: var(--app-text);
+}
+
+/* Native selects: explicit light-mode colors (avoids washed-out text on some OS/browser combos) */
+html:not(.dark) select,
+html:not(.dark) option {
+  color: #0f172a;
+  background-color: #ffffff;
 }
 
 /* ── Glass base (dark mode) ── */
@@ -204,7 +211,7 @@ body {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--app-border-soft);
   font-size: 0.875rem;
-  color: var(--app-text-secondary);
+  color: #1e293b;
 }
 
 .dark .gradient-table tbody td {

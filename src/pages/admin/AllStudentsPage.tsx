@@ -152,7 +152,7 @@ function StudentDrawer({ student, onClose }: StudentDrawerProps) {
                   return (
                     <div key={cs.courseId}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate mr-2">
+                        <span className="text-xs font-medium text-slate-800 dark:text-gray-300 truncate mr-2">
                           {cs.courseName}
                         </span>
                         <span className="text-xs font-bold text-gray-900 dark:text-white flex-shrink-0">{cs.pct}%</span>
@@ -370,7 +370,7 @@ export function AllStudentsPage() {
                   <th></th>
                 </tr>
               </thead>
-              <tbody className="text-gray-700 dark:text-gray-300">
+              <tbody className="text-slate-800 dark:text-gray-300">
                 {filtered.map((s) => {
                   const pct = getDummyAttendancePct(s.id);
                   const health = getHealthStatus(pct);
@@ -392,7 +392,7 @@ export function AllStudentsPage() {
                       </td>
                       <td>
                         <div className="text-xs">
-                          <p className="font-medium text-gray-700 dark:text-gray-300">{majorName || '—'}</p>
+                          <p className="font-medium text-slate-800 dark:text-gray-300">{majorName || '—'}</p>
                           <p className="text-gray-400">{cohortName || '—'}</p>
                         </div>
                       </td>
@@ -427,7 +427,7 @@ export function AllStudentsPage() {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={5} className="text-center py-12">
-                      <GraduationCap size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                      <GraduationCap size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {activeFilterCount > 0 ? 'No students match the current filters.' : 'No students found.'}
                       </p>
@@ -485,7 +485,7 @@ function FacetSection({
                 onChange={() => onToggle(item.id)}
                 className="h-3.5 w-3.5 rounded border-gray-300 text-blue-500 focus:ring-blue-500/40 dark:border-white/20 dark:bg-white/5 cursor-pointer"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{item.name}</span>
+              <span className="text-sm text-slate-800 dark:text-gray-300 truncate">{item.name}</span>
             </label>
           ))}
         </div>

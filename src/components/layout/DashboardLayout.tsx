@@ -19,7 +19,7 @@ export function DashboardLayout() {
   return (
     <div className="min-h-screen app-shell transition-[background-color,color] duration-200">
       <Sidebar />
-      <main className="ml-64 p-6 min-h-screen">
+      <main className="ml-64 p-6 min-h-screen text-slate-900 dark:text-slate-100 antialiased">
         <Outlet />
       </main>
     </div>

@@ -95,7 +95,7 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 dark:text-gray-300">
+          <tbody className="text-slate-800 dark:text-gray-300">
             {filtered?.map((s) => (
               <tr key={s.id}>
                 <td className="font-medium text-gray-900 dark:text-white">{s.title}</td>
@@ -235,7 +235,7 @@ function ClassDetailView({ classId }: { classId: string }) {
               <th>Signal (RSSI)</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 dark:text-gray-300">
+          <tbody className="text-slate-800 dark:text-gray-300">
             {data.attendances.map((a, i) => (
               <tr key={a.id}>
                 <td className="text-gray-400">{i + 1}</td>
@@ -282,7 +282,7 @@ function ClassDetailView({ classId }: { classId: string }) {
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody className="text-gray-700 dark:text-gray-300">
+            <tbody className="text-slate-800 dark:text-gray-300">
               {data.absentStudents.map((s, i) => (
                 <tr key={s.id}>
                   <td className="text-gray-400">{i + 1}</td>

@@ -139,7 +139,7 @@ function InfraAlertsView() {
       <div className="space-y-3">
         {active.length === 0 ? (
           <div className="glass-card p-12 text-center">
-            <Cpu size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+            <Cpu size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
             <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">No active infrastructure alerts</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">Hardware failures, billing events, and security anomalies will appear here.</p>
           </div>
@@ -162,7 +162,7 @@ function InfraAlertsView() {
                   </div>
                   <button
                     onClick={() => acknowledge(alert.id)}
-                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/15 transition-all cursor-pointer shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-white/10 text-slate-800 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/15 transition-all cursor-pointer shadow-sm"
                   >
                     <CheckCircle size={13} /> Acknowledge
                   </button>
@@ -334,7 +334,7 @@ function AcademicAlertsView() {
       <div className="space-y-3">
         {active.length === 0 ? (
           <div className="glass-card p-12 text-center">
-            <Bell size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+            <Bell size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
             <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">No active alerts</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">New anomalies will appear here immediately.</p>
           </div>
@@ -357,7 +357,7 @@ function AcademicAlertsView() {
                   </div>
                   <button
                     onClick={() => acknowledge(alert.id)}
-                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/15 transition-all cursor-pointer shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-white/10 text-slate-800 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/15 transition-all cursor-pointer shadow-sm"
                   >
                     <CheckCircle size={13} /> Acknowledge
                   </button>

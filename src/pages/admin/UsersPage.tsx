@@ -152,7 +152,7 @@ export function UsersPage() {
               <th className="text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 dark:text-gray-300">
+          <tbody className="text-slate-800 dark:text-gray-300">
             {filtered?.map((u) => (
               <tr key={u.id}>
                 <td className="font-medium text-gray-900 dark:text-white">{u.firstName} {u.lastName}</td>
@@ -210,7 +210,7 @@ export function UsersPage() {
           )}
           {createType !== 'admin' && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">School</label>
               <select
                 value={form.schoolId}
                 onChange={(e) => setForm({ ...form, schoolId: e.target.value })}

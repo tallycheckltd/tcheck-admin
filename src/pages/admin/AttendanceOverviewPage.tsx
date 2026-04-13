@@ -162,7 +162,7 @@ export function AttendanceOverviewPage() {
 
         {classes.length === 0 ? (
           <div className="p-12 text-center">
-            <ClipboardList size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+            <ClipboardList size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
             <p className="text-sm text-gray-500 dark:text-gray-400">No classes scheduled for today.</p>
           </div>
         ) : (
@@ -177,7 +177,7 @@ export function AttendanceOverviewPage() {
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody className="text-gray-700 dark:text-gray-300">
+            <tbody className="text-slate-800 dark:text-gray-300">
               {classes.map((cls) => {
                 const status = getClassStatus(cls.checkedIn, cls.expectedHeadcount, cls.isActive);
                 const rate = cls.expectedHeadcount > 0

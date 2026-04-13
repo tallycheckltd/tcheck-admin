@@ -105,7 +105,7 @@ function FacetSection({
                   onChange={() => onToggle(item.id)}
                   className="h-3.5 w-3.5 rounded border-gray-300 text-blue-500 focus:ring-blue-500/40 dark:border-white/20 dark:bg-white/5 cursor-pointer"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                <span className="text-sm text-slate-800 dark:text-gray-300 truncate">
                   {item.name}
                 </span>
               </label>
@@ -621,7 +621,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
           {/* Course list */}
           {filtered.length === 0 ? (
             <div className="glass-card p-12 text-center">
-              <Search size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+              <Search size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 No courses match the current filters.
               </p>

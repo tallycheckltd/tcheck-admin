@@ -9,7 +9,7 @@ interface Props extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, Props>(({ label, error, className, ...props }, ref) => (
   <div className="space-y-1">
-    {label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>}
+    {label && <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">{label}</label>}
     <input
       ref={ref}
       className={clsx(

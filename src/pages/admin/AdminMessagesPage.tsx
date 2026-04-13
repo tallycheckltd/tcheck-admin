@@ -252,7 +252,7 @@ export function AdminMessagesPage() {
               ))}
               {(!filteredConversations || filteredConversations.length === 0) && (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Users size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
+                  <Users size={32} className="text-slate-400 dark:text-gray-600 mb-3" />
                   <p className="text-sm text-gray-400">No conversations found</p>
                 </div>
               )}
@@ -277,7 +277,7 @@ export function AdminMessagesPage() {
                           <p className="text-xs text-gray-400">{roleLabel(convoDetail.conversation.user1.role)}</p>
                         </div>
                       </div>
-                      <ChevronRight size={16} className="text-gray-300" />
+                      <ChevronRight size={16} className="text-slate-400 dark:text-gray-500" />
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
                           <span className="text-xs font-bold text-purple-500">{convoDetail.conversation.user2.firstName[0]}</span>
@@ -383,7 +383,7 @@ export function AdminMessagesPage() {
                         {flag.message && (
                           <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-3">
                             <p className="text-xs text-gray-400 mb-1">Flagged message:</p>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{flag.message.content}"</p>
+                            <p className="text-sm text-slate-800 dark:text-gray-300 italic">"{flag.message.content}"</p>
                           </div>
                         )}
                       </div>
@@ -427,7 +427,7 @@ export function AdminMessagesPage() {
                       <th>Date</th>
                     </tr>
                   </thead>
-                  <tbody className="text-gray-700 dark:text-gray-300">
+                  <tbody className="text-slate-800 dark:text-gray-300">
                     {resolvedFlags.map((flag) => (
                       <tr key={flag.id}>
                         <td className="font-medium text-gray-900 dark:text-white">
@@ -476,7 +476,7 @@ export function AdminMessagesPage() {
             </div>
           )}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Resolution note (optional)</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Resolution note (optional)</label>
             <textarea
               value={resolveNote}
               onChange={(e) => setResolveNote(e.target.value)}

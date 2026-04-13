@@ -371,7 +371,7 @@ export function MessagesPage() {
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <MessageSquare size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+              <MessageSquare size={48} className="mx-auto mb-4 text-slate-400 dark:text-gray-600" />
               <p className="text-gray-500">Select a conversation or start a new one</p>
             </div>
           </div>
@@ -385,7 +385,7 @@ export function MessagesPage() {
             Report this conversation to the admin. Please describe the issue so the admin can review it.
           </p>
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reason</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Reason</label>
             <textarea
               value={flagReason}
               onChange={(e) => setFlagReason(e.target.value)}

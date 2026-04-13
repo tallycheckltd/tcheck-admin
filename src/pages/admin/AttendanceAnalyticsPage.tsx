@@ -221,7 +221,7 @@ export function AttendanceAnalyticsPage() {
               {COHORT_BENCHMARK.map((row) => (
                 <tr key={row.course} className={`hover:bg-gray-50 dark:hover:bg-white/3 transition-colors ${row.delta <= -15 ? 'bg-red-50/50 dark:bg-red-500/5' : ''}`}>
                   <td className="py-3 font-medium text-gray-900 dark:text-white">{row.course}</td>
-                  <td className="py-3 text-right text-gray-700 dark:text-gray-300">{row.pct}%</td>
+                  <td className="py-3 text-right text-slate-800 dark:text-gray-300">{row.pct}%</td>
                   <td className="py-3 text-right text-gray-500">{row.levelAvg}%</td>
                   <td className={`py-3 text-right font-bold ${row.delta < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                     {row.delta > 0 ? '+' : ''}{row.delta} pts
@@ -343,7 +343,7 @@ export function AttendanceAnalyticsPage() {
               {TRAJECTORY_DATA.map((row) => (
                 <tr key={row.course} className="hover:bg-gray-50 dark:hover:bg-white/3 transition-colors">
                   <td className="py-3 font-medium text-gray-900 dark:text-white">{row.course}</td>
-                  <td className="py-3 text-right text-gray-700 dark:text-gray-300">{row.current}%</td>
+                  <td className="py-3 text-right text-slate-800 dark:text-gray-300">{row.current}%</td>
                   <td className={`py-3 text-right font-semibold ${row.projected >= MIN_ATTENDANCE_THRESHOLD ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
                     {row.projected}%
                   </td>

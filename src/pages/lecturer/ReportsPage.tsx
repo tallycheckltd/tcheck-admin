@@ -144,7 +144,7 @@ function HodReportsPage() {
       <div className="glass-card p-6 space-y-5">
         {/* Report type */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-semibold text-slate-800 dark:text-gray-300 mb-2">
             Report Type
           </label>
           <select
@@ -169,7 +169,7 @@ function HodReportsPage() {
         {/* Course selector (only for course-attendance) */}
         {reportType === 'course-attendance' && (
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-semibold text-slate-800 dark:text-gray-300 mb-2">
               Course
             </label>
             <select
@@ -187,7 +187,7 @@ function HodReportsPage() {
 
         {/* Date range */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-semibold text-slate-800 dark:text-gray-300 mb-2">
             Date Range
           </label>
           <div className="grid grid-cols-2 gap-3">
@@ -326,7 +326,7 @@ function LecturerReportsPage() {
                   <th>#</th><th>Student ID</th><th>Name</th><th>Check In</th><th>Check Out</th><th>Method</th><th>Status</th><th>Punctuality</th>
                 </tr>
               </thead>
-              <tbody className="text-gray-700 dark:text-gray-300">
+              <tbody className="text-slate-800 dark:text-gray-300">
                 {detail.attendances.map((r, i) => (
                   <tr key={r.id}>
                     <td className="text-gray-400">{i + 1}</td>
@@ -383,7 +383,7 @@ function LecturerReportsPage() {
         </div>
       ) : (
         <div className="glass-card text-center py-12">
-          <FileText size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+          <FileText size={48} className="mx-auto mb-4 text-slate-400 dark:text-gray-600" />
           <p className="text-gray-500">Select a class to view report</p>
         </div>
       )}

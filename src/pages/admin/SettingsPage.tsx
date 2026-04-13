@@ -102,7 +102,7 @@ export function SettingsPage() {
 
               <div className="space-y-4">
                 {/* Tardiness Thresholds */}
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-gray-300">
                   <Clock size={14} className="text-yellow-500" />
                   Punctuality Thresholds
                 </div>
@@ -126,13 +126,13 @@ export function SettingsPage() {
 
                 {/* Manual Override Toggle */}
                 <div className="pt-2 border-t border-gray-100 dark:border-white/5">
-                  <div className="flex items-center gap-2 mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="flex items-center gap-2 mb-2 text-sm font-medium text-slate-800 dark:text-gray-300">
                     <Shield size={14} className="text-green-500" />
                     Lecturer Permissions
                   </div>
                   <label className="flex items-center justify-between cursor-pointer py-2">
                     <div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">Allow Manual Lecturer Override</p>
+                      <p className="text-sm text-slate-800 dark:text-gray-300">Allow Manual Lecturer Override</p>
                       <p className="text-xs text-gray-500">Let lecturers manually mark students as present (bypassing BLE requirement)</p>
                     </div>
                     <div className="relative">

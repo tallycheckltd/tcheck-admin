@@ -247,7 +247,7 @@ export function CourseAssignmentsPage() {
 
       {filtered.length === 0 && (
         <div className="glass-card p-12 text-center">
-          <Link2 size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+          <Link2 size={48} className="mx-auto text-slate-400 dark:text-gray-600 mb-4" />
           <p className="text-sm text-gray-500">No courses found</p>
         </div>
       )}
@@ -264,7 +264,7 @@ export function CourseAssignmentsPage() {
             </div>
           )}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign to Lecturer</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Assign to Lecturer</label>
             <select
               value={newLecturerId}
               onChange={(e) => setNewLecturerId(e.target.value)}
@@ -384,7 +384,7 @@ export function CourseAssignmentsPage() {
           )}
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Beacon</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Select Beacon</label>
             <select
               value={selectedBeaconId}
               onChange={(e) => setSelectedBeaconId(e.target.value)}

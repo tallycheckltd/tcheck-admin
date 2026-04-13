@@ -175,7 +175,7 @@ export function CoursesPage() {
           <Input label="Course Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="Course Code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="e.g. CS101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">School</label>
             <select value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
               <option value="">Select school</option>
@@ -184,7 +184,7 @@ export function CoursesPage() {
           </div>
           {isAdmin && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Lecturer</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Assign Lecturer</label>
               <select value={form.lecturerId} onChange={(e) => setForm({ ...form, lecturerId: e.target.value })}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
                 <option value="">Select lecturer</option>
@@ -194,7 +194,7 @@ export function CoursesPage() {
           )}
           <Input label="Room" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Beacon</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon</label>
             <select value={form.beaconId} onChange={(e) => setForm({ ...form, beaconId: e.target.value })}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
               <option value="">No beacon assigned</option>
@@ -213,7 +213,7 @@ export function CoursesPage() {
           <Input label="Course Name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
           <Input label="Course Code" value={editForm.code} onChange={(e) => setEditForm({ ...editForm, code: e.target.value })} placeholder="e.g. CS101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">School</label>
             <select value={editForm.schoolId} onChange={(e) => setEditForm({ ...editForm, schoolId: e.target.value })}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
               <option value="">Select school</option>
@@ -222,7 +222,7 @@ export function CoursesPage() {
           </div>
           {isAdmin && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Lecturer</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Assign Lecturer</label>
               <select value={editForm.lecturerId} onChange={(e) => setEditForm({ ...editForm, lecturerId: e.target.value })}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
                 <option value="">Select lecturer</option>
@@ -232,7 +232,7 @@ export function CoursesPage() {
           )}
           <Input label="Room" value={editForm.room} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Beacon</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon</label>
             <select value={editForm.beaconId} onChange={(e) => setEditForm({ ...editForm, beaconId: e.target.value })}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
               <option value="">No beacon assigned</option>
@@ -249,7 +249,7 @@ export function CoursesPage() {
       <Modal open={!!enrollModal} onClose={() => setEnrollModal(null)} title="Enroll Student">
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Student</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Select Student</label>
             <select value={enrollForm.userId} onChange={(e) => setEnrollForm({ ...enrollForm, userId: e.target.value })}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
               <option value="">Select student</option>

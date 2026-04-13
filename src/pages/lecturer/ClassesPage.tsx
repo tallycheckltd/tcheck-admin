@@ -125,7 +125,7 @@ export function ClassesPage() {
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 dark:text-gray-300">
+          <tbody className="text-slate-800 dark:text-gray-300">
             {myClasses.map((cls) => (
               <tr key={cls.id}>
                 <td className="font-medium text-gray-900 dark:text-white">{cls.title}</td>
@@ -166,7 +166,7 @@ export function ClassesPage() {
       <Modal open={modal} onClose={() => setModal(false)} title="Create Class">
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Course</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Course</label>
             <select value={form.courseId} onChange={(e) => handleCourseChange(e.target.value)}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
               <option value="">Select course</option>
@@ -189,7 +189,7 @@ export function ClassesPage() {
             <Input label="Very Late Threshold (min)" type="number" value={form.extremelyLateThresholdMinutes} onChange={(e) => setForm({ ...form, extremelyLateThresholdMinutes: e.target.value })} placeholder="e.g. 20" />
           </div>
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Beacon UUID</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon UUID</label>
             <input
               value={form.beaconUUID}
               readOnly

@@ -18,7 +18,7 @@ export function LegalPage() {
           className={`px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
             tab === 'privacy'
               ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-              : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10'
+              : 'bg-white dark:bg-white/5 text-slate-800 dark:text-gray-300 border border-gray-200 dark:border-white/10'
           }`}
         >
           Privacy Policy
@@ -28,7 +28,7 @@ export function LegalPage() {
           className={`px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
             tab === 'terms'
               ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-              : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10'
+              : 'bg-white dark:bg-white/5 text-slate-800 dark:text-gray-300 border border-gray-200 dark:border-white/10'
           }`}
         >
           Terms of Service

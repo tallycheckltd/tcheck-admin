@@ -148,7 +148,7 @@ export function UserDetailPage() {
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody className="text-gray-700 dark:text-gray-300">
+            <tbody className="text-slate-800 dark:text-gray-300">
               {user.courseStats.map((cs) => (
                 <tr key={cs.courseId}>
                   <td className="font-medium text-gray-900 dark:text-white">{cs.courseName}</td>
@@ -193,7 +193,7 @@ export function UserDetailPage() {
                 <th>Total Classes</th>
               </tr>
             </thead>
-            <tbody className="text-gray-700 dark:text-gray-300">
+            <tbody className="text-slate-800 dark:text-gray-300">
               {user.taughtCourses.map((c) => (
                 <tr key={c.id}>
                   <td className="font-medium text-gray-900 dark:text-white">{c.name}</td>
@@ -224,7 +224,7 @@ export function UserDetailPage() {
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody className="text-gray-700 dark:text-gray-300">
+            <tbody className="text-slate-800 dark:text-gray-300">
               {user.attendances.slice(0, 20).map((a) => (
                 <tr key={a.id}>
                   <td>{a.class?.course?.name || '-'}</td>

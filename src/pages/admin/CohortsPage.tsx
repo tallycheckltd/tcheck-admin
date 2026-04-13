@@ -58,8 +58,8 @@ export function CohortsPage() {
             {cohorts?.map((c) => (
               <tr key={c.id} className="border-b border-gray-100 dark:border-white/5">
                 <td className="py-3 px-4 text-gray-900 dark:text-white font-medium">{c.name}</td>
-                <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{c.year}</td>
-                <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{c.school?.name ?? '—'}</td>
+                <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{c.year}</td>
+                <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{c.school?.name ?? '—'}</td>
                 <td className="py-3 px-4 text-right space-x-2">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(c)}><Pencil size={14} /></Button>
                   <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)}><Trash2 size={14} className="text-red-500" /></Button>
@@ -75,7 +75,7 @@ export function CohortsPage() {
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="Year" type="number" value={String(form.year)} onChange={(e) => setForm({ ...form, year: parseInt(e.target.value) || 0 })} />
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">School</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">School</label>
             <select
               value={form.schoolId}
               onChange={(e) => setForm({ ...form, schoolId: e.target.value })}

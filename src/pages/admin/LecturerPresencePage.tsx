@@ -228,7 +228,7 @@ export function LecturerPresencePage() {
               <th></th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 dark:text-gray-300">
+          <tbody className="text-slate-800 dark:text-gray-300">
             {lecturers.map((l) => (
               <tr key={l.id}>
                 <td>
@@ -242,7 +242,7 @@ export function LecturerPresencePage() {
                 <td>{l.scheduledClass}</td>
                 <td className="text-xs font-mono">{l.room}</td>
                 <td className="font-mono text-xs">{fmt(l.expectedStart)}</td>
-                <td className={`font-mono text-xs ${l.actualCheckIn ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'}`}>
+                <td className={`font-mono text-xs ${l.actualCheckIn ? 'text-slate-800 dark:text-gray-300' : 'text-gray-400'}`}>
                   {fmt(l.actualCheckIn)}
                 </td>
                 <td><StatusPill status={l.status} /></td>

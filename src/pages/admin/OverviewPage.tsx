@@ -188,7 +188,7 @@ function SuperAdminDashboard() {
             {SCHOOLS_BILLING.map((s) => (
               <div key={s.name} className="flex items-center gap-3 text-sm">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.color }} />
-                <span className="text-gray-700 dark:text-gray-300 flex-1">{s.name}</span>
+                <span className="text-slate-800 dark:text-gray-300 flex-1">{s.name}</span>
                 <span className="font-semibold text-gray-900 dark:text-white tabular-nums">{s.students.toLocaleString()}</span>
                 <span className="text-[10px] text-gray-400 w-16 text-right">
                   ${(s.students * 2.50).toLocaleString()} /mo
@@ -239,7 +239,7 @@ function SuperAdminDashboard() {
             {BEACON_HEALTH.map((b) => (
               <div key={b.name} className="flex items-center gap-2.5 text-sm">
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: b.color }} />
-                <span className="text-gray-700 dark:text-gray-300 flex-1">{b.name}</span>
+                <span className="text-slate-800 dark:text-gray-300 flex-1">{b.name}</span>
                 <span className="font-semibold text-gray-900 dark:text-white tabular-nums">{b.value}</span>
               </div>
             ))}

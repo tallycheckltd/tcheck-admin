@@ -57,7 +57,7 @@ export function SchoolsPage() {
             {schools?.map((s) => (
               <tr key={s.id} className="border-b border-gray-100 dark:border-white/5">
                 <td className="py-3 px-4 text-gray-900 dark:text-white font-medium">{s.name}</td>
-                <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{s.code}</td>
+                <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{s.code}</td>
                 <td className="py-3 px-4"><div className="w-6 h-6 rounded-full" style={{ backgroundColor: s.color }} /></td>
                 <td className="py-3 px-4 text-right space-x-2">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(s)}><Pencil size={14} /></Button>

@@ -105,7 +105,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
     <div className="space-y-4">
       {/* Class selector dropdown */}
       <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Active Class:</label>
+        <label className="text-sm font-medium text-slate-800 dark:text-gray-300 whitespace-nowrap">Active Class:</label>
         <select
           value={selectedClass}
           onChange={(e) => { setSelectedClass(e.target.value); setFeedEvents([]); setClassDetail(null); setUserScrolled(false); }}
@@ -157,7 +157,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
             >
               {feedEvents.length === 0 && classDetail.attendances.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full py-8 text-center">
-                  <Radio size={32} className="text-gray-300 dark:text-gray-600 mb-2" />
+                  <Radio size={32} className="text-slate-400 dark:text-gray-600 mb-2" />
                   <p className="text-sm text-gray-400">Waiting for check-ins…</p>
                 </div>
               ) : (
@@ -208,7 +208,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
                                 <LogOut size={9} /> Out: {new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             ) : (
-                              <span className="text-[10px] text-gray-300 dark:text-gray-600 italic">Out: Pending</span>
+                              <span className="text-[10px] text-slate-400 dark:text-gray-600 italic">Out: Pending</span>
                             )}
                           </div>
                         </div>
@@ -278,7 +278,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
                                     <LogOut size={8} /> {new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] text-gray-300 dark:text-gray-600 italic">Out: Pending</span>
+                                  <span className="text-[10px] text-slate-400 dark:text-gray-600 italic">Out: Pending</span>
                                 )}
                               </div>
                             </div>
@@ -320,7 +320,7 @@ function HodLiveView({ classes }: { classes: ClassSession[]; courses: Course[] }
         </div>
       ) : (
         <div className="glass-card text-center py-12">
-          <Radio size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+          <Radio size={40} className="mx-auto mb-3 text-slate-400 dark:text-gray-600" />
           <p className="text-gray-500 dark:text-gray-400 text-sm">Select a class above to start monitoring</p>
         </div>
       )}
@@ -383,7 +383,7 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
             className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
               selectedClass === cls.id
                 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:border-blue-300'
+                : 'bg-white dark:bg-white/5 text-slate-800 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:border-blue-300'
             }`}
           >
             {cls.title}
@@ -415,7 +415,7 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Users size={18} className="text-blue-500" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="text-sm font-medium text-slate-800 dark:text-gray-300">
                   {classDetail.totalCheckedIn} students checked in
                 </span>
               </div>
@@ -453,7 +453,7 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
                         {a.checkInType === 'MANUAL' && <UserCheck size={10} />}
                         {a.checkInType}
                       </span>
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1 min-w-[50px]">
+                      <p className="text-xs font-medium text-slate-800 dark:text-gray-300 flex items-center gap-1 min-w-[50px]">
                         <Clock size={10} />
                         {new Date(a.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
@@ -471,7 +471,7 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
             <div className="glass-card p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Users size={18} className="text-red-500" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="text-sm font-medium text-slate-800 dark:text-gray-300">
                   {classDetail.absentStudents.length} absent students
                 </span>
               </div>
@@ -510,7 +510,7 @@ function LecturerLiveView({ classes, courses }: { classes: ClassSession[]; cours
         </div>
       ) : (
         <div className="glass-card text-center py-12">
-          <Radio size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+          <Radio size={48} className="mx-auto mb-4 text-slate-400 dark:text-gray-600" />
           <p className="text-gray-500 dark:text-gray-400">Select a class to view live attendance</p>
         </div>
       )}
@@ -539,7 +539,7 @@ export function LiveAttendancePage() {
       {isAdmin ? (
         todayClasses.length === 0 ? (
           <div className="glass-card text-center py-12">
-            <Radio size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+            <Radio size={40} className="mx-auto mb-3 text-slate-400 dark:text-gray-600" />
             <p className="text-sm text-gray-400">No classes scheduled for today.</p>
           </div>
         ) : (

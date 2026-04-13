@@ -99,7 +99,7 @@ export function BLEBeaconPage() {
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 dark:text-gray-300">
+          <tbody className="text-slate-800 dark:text-gray-300">
             {beacons?.map((b) => (
               <tr key={b.id}>
                 <td className="font-medium text-gray-900 dark:text-white">
@@ -162,7 +162,7 @@ export function BLEBeaconPage() {
               onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
               className="rounded border-gray-300 dark:border-white/20"
             />
-            <label htmlFor="beaconActive" className="text-sm text-gray-700 dark:text-gray-300">Active</label>
+            <label htmlFor="beaconActive" className="text-sm text-slate-800 dark:text-gray-300">Active</label>
           </div>
           <Button onClick={handleSubmit} className="w-full">{editing ? 'Update Beacon' : 'Create Beacon'}</Button>
         </div>

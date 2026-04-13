@@ -57,7 +57,7 @@ export function LevelsPage() {
             {levels?.map((l) => (
               <tr key={l.id} className="border-b border-gray-100 dark:border-white/5">
                 <td className="py-3 px-4 text-gray-900 dark:text-white font-medium">{l.name}</td>
-                <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{l.school?.name ?? '—'}</td>
+                <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{l.school?.name ?? '—'}</td>
                 <td className="py-3 px-4 text-right space-x-2">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(l)}><Pencil size={14} /></Button>
                   <Button variant="ghost" size="sm" onClick={() => handleDelete(l.id)}><Trash2 size={14} className="text-red-500" /></Button>
@@ -72,7 +72,7 @@ export function LevelsPage() {
         <div className="space-y-4">
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">School</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">School</label>
             <select
               value={form.schoolId}
               onChange={(e) => setForm({ ...form, schoolId: e.target.value })}

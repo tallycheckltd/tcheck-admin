@@ -65,7 +65,7 @@ export function LecturerDashboard() {
                   <p className="text-xs text-gray-500">{cls.course?.name} {cls.room ? `- ${cls.room}` : ''}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                  <p className="text-sm font-mono text-slate-800 dark:text-gray-300">
                     {new Date(cls.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls.isActive ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400'}`}>

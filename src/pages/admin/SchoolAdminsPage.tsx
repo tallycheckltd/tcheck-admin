@@ -59,7 +59,7 @@ export function SchoolAdminsPage() {
                 <th>Joined</th>
               </tr>
             </thead>
-            <tbody className="text-gray-700 dark:text-gray-300">
+            <tbody className="text-slate-800 dark:text-gray-300">
               {filtered.map((admin) => (
                 <tr key={admin.id}>
                   <td>
@@ -97,7 +97,7 @@ export function SchoolAdminsPage() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={5} className="text-center py-12">
-                    <Users size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                    <Users size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
                     <p className="text-sm text-gray-500 dark:text-gray-400">No school admins found.</p>
                   </td>
                 </tr>

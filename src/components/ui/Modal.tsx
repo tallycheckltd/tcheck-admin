@@ -30,8 +30,8 @@ export function Modal({ open, onClose, title, children }: Props) {
             className="relative w-full max-w-lg mx-4 glass-light dark:glass rounded-2xl p-6 shadow-2xl"
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
-              <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 cursor-pointer">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h2>
+              <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-gray-400 cursor-pointer">
                 <X size={20} />
               </button>
             </div>
