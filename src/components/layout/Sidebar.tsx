@@ -80,7 +80,10 @@ function NavSection({ title, links }: { title: string; links: NavItem[] }) {
 
   return (
     <>
-      <p className="px-3 pt-4 pb-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest first:pt-2">
+      <p
+        className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest first:pt-2"
+        style={{ color: 'var(--nav-section)' }}
+      >
         {title}
       </p>
       {links.map((link) => (
@@ -91,9 +94,7 @@ function NavSection({ title, links }: { title: string; links: NavItem[] }) {
           className={({ isActive }) =>
             clsx(
               'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-              isActive
-                ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm'
-                : 'text-slate-700 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5',
+              isActive ? 'shadow-sm nav-link-active' : 'nav-link-idle',
             )
           }
         >
@@ -137,12 +138,12 @@ export function Sidebar() {
     links.map((l) => l.to === '/alerts' ? { ...l, badge: unreadCount } : l);
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 glass-sidebar flex flex-col z-40">
-      <div className="p-5 flex items-center gap-3 border-b border-slate-200 dark:border-white/5">
+    <aside className="fixed left-0 top-0 h-screen w-64 glass-sidebar flex flex-col z-40 border-r border-[color:var(--sidebar-edge)]">
+      <div className="p-5 flex items-center gap-3 border-b border-[color:var(--sidebar-edge)]">
         <img src="/logo.svg" alt="TCheck" className="w-10 h-10" />
         <div>
-          <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">TCheck</h1>
-          <p className="text-[11px] font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">
+          <h1 className="text-lg font-bold tracking-tight text-[color:var(--app-text)] dark:text-white">TCheck</h1>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--app-accent-label)]">
             {roleLabel}
           </p>
         </div>
@@ -172,9 +173,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               clsx(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-                isActive
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-700 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5',
+                isActive ? 'shadow-sm nav-link-active' : 'nav-link-idle',
               )
             }
           >
@@ -184,21 +183,22 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-slate-200 dark:border-white/5 space-y-1">
+      <div className="p-3 border-t border-[color:var(--sidebar-edge)] space-y-1">
         <div className="flex items-center gap-3 px-3 py-2 mb-1">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
             {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+            <p className="text-sm font-medium truncate text-[color:var(--app-text)] dark:text-white">
               {user?.firstName} {user?.lastName}
             </p>
-            <p className="text-[11px] text-slate-600 dark:text-slate-500 truncate">{user?.email}</p>
+            <p className="text-[11px] truncate text-[color:var(--app-text-muted)] dark:text-slate-500">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={toggle}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
+          type="button"
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle"
         >
           {dark ? <Sun size={18} /> : <Moon size={18} />}
           {dark ? 'Light Mode' : 'Dark Mode'}

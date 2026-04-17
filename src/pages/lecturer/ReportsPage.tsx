@@ -111,7 +111,9 @@ function HodReportsPage() {
         filename = `course-attendance-${course?.code || selectedCourse}-${dateFrom}-to-${dateTo}.csv`;
       }
 
-      if (!csvContent || csvContent.split('\n').length <= 2) {
+      // Header + at least one data row (avoid false "empty" when exactly one row exists)
+      const nonEmptyLines = csvContent.split('\n').filter((l) => l.trim().length > 0);
+      if (!csvContent || nonEmptyLines.length < 2) {
         setExportError('No records found for the selected parameters. The CSV would be empty.');
         return;
       }
