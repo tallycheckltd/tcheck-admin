@@ -1,0 +1,258 @@
+export type Role = 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT';
+export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type CheckInType = 'BLE' | 'QR' | 'MANUAL';
+
+export interface School {
+  id: string;
+  name: string;
+  code: string;
+  color: string;
+  createdAt: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  studentId?: string;
+  role: Role;
+  status: UserStatus;
+  avatarUrl?: string;
+  schoolId?: string;
+  school?: School;
+  createdAt: string;
+  updatedAt?: string;
+  _count?: {
+    enrollments: number;
+    attendances: number;
+    taughtCourses: number;
+  };
+}
+
+export interface UserDetail extends User {
+  enrollments?: {
+    courseId: string;
+    course: Course;
+  }[];
+  taughtCourses?: Course[];
+  attendances?: AttendanceRecord[];
+  courseStats?: {
+    courseId: string;
+    courseName: string;
+    total: number;
+    attended: number;
+    percentage: number;
+  }[];
+}
+
+export interface Beacon {
+  id: string;
+  uuid: string;
+  name: string;
+  major: number;
+  minor: number;
+  rssiThreshold: number;
+  location?: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  courses?: Pick<Course, 'id' | 'name' | 'code'>[];
+}
+
+export interface Course {
+  id: string;
+  name: string;
+  code: string;
+  schoolId: string;
+  school?: School;
+  lecturerId: string;
+  lecturer?: Pick<User, 'id' | 'firstName' | 'lastName'>;
+  room?: string;
+  beaconId?: string;
+  beacon?: Pick<Beacon, 'id' | 'uuid' | 'name' | 'major' | 'minor' | 'rssiThreshold'>;
+  _count?: { enrollments: number; classes: number };
+  enrollments?: { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'> }[];
+  classes?: ClassSession[];
+}
+
+export interface ClassSession {
+  id: string;
+  courseId: string;
+  course?: Course;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  room?: string;
+  beaconUUID: string;
+  beaconMajor: number;
+  beaconMinor: number;
+  rssiThreshold: number;
+  checkInStart?: string;
+  checkInEnd?: string;
+  isActive: boolean;
+  _count?: { attendances: number };
+  attendances?: AttendanceRecord[];
+}
+
+export interface AttendanceRecord {
+  id: string;
+  userId: string;
+  user?: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>;
+  classId: string;
+  class?: ClassSession;
+  checkInAt: string;
+  checkOutAt?: string;
+  beaconRSSI?: number;
+  checkInType: CheckInType;
+  checkedInBy?: string;
+  status: string;
+}
+
+export interface ClassAttendanceDetail {
+  classInfo: {
+    id: string;
+    title: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    room?: string;
+    courseName: string;
+    courseCode: string;
+  };
+  totalEnrolled: number;
+  totalCheckedIn: number;
+  attendances: AttendanceRecord[];
+  absentStudents: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>[];
+}
+
+export interface ClassAttendanceStat {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  room?: string;
+  course: {
+    id: string;
+    name: string;
+    code: string;
+    lecturer: Pick<User, 'id' | 'firstName' | 'lastName'>;
+  };
+  totalEnrolled: number;
+  totalCheckedIn: number;
+  attendanceRate: number;
+  checkInBreakdown: {
+    BLE: number;
+    QR: number;
+    MANUAL: number;
+  };
+}
+
+export interface DashboardStats {
+  totalStudents: number;
+  totalLecturers: number;
+  totalCourses: number;
+  totalClasses: number;
+  todayAttendances: number;
+  pendingApprovals: number;
+  recentAttendances: AttendanceRecord[];
+  attendanceByDay: { date: string; count: number }[];
+}
+
+export interface Conversation {
+  id: string;
+  otherUser: Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'>;
+  lastMessage?: Message;
+  unreadCount: number;
+  updatedAt: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  sender?: Pick<User, 'id' | 'firstName' | 'lastName'>;
+  content: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface AnalyticsStat {
+  courseId: string;
+  courseName: string;
+  total: number;
+  attended: number;
+  percentage: number;
+}
+
+export interface ContactGroup {
+  courseId: string;
+  courseName: string;
+  courseCode: string;
+  contacts: (Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string })[];
+}
+
+export interface AdminConversation {
+  id: string;
+  user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string };
+  user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string };
+  lastMessage?: Message;
+  messageCount: number;
+  hasPendingFlags: boolean;
+  pendingFlagCount: number;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface AdminConversationDetail {
+  conversation: {
+    id: string;
+    user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+    user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+  };
+  messages: (Message & {
+    sender?: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+    flags?: MessageFlag[];
+  })[];
+}
+
+export interface MessageFlag {
+  id: string;
+  conversationId: string;
+  messageId?: string;
+  message?: Pick<Message, 'id' | 'content' | 'createdAt' | 'senderId'>;
+  flaggedById: string;
+  flaggedBy?: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+  reason: string;
+  status: string;
+  resolvedById?: string;
+  resolvedBy?: Pick<User, 'id' | 'firstName' | 'lastName'>;
+  resolvedNote?: string;
+  conversation?: {
+    id: string;
+    user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+    user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'MESSAGE' | 'ATTENDANCE' | 'FLAG' | 'SYSTEM';
+  title: string;
+  body: string;
+  read: boolean;
+  metadata?: string;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
+}
