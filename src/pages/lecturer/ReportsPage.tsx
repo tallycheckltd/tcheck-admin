@@ -3,7 +3,7 @@ import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Download, FileText, Bluetooth, QrCode, UserCheck, Filter, ChevronDown, Search, AlertTriangle, TrendingDown } from 'lucide-react';
+import { Download, FileText, Filter, Search, TrendingDown } from 'lucide-react';
 import type { Course, ClassSession, ClassAttendanceDetail, CourseAttendanceExportRow } from '../../types';
 import { api } from '../../lib/api';
 import { csvField } from '../../lib/csv';
@@ -135,7 +135,7 @@ function HodReportsView() {
 function LecturerReportsView() {
   const { user } = useAuth();
   const { data: courses } = useApi<Course[]>(`/courses?lecturerId=${user?.id}`);
-  const { data: classes, loading: classesLoading } = useApi<ClassSession[]>('/classes');
+  const { data: classes } = useApi<ClassSession[]>('/classes');
   
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [detail, setDetail] = useState<ClassAttendanceDetail | null>(null);

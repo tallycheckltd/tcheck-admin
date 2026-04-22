@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { createSocket } from '../../lib/socket';

@@ -1,7 +1,7 @@
 import { useApi } from '../../hooks/useApi';
 import { 
-  AlertTriangle, Users, Battery, Shield, Info, ExternalLink, UserCheck, Smartphone, 
-  CheckCircle, XCircle
+  AlertTriangle, Users, Battery, Shield, ExternalLink, UserCheck, Smartphone, 
+  CheckCircle
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { format } from 'date-fns';

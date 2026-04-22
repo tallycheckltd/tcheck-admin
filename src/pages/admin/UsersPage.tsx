@@ -11,7 +11,6 @@ import { clsx } from 'clsx';
 import type { User, School } from '../../types';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const };
-const roleColor = { SUPER_ADMIN: 'purple' as const, SUB_ADMIN: 'blue' as const, LECTURER: 'blue' as const, STUDENT: 'gray' as const };
 
 type CreateType = 'lecturer' | 'student' | 'admin';
 

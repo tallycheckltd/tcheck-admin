@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { 
   Smartphone, Search, CheckCircle2, XCircle, RefreshCw, 
-  ShieldCheck, ShieldAlert, User, History
+  ShieldCheck, ShieldAlert, History
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
