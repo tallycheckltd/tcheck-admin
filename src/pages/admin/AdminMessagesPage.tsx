@@ -150,8 +150,8 @@ export function AdminMessagesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Message Oversight</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Monitor conversations and resolve escalations</p>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Message Oversight</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Monitor conversations and resolve escalations</p>
         </div>
         {pendingFlags.length > 0 && (
           <button
@@ -170,19 +170,19 @@ export function AdminMessagesPage() {
           onClick={() => setTab('conversations')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
             tab === 'conversations'
-              ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+              ? 'bg-white dark:bg-white/10 text-slate-950 dark:text-white shadow-sm'
+              : 'text-slate-600 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
           <MessageSquare size={16} /> Conversations
-          <span className="text-xs text-gray-400">{conversations?.length || 0}</span>
+          <span className="text-xs text-slate-600 dark:text-slate-400">{conversations?.length || 0}</span>
         </button>
         <button
           onClick={() => setTab('flags')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
             tab === 'flags'
-              ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+              ? 'bg-white dark:bg-white/10 text-slate-950 dark:text-white shadow-sm'
+              : 'text-slate-600 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
           <Flag size={16} /> Escalations
@@ -198,13 +198,13 @@ export function AdminMessagesPage() {
           {/* Conversation list */}
           <div className="w-96 flex flex-col">
             <div className="relative mb-4">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
               <input
                 type="text"
                 placeholder="Search by name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
             </div>
 
@@ -222,38 +222,38 @@ export function AdminMessagesPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        <p className="text-sm font-medium text-slate-950 dark:text-white truncate">
                           {c.user1.firstName} {c.user1.lastName}
                         </p>
                         <Badge color={roleColor(c.user1.role) as 'blue' | 'gray' | 'purple'}>{roleLabel(c.user1.role)}</Badge>
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <ChevronRight size={10} className="text-gray-400" />
-                        <span className="text-xs text-gray-500">
+                        <ChevronRight size={10} className="text-slate-600 dark:text-slate-400" />
+                        <span className="text-xs text-slate-600">
                           {c.user2.firstName} {c.user2.lastName}
                         </span>
                         <Badge color={roleColor(c.user2.role) as 'blue' | 'gray' | 'purple'}>{roleLabel(c.user2.role)}</Badge>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <span className="text-xs text-gray-400">{timeAgo(c.updatedAt)}</span>
+                      <span className="text-xs text-slate-600 dark:text-slate-400">{timeAgo(c.updatedAt)}</span>
                       {c.hasPendingFlags && (
                         <span className="w-2 h-2 rounded-full bg-orange-500" title="Has pending flags" />
                       )}
                     </div>
                   </div>
                   {c.lastMessage && (
-                    <p className="text-xs text-gray-400 truncate mt-1.5">{c.lastMessage.content}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-1.5">{c.lastMessage.content}</p>
                   )}
                   <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-xs text-gray-400">{c.messageCount} messages</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">{c.messageCount} messages</span>
                   </div>
                 </button>
               ))}
               {(!filteredConversations || filteredConversations.length === 0) && (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Users size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
-                  <p className="text-sm text-gray-400">No conversations found</p>
+                  <Users size={32} className="text-slate-400 dark:text-gray-600 mb-3" />
+                  <p className="text-sm text-slate-600 dark:text-slate-400">No conversations found</p>
                 </div>
               )}
             </div>
@@ -271,28 +271,28 @@ export function AdminMessagesPage() {
                           <span className="text-xs font-bold text-blue-500">{convoDetail.conversation.user1.firstName[0]}</span>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-slate-950 dark:text-white">
                             {convoDetail.conversation.user1.firstName} {convoDetail.conversation.user1.lastName}
                           </p>
-                          <p className="text-xs text-gray-400">{roleLabel(convoDetail.conversation.user1.role)}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{roleLabel(convoDetail.conversation.user1.role)}</p>
                         </div>
                       </div>
-                      <ChevronRight size={16} className="text-gray-300" />
+                      <ChevronRight size={16} className="text-slate-400 dark:text-slate-600" />
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
                           <span className="text-xs font-bold text-purple-500">{convoDetail.conversation.user2.firstName[0]}</span>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-slate-950 dark:text-white">
                             {convoDetail.conversation.user2.firstName} {convoDetail.conversation.user2.lastName}
                           </p>
-                          <p className="text-xs text-gray-400">{roleLabel(convoDetail.conversation.user2.role)}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{roleLabel(convoDetail.conversation.user2.role)}</p>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-100 dark:bg-white/5">
-                      <Eye size={14} className="text-gray-400" />
-                      <span className="text-xs text-gray-400">Read-only</span>
+                      <Eye size={14} className="text-slate-600 dark:text-slate-400" />
+                      <span className="text-xs text-slate-600 dark:text-slate-400">Read-only</span>
                     </div>
                   </div>
                 </div>
@@ -303,13 +303,13 @@ export function AdminMessagesPage() {
                     return (
                       <div key={m.id} className={`flex ${isUser1 ? 'justify-start' : 'justify-end'}`}>
                         <div className="max-w-sm">
-                          <p className={`text-xs mb-1 ${isUser1 ? 'text-left' : 'text-right'} text-gray-400`}>
+                          <p className={`text-xs mb-1 ${isUser1 ? 'text-left' : 'text-right'} text-slate-600 dark:text-slate-400`}>
                             {m.sender?.firstName} {m.sender?.lastName}
                           </p>
                           <div className={`px-4 py-2.5 rounded-2xl text-sm ${
                             isUser1
-                              ? 'bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white rounded-bl-md'
-                              : 'bg-blue-500/10 text-gray-900 dark:text-white rounded-br-md'
+                              ? 'bg-gray-100 dark:bg-white/5 text-slate-950 dark:text-white rounded-bl-md'
+                              : 'bg-blue-500/10 text-slate-950 dark:text-white rounded-br-md'
                           }`}>
                             {m.content}
                             {m.flags && m.flags.length > 0 && (
@@ -320,7 +320,7 @@ export function AdminMessagesPage() {
                               </div>
                             )}
                           </div>
-                          <p className={`text-xs mt-1 ${isUser1 ? 'text-left' : 'text-right'} text-gray-400`}>
+                          <p className={`text-xs mt-1 ${isUser1 ? 'text-left' : 'text-right'} text-slate-600 dark:text-slate-400`}>
                             {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             {' · '}
                             {new Date(m.createdAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
@@ -336,8 +336,8 @@ export function AdminMessagesPage() {
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <Shield size={48} className="mx-auto mb-4 text-gray-200 dark:text-gray-700" />
-                  <p className="text-gray-500 text-sm">Select a conversation to review</p>
-                  <p className="text-gray-400 text-xs mt-1">Messages are shown in read-only mode</p>
+                  <p className="text-slate-600 text-sm">Select a conversation to review</p>
+                  <p className="text-slate-600 dark:text-slate-400 text-xs mt-1">Messages are shown in read-only mode</p>
                 </div>
               </div>
             )}
@@ -361,16 +361,16 @@ export function AdminMessagesPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <Badge color="yellow">Pending</Badge>
-                          <span className="text-xs text-gray-400 flex items-center gap-1">
+                          <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
                             <Clock size={12} /> {timeAgo(flag.createdAt)}
                           </span>
                         </div>
 
-                        <p className="text-sm text-gray-900 dark:text-white mb-2">
+                        <p className="text-sm text-slate-950 dark:text-white mb-2">
                           <span className="font-medium">{flag.flaggedBy?.firstName} {flag.flaggedBy?.lastName}</span>
-                          <span className="text-gray-400"> reported a conversation between </span>
+                          <span className="text-slate-600 dark:text-slate-400"> reported a conversation between </span>
                           <span className="font-medium">{flag.conversation?.user1.firstName} {flag.conversation?.user1.lastName}</span>
-                          <span className="text-gray-400"> and </span>
+                          <span className="text-slate-600 dark:text-slate-400"> and </span>
                           <span className="font-medium">{flag.conversation?.user2.firstName} {flag.conversation?.user2.lastName}</span>
                         </p>
 
@@ -382,8 +382,8 @@ export function AdminMessagesPage() {
 
                         {flag.message && (
                           <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-3">
-                            <p className="text-xs text-gray-400 mb-1">Flagged message:</p>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{flag.message.content}"</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Flagged message:</p>
+                            <p className="text-sm text-slate-800 dark:text-gray-300 italic">"{flag.message.content}"</p>
                           </div>
                         )}
                       </div>
@@ -412,7 +412,7 @@ export function AdminMessagesPage() {
           {/* Resolved flags */}
           {resolvedFlags.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-2 mb-3">
+              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-2 mb-3">
                 <CheckCircle size={16} /> Resolved ({resolvedFlags.length})
               </h3>
               <div className="glass-card overflow-hidden">
@@ -427,10 +427,10 @@ export function AdminMessagesPage() {
                       <th>Date</th>
                     </tr>
                   </thead>
-                  <tbody className="text-gray-700 dark:text-gray-300">
+                  <tbody className="text-slate-800 dark:text-gray-300">
                     {resolvedFlags.map((flag) => (
                       <tr key={flag.id}>
-                        <td className="font-medium text-gray-900 dark:text-white">
+                        <td className="font-medium text-slate-950 dark:text-white">
                           {flag.flaggedBy?.firstName} {flag.flaggedBy?.lastName}
                         </td>
                         <td>
@@ -443,7 +443,7 @@ export function AdminMessagesPage() {
                           </Badge>
                         </td>
                         <td>{flag.resolvedBy ? `${flag.resolvedBy.firstName} ${flag.resolvedBy.lastName}` : '-'}</td>
-                        <td className="text-gray-400">{new Date(flag.createdAt).toLocaleDateString()}</td>
+                        <td className="text-slate-600 dark:text-slate-400">{new Date(flag.createdAt).toLocaleDateString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -455,8 +455,8 @@ export function AdminMessagesPage() {
           {pendingFlags.length === 0 && resolvedFlags.length === 0 && (
             <div className="glass-card flex flex-col items-center justify-center py-16">
               <Flag size={48} className="text-gray-200 dark:text-gray-700 mb-4" />
-              <p className="text-gray-500 text-sm">No escalations yet</p>
-              <p className="text-gray-400 text-xs mt-1">When lecturers flag conversations, they will appear here</p>
+              <p className="text-slate-600 text-sm">No escalations yet</p>
+              <p className="text-slate-600 dark:text-slate-400 text-xs mt-1">When lecturers flag conversations, they will appear here</p>
             </div>
           )}
         </div>
@@ -471,18 +471,18 @@ export function AdminMessagesPage() {
         <div className="space-y-4">
           {resolvingFlag && (
             <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-400 mb-1">Reported reason:</p>
-              <p className="text-sm text-gray-900 dark:text-white">{resolvingFlag.reason}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Reported reason:</p>
+              <p className="text-sm text-slate-950 dark:text-white">{resolvingFlag.reason}</p>
             </div>
           )}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Resolution note (optional)</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Resolution note (optional)</label>
             <textarea
               value={resolveNote}
               onChange={(e) => setResolveNote(e.target.value)}
               placeholder="Add a note about the action taken..."
               rows={3}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
             />
           </div>
           <div className="flex gap-3">

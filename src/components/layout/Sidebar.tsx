@@ -8,8 +8,8 @@ import { useApi } from '../../hooks/useApi';
 import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
-  BarChart3, GraduationCap, Link2, Bluetooth, Smartphone, Bell, ShieldAlert,
-  ChevronDown, ChevronRight
+  BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
+  ShieldAlert, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -17,24 +17,42 @@ interface NavItem {
   to: string;
   icon: React.ComponentType<{ size?: number }>;
   label: string;
-  superAdminOnly?: boolean;
   badge?: number;
   children?: NavItem[];
+  superAdminOnly?: boolean;
 }
 
-const overviewLinks: NavItem[] = [
+/* ---- SUPER_ADMIN (Tallycheck Global) ---- */
+const superAdminOverview: NavItem[] = [
+  { to: '/admin', icon: LayoutDashboard, label: 'Overview' },
+];
+
+const superAdminAdmin: NavItem[] = [
+  { to: '/admin/schools', icon: School, label: 'Schools' },
+  { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
+];
+
+const superAdminGeneral: NavItem[] = [
+  { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Manager' },
+  { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
+  { to: '/alerts', icon: Bell, label: 'Alerts' },
+  { to: '/admin/system-announcements', icon: Megaphone, label: 'System Announcements' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings' },
+  { to: '/legal', icon: Scale, label: 'Legal' },
+];
+
+/* ---- ADMIN / SUB_ADMIN (University HOD) ---- */
+const hodOverview: NavItem[] = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
 ];
 
-const adminLinks: NavItem[] = [
-  { to: '/admin/schools', icon: School, label: 'Schools', superAdminOnly: true },
-  { to: '/admin/users', icon: Users, label: 'User Management' },
-  { to: '/admin/students', icon: GraduationCap, label: 'All Students' },
+const hodAdmin: NavItem[] = [
+  { to: '/admin/users', icon: Users, label: 'Users' },
+  { to: '/admin/students', icon: GraduationCap, label: 'Students' },
 ];
 
-const operationsLinks: NavItem[] = [
+const hodOperations: NavItem[] = [
   { to: '/courses', icon: BookOpen, label: 'All Courses' },
-  { to: '/admin/course-assignments', icon: Link2, label: 'Course Assignments' },
   { to: '/classes', icon: Calendar, label: 'Classes' },
   {
     to: '/admin/attendance',
@@ -51,16 +69,14 @@ const operationsLinks: NavItem[] = [
   { to: '/admin/lecturer-presence', icon: UserCheck, label: 'Lecturer Presence' },
 ];
 
-const systemLinks: NavItem[] = [
-  { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Beacon Manager' },
-  { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
+const hodGeneral: NavItem[] = [
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/admin/messages', icon: ShieldAlert, label: 'Message Oversight' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings', superAdminOnly: true },
+  { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
+/* ---- LECTURER ---- */
 const lecturerLinks: NavItem[] = [
   { to: '/lecturer', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/courses', icon: BookOpen, label: 'Courses' },
@@ -69,12 +85,12 @@ const lecturerLinks: NavItem[] = [
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/legal', icon: Scale, label: 'Legal' },
 ];
 
 function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavItem[]; isSuperAdmin: boolean }) {
   const visibleLinks = links.filter((l) => !l.superAdminOnly || isSuperAdmin);
   const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
-  const navigate = useNavigate();
   const location = window.location;
 
   if (visibleLinks.length === 0) return null;
@@ -87,13 +103,16 @@ function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavI
 
   return (
     <>
-      <p className="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-500 dark:text-gray-500 uppercase tracking-widest first:pt-2">
+      <p
+        className="px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest first:pt-2"
+        style={{ color: 'var(--nav-section)' }}
+      >
         {title}
       </p>
       {visibleLinks.map((link) => {
         const hasChildren = link.children && link.children.length > 0;
         const isExpanded = expandedItems.includes(link.label);
-        const isChildActive = hasChildren && link.children?.some(child => location.pathname === child.to);
+        const isChildActive = hasChildren && link.children?.some(child => location.pathname.startsWith(child.to));
 
         return (
           <div key={link.label} className="space-y-1">
@@ -103,8 +122,8 @@ function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavI
                 className={clsx(
                   'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer',
                   isChildActive
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5',
+                    ? 'nav-link-active'
+                    : 'nav-link-idle hover:bg-slate-100 dark:hover:bg-white/5',
                 )}
               >
                 <link.icon size={18} />
@@ -118,9 +137,7 @@ function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavI
                 className={({ isActive }) =>
                   clsx(
                     'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-                    isActive
-                      ? 'bg-blue-600 text-white dark:bg-blue-500/10 dark:text-blue-400 shadow-md shadow-blue-600/10'
-                      : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5',
+                    isActive ? 'shadow-sm nav-link-active' : 'nav-link-idle',
                   )
                 }
               >
@@ -144,7 +161,7 @@ function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavI
                       clsx(
                         'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                         isActive
-                          ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/5'
+                          ? 'nav-link-active border-l-2 border-blue-500'
                           : 'text-slate-500 dark:text-gray-500 hover:text-slate-700 dark:hover:text-gray-300',
                       )
                     }
@@ -184,25 +201,36 @@ export function Sidebar() {
 
   const roleLabel = isSuperAdmin ? 'Super Admin' : isAdmin ? 'Admin' : 'Lecturer';
 
+  // Inject unread badge into Alerts link
+  const addAlertBadge = (links: NavItem[]) =>
+    links.map((l) => l.to === '/alerts' ? { ...l, badge: unreadCount } : l);
+
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 glass-sidebar flex flex-col z-40">
-      <div className="p-5 flex items-center gap-3 border-b border-gray-200 dark:border-white/5">
+    <aside className="fixed left-0 top-0 h-screen w-64 glass-sidebar flex flex-col z-40 border-r border-[color:var(--sidebar-edge)]">
+      <div className="p-5 flex items-center gap-3 border-b border-[color:var(--sidebar-edge)]">
         <img src="/logo.svg" alt="TCheck" className="w-10 h-10" />
         <div>
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">TCheck</h1>
-          <p className="text-[11px] font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wider">
+          <h1 className="text-lg font-bold tracking-tight text-[color:var(--app-text)] dark:text-white">TCheck</h1>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--app-accent-label)]">
             {roleLabel}
           </p>
         </div>
       </div>
 
       <nav className="flex-1 px-3 pt-4 space-y-1 overflow-y-auto">
-        {isAdmin && (
+        {isSuperAdmin && (
           <>
-            <NavSection title="Overview" links={overviewLinks} isSuperAdmin={!!isSuperAdmin} />
-            <NavSection title="Administration" links={adminLinks} isSuperAdmin={!!isSuperAdmin} />
-            <NavSection title="Operations" links={operationsLinks} isSuperAdmin={!!isSuperAdmin} />
-            <NavSection title="General" links={systemLinks.map((l) => l.to === '/alerts' ? { ...l, badge: unreadCount } : l)} isSuperAdmin={!!isSuperAdmin} />
+            <NavSection title="Overview" links={superAdminOverview} isSuperAdmin={isSuperAdmin} />
+            <NavSection title="Administration" links={superAdminAdmin} isSuperAdmin={isSuperAdmin} />
+            <NavSection title="General" links={addAlertBadge(superAdminGeneral)} isSuperAdmin={isSuperAdmin} />
+          </>
+        )}
+        {isAdmin && !isSuperAdmin && (
+          <>
+            <NavSection title="Overview" links={hodOverview} isSuperAdmin={isSuperAdmin} />
+            <NavSection title="Administration" links={hodAdmin} isSuperAdmin={isSuperAdmin} />
+            <NavSection title="Operations" links={hodOperations} isSuperAdmin={isSuperAdmin} />
+            <NavSection title="General" links={addAlertBadge(hodGeneral)} isSuperAdmin={isSuperAdmin} />
           </>
         )}
         {!isAdmin && lecturerLinks.map((link) => (
@@ -213,9 +241,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               clsx(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-                isActive
-                  ? 'bg-blue-600 text-white dark:bg-blue-500/10 dark:text-blue-400 shadow-md shadow-blue-600/10'
-                  : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5',
+                isActive ? 'shadow-sm nav-link-active' : 'nav-link-idle',
               )
             }
           >
@@ -225,21 +251,22 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-gray-200 dark:border-white/5 space-y-1">
+      <div className="p-3 border-t border-[color:var(--sidebar-edge)] space-y-1">
         <div className="flex items-center gap-3 px-3 py-2 mb-1">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
             {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <p className="text-sm font-medium truncate text-[color:var(--app-text)] dark:text-white">
               {user?.firstName} {user?.lastName}
             </p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+            <p className="text-[11px] truncate text-[color:var(--app-text-muted)] dark:text-slate-500">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={toggle}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
+          type="button"
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle"
         >
           {dark ? <Sun size={18} /> : <Moon size={18} />}
           {dark ? 'Light Mode' : 'Dark Mode'}

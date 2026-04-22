@@ -11,7 +11,6 @@ import { SettingsPage } from './pages/admin/SettingsPage';
 import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { AttendanceAnalyticsPage } from './pages/admin/AttendanceAnalyticsPage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
-import { CourseAssignmentsPage } from './pages/admin/CourseAssignmentsPage';
 import { BLEBeaconPage } from './pages/admin/BLEBeaconPage';
 import { DeviceVerificationPage } from './pages/admin/DeviceVerificationPage';
 import { LecturerPresencePage } from './pages/admin/LecturerPresencePage';
@@ -26,6 +25,9 @@ import { ReportsPage } from './pages/lecturer/ReportsPage';
 import { MessagesPage } from './pages/lecturer/MessagesPage';
 import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
 import { FraudDetectionPage } from './pages/admin/FraudDetectionPage';
+import { SchoolAdminsPage } from './pages/admin/SchoolAdminsPage';
+import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
+import { LegalPage } from './pages/LegalPage';
 
 export default function App() {
   return (
@@ -41,19 +43,20 @@ export default function App() {
               <Route path="/admin/users/:id" element={<UserDetailPage />} />
               <Route path="/admin/attendance-analytics" element={<AttendanceAnalyticsPage />} />
               <Route path="/admin/students" element={<AllStudentsPage />} />
-              <Route path="/admin/course-assignments" element={<CourseAssignmentsPage />} />
-              <Route path="/admin/beacons" element={<BLEBeaconPage />} />
-              <Route path="/admin/device-verification" element={<DeviceVerificationPage />} />
               <Route path="/admin/lecturer-presence" element={<LecturerPresencePage />} />
               <Route path="/admin/attendance-overview" element={<AttendanceOverviewPage />} />
               <Route path="/admin/fraud-detection" element={<FraudDetectionPage />} />
-              <Route path="/admin/messages" element={<AdminMessagesPage />} />
+              <Route path="/admin/settings" element={<SettingsPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
 
               {/* SUPER_ADMIN-only routes */}
               <Route element={<RequireSuperAdmin />}>
                 <Route path="/admin/schools" element={<SchoolsPage />} />
-                <Route path="/admin/settings" element={<SettingsPage />} />
+                <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
+                <Route path="/admin/beacons" element={<BLEBeaconPage />} />
+                <Route path="/admin/device-verification" element={<DeviceVerificationPage />} />
+                <Route path="/admin/messages" element={<AdminMessagesPage />} />
+                <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               </Route>
 
               {/* Lecturer dashboard */}
@@ -67,6 +70,7 @@ export default function App() {
               <Route path="/live" element={<LiveAttendancePage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/legal" element={<LegalPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

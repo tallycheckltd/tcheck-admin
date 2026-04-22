@@ -7,7 +7,33 @@ export interface School {
   name: string;
   code: string;
   color: string;
+  lateThresholdMinutes?: number;
+  extremelyLateThresholdMinutes?: number;
+  allowManualLecturerOverride?: boolean;
   createdAt: string;
+}
+
+export interface Major {
+  id: string;
+  name: string;
+  code: string;
+  schoolId: string;
+  school?: School;
+}
+
+export interface Cohort {
+  id: string;
+  name: string;
+  year: number;
+  schoolId: string;
+  school?: School;
+}
+
+export interface Level {
+  id: string;
+  name: string;
+  schoolId: string;
+  school?: School;
 }
 
 export interface User {
@@ -75,6 +101,9 @@ export interface Course {
   _count?: { enrollments: number; classes: number };
   enrollments?: { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'> }[];
   classes?: ClassSession[];
+  majors?: { major: Major }[];
+  cohorts?: { cohort: Cohort }[];
+  levels?: { level: Level }[];
 }
 
 export interface ClassSession {
@@ -109,6 +138,8 @@ export interface AttendanceRecord {
   checkInType: CheckInType;
   checkedInBy?: string;
   status: string;
+  punctuality?: 'ON_TIME' | 'LATE' | 'EXTREMELY_LATE';
+  deltaMinutes?: number;
 }
 
 export interface ClassAttendanceDetail {
@@ -126,6 +157,20 @@ export interface ClassAttendanceDetail {
   totalCheckedIn: number;
   attendances: AttendanceRecord[];
   absentStudents: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>[];
+}
+
+/** One row from GET /attendance/course-records (CSV export). */
+export interface CourseAttendanceExportRow {
+  classTitle: string;
+  classDate: string;
+  room?: string | null;
+  studentId?: string | null;
+  firstName: string;
+  lastName: string;
+  checkInAt: string;
+  checkOutAt: string | null;
+  checkInType: CheckInType | string;
+  punctuality: string;
 }
 
 export interface ClassAttendanceStat {

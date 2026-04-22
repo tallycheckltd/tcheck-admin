@@ -29,28 +29,9 @@ export function BLEBeaconPage() {
   const [form, setForm] = useState(emptyForm);
 
   const openCreate = () => {
-    // Smart Defaults
-    const mostCommonUUID = beacons && beacons.length > 0 
-      ? [...beacons].sort((a,b) => 
-          beacons.filter(v => v.uuid === a.uuid).length - beacons.filter(v => v.uuid === b.uuid).length
-        ).pop()?.uuid 
-      : '';
-    
-    const lastMinor = beacons && beacons.length > 0
-      ? Math.max(...beacons.map(b => b.minor))
-      : 0;
-
     setEditing(null);
-    setForm({ 
-      ...emptyForm, 
-      uuid: mostCommonUUID || '', 
-      minor: lastMinor + 1 
-    });
+    setForm(emptyForm);
     setModal(true);
-  };
-
-  const applyPreset = (rssi: number) => {
-    setForm({ ...form, rssiThreshold: rssi });
   };
 
   const openEdit = (b: Beacon) => {
@@ -95,8 +76,8 @@ export function BLEBeaconPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">BLE Beacon Manager</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">BLE Beacon Manager</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             {beacons?.length || 0} beacons configured
           </p>
         </div>
@@ -118,10 +99,10 @@ export function BLEBeaconPage() {
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 dark:text-gray-300">
+          <tbody className="text-slate-800 dark:text-gray-300">
             {beacons?.map((b) => (
               <tr key={b.id}>
-                <td className="font-medium text-gray-900 dark:text-white">
+                <td className="font-medium text-slate-950 dark:text-white">
                   <span className="flex items-center gap-2">
                     <Bluetooth size={14} className="text-blue-500" />
                     {b.name}
@@ -140,13 +121,13 @@ export function BLEBeaconPage() {
                 <td>
                   {b.courses && b.courses.length > 0
                     ? b.courses.map((c) => c.code).join(', ')
-                    : <span className="text-gray-400">None</span>
+                    : <span className="text-slate-600 dark:text-slate-400">None</span>
                   }
                 </td>
                 <td>
                   <div className="flex items-center gap-1">
                     <button onClick={() => openEdit(b)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer" title="Edit">
-                      <Pencil size={15} className="text-gray-500" />
+                      <Pencil size={15} className="text-slate-600" />
                     </button>
                     <button onClick={() => handleDelete(b.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer" title="Delete">
                       <Trash2 size={15} className="text-red-400" />
@@ -156,7 +137,7 @@ export function BLEBeaconPage() {
               </tr>
             ))}
             {(!beacons || beacons.length === 0) && (
-              <tr><td colSpan={9} className="text-center py-8 text-gray-400">No beacons configured yet</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-slate-600 dark:text-slate-400">No beacons configured yet</td></tr>
             )}
           </tbody>
         </table>
@@ -166,34 +147,6 @@ export function BLEBeaconPage() {
         <div className="space-y-4">
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Room 101 Beacon" />
           <Input label="UUID" value={form.uuid} onChange={(e) => setForm({ ...form, uuid: e.target.value })} placeholder="e.g. E2C56DB5-DFFB-48D2-B060-D0F5A71096E0" />
-          
-          <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2">
-            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest flex items-center gap-1">
-              <Plus size={10} /> Quick Config Presets
-            </p>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => applyPreset(-75)}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all border ${
-                  form.rssiThreshold === -75 ? 'bg-blue-500 text-white border-blue-500' : 'bg-white dark:bg-white/5 text-gray-500 border-gray-200 dark:border-white/10 hover:border-blue-500/50'
-                }`}
-              >
-                Standard Room (-75dBm)
-              </button>
-              <button 
-                onClick={() => applyPreset(-85)}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all border ${
-                  form.rssiThreshold === -85 ? 'bg-blue-500 text-white border-blue-500' : 'bg-white dark:bg-white/5 text-gray-500 border-gray-200 dark:border-white/10 hover:border-blue-500/50'
-                }`}
-              >
-                Large Hall (-85dBm)
-              </button>
-            </div>
-            <p className="text-[9px] text-gray-400 italic">
-              Tip: Set physical beacon TxPower to low level (e.g. -12dBm) to prevent room bleed.
-            </p>
-          </div>
-
           <div className="grid grid-cols-3 gap-4">
             <Input label="Major" type="number" value={String(form.major)} onChange={(e) => setForm({ ...form, major: parseInt(e.target.value) || 0 })} />
             <Input label="Minor" type="number" value={String(form.minor)} onChange={(e) => setForm({ ...form, minor: parseInt(e.target.value) || 0 })} />
@@ -209,7 +162,7 @@ export function BLEBeaconPage() {
               onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
               className="rounded border-gray-300 dark:border-white/20"
             />
-            <label htmlFor="beaconActive" className="text-sm text-gray-700 dark:text-gray-300">Active</label>
+            <label htmlFor="beaconActive" className="text-sm text-slate-800 dark:text-gray-300">Active</label>
           </div>
           <Button onClick={handleSubmit} className="w-full">{editing ? 'Update Beacon' : 'Create Beacon'}</Button>
         </div>

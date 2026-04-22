@@ -32,8 +32,8 @@ export function LecturerDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Welcome back, {user?.firstName}</p>
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Dashboard</h1>
+        <p className="text-slate-600 dark:text-slate-400 mt-1">Welcome back, {user?.firstName}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -41,8 +41,8 @@ export function LecturerDashboard() {
           <div key={card.title} className="glass-card p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{card.title}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{card.value}</p>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{card.title}</p>
+                <p className="text-3xl font-bold text-slate-950 dark:text-white mt-1">{card.value}</p>
               </div>
               <div className={`w-12 h-12 rounded-xl ${card.bg} flex items-center justify-center`}>
                 <card.icon size={24} className={card.color} />
@@ -56,26 +56,26 @@ export function LecturerDashboard() {
         <BarChartCard title="Avg Attendance by Course (%)" data={courseData} />
 
         <div className="glass-card p-5">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Today's Schedule</h3>
+          <h3 className="text-lg font-semibold text-slate-950 dark:text-white mb-4">Today's Schedule</h3>
           <div className="space-y-3">
             {myClasses.map((cls) => (
               <div key={cls.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-white/5 last:border-0">
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{cls.title}</p>
-                  <p className="text-xs text-gray-500">{cls.course?.name} {cls.room ? `- ${cls.room}` : ''}</p>
+                  <p className="text-sm font-medium text-slate-950 dark:text-white">{cls.title}</p>
+                  <p className="text-xs text-slate-600">{cls.course?.name} {cls.room ? `- ${cls.room}` : ''}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                  <p className="text-sm font-mono text-slate-800 dark:text-gray-300">
                     {new Date(cls.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls.isActive ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400'}`}>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls.isActive ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-gray-100 text-slate-600 dark:bg-gray-500/20 dark:text-slate-500'}`}>
                     {cls._count?.attendances || 0} check-ins
                   </span>
                 </div>
               </div>
             ))}
             {myClasses.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-6">No classes scheduled today</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 text-center py-6">No classes scheduled today</p>
             )}
           </div>
         </div>
