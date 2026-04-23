@@ -121,8 +121,8 @@ function TermsOfService() {
   return (
     <div className="space-y-8 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
       <div className="text-center pb-4 border-b border-gray-100 dark:border-white/5">
-        <h2 className="text-xl font-bold text-slate-950 dark:text-white">End User License Agreement (EULA) & Terms of Service</h2>
-        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Last Updated: March 18, 2026 · Tallycheck Ltd</p>
+        <h2 className="text-xl font-bold text-slate-950 dark:text-white">Tcheck End User License Agreement (EULA) & Terms of Service</h2>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Last Updated: March 18, 2026 · Entity: Tallycheck Ltd</p>
       </div>
 
       <div>
@@ -143,17 +143,26 @@ function TermsOfService() {
         <SectionHeader number="3" title="Prohibited Conduct & Strict Anti-Spoofing Policy" />
         <p>The integrity of the Tcheck system is our core operational mandate. Any attempt to manipulate attendance data is a direct violation of this agreement. You explicitly agree NOT to:</p>
         <Bullet label="Spoof" detail='Use "mock location" apps, BLE spoofing hardware, or cloning software to simulate proximity to a classroom.' />
-        <Bullet label="Proxy" detail="Share your account credentials or physical device with another individual to falsify attendance." />
-        <Bullet label="Reverse-engineer" detail="Decompile, or extract proprietary BLE UUID/Major/Minor configurations from the App or physical beacons." />
-        <Bullet label="Tamper" detail="Obstruct, or damage the physical Tcheck BLE beacons installed on University premises." />
-        <p className="mt-2 font-semibold text-red-600 dark:text-red-400">Enforcement: Tallycheck Ltd utilizes anomaly detection. Violation of this clause grants us the right to immediately terminate your access to the App and automatically furnish digital forensic evidence of the spoofing attempt to your University's disciplinary board.</p>
+        <Bullet
+          label="Proxy attendance"
+          detail="Share your account credentials or physical device with another individual to falsify attendance (proxy attendance)."
+        />
+        <Bullet
+          label="Reverse-engineering"
+          detail="Reverse-engineer, decompile, or extract proprietary BLE UUID/Major/Minor configurations from the App or physical beacons."
+        />
+        <Bullet
+          label="Tampering"
+          detail="Tamper with, obstruct, or damage the physical Tcheck BLE beacons installed on University premises."
+        />
+        <p className="mt-2 font-semibold text-red-600 dark:text-red-400">Enforcement: Tallycheck Ltd utilizes anomaly detection. Violation of this clause grants us the right to immediately terminate your access to the App and automatically furnish digital forensic evidence of the spoofing attempt to your University&apos;s disciplinary board.</p>
       </div>
 
       <div>
         <SectionHeader number="4" title="Complete Academic Disclaimer & Limitation of Liability" />
         <p>Tallycheck Ltd is a technology provider; we are not an academic authority. We solely provide the infrastructure to log physical proximity timestamps.</p>
-        <Bullet label="No Academic Liability" detail="To the maximum extent permitted by Kenyan law, Tallycheck Ltd assumes ZERO liability for any academic, financial, or disciplinary consequences resulting from the use, or inability to use, the App. This includes, but is not limited to: failing grades, loss of scholarships, expulsion, or garnishment of lecturer pay." />
-        <Bullet label="Data Accuracy Disputes" detail="If you believe you were falsely marked absent due to hardware failure, you must utilize the University's approved manual escalation process (e.g., speaking to the Lecturer). Tallycheck Ltd will not manually alter database records based on student requests." />
+        <Bullet label="No Academic Liability" detail="To the maximum extent permitted by Kenyan law, Tallycheck Ltd assumes ZERO liability for any academic, financial, or disciplinary consequences resulting from the use, or inability to use, the App. This includes, but is not limited to: failing grades, loss of scholarships, expulsion, or docking of lecturer pay." />
+        <Bullet label="Data Accuracy Disputes" detail="If you believe you were falsely marked absent due to hardware failure, you must utilize the University&apos;s approved manual escalation process (e.g., speaking to the Lecturer). Tallycheck Ltd will not manually alter database records based on student requests." />
         <Bullet label={'"As-Is" Provision'} detail='The App is provided "AS-IS" and "AS-AVAILABLE" without warranties of any kind, express or implied, including fitness for a particular purpose or 100% uninterrupted uptime.' />
       </div>
 

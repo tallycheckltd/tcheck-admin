@@ -73,6 +73,7 @@ const hodGeneral: NavItem[] = [
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
+  { to: '/legal', icon: Scale, label: 'Legal' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
