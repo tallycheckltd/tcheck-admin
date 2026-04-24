@@ -8,6 +8,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { Plus, Radio, Eye, Trash2 } from 'lucide-react';
 import type { ClassSession, Course } from '../../types';
+import { getClassTimeStatus } from '../../utils/classTimeStatus';
 
 export function ClassesPage() {
   const { user } = useAuth();
@@ -67,8 +68,22 @@ export function ClassesPage() {
   };
 
   const handleCreate = async () => {
+    if (!form.startTime || !form.endTime) {
+      alert('Please set both start and end time.');
+      return;
+    }
     const dateStr = form.date;
     const tz = getTimezoneOffset();
+    const startMs = new Date(`${dateStr}T${form.startTime}:00${tz}`).getTime();
+    const endMs = new Date(`${dateStr}T${form.endTime}:00${tz}`).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+      alert('Invalid start or end time.');
+      return;
+    }
+    if (endMs <= startMs) {
+      alert('End time must be after start time.');
+      return;
+    }
     await create('/classes', {
       courseId: form.courseId,
       title: form.title,
@@ -135,12 +150,18 @@ export function ClassesPage() {
                 <td>{cls.room || '-'}</td>
                 <td className="font-medium">{cls._count?.attendances || 0}</td>
                 <td>
-                  <Badge color={cls.isActive ? 'green' : 'gray'}>
-                    <span className="flex items-center gap-1">
-                      {cls.isActive && <Radio size={10} className="animate-pulse" />}
-                      {cls.isActive ? 'Active' : 'Ended'}
-                    </span>
-                  </Badge>
+                  {(() => {
+                    const t = getClassTimeStatus(cls.startTime, cls.endTime);
+                    const live = t === 'live';
+                    return (
+                      <Badge color={live ? 'green' : t === 'upcoming' ? 'blue' : 'gray'}>
+                        <span className="flex items-center gap-1">
+                          {live && <Radio size={10} className="animate-pulse" />}
+                          {t === 'live' ? 'In session' : t === 'upcoming' ? 'Upcoming' : t === 'invalid' ? 'Check times' : 'Ended'}
+                        </span>
+                      </Badge>
+                    );
+                  })()}
                 </td>
                 <td>
                   <div className="flex items-center gap-1">

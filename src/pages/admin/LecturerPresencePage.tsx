@@ -3,7 +3,8 @@ import {
   PlayCircle, Loader2, Info, Clock, MapPin, Calendar, QrCode, X
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
-import { format, isPast, isToday } from 'date-fns';
+import { format, isToday } from 'date-fns';
+import { getClassTimeStatus } from '../../utils/classTimeStatus';
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -27,7 +28,8 @@ export function LecturerPresencePage() {
   const { data: classes, loading } = useApi<ClassSession[]>('/classes');
   const [selectedQRClass, setSelectedQRClass] = useState<ClassSession | null>(null);
 
-  const todayClasses = classes?.filter((c: ClassSession) => isToday(new Date(c.date))) || [];
+  // Use session start in local time so "today" matches the class schedule, not only the date column.
+  const todayClasses = classes?.filter((c: ClassSession) => isToday(new Date(c.startTime))) || [];
 
   if (loading) {
     return (
@@ -64,13 +66,13 @@ export function LecturerPresencePage() {
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500">Live Sessions</span>
                 <span className="font-bold text-green-600 underline decoration-green-500/30 underline-offset-4">
-                  {todayClasses.filter((c: ClassSession) => c.isActive).length}
+                  {todayClasses.filter((c: ClassSession) => getClassTimeStatus(c.startTime, c.endTime) === 'live').length}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500">Completed</span>
                 <span className="font-bold text-blue-600">
-                  {todayClasses.filter((c: ClassSession) => !c.isActive && isPast(new Date(c.endTime))).length}
+                  {todayClasses.filter((c: ClassSession) => getClassTimeStatus(c.startTime, c.endTime) === 'completed').length}
                 </span>
               </div>
             </div>
@@ -92,20 +94,23 @@ export function LecturerPresencePage() {
           <h2 className="text-lg font-bold text-gray-900 dark:text-white px-2">Live & Upcoming Sessions</h2>
           
           <div className="space-y-3">
-            {todayClasses.length > 0 ? todayClasses.map((c) => (
+            {todayClasses.length > 0 ? todayClasses.map((c) => {
+              const st = getClassTimeStatus(c.startTime, c.endTime);
+              const live = st === 'live';
+              return (
               <div key={c.id} className={`glass-card p-5 border-l-4 transition-all ${
-                c.isActive ? 'border-l-green-500 bg-green-500/[0.02]' : 'border-l-gray-300 dark:border-l-white/10'
+                live ? 'border-l-green-500 bg-green-500/[0.02]' : 'border-l-gray-300 dark:border-l-white/10'
               }`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex gap-4">
-                    <div className={`p-3 rounded-2xl ${c.isActive ? 'bg-green-600/10 text-green-600' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                    <div className={`p-3 rounded-2xl ${live ? 'bg-green-600/10 text-green-600' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
                       <PlayCircle size={24} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-gray-900 dark:text-white">{c.title}</h3>
-                        <Badge color={c.isActive ? 'green' : isPast(new Date(c.endTime)) ? 'gray' : 'blue'}>
-                          {c.isActive ? 'LIVE' : isPast(new Date(c.endTime)) ? 'COMPLETED' : 'UPCOMING'}
+                        <Badge color={live ? 'green' : st === 'completed' || st === 'invalid' ? 'gray' : 'blue'}>
+                          {live ? 'LIVE' : st === 'completed' ? 'COMPLETED' : st === 'invalid' ? 'INVALID' : 'UPCOMING'}
                         </Badge>
                       </div>
                       <p className="text-xs text-gray-500 mt-1 flex items-center gap-4">
@@ -127,7 +132,7 @@ export function LecturerPresencePage() {
                       <p className="text-lg font-black text-blue-600 dark:text-blue-400">{c._count.attendances}</p>
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Attended</p>
                     </div>
-                    {c.isActive && (
+                    {live && (
                       <button 
                         onClick={() => setSelectedQRClass(c)}
                         className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2 group"
@@ -140,7 +145,8 @@ export function LecturerPresencePage() {
                   </div>
                 </div>
               </div>
-            )) : (
+            );
+            }) : (
               <div className="glass-card p-12 text-center text-slate-400">
                 <Calendar size={48} className="mx-auto mb-4 opacity-20" />
                 <p>No classes scheduled for today.</p>
