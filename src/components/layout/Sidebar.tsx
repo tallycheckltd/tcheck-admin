@@ -209,9 +209,9 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 glass-sidebar flex flex-col z-40 border-r border-[color:var(--sidebar-edge)]">
       <div className="p-5 flex items-center gap-3 border-b border-[color:var(--sidebar-edge)]">
-        <img src="/logo.svg" alt="TCheck" className="w-10 h-10" />
+        <img src="/logo.svg" alt="Tcheck" className="w-10 h-10" />
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-[color:var(--app-text)] dark:text-white">TCheck</h1>
+          <h1 className="text-lg font-bold tracking-tight text-[color:var(--app-text)] dark:text-white">Tcheck</h1>
           <p className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--app-accent-label)]">
             {roleLabel}
           </p>

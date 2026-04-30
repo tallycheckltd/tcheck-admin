@@ -4,7 +4,7 @@ import { createSocket } from '../../lib/socket';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
-import { Radio, Users, Bluetooth, QrCode, UserCheck } from 'lucide-react';
+import { Radio, Users, QrCode, UserCheck } from 'lucide-react';
 import type { ClassSession, Course, ClassAttendanceDetail } from '../../types';
 import { api } from '../../lib/api';
 
@@ -46,6 +46,32 @@ export function LiveAttendancePage() {
       socket.off('attendance:update', handler);
     };
   }, [selectedClass, socket]);
+
+  const rosterRows = classDetail
+    ? [
+      ...classDetail.attendances.map((a) => {
+        const isLate = a.punctuality === 'LATE' || a.punctuality === 'EXTREMELY_LATE';
+        return {
+          id: a.id,
+          name: `${a.user?.firstName || ''} ${a.user?.lastName || ''}`.trim(),
+          studentId: a.user?.studentId || 'N/A',
+          status: isLate ? 'Late' : 'Present',
+          checkInAt: a.checkInAt,
+          checkOutAt: a.checkOutAt,
+          checkInType: a.checkInType,
+        };
+      }),
+      ...classDetail.absentStudents.map((s) => ({
+        id: `absent-${s.id}`,
+        name: `${s.firstName} ${s.lastName}`.trim(),
+        studentId: s.studentId || 'N/A',
+        status: 'Absent',
+        checkInAt: '',
+        checkOutAt: '',
+        checkInType: undefined,
+      })),
+    ]
+    : [];
 
   return (
     <div className="space-y-6">
@@ -111,39 +137,55 @@ export function LiveAttendancePage() {
                 <span className="flex items-center gap-1"><Radio size={10} className="animate-pulse" /> Live</span>
               </Badge>
             </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {classDetail.attendances.map((a) => (
-                <div key={a.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-white/5 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
-                      {a.user?.firstName?.[0]}{a.user?.lastName?.[0]}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {a.user?.firstName} {a.user?.lastName}
-                      </p>
-                      <p className="text-xs text-gray-500">{a.user?.studentId}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                      a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
-                      a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                      'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
-                    }`}>
-                      {a.checkInType === 'BLE' && <Bluetooth size={10} />}
-                      {a.checkInType === 'QR' && <QrCode size={10} />}
-                      {a.checkInType === 'MANUAL' && <UserCheck size={10} />}
-                      {a.checkInType}
-                    </span>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">{new Date(a.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                      {a.beaconRSSI && <p className="text-xs text-gray-400">{a.beaconRSSI} dBm</p>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {classDetail.attendances.length === 0 && (
+            <div className="max-h-96 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-800/80 dark:bg-slate-900/80 border-b border-white/10">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-slate-200 font-medium">Student Details</th>
+                    <th className="text-left py-3 px-4 text-slate-200 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 text-slate-200 font-medium">Check-In Time</th>
+                    <th className="text-left py-3 px-4 text-slate-200 font-medium">Check-Out Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rosterRows.map((row) => (
+                    <tr key={row.id} className="border-b border-gray-100 dark:border-white/5 last:border-0">
+                      <td className="py-3 px-4">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{row.name}</p>
+                        <p className="text-xs text-gray-500">{row.studentId}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                          row.status === 'Present'
+                            ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+                            : row.status === 'Late'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                              : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+                        }`}>
+                          {row.status}
+                        </span>
+                        {row.checkInType === 'MANUAL' && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                            <UserCheck size={10} /> Manual Override
+                          </span>
+                        )}
+                        {row.checkInType === 'QR' && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">
+                            <QrCode size={10} /> QR
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-gray-500">
+                        {row.checkInAt ? new Date(row.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-gray-500">
+                        {row.checkOutAt ? new Date(row.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {rosterRows.length === 0 && (
                 <p className="text-center text-gray-400 py-8">Waiting for students to check in...</p>
               )}
             </div>

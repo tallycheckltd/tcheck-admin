@@ -54,8 +54,8 @@ export function LoginPage() {
       <div className="hidden lg:flex flex-1 flex-col justify-center items-center relative px-16">
         <div className="max-w-lg">
           <div className="flex items-center gap-3 mb-8">
-            <img src="/logo.svg" alt="TCheck" className="w-12 h-12" />
-            <span className="text-2xl font-bold text-white tracking-tight">TCheck</span>
+            <img src="/logo.svg" alt="Tcheck" className="w-12 h-12" />
+            <span className="text-2xl font-bold text-white tracking-tight">Tcheck</span>
           </div>
 
           <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
@@ -89,7 +89,7 @@ export function LoginPage() {
         </div>
 
         <div className="absolute bottom-8 left-16 text-xs text-slate-600">
-          &copy; {new Date().getFullYear()} TCheck. All rights reserved.
+          &copy; {new Date().getFullYear()} Tcheck. All rights reserved.
         </div>
       </div>
 
@@ -98,8 +98,8 @@ export function LoginPage() {
         <div className="w-full max-w-[420px]">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
-            <img src="/logo.svg" alt="TCheck" className="w-10 h-10" />
-            <span className="text-xl font-bold text-white tracking-tight">TCheck</span>
+            <img src="/logo.svg" alt="Tcheck" className="w-10 h-10" />
+            <span className="text-xl font-bold text-white tracking-tight">Tcheck</span>
           </div>
 
           <div className="mb-8">
