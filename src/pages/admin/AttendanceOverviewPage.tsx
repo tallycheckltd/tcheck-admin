@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useApi } from '../../hooks/useApi';
 import {
-  Activity, AlertTriangle, BookOpen, Clock, TrendingUp, ShieldAlert,
+  Activity, AlertTriangle, BookOpen, Clock, TrendingUp, ShieldAlert, FileDown,
 } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { exportAttendanceOverviewPdf } from '../../lib/adminPdfExport';
 import {
   CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar,
 } from 'recharts';
@@ -38,6 +40,7 @@ function buildNeedsAttention(stats: DashboardStats, classStats: ClassAttendanceS
 
 export function AttendanceOverviewPage() {
   const dashOpts = { refetchIntervalMs: DASHBOARD_REFRESH_MS, refetchWhenVisible: true } as const;
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const { data: stats, loading } = useApi<DashboardStats>('/attendance/dashboard-stats', dashOpts);
   const { data: classStats } = useApi<ClassAttendanceStat[]>('/attendance/class-stats', dashOpts);
@@ -83,12 +86,35 @@ export function AttendanceOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance Overview</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">High-level summary of campus activity</p>
         </div>
-        <Badge color="blue">Live · auto-updates every 30s</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!stats || pdfBusy}
+            onClick={async () => {
+              if (!stats) return;
+              setPdfBusy(true);
+              try {
+                await exportAttendanceOverviewPdf(stats, classStats ?? []);
+              } catch {
+                window.alert('Could not generate PDF. Try Chrome or Edge on desktop.');
+              } finally {
+                setPdfBusy(false);
+              }
+            }}
+            className="gap-1.5"
+          >
+            <FileDown size={14} />
+            {pdfBusy ? 'PDF…' : 'Download PDF'}
+          </Button>
+          <Badge color="blue">Live · auto-updates every 30s</Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

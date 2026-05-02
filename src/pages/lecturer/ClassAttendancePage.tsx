@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info } from 'lucide-react';
+import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown } from 'lucide-react';
+import { exportSessionLedgerPdf } from '../../lib/adminPdfExport';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { csvField } from '../../lib/csv';
@@ -24,6 +25,7 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
   const queryParams = lecturerId ? `?lecturerId=${lecturerId}` : '';
   const { data: stats } = useApi<ClassAttendanceStat[]>(`/attendance/class-stats${queryParams}`);
   const [search, setSearch] = useState('');
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const filtered = stats?.filter((s) => {
     if (!search) return true;
@@ -79,9 +81,29 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
             </span>
           </div>
         </div>
-        <Button variant="secondary" onClick={exportCSV}>
-          <Download size={16} className="mr-1" /> Export CSV
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={exportCSV}>
+            <Download size={16} className="mr-1" /> Export CSV
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!filtered?.length || pdfExporting}
+            onClick={async () => {
+              if (!filtered?.length) return;
+              setPdfExporting(true);
+              try {
+                await exportSessionLedgerPdf(filtered, 'tcheck-session-attendance');
+              } catch {
+                window.alert('Could not generate PDF. Try Chrome or Edge on desktop.');
+              } finally {
+                setPdfExporting(false);
+              }
+            }}
+          >
+            <FileDown size={16} className="mr-1" />
+            {pdfExporting ? 'PDF…' : 'Download PDF'}
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-md">

@@ -9,8 +9,11 @@ import {
   Activity,
   Users,
   Building2,
+  FileDown,
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
+import { exportCampusAnalyticsPdf } from '../../lib/adminPdfExport';
 import { format, parseISO } from 'date-fns';
 import {
   ResponsiveContainer,
@@ -88,6 +91,7 @@ export function AttendanceAnalyticsPage() {
   );
   const [search, setSearch] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const statsList = sessionRows ?? [];
   const uniqueCourses = useMemo(
@@ -128,6 +132,18 @@ export function AttendanceAnalyticsPage() {
 
   async function refreshAll() {
     await Promise.all([refetchCampus(), refetchRows()]);
+  }
+
+  async function handleExportPdf() {
+    if (!campus) return;
+    setPdfExporting(true);
+    try {
+      await exportCampusAnalyticsPdf(campus, filtered);
+    } catch {
+      window.alert('Could not generate PDF. If this persists, try Chrome or Edge on desktop.');
+    } finally {
+      setPdfExporting(false);
+    }
   }
 
   if (showInitialSpinner) {
@@ -172,6 +188,16 @@ export function AttendanceAnalyticsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!campus || pdfExporting}
+            onClick={() => void handleExportPdf()}
+            className="gap-2"
+          >
+            <FileDown size={16} className={pdfExporting ? 'animate-pulse' : ''} />
+            {pdfExporting ? 'Building PDF…' : 'Download PDF'}
+          </Button>
           <select
             value={courseFilter}
             onChange={(e) => setCourseFilter(e.target.value)}
