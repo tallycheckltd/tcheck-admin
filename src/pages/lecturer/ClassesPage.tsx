@@ -9,6 +9,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Plus, Radio, Eye, Trash2 } from 'lucide-react';
 import type { ClassSession, Course } from '../../types';
 import { getClassTimeStatus } from '../../utils/classTimeStatus';
+import { formatClassCalendarDate, formatClassTimeLocal } from '../../utils/classDateDisplay';
 
 export function ClassesPage() {
   const { user } = useAuth();
@@ -124,9 +125,6 @@ export function ClassesPage() {
     await refetch({ silent: true });
   };
 
-  const fmt = (d: string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric' });
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -156,8 +154,10 @@ export function ClassesPage() {
               <tr key={cls.id}>
                 <td className="font-medium text-slate-950 dark:text-white">{cls.title}</td>
                 <td>{cls.course?.name || '-'} <span className="text-slate-600 dark:text-slate-400">({cls.course?.code})</span></td>
-                <td>{fmtDate(cls.date)}</td>
-                <td>{fmt(cls.startTime)} - {fmt(cls.endTime)}</td>
+                <td>{formatClassCalendarDate(cls.date)}</td>
+                <td>
+                  {formatClassTimeLocal(cls.startTime)} – {formatClassTimeLocal(cls.endTime)}
+                </td>
                 <td>{cls.room || '-'}</td>
                 <td className="font-medium">{cls._count?.attendances || 0}</td>
                 <td>

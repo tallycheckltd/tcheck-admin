@@ -23,6 +23,7 @@ import { api } from '../../lib/api';
 import { exportCourseRecordsPdf, exportHodRosterPdf, exportLecturerSessionDetailPdf } from '../../lib/adminPdfExport';
 import { clsx } from 'clsx';
 import { format, parseISO } from 'date-fns';
+import { formatClassCalendarDate } from '../../utils/classDateDisplay';
 
 /* ---- HOD / admin exports (CSV) ---- */
 interface RosterRow {
@@ -479,7 +480,7 @@ function LecturerReportsView() {
                   {cls.title}
                 </div>
                 <div className={clsx('text-[10px] mt-1', selectedClassId === cls.id ? 'text-blue-100' : 'opacity-65')}>
-                  {format(parseISO(`${cls.date}T12:00:00`), 'EEE, MMM d, yyyy')}
+                  {formatClassCalendarDate(cls.date)}
                 </div>
               </button>
             ))}

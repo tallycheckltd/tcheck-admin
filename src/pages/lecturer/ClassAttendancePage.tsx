@@ -8,6 +8,7 @@ import { exportSessionLedgerPdf } from '../../lib/adminPdfExport';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { csvField } from '../../lib/csv';
+import { formatClassCalendarDate, formatClassTimeLocal } from '../../utils/classDateDisplay';
 
 export function ClassAttendancePage() {
   const { classId } = useParams<{ classId: string }>();
@@ -40,7 +41,7 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
       [
         csvField(s.title),
         csvField(s.course.name),
-        csvField(new Date(s.date).toLocaleDateString()),
+        csvField(formatClassCalendarDate(s.date)),
         csvField(s.totalEnrolled),
         csvField(s.totalCheckedIn),
         csvField(`${s.attendanceRate}%`),
@@ -155,12 +156,7 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
                   <div className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-500">{s.course.name}</div>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 align-top text-slate-600 dark:text-slate-400">
-                  {new Date(s.date).toLocaleDateString(undefined, {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
+                  {formatClassCalendarDate(s.date)}
                 </td>
                 <td className="px-4 py-3 align-top tabular-nums text-slate-700 dark:text-slate-400">{s.totalEnrolled}</td>
                 <td className="px-4 py-3 text-center align-top tabular-nums font-medium text-slate-950 dark:text-white">
@@ -275,8 +271,10 @@ function ClassDetailView({ classId }: { classId: string }) {
               {data.classInfo.courseName} ({data.classInfo.courseCode})
             </p>
             <div className="flex items-center gap-4 mt-3 text-sm text-slate-600">
-              <span className="flex items-center gap-1"><Clock size={14} /> {new Date(data.classInfo.date).toLocaleDateString()}</span>
-              <span>{new Date(data.classInfo.startTime).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })} - {new Date(data.classInfo.endTime).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="flex items-center gap-1"><Clock size={14} /> {formatClassCalendarDate(data.classInfo.date)}</span>
+              <span>
+                {formatClassTimeLocal(data.classInfo.startTime)} – {formatClassTimeLocal(data.classInfo.endTime)}
+              </span>
               {data.classInfo.room && <span>Room: {data.classInfo.room}</span>}
             </div>
           </div>
