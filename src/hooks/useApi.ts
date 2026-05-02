@@ -1,19 +1,41 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 
-export function useApi<T>(path: string | null) {
+export type UseApiOptions = {
+  /** If set to a positive number, refetches on this interval (background refresh; does not flash loading). */
+  refetchIntervalMs?: number | false;
+  /** Refetch when the tab becomes visible again (e.g. returning from another app). */
+  refetchWhenVisible?: boolean;
+};
+
+export function useApi<T>(path: string | null, options?: UseApiOptions) {
+  const refetchIntervalMs = options?.refetchIntervalMs ?? false;
+  const refetchWhenVisible = options?.refetchWhenVisible ?? false;
+
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(!!path);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(() => {
-    if (!path) return;
-    setLoading(true);
-    setError(null);
-    api.get<T>(path)
-      .then(setData)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+  const refetch = useCallback((opts?: { silent?: boolean }) => {
+    if (!path) return Promise.resolve(undefined);
+    const silent = opts?.silent ?? false;
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
+    return api.get<T>(path)
+      .then((d) => {
+        setData(d);
+      })
+      .catch((e: unknown) => {
+        if (!silent) {
+          const msg = e instanceof Error ? e.message : 'Request failed';
+          setError(msg);
+        }
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   }, [path]);
 
   useEffect(() => {
@@ -25,6 +47,23 @@ export function useApi<T>(path: string | null) {
       cancelled = true;
     };
   }, [refetch]);
+
+  useEffect(() => {
+    if (!path || !refetchIntervalMs || refetchIntervalMs <= 0) return undefined;
+    const id = window.setInterval(() => {
+      refetch({ silent: true });
+    }, refetchIntervalMs);
+    return () => window.clearInterval(id);
+  }, [path, refetchIntervalMs, refetch]);
+
+  useEffect(() => {
+    if (!path || !refetchWhenVisible) return undefined;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refetch({ silent: true });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [path, refetchWhenVisible, refetch]);
 
   return { data, loading, error, refetch, setData };
 }

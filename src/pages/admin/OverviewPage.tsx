@@ -12,8 +12,13 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
+const DASHBOARD_REFRESH_MS = 30_000;
+
 export function OverviewPage() {
-  const { data: stats } = useApi<DashboardStats>('/attendance/dashboard-stats');
+  const { data: stats } = useApi<DashboardStats>('/attendance/dashboard-stats', {
+    refetchIntervalMs: DASHBOARD_REFRESH_MS,
+    refetchWhenVisible: true,
+  });
   const { user } = useAuth();
   const navigate = useNavigate();
 

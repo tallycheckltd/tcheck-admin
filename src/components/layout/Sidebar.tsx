@@ -186,7 +186,10 @@ export function Sidebar() {
   const navigate = useNavigate();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const { data: unreadData, refetch: refetchUnread } = useApi<{ count: number }>('/notifications/unread-count');
+  const { data: unreadData, refetch: refetchUnread } = useApi<{ count: number }>('/notifications/unread-count', {
+    refetchIntervalMs: 60_000,
+    refetchWhenVisible: true,
+  });
   const unreadCount = unreadData?.count || 0;
 
   // Real-time unread count updates
@@ -194,7 +197,7 @@ export function Sidebar() {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
     const s = createSocket(token);
-    const handler = () => refetchUnread();
+    const handler = () => refetchUnread({ silent: true });
     s.on('message:new', handler);
     s.on('flag:new', handler);
     return () => { s.disconnect(); };

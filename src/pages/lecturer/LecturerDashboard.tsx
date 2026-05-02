@@ -1,14 +1,24 @@
 import { BookOpen, Users, Calendar, TrendingUp } from 'lucide-react';
 import { BarChartCard } from '../../components/charts/BarChartCard';
 import { useApi } from '../../hooks/useApi';
+import { useTodayIsoDateUtc } from '../../hooks/useTodayIsoDate';
 import { useAuth } from '../../context/AuthContext';
 import type { Course, ClassSession, ClassAttendanceStat } from '../../types';
 
+const DASHBOARD_REFRESH_MS = 30_000;
+
 export function LecturerDashboard() {
   const { user } = useAuth();
-  const { data: courses } = useApi<Course[]>(`/courses?lecturerId=${user?.id}`);
-  const { data: todayClasses } = useApi<ClassSession[]>('/classes?date=' + new Date().toISOString().split('T')[0]);
-  const { data: classStats } = useApi<ClassAttendanceStat[]>(`/attendance/class-stats?lecturerId=${user?.id}`);
+  const todayIso = useTodayIsoDateUtc();
+  const dashOpts = { refetchIntervalMs: DASHBOARD_REFRESH_MS, refetchWhenVisible: true } as const;
+
+  const lecturerId = user?.id;
+  const coursesPath = lecturerId ? `/courses?lecturerId=${lecturerId}` : null;
+  const classStatsPath = lecturerId ? `/attendance/class-stats?lecturerId=${lecturerId}` : null;
+
+  const { data: courses } = useApi<Course[]>(coursesPath, dashOpts);
+  const { data: todayClasses } = useApi<ClassSession[]>(`/classes?date=${todayIso}`, dashOpts);
+  const { data: classStats } = useApi<ClassAttendanceStat[]>(classStatsPath, dashOpts);
 
   const totalEnrolled = courses?.reduce((sum, c) => sum + (c._count?.enrollments || 0), 0) || 0;
   const myClasses = todayClasses?.filter((c) => courses?.some((co) => co.id === c.courseId)) || [];

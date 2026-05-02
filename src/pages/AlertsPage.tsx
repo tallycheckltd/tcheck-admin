@@ -25,8 +25,8 @@ export function AlertsPage() {
 
     // Listen for any new notification-bearing events
     const handler = () => {
-      refetch();
-      refetchCount();
+      refetch({ silent: true });
+      refetchCount({ silent: true });
     };
     s.on('message:new', handler);
     s.on('flag:new', handler);
