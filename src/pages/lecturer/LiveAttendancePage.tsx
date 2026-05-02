@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
 import { useApi } from '../../hooks/useApi';
@@ -17,7 +17,7 @@ export function LiveAttendancePage() {
 
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [classDetail, setClassDetail] = useState<ClassAttendanceDetail | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   const myClasses = isAdmin
     ? (classes || [])
@@ -25,16 +25,25 @@ export function LiveAttendancePage() {
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
-    if (!token) return;
+    if (!token) return undefined;
     const s = createSocket(token);
-    setSocket(s);
-    return () => { s.disconnect(); };
+    socketRef.current = s;
+    return () => {
+      s.disconnect();
+      socketRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
-    if (!selectedClass || !socket) return;
-    socket.emit('join:class', selectedClass);
-    api.get<ClassAttendanceDetail>(`/attendance/class/${selectedClass}`).then(setClassDetail);
+    const socket = socketRef.current;
+    if (!selectedClass || !socket) return undefined;
+
+    const joinClass = () => {
+      socket.emit('join:class', selectedClass);
+      api.get<ClassAttendanceDetail>(`/attendance/class/${selectedClass}`).then(setClassDetail);
+    };
+
+    joinClass();
 
     const handler = () => {
       api.get<ClassAttendanceDetail>(`/attendance/class/${selectedClass}`).then(setClassDetail);
@@ -45,7 +54,7 @@ export function LiveAttendancePage() {
       socket.emit('leave:class', selectedClass);
       socket.off('attendance:update', handler);
     };
-  }, [selectedClass, socket]);
+  }, [selectedClass]);
 
   const rosterRows = classDetail
     ? [

@@ -26,4 +26,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export const useTheme = () => useContext(ThemeContext);
+/** @see react-refresh/only-export-components — hook colocated with provider */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useTheme() {
+  return useContext(ThemeContext);
+}

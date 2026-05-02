@@ -19,9 +19,11 @@ interface RosterRow {
   riskLevel: string;
 }
 
+type HodReportType = '' | 'semester-roster' | 'course-attendance' | 'at-risk';
+
 function HodReportsView() {
   const { user } = useAuth();
-  const [reportType, setReportType] = useState<'semester-roster' | 'course-attendance' | 'at-risk' | ''>('');
+  const [reportType, setReportType] = useState<HodReportType>('');
   const [selectedCourse, setSelectedCourse] = useState('');
   const [dateFrom, setDateFrom] = useState('2026-01-13');
   const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
@@ -70,7 +72,7 @@ function HodReportsView() {
       a.href = url;
       a.download = filename;
       a.click();
-    } catch (e) {
+    } catch {
       setExportError('Export failed. Please check your parameters.');
     } finally {
       setExporting(false);
@@ -87,7 +89,7 @@ function HodReportsView() {
             </label>
             <select
               value={reportType}
-              onChange={(e) => setReportType(e.target.value as any)}
+              onChange={(e) => setReportType(e.target.value as HodReportType)}
               className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white"
             >
               <option value="">Select type...</option>

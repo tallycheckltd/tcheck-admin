@@ -16,7 +16,15 @@ export function useApi<T>(path: string | null) {
       .finally(() => setLoading(false));
   }, [path]);
 
-  useEffect(() => { refetch(); }, [refetch]);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) refetch();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [refetch]);
 
   return { data, loading, error, refetch, setData };
 }

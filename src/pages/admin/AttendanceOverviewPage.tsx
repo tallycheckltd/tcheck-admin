@@ -6,17 +6,7 @@ import {
   CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 import { Badge } from '../../components/ui/Badge';
-
-interface DashboardStats {
-  totalStudents: number;
-  totalLecturers: number;
-  totalCourses: number;
-  totalClasses: number;
-  todayAttendances: number;
-  pendingApprovals: number;
-  recentAttendances: any[];
-  attendanceByDay: { date: string; count: number }[];
-}
+import type { DashboardStats } from '../../types';
 
 export function AttendanceOverviewPage() {
   const { data: stats, loading } = useApi<DashboardStats>('/attendance/dashboard-stats');

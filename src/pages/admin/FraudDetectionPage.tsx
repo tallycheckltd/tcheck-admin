@@ -6,10 +6,31 @@ import {
 import { Badge } from '../../components/ui/Badge';
 import { format } from 'date-fns';
 
+interface FraudFlaggedAttendance {
+  id: string;
+  user: { firstName: string; lastName: string; studentId?: string | null };
+  class: { title: string; course: { code: string } };
+  flagReason: string;
+  beaconRSSI: number;
+  dwellTime: number;
+  checkInAt: string;
+}
+
+interface FraudSuspiciousPair {
+  id: string;
+  coAttendanceCount: number;
+}
+
+interface FraudLowBatteryBeacon {
+  beaconUUID: string;
+  location: string;
+  voltage: number;
+}
+
 interface FraudAnalytics {
-  flaggedAttendances: any[];
-  suspiciousPairs: any[];
-  lowBatteryBeacons: any[];
+  flaggedAttendances: FraudFlaggedAttendance[];
+  suspiciousPairs: FraudSuspiciousPair[];
+  lowBatteryBeacons: FraudLowBatteryBeacon[];
   deviceStats: {
     total: number;
     bound: number;
@@ -120,7 +141,7 @@ export function FraudDetectionPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                {data.flaggedAttendances.map((f: any) => (
+                {data.flaggedAttendances.map((f) => (
                   <tr key={f.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900 dark:text-white">{f.user.firstName} {f.user.lastName}</div>
@@ -166,7 +187,7 @@ export function FraudDetectionPage() {
             </h2>
           </div>
           <div className="p-6 flex-1 space-y-4">
-            {data.lowBatteryBeacons.map((b: any) => (
+            {data.lowBatteryBeacons.map((b) => (
               <div key={b.beaconUUID} className="p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-red-500/20">
                 <div className="flex justify-between items-start mb-2">
                   <div className="font-semibold text-red-500 text-sm truncate pr-2">{b.location}</div>
@@ -200,7 +221,7 @@ export function FraudDetectionPage() {
           </h2>
           <p className="text-xs text-gray-500 mb-6">Users who consistently check-in from the same device (buddy punching indicator).</p>
           <div className="space-y-4">
-            {data.suspiciousPairs.map((p: any) => (
+            {data.suspiciousPairs.map((p) => (
               <div key={p.id} className="flex items-center justify-between p-4 rounded-xl border border-orange-500/10 bg-orange-500/5 transition-hover hover:border-orange-500/30">
                 <div className="flex items-center gap-3">
                   <div className="flex -space-x-3">

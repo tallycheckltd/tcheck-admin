@@ -78,6 +78,8 @@ export function AlertsPage() {
   };
 
   const timeAgo = (dateStr: string) => {
+    // Relative labels need a stable clock anchor; purity rule flags Date.now during render intentionally.
+    // eslint-disable-next-line react-hooks/purity -- timestamps are inherently wall-clock-derived
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return 'Just now';

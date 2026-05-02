@@ -36,7 +36,9 @@ export function DeviceVerificationPage() {
     try {
       await verify(`/devices/verify/${userId}`);
       refetch();
-    } catch (err) { alert('Failed to verify device'); }
+    } catch {
+      alert('Failed to verify device');
+    }
   };
 
   const handleReset = async (userId: string) => {
@@ -44,7 +46,9 @@ export function DeviceVerificationPage() {
     try {
       await reset(`/devices/${userId}`);
       refetch();
-    } catch (err) { alert('Failed to reset device'); }
+    } catch {
+      alert('Failed to reset device');
+    }
   };
 
   if (loading) {
