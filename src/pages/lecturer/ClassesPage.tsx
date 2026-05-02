@@ -11,6 +11,14 @@ import type { ClassSession, Course } from '../../types';
 import { getClassTimeStatus } from '../../utils/classTimeStatus';
 import { formatClassCalendarDate, formatClassTimeLocal } from '../../utils/classDateDisplay';
 
+function localCalendarYmd(): string {
+  const n = new Date();
+  const y = n.getFullYear();
+  const mo = String(n.getMonth() + 1).padStart(2, '0');
+  const da = String(n.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${da}`;
+}
+
 export function ClassesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
@@ -28,7 +36,7 @@ export function ClassesPage() {
 
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({
-    courseId: '', title: '', date: new Date().toISOString().split('T')[0],
+    courseId: '', title: '', date: localCalendarYmd(),
     startTime: '', endTime: '', room: '', beaconUUID: '',
     checkInStart: '', checkInEnd: '',
     lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
@@ -105,7 +113,7 @@ export function ClassesPage() {
     });
     setModal(false);
     setForm({
-      courseId: '', title: '', date: new Date().toISOString().split('T')[0],
+      courseId: '', title: '', date: localCalendarYmd(),
       startTime: '', endTime: '', room: '', beaconUUID: '',
       checkInStart: '', checkInEnd: '',
       lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
