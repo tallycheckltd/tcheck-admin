@@ -1,7 +1,23 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, parseISO } from 'date-fns';
-import type { CampusAnalytics, ClassAttendanceStat, DashboardStats } from '../types';
+import type {
+  CampusAnalytics,
+  ClassAttendanceDetail,
+  ClassAttendanceStat,
+  CourseAttendanceExportRow,
+  DashboardStats,
+} from '../types';
+
+/** Roster / at-risk rows from `GET /attendance/roster` (same shape as Reports page). */
+export type HodRosterPdfRow = {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  overallAttendancePct: number;
+  riskLevel: string;
+};
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
@@ -158,6 +174,136 @@ export async function exportCampusAnalyticsPdf(campus: CampusAnalytics, sessions
   });
 
   doc.save(`${fileBase}.pdf`);
+}
+
+/** Semester roster or at-risk list (HOD / admin reports). */
+export async function exportHodRosterPdf(
+  rows: HodRosterPdfRow[],
+  variant: 'semester-roster' | 'at-risk',
+  dateFrom: string,
+  dateTo: string,
+  fileBase?: string,
+) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const label = variant === 'at-risk' ? 'At-risk roster (< 75%)' : 'Semester roster';
+  const startY = await addTcheckHeader(
+    doc,
+    `TCheck — ${label}`,
+    `Date range ${dateFrom} → ${dateTo} · Generated ${format(new Date(), 'PPpp')}`,
+  );
+
+  autoTable(doc, {
+    startY,
+    head: [['Student ID', 'First name', 'Last name', 'Email', 'Attendance %', 'Risk']],
+    body: rows.map((r) => [
+      r.studentId,
+      r.firstName,
+      r.lastName,
+      r.email,
+      `${r.overallAttendancePct}%`,
+      r.riskLevel,
+    ]),
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 40, right: 40 },
+  });
+
+  doc.save(`${fileBase ?? `tcheck-${variant}`}.pdf`);
+}
+
+/** Course-level attendance records (line items). */
+export async function exportCourseRecordsPdf(
+  rows: CourseAttendanceExportRow[],
+  courseLabel: string,
+  dateFrom: string,
+  dateTo: string,
+  fileBase?: string,
+) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const startY = await addTcheckHeader(
+    doc,
+    'TCheck — Course attendance records',
+    `${courseLabel} · ${dateFrom} → ${dateTo} · Generated ${format(new Date(), 'PPpp')}`,
+  );
+
+  autoTable(doc, {
+    startY,
+    head: [['Class', 'Date', 'Room', 'Student ID', 'Name', 'Check-in', 'Check-out', 'Method', 'Punctuality']],
+    body: rows.map((r) => [
+      r.classTitle,
+      format(parseISO(`${r.classDate}T12:00:00`), 'yyyy-MM-dd'),
+      r.room ?? '',
+      r.studentId ?? '',
+      `${r.firstName} ${r.lastName}`.trim(),
+      format(parseISO(r.checkInAt), 'yyyy-MM-dd HH:mm'),
+      r.checkOutAt ? format(parseISO(r.checkOutAt), 'yyyy-MM-dd HH:mm') : '',
+      String(r.checkInType),
+      r.punctuality,
+    ]),
+    styles: { fontSize: 7, cellPadding: 3 },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 36, right: 36 },
+  });
+
+  doc.save(`${fileBase ?? 'tcheck-course-records'}.pdf`);
+}
+
+/** Lecturer: single session present roster (+ absent list). */
+export async function exportLecturerSessionDetailPdf(detail: ClassAttendanceDetail, fileBase?: string) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const dateStr = format(parseISO(`${detail.classInfo.date}T12:00:00`), 'MMM d, yyyy');
+  const startY = await addTcheckHeader(
+    doc,
+    'TCheck — Session attendance report',
+    `${detail.classInfo.title} · ${detail.classInfo.courseCode} · ${dateStr}`,
+  );
+
+  let y = startY;
+  doc.setFontSize(10);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Enrolled: ${detail.totalEnrolled} · Present: ${detail.totalCheckedIn} · Absent: ${detail.absentStudents.length}`, 40, y);
+  y += 28;
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Student ID', 'Name', 'Check-in', 'Check-out', 'Method', 'Status', 'Punctuality']],
+    body: detail.attendances.map((r) => [
+      r.user?.studentId ?? '—',
+      `${r.user?.firstName ?? ''} ${r.user?.lastName ?? ''}`.trim(),
+      format(parseISO(r.checkInAt), 'MMM d HH:mm'),
+      r.checkOutAt ? format(parseISO(r.checkOutAt), 'MMM d HH:mm') : '—',
+      String(r.checkInType),
+      r.status,
+      r.punctuality ?? '—',
+    ]),
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    margin: { left: 40, right: 40 },
+  });
+
+  y = afterTableY(doc, y + 200) + 24;
+
+  if (detail.absentStudents.length > 0) {
+    doc.setFontSize(11);
+    doc.setTextColor(185, 28, 28);
+    doc.text(`Absent students (${detail.absentStudents.length})`, 40, y);
+    y += 18;
+    autoTable(doc, {
+      startY: y,
+      head: [['Student ID', 'Name']],
+      body: detail.absentStudents.map((s) => [s.studentId ?? '—', `${s.firstName} ${s.lastName}`]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [127, 29, 29], textColor: 255 },
+      margin: { left: 40, right: 40 },
+    });
+  }
+
+  const safe =
+    fileBase ??
+    `tcheck-session-${detail.classInfo.title.replace(/[^\w\s-]/g, '').slice(0, 40) || 'attendance'}`;
+  doc.save(`${safe}.pdf`);
 }
 
 /** Overview dashboard snapshot PDF. */

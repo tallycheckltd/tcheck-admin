@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import type { Course, ClassSession, ClassAttendanceDetail, CourseAttendanceExportRow } from '../../types';
 import { api } from '../../lib/api';
-import { csvField } from '../../lib/csv';
+import { exportCourseRecordsPdf, exportHodRosterPdf, exportLecturerSessionDetailPdf } from '../../lib/adminPdfExport';
 import { clsx } from 'clsx';
 import { format, parseISO } from 'date-fns';
 
@@ -115,9 +115,6 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
     setExportError('');
 
     try {
-      let csvContent = '';
-      let filename = '';
-
       if (reportType === 'semester-roster' || reportType === 'at-risk') {
         const rows = await api.get<RosterRow[]>(`/attendance/roster?from=${dateFrom}&to=${dateTo}`);
         if (!rows || rows.length === 0) {
@@ -130,21 +127,18 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
             ? rows.filter((r) => r.overallAttendancePct < 75).sort((a, b) => a.overallAttendancePct - b.overallAttendancePct)
             : rows;
 
-        csvContent =
-          'Student ID,First Name,Last Name,Email,Overall Attendance %,Risk Level\n' +
-          filtered
-            .map((r) =>
-              [
-                csvField(r.studentId),
-                csvField(r.firstName),
-                csvField(r.lastName),
-                csvField(r.email),
-                csvField(`${r.overallAttendancePct}%`),
-                csvField(r.riskLevel),
-              ].join(','),
-            )
-            .join('\n');
-        filename = `${reportType}-${dateTo}.csv`;
+        if (filtered.length === 0) {
+          setExportError('No rows match this export (try widening the date range).');
+          return;
+        }
+
+        await exportHodRosterPdf(
+          filtered,
+          reportType === 'at-risk' ? 'at-risk' : 'semester-roster',
+          dateFrom,
+          dateTo,
+          `tcheck-${reportType}-${dateTo}`,
+        );
       } else if (reportType === 'course-attendance' && selectedCourse) {
         const rows = await api.get<CourseAttendanceExportRow[]>(
           `/attendance/course-records?courseId=${selectedCourse}&from=${dateFrom}&to=${dateTo}`,
@@ -153,35 +147,12 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
           setExportError('No attendance rows for this course and range.');
           return;
         }
-        csvContent =
-          'Class,Date,Room,Student ID,Name,Time In,Time Out,Method,Punctuality\n' +
-          rows
-            .map((r) =>
-              [
-                csvField(r.classTitle),
-                csvField(format(parseISO(`${r.classDate}T12:00:00`), 'yyyy-MM-dd')),
-                csvField(r.room || ''),
-                csvField(r.studentId),
-                csvField(`${r.firstName} ${r.lastName}`),
-                csvField(format(parseISO(r.checkInAt), 'yyyy-MM-dd HH:mm')),
-                csvField(r.checkOutAt ? format(parseISO(r.checkOutAt), 'yyyy-MM-dd HH:mm') : ''),
-                csvField(String(r.checkInType)),
-                csvField(r.punctuality),
-              ].join(','),
-            )
-            .join('\n');
-        filename = `course-${selectedCourse}-${dateTo}.csv`;
+        const courseMeta = courses?.find((c) => c.id === selectedCourse);
+        const courseLabel = courseMeta ? `${courseMeta.code} — ${courseMeta.name}` : selectedCourse;
+        await exportCourseRecordsPdf(rows, courseLabel, dateFrom, dateTo, `tcheck-course-${selectedCourse}-${dateTo}`);
       }
-
-      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
     } catch {
-      setExportError('Export failed. Verify role, course, and date range.');
+      setExportError('Export failed. Verify role, course, and date range. Use Chrome or Edge if download is blocked.');
     } finally {
       setExporting(false);
     }
@@ -271,9 +242,9 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
             </div>
           </div>
 
-          <Button onClick={handleExport} disabled={!reportType || exporting} className="w-full justify-center gap-2 py-3">
+          <Button onClick={() => void handleExport()} disabled={!reportType || exporting} className="w-full justify-center gap-2 py-3">
             {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-            {exporting ? 'Generating…' : 'Download CSV'}
+            {exporting ? 'Building PDF…' : 'Download PDF'}
           </Button>
           {exportError && (
             <div className="flex gap-2 text-xs text-red-700 dark:text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-3 py-2">
@@ -295,7 +266,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
                   {rosterPreviewEligible
                     ? `First rows from roster (${dateFrom} → ${dateTo})`
                     : reportType === 'course-attendance'
-                      ? 'Line-level CSV includes every check-in row for the course and date range.'
+                      ? 'PDF includes every check-in row for the course and date range.'
                       : 'Pick a report to see guidance here.'}
                 </p>
               </div>
@@ -317,7 +288,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
             {!rosterPreviewEligible && reportType !== 'course-attendance' && (
               <div className="flex flex-col items-center justify-center text-center py-14 px-4">
                 <Sparkles className="text-amber-400 mb-3" size={36} />
-                <p className="text-sm font-medium text-[var(--app-text)]">Exports are UTF-8 CSV</p>
+                <p className="text-sm font-medium text-[var(--app-text)]">Exports are PDF with TCheck branding</p>
                 <p className="text-xs text-[var(--app-text-muted)] mt-2 max-w-md leading-relaxed">
                   Roster and at-risk views pull from your school’s approved students. Course exports include class title, room,
                   punctuality, and check-in method for auditing.
@@ -329,7 +300,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
               <div className="rounded-xl border border-dashed border-[var(--app-border)] dark:border-white/15 p-6 text-center">
                 <Building2 className="mx-auto text-[var(--app-text-muted)] mb-2" size={28} />
                 <p className="text-sm text-[var(--app-text-secondary)]">
-                  Select a course and range, then <strong>Download CSV</strong>. Files open cleanly in Excel / Google Sheets.
+                  Select a course and range, then <strong>Download PDF</strong>. Opens in your browser viewer or Preview.
                 </p>
               </div>
             )}
@@ -411,6 +382,7 @@ function LecturerReportsView() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [sessionSearch, setSessionSearch] = useState('');
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const filteredClasses = useMemo(() => {
     if (!classes) return [];
@@ -443,28 +415,17 @@ function LecturerReportsView() {
     }
   };
 
-  const exportCSV = () => {
+  const exportSessionPdf = async () => {
     if (!detail) return;
-    const header = ['Student ID', 'Name', 'Check in', 'Check out', 'Method', 'Status', 'Punctuality'].join(',');
-    const rows = detail.attendances.map((r) =>
-      [
-        csvField(r.user?.studentId ?? ''),
-        csvField(`${r.user?.firstName ?? ''} ${r.user?.lastName ?? ''}`.trim()),
-        csvField(format(parseISO(r.checkInAt), 'yyyy-MM-dd HH:mm')),
-        csvField(r.checkOutAt ? format(parseISO(r.checkOutAt), 'yyyy-MM-dd HH:mm') : ''),
-        csvField(String(r.checkInType)),
-        csvField(r.status),
-        csvField(r.punctuality ?? ''),
-      ].join(','),
-    );
-    const blob = new Blob(['\uFEFF' + header + '\n' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const safeTitle = detail.classInfo.title.replace(/[^\w\s-]/g, '').slice(0, 60) || 'session';
-    a.download = `attendance-${safeTitle}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setPdfExporting(true);
+    try {
+      const safeTitle = detail.classInfo.title.replace(/[^\w\s-]/g, '').slice(0, 60) || 'session';
+      await exportLecturerSessionDetailPdf(detail, `tcheck-session-${safeTitle}`);
+    } catch {
+      window.alert('Could not generate PDF. Try Chrome or Edge on desktop.');
+    } finally {
+      setPdfExporting(false);
+    }
   };
 
   const attendanceRate =
@@ -561,9 +522,15 @@ function LecturerReportsView() {
                   )}
                 </p>
               </div>
-              <Button onClick={exportCSV} variant="secondary" size="sm" className="shrink-0 gap-2 self-start">
-                <Download size={14} />
-                Export CSV
+              <Button
+                onClick={() => void exportSessionPdf()}
+                variant="secondary"
+                size="sm"
+                className="shrink-0 gap-2 self-start"
+                disabled={pdfExporting}
+              >
+                <Download size={14} className={pdfExporting ? 'animate-pulse' : ''} />
+                {pdfExporting ? 'PDF…' : 'Download PDF'}
               </Button>
             </div>
 
@@ -655,7 +622,7 @@ function LecturerReportsView() {
             <FileText size={44} className="mx-auto text-[var(--app-text-muted)] mb-4 opacity-50" />
             <p className="text-sm font-medium text-[var(--app-text-secondary)]">Select a session</p>
             <p className="text-xs text-[var(--app-text-muted)] mt-2 max-w-sm mx-auto">
-              Browse your upcoming and past sessions, then export a UTF-8 CSV for records.
+              Browse your upcoming and past sessions, then download a PDF report with the TCheck logo.
             </p>
           </div>
         )}
@@ -681,8 +648,8 @@ export function ReportsPage() {
         <h1 className="text-2xl font-bold tracking-tight text-[var(--app-text)]">Reports</h1>
         <p className="text-sm text-[var(--app-text-muted)] max-w-2xl">
           {isSubAdmin || isSuperAdmin
-            ? 'Download audited CSV extracts for rosters or individual courses.'
-            : 'Review attendance per teaching session and export CSV for your courses.'}
+            ? 'Download audited PDF reports for rosters or individual courses (TCheck logo on every export).'
+            : 'Review attendance per teaching session and download PDF reports for your courses.'}
         </p>
       </header>
 
