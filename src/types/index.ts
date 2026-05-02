@@ -196,6 +196,42 @@ export interface ClassAttendanceStat {
   };
 }
 
+/** GET /attendance/campus-analytics — admin matte analytics bento bundle */
+export interface CampusAnalytics {
+  fetchedAtIso: string;
+  scopedSchoolId: string | null;
+  overallAttendancePct: number;
+  overallTrendSparkline: { label: string; value: number }[];
+  attendanceDecayByWeek: {
+    weekLabel: string;
+    pct: number;
+    volumePresent: number;
+    volumeEligible: number;
+  }[];
+  blockedGateAttemptsBle: number;
+  blockedGateAttemptsQr: number;
+  atRiskStudentCount: number;
+  atRiskStudents: { studentId: string; displayName: string; attendancePct: number }[];
+  trafficHeatmapCells: { dayIdx: number; hour: number; intensity: number; dayLabel: string }[];
+  trafficHeatmapMax: number;
+  hourRange: { start: number; end: number };
+  roomUtilization: {
+    room: string;
+    enrolledTotal: number;
+    checkedInTotal: number;
+    utilizationPct: number;
+  }[];
+  unloggedSessions: {
+    id: string;
+    title: string;
+    courseCode: string;
+    lecturerName: string;
+    dateIso: string;
+    enrolled: number;
+  }[];
+  sessionCount: number;
+}
+
 export interface DashboardStats {
   totalStudents: number;
   totalLecturers: number;

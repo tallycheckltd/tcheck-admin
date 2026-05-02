@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download } from 'lucide-react';
+import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info } from 'lucide-react';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { csvField } from '../../lib/csv';
@@ -58,10 +58,26 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Class Attendance</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">View check-in details per class</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-[200px]">
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Session attendance</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Drill into BLE, QR, and manual paths with clear rates per scheduled class.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-slate-200/90 bg-white/80 px-3 py-2.5 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-400">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-sm bg-violet-500/70" aria-hidden />
+              Violet · BLE beacon
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-sm bg-purple-400/65" aria-hidden />
+              Purple · QR scans
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-sm bg-slate-400/80" aria-hidden />
+              Slate · Manual override
+            </span>
+          </div>
         </div>
         <Button variant="secondary" onClick={exportCSV}>
           <Download size={16} className="mr-1" /> Export CSV
@@ -79,62 +95,118 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
         />
       </div>
 
-      <div className="glass-card overflow-hidden">
-        <table className="w-full text-sm gradient-table">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-950/60 dark:shadow-none">
+        <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-3 text-[11px] text-slate-500 dark:border-slate-900 dark:text-slate-400">
+          <Info size={14} className="mt-0.5 shrink-0 text-slate-400" aria-hidden />
+          <span>
+            Rate divides checked-in learners by rostered enrollments on the course.
+            Opens the live roster audit trail — same surfaces students see on mobile for that session window.
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-[900px] w-full border-collapse text-sm">
           <thead>
-            <tr>
-              <th>Class</th>
-              <th>Course</th>
-              <th>Date</th>
-              <th>Enrolled</th>
-              <th>Checked In</th>
-              <th>Rate</th>
-              <th>BLE</th>
-              <th>QR</th>
-              <th>Manual</th>
-              <th>Actions</th>
+            <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-900/90 dark:text-slate-400">
+              <th className="px-5 py-3">Session</th>
+              <th className="px-4 py-3">Course</th>
+              <th className="px-4 py-3">Scheduled</th>
+              <th className="whitespace-nowrap px-4 py-3 tabular-nums">Enrolled</th>
+              <th className="whitespace-nowrap px-4 py-3 tabular-nums text-center">Present</th>
+              <th className="px-4 py-3">Rate</th>
+              <th className="px-4 py-3 text-center">BLE</th>
+              <th className="px-4 py-3 text-center">QR</th>
+              <th className="px-4 py-3 text-center">Manual</th>
+              <th className="whitespace-nowrap px-5 py-3 text-right"></th>
             </tr>
           </thead>
-          <tbody className="text-slate-800 dark:text-gray-300">
+          <tbody className="text-slate-800 dark:text-slate-300">
             {filtered?.map((s) => (
-              <tr key={s.id}>
-                <td className="font-medium text-slate-950 dark:text-white">{s.title}</td>
-                <td>{s.course.name} ({s.course.code})</td>
-                <td>{new Date(s.date).toLocaleDateString()}</td>
-                <td>{s.totalEnrolled}</td>
-                <td className="font-medium">{s.totalCheckedIn}</td>
-                <td>
-                  <span className={`font-medium ${s.attendanceRate >= 70 ? 'text-green-600 dark:text-green-400' : s.attendanceRate >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {s.attendanceRate}%
+              <tr
+                key={s.id}
+                className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-900/70 dark:hover:bg-white/[0.03]"
+              >
+                <td className="max-w-[200px] px-5 py-3 align-top font-semibold text-slate-950 dark:text-white">
+                  <span className="line-clamp-2">{s.title}</span>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="font-medium text-slate-900 dark:text-slate-100">{s.course.code}</div>
+                  <div className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-500">{s.course.name}</div>
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 align-top text-slate-600 dark:text-slate-400">
+                  {new Date(s.date).toLocaleDateString(undefined, {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </td>
+                <td className="px-4 py-3 align-top tabular-nums text-slate-700 dark:text-slate-400">{s.totalEnrolled}</td>
+                <td className="px-4 py-3 text-center align-top tabular-nums font-medium text-slate-950 dark:text-white">
+                  {s.totalCheckedIn}
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="flex flex-col gap-1">
+                    <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                      <div
+                        className="h-full rounded-full transition-colors"
+                        style={{
+                          width: `${Math.min(100, s.attendanceRate)}%`,
+                          background:
+                            s.attendanceRate >= 75 ? 'rgb(22 163 74 / 0.85)' : s.attendanceRate >= 50 ? 'rgb(180 83 9)' : 'rgb(185 28 28)',
+                        }}
+                      />
+                    </div>
+                    <span
+                      className={`text-xs font-semibold tabular-nums ${
+                        s.attendanceRate >= 75
+                          ? 'text-emerald-700 dark:text-emerald-400/90'
+                          : s.attendanceRate >= 50
+                            ? 'text-amber-800 dark:text-amber-400/90'
+                            : 'text-red-700 dark:text-red-400'
+                      }`}
+                    >
+                      {s.attendanceRate}%
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-center align-top">
+                  <span className="inline-flex items-center justify-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-800 dark:bg-violet-500/15 dark:text-violet-300">
+                    <Bluetooth size={12} className="shrink-0" aria-hidden />
+                    {s.checkInBreakdown.BLE}
                   </span>
                 </td>
-                <td>
-                  <span className="inline-flex items-center gap-1 text-xs">
-                    <Bluetooth size={12} className="text-blue-500" /> {s.checkInBreakdown.BLE}
+                <td className="px-4 py-3 text-center align-top">
+                  <span className="inline-flex items-center justify-center gap-1 rounded-full bg-purple-500/12 px-2 py-0.5 text-xs font-semibold text-purple-800 dark:bg-purple-300/95">
+                    <QrCode size={12} className="shrink-0" aria-hidden />
+                    {s.checkInBreakdown.QR}
                   </span>
                 </td>
-                <td>
-                  <span className="inline-flex items-center gap-1 text-xs">
-                    <QrCode size={12} className="text-purple-500" /> {s.checkInBreakdown.QR}
+                <td className="px-4 py-3 text-center align-top">
+                  <span className="inline-flex items-center justify-center gap-1 rounded-full bg-slate-500/12 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <UserCheck size={12} className="shrink-0 text-slate-500" aria-hidden />
+                    {s.checkInBreakdown.MANUAL}
                   </span>
                 </td>
-                <td>
-                  <span className="inline-flex items-center gap-1 text-xs">
-                    <UserCheck size={12} className="text-slate-600" /> {s.checkInBreakdown.MANUAL}
-                  </span>
-                </td>
-                <td>
-                  <a href={`/attendance/${s.id}`} className="text-blue-500 hover:text-blue-600 text-xs font-medium">
-                    View Details
+                <td className="whitespace-nowrap px-5 py-3 align-top text-right">
+                  <a
+                    href={`/attendance/${s.id}`}
+                    className="text-sm font-semibold text-slate-800 underline-offset-4 hover:text-slate-950 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    Open roster
                   </a>
                 </td>
               </tr>
             ))}
             {(!filtered || filtered.length === 0) && (
-              <tr><td colSpan={10} className="text-center py-8 text-slate-600 dark:text-slate-400">No class attendance data found</td></tr>
+              <tr>
+                <td colSpan={10} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
+                  No sessions found for this roster.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
