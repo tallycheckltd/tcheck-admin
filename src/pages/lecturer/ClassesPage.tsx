@@ -13,10 +13,15 @@ import { getClassTimeStatus } from '../../utils/classTimeStatus';
 export function ClassesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
-  const { data: classes, refetch } = useApi<ClassSession[]>('/classes');
-  const courseQuery = isAdmin ? '/courses' : `/courses?lecturerId=${user?.id}`;
+  const { data: classes, refetch, setData: setClasses } = useApi<ClassSession[]>('/classes');
+  const courseQuery =
+    user?.role === 'SUB_ADMIN' && user?.schoolId
+      ? `/courses?schoolId=${user.schoolId}`
+      : user?.role === 'SUPER_ADMIN'
+        ? '/courses'
+        : `/courses?lecturerId=${user?.id}`;
   const { data: courses } = useApi<Course[]>(courseQuery);
-  const { mutate: create } = useMutation('post');
+  const { mutate: create } = useMutation<ClassSession>('post');
   const { mutate: del } = useMutation('delete');
   const navigate = useNavigate();
 
@@ -84,7 +89,7 @@ export function ClassesPage() {
       alert('End time must be after start time.');
       return;
     }
-    await create('/classes', {
+    const created = await create('/classes', {
       courseId: form.courseId,
       title: form.title,
       date: dateStr,
@@ -104,13 +109,19 @@ export function ClassesPage() {
       checkInStart: '', checkInEnd: '',
       lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
     });
-    refetch();
+    if (created) {
+      setClasses((prev) => {
+        const rest = (prev ?? []).filter((c) => c.id !== created.id);
+        return [created, ...rest];
+      });
+    }
+    await refetch({ silent: true });
   };
 
   const deleteClass = async (id: string) => {
     if (!confirm('Delete this class?')) return;
     await del(`/classes/${id}`);
-    refetch();
+    await refetch({ silent: true });
   };
 
   const fmt = (d: string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
