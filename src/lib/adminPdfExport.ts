@@ -212,6 +212,17 @@ export async function exportHodRosterPdf(
   doc.save(`${fileBase ?? `tcheck-${variant}`}.pdf`);
 }
 
+/** API returns `classDate` as full ISO (`toISOString()`); date-only `YYYY-MM-DD` is also supported. */
+function formatExportClassDate(classDate: string): string {
+  if (!classDate) return '';
+  if (classDate.length >= 10 && classDate[4] === '-' && classDate[10] === 'T') {
+    const d = parseISO(classDate);
+    return Number.isNaN(d.getTime()) ? classDate.slice(0, 10) : format(d, 'yyyy-MM-dd');
+  }
+  const d = parseISO(`${classDate}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? classDate : format(d, 'yyyy-MM-dd');
+}
+
 /** Course-level attendance records (line items). */
 export async function exportCourseRecordsPdf(
   rows: CourseAttendanceExportRow[],
@@ -232,7 +243,7 @@ export async function exportCourseRecordsPdf(
     head: [['Class', 'Date', 'Room', 'Student ID', 'Name', 'Check-in', 'Check-out', 'Method', 'Punctuality']],
     body: rows.map((r) => [
       r.classTitle,
-      format(parseISO(`${r.classDate}T12:00:00`), 'yyyy-MM-dd'),
+      formatExportClassDate(r.classDate),
       r.room ?? '',
       r.studentId ?? '',
       `${r.firstName} ${r.lastName}`.trim(),

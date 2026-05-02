@@ -151,8 +151,13 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
         const courseLabel = courseMeta ? `${courseMeta.code} — ${courseMeta.name}` : selectedCourse;
         await exportCourseRecordsPdf(rows, courseLabel, dateFrom, dateTo, `tcheck-course-${selectedCourse}-${dateTo}`);
       }
-    } catch {
-      setExportError('Export failed. Verify role, course, and date range. Use Chrome or Edge if download is blocked.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setExportError(
+        msg && msg !== 'Request failed'
+          ? msg
+          : 'Export failed. Verify role, course, and date range. Use Chrome or Edge if download is blocked.',
+      );
     } finally {
       setExporting(false);
     }
