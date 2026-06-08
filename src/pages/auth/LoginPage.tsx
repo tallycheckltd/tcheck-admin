@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -13,10 +13,12 @@ export function LoginPage() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
 
-  if (user) {
-    const dest = (user.role === 'SUPER_ADMIN' || user.role === 'SUB_ADMIN') ? '/admin' : '/lecturer';
-    navigate(dest, { replace: true });
-  }
+  useEffect(() => {
+    if (user) {
+      const dest = (user.role === 'SUPER_ADMIN' || user.role === 'SUB_ADMIN') ? '/admin' : '/lecturer';
+      navigate(dest, { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
