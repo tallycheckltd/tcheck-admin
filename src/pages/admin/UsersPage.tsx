@@ -10,7 +10,7 @@ import { Plus, CheckCircle, XCircle, Eye, Search, UserPlus, Trash2, ShieldPlus }
 import { clsx } from 'clsx';
 import type { User, School } from '../../types';
 
-const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const };
+const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
 
 type CreateType = 'lecturer' | 'student' | 'admin';
 
@@ -31,7 +31,7 @@ export function UsersPage() {
   const [createType, setCreateType] = useState<CreateType>('lecturer');
   const [form, setForm] = useState({ email: '', password: '', firstName: '', lastName: '', schoolId: '', studentId: '' });
 
-  const filtered = users?.filter((u) => {
+  const filtered = users?.filter((u) => u.status !== 'DELETED').filter((u) => {
     if (filter === 'PENDING') return u.status === 'PENDING';
     if (filter === 'STUDENT') return u.role === 'STUDENT';
     if (filter === 'LECTURER') return u.role === 'LECTURER';
@@ -101,7 +101,7 @@ export function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{users?.length || 0} total users</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{users?.filter((u) => u.status !== 'DELETED').length || 0} total users</p>
         </div>
         <div className="flex gap-2">
           {isSuperAdmin && (

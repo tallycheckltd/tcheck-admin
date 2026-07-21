@@ -1,5 +1,5 @@
 export type Role = 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT';
-export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEACTIVATED' | 'DELETED';
 export type CheckInType = 'BLE' | 'QR' | 'MANUAL';
 
 export interface School {
@@ -49,6 +49,7 @@ export interface User {
   school?: School;
   createdAt: string;
   updatedAt?: string;
+  deactivatedAt?: string | null;
   _count?: {
     enrollments: number;
     attendances: number;

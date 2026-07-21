@@ -4,7 +4,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp } from 'lucide-react';
 import type { UserDetail } from '../../types';
 
-const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const };
+const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
 
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
