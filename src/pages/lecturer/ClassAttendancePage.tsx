@@ -315,6 +315,7 @@ function ClassDetailView({ classId }: { classId: string }) {
             <Users size={20} /> Checked-in Students ({data.totalCheckedIn})
           </h3>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm gradient-table">
           <thead>
             <tr>
@@ -355,6 +356,7 @@ function ClassDetailView({ classId }: { classId: string }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Absent Students */}
@@ -365,6 +367,7 @@ function ClassDetailView({ classId }: { classId: string }) {
               Absent Students ({data.absentStudents.length})
             </h3>
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm gradient-table">
             <thead>
               <tr>
@@ -392,6 +395,7 @@ function ClassDetailView({ classId }: { classId: string }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

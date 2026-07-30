@@ -178,6 +178,20 @@ export interface ClassPing {
   responses?: ClassPingResponse[];
 }
 
+export interface Broadcast {
+  id: string;
+  title: string;
+  body: string;
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  createdByName: string;
+  school: { id: string; name: string } | null;
+  course: { id: string; name: string; code: string } | null;
+  resourceUrl: string | null;
+  resourceLabel: string | null;
+  createdAt: string;
+  isRead: boolean;
+}
+
 /** One row from GET /attendance/course-records (CSV export). */
 export interface CourseAttendanceExportRow {
   classTitle: string;
@@ -295,10 +309,19 @@ export interface ContactGroup {
   contacts: (Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string })[];
 }
 
+export interface ConversationRoomInfo {
+  id: string;
+  title?: string; // Class room
+  name?: string;  // School room
+  course?: { name: string; code: string };
+}
+
 export interface AdminConversation {
   id: string;
-  user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string };
-  user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string };
+  kind: 'DIRECT' | 'CLASS' | 'SCHOOL';
+  user1: (Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string }) | null;
+  user2: (Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string }) | null;
+  room: ConversationRoomInfo | null;
   lastMessage?: Message;
   messageCount: number;
   hasPendingFlags: boolean;
@@ -310,11 +333,14 @@ export interface AdminConversation {
 export interface AdminConversationDetail {
   conversation: {
     id: string;
-    user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
-    user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+    kind: 'DIRECT' | 'CLASS' | 'SCHOOL';
+    user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'> | null;
+    user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'> | null;
+    room: ConversationRoomInfo | null;
   };
   messages: (Message & {
     sender?: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+    isAnonymous?: boolean;
     flags?: MessageFlag[];
   })[];
 }
@@ -333,8 +359,10 @@ export interface MessageFlag {
   resolvedNote?: string;
   conversation?: {
     id: string;
-    user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
-    user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+    kind?: 'DIRECT' | 'CLASS' | 'SCHOOL';
+    user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'> | null;
+    user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'> | null;
+    room?: ConversationRoomInfo | null;
   };
   createdAt: string;
   updatedAt: string;

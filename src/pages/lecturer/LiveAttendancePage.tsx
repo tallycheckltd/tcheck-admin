@@ -379,7 +379,9 @@ export function LiveAttendancePage() {
                     </span>
                   </Badge>
                 </div>
-                <div className="max-h-96 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10">
+                {/* Desktop/tablet: table. Below md, a stacked-card list replaces it so lecturers can
+                    manage the roster from a phone without horizontal scrolling. */}
+                <div className="hidden md:block max-h-96 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-800/80 dark:bg-slate-900/80 border-b border-white/10">
                       <tr>
@@ -433,6 +435,52 @@ export function LiveAttendancePage() {
                       ))}
                     </tbody>
                   </table>
+                  {rosterRows.length === 0 && (
+                    <p className="text-center text-gray-400 py-8">Waiting for students to check in…</p>
+                  )}
+                </div>
+
+                <div className="md:hidden max-h-96 overflow-y-auto space-y-2">
+                  {rosterRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className="rounded-xl border border-gray-200 dark:border-white/10 p-3 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{row.name}</p>
+                        <p className="text-xs text-gray-500">{row.studentId}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {row.checkInAt
+                            ? `In ${new Date(row.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                            : 'Not checked in'}
+                          {row.checkOutAt && ` · Out ${new Date(row.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span
+                          className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                            row.status === 'Present'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+                              : row.status === 'Late'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                                : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+                          }`}
+                        >
+                          {row.status}
+                        </span>
+                        {row.checkInType === 'MANUAL' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                            <UserCheck size={10} /> Manual
+                          </span>
+                        )}
+                        {row.checkInType === 'QR' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">
+                            <QrCode size={10} /> QR
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                   {rosterRows.length === 0 && (
                     <p className="text-center text-gray-400 py-8">Waiting for students to check in…</p>
                   )}
