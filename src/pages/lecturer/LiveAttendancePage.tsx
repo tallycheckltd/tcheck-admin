@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
-import { useApi } from '../../hooks/useApi';
+import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
-import { Radio, Users, QrCode, UserCheck, RefreshCw, Wifi, WifiOff } from 'lucide-react';
-import type { ClassSession, Course, ClassAttendanceDetail } from '../../types';
+import { Button } from '../../components/ui/Button';
+import { Modal } from '../../components/ui/Modal';
+import { Radio, Users, QrCode, UserCheck, RefreshCw, Wifi, WifiOff, Send } from 'lucide-react';
+import type { ClassSession, Course, ClassAttendanceDetail, ClassPing } from '../../types';
 import { api } from '../../lib/api';
 import { localCalendarYmd } from '../../utils/classDateDisplay';
 import { getClassTimeStatus } from '../../utils/classTimeStatus';
@@ -46,6 +48,16 @@ export function LiveAttendancePage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [lastRosterAt, setLastRosterAt] = useState<Date | null>(null);
+
+  // Phase 1: lecturer "Ping Class" spot check
+  const { mutate: sendPing, loading: pingSending } = useMutation<ClassPing>('post');
+  const [activePing, setActivePing] = useState<ClassPing | null>(null);
+  const [pingResponseCount, setPingResponseCount] = useState(0);
+
+  // Phase 1: manual check-in override, surfaced here (backend already gates on School.allowManualLecturerOverride)
+  const { mutate: manualCheck, loading: manualChecking } = useMutation('post');
+  const [manualModal, setManualModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState('');
 
   const socketRef = useRef<Socket | null>(null);
   const selectedClassRef = useRef(selectedClass);
@@ -114,6 +126,9 @@ export function LiveAttendancePage() {
       return undefined;
     }
 
+    setActivePing(null);
+    setPingResponseCount(0);
+
     const joinAndLoad = () => {
       socket.emit('join:class', selectedClass);
       setDetailLoading(true);
@@ -137,9 +152,22 @@ export function LiveAttendancePage() {
     };
     socket.on('attendance:update', onAttendanceUpdate);
 
+    const onClassPing = (data: { pingId: string; expiresAt: string }) => {
+      setActivePing({ id: data.pingId, classId: selectedClass, initiatedById: '', createdAt: new Date().toISOString(), expiresAt: data.expiresAt });
+      setPingResponseCount(0);
+    };
+    socket.on('class:ping', onClassPing);
+
+    const onPingUpdate = (data: { pingId: string; responseCount: number }) => {
+      setPingResponseCount((prev) => (data.responseCount >= prev ? data.responseCount : prev));
+    };
+    socket.on('ping:update', onPingUpdate);
+
     return () => {
       socket.emit('leave:class', selectedClass);
       socket.off('attendance:update', onAttendanceUpdate);
+      socket.off('class:ping', onClassPing);
+      socket.off('ping:update', onPingUpdate);
     };
   }, [selectedClass, refetchClasses]);
 
@@ -298,6 +326,42 @@ export function LiveAttendancePage() {
                 </div>
               </div>
 
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={pingSending}
+                  onClick={async () => {
+                    const ping = await sendPing(`/attendance/class/${selectedClass}/ping`);
+                    if (ping) {
+                      setActivePing(ping);
+                      setPingResponseCount(0);
+                    }
+                  }}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Send size={14} /> Ping Class
+                  </span>
+                </Button>
+                {activePing && new Date(activePing.expiresAt) > new Date() && (
+                  <Badge color="blue">
+                    <span className="inline-flex items-center gap-1">
+                      <Radio size={10} className="animate-pulse" />
+                      {pingResponseCount}/{classDetail.totalCheckedIn} responded
+                    </span>
+                  </Badge>
+                )}
+                {classDetail.classInfo.allowManualLecturerOverride ? (
+                  <Button variant="secondary" size="sm" onClick={() => setManualModal(true)}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <UserCheck size={14} /> Manual Check-In
+                    </span>
+                  </Button>
+                ) : (
+                  <Badge color="gray">Manual override disabled for this school</Badge>
+                )}
+              </div>
+
               <div className="glass-card p-5">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
@@ -387,6 +451,47 @@ export function LiveAttendancePage() {
           <p className="text-gray-500 dark:text-gray-400">Select a session above to view live attendance.</p>
         </div>
       )}
+
+      <Modal
+        open={manualModal}
+        onClose={() => { setManualModal(false); setSelectedStudent(''); }}
+        title="Manual Check-In"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Select a student to manually mark present for this session — for dead batteries or hardware exceptions.
+          </p>
+          <select
+            value={selectedStudent}
+            onChange={(e) => setSelectedStudent(e.target.value)}
+            className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
+          >
+            <option value="">Select student</option>
+            {classDetail?.absentStudents.map((s) => (
+              <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.studentId || 'N/A'})</option>
+            ))}
+          </select>
+          <Button
+            className="w-full"
+            disabled={!selectedStudent || manualChecking}
+            onClick={async () => {
+              await manualCheck('/attendance/manual-check-in', { userId: selectedStudent, classId: selectedClass });
+              setManualModal(false);
+              setSelectedStudent('');
+              if (selectedClass) {
+                api.get<ClassAttendanceDetail>(`/attendance/class/${selectedClass}`).then((d) => {
+                  setClassDetail(d);
+                  setLastRosterAt(new Date());
+                });
+              }
+            }}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <UserCheck size={16} /> Check In Student
+            </span>
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
