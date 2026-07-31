@@ -56,7 +56,6 @@ export default function App() {
                 <Route path="/admin/schools" element={<SchoolsPage />} />
                 <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
                 <Route path="/admin/beacons" element={<BLEBeaconPage />} />
-                <Route path="/admin/device-verification" element={<DeviceVerificationPage />} />
                 <Route path="/admin/messages" element={<AdminMessagesPage />} />
               </Route>
 
@@ -72,6 +71,8 @@ export default function App() {
               <Route path="/live" element={<LiveAttendancePage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/messages" element={<MessagesPage />} />
+              {/* SUPER_ADMIN + LECTURER (device.routes.ts enforces this on the backend; a lecturer is scoped to their own students) */}
+              <Route path="/admin/device-verification" element={<DeviceVerificationPage />} />
               <Route path="/legal" element={<LegalPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
