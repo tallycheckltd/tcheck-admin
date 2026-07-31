@@ -152,11 +152,29 @@ export interface ClassAttendanceDetail {
     room?: string;
     courseName: string;
     courseCode: string;
+    allowManualLecturerOverride: boolean;
   };
   totalEnrolled: number;
   totalCheckedIn: number;
   attendances: AttendanceRecord[];
   absentStudents: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>[];
+}
+
+export interface ClassPingResponse {
+  id: string;
+  pingId: string;
+  userId: string;
+  rssi: number | null;
+  respondedAt: string;
+}
+
+export interface ClassPing {
+  id: string;
+  classId: string;
+  initiatedById: string;
+  createdAt: string;
+  expiresAt: string;
+  responses?: ClassPingResponse[];
 }
 
 /** One row from GET /attendance/course-records (CSV export). */

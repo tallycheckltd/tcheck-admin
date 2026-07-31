@@ -3,7 +3,7 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash } from 'lucide-react';
+import { Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck } from 'lucide-react';
 import type { School } from '../../types';
 
 export function SchoolsPage() {
@@ -14,16 +14,22 @@ export function SchoolsPage() {
 
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
-  const [form, setForm] = useState({ name: '', code: '', color: '#3B82F6' });
+  const [form, setForm] = useState({ name: '', code: '', color: '#3B82F6', allowManualLecturerOverride: true });
 
-  const openCreate = () => { setEditing(null); setForm({ name: '', code: '', color: '#3B82F6' }); setModal(true); };
-  const openEdit = (s: School) => { setEditing(s); setForm({ name: s.name, code: s.code, color: s.color }); setModal(true); };
+  const openCreate = () => { setEditing(null); setForm({ name: '', code: '', color: '#3B82F6', allowManualLecturerOverride: true }); setModal(true); };
+  const openEdit = (s: School) => {
+    setEditing(s);
+    setForm({ name: s.name, code: s.code, color: s.color, allowManualLecturerOverride: s.allowManualLecturerOverride ?? true });
+    setModal(true);
+  };
 
   const handleSubmit = async () => {
     if (editing) {
       await update(`/schools/${editing.id}`, form);
     } else {
-      await create('/schools', form);
+      // allowManualLecturerOverride defaults true server-side on create; the toggle only applies on edit.
+      const { name, code, color } = form;
+      await create('/schools', { name, code, color });
     }
     setModal(false);
     refetch();
@@ -132,6 +138,41 @@ export function SchoolsPage() {
               />
             </div>
           </div>
+          {editing && (
+            <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5">
+              <label className="flex items-start justify-between gap-4 cursor-pointer">
+                <span className="flex items-start gap-2">
+                  <UserCheck size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Manual check-in override</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Lets lecturers mark students present by hand (dead battery, hardware exceptions) from the live session dashboard.
+                    </span>
+                  </span>
+                </span>
+                <span className="shrink-0 pt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={form.allowManualLecturerOverride}
+                    onChange={(e) => setForm({ ...form, allowManualLecturerOverride: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <span
+                    onClick={() => setForm({ ...form, allowManualLecturerOverride: !form.allowManualLecturerOverride })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                      form.allowManualLecturerOverride ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        form.allowManualLecturerOverride ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
           <Button onClick={handleSubmit} className="w-full py-4 shadow-lg shadow-blue-500/20">
             {editing ? 'Update School Profile' : 'Register New School'}
           </Button>
