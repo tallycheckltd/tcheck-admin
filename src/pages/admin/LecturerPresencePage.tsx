@@ -1,6 +1,6 @@
 import { useApi } from '../../hooks/useApi';
-import { 
-  PlayCircle, Loader2, Info, Clock, MapPin, Calendar, QrCode, X
+import {
+  PlayCircle, Loader2, Info, Clock, MapPin, Calendar, QrCode, X, Timer
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { format, isToday } from 'date-fns';
@@ -24,8 +24,18 @@ interface ClassSession {
   _count: { attendances: number };
 }
 
+interface LecturerPunctualityRow {
+  lecturerId: string;
+  name: string;
+  sessions: number;
+  avgLatenessMinutes: number;
+  lateCount: number;
+  unloggedCount: number;
+}
+
 export function LecturerPresencePage() {
   const { data: classes, loading } = useApi<ClassSession[]>('/classes');
+  const { data: punctuality, loading: punctualityLoading } = useApi<LecturerPunctualityRow[]>('/attendance/lecturer-punctuality');
   const [selectedQRClass, setSelectedQRClass] = useState<ClassSession | null>(null);
 
   // Use session start in local time so "today" matches the class schedule, not only the date column.
@@ -154,6 +164,57 @@ export function LecturerPresencePage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Phase 3: Dean/HOD lecturer punctuality rollup */}
+      <div className="glass-card overflow-hidden">
+        <div className="p-5 border-b border-gray-100 dark:border-white/5">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Timer size={18} className="text-blue-500" /> Lecturer Punctuality (last 30 days)
+          </h2>
+          <p className="text-[11px] text-slate-600 dark:text-gray-400 mt-1 leading-relaxed">
+            A proxy metric, not a direct measurement — this app has no dedicated lecturer clock-in.
+            "Activated at" is the earliest recorded classroom activity for a session (QR code generated,
+            a Ping Class spot check, or the first student BLE/QR check-in), compared to the scheduled start time.
+          </p>
+        </div>
+        {punctualityLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="animate-spin h-6 w-6 text-blue-600" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm gradient-table min-w-[560px]">
+              <thead>
+                <tr>
+                  <th>Lecturer</th>
+                  <th>Sessions</th>
+                  <th>Avg. Lateness</th>
+                  <th>Late Sessions</th>
+                  <th>No Activity Recorded</th>
+                </tr>
+              </thead>
+              <tbody>
+                {punctuality?.map((row) => (
+                  <tr key={row.lecturerId}>
+                    <td className="font-medium text-gray-900 dark:text-white">{row.name}</td>
+                    <td>{row.sessions}</td>
+                    <td>
+                      <Badge color={row.avgLatenessMinutes > 10 ? 'yellow' : 'green'}>
+                        {row.avgLatenessMinutes} min
+                      </Badge>
+                    </td>
+                    <td>{row.lateCount}</td>
+                    <td>{row.unloggedCount}</td>
+                  </tr>
+                ))}
+                {(!punctuality || punctuality.length === 0) && (
+                  <tr><td colSpan={5} className="text-center py-8 text-slate-500 dark:text-slate-400">No session activity in this window.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* QR Modal */}

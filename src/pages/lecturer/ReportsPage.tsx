@@ -21,6 +21,7 @@ import {
 import type { Course, ClassSession, ClassAttendanceDetail, CourseAttendanceExportRow } from '../../types';
 import { api } from '../../lib/api';
 import { exportCourseRecordsPdf, exportHodRosterPdf, exportLecturerSessionDetailPdf } from '../../lib/adminPdfExport';
+import { downloadCsv } from '../../lib/csv';
 import { clsx } from 'clsx';
 import { format, parseISO } from 'date-fns';
 import { formatClassCalendarDate } from '../../utils/classDateDisplay';
@@ -164,6 +165,73 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
     }
   };
 
+  /** Phase 3 ERP/CSV bridge — same source data as the PDF export, shaped as a plain importable CSV. */
+  const handleExportCsv = async () => {
+    if (!reportType) {
+      setExportError('Choose a report type.');
+      return;
+    }
+    if (reportType === 'course-attendance' && !selectedCourse) {
+      setExportError('Select a course for this export.');
+      return;
+    }
+    if ((reportType === 'semester-roster' || reportType === 'at-risk') && !canUseSemesterRoster) {
+      setExportError('Semester roster exports are limited to school administrators.');
+      return;
+    }
+
+    setExporting(true);
+    setExportError('');
+
+    try {
+      if (reportType === 'semester-roster' || reportType === 'at-risk') {
+        const rows = await api.get<RosterRow[]>(`/attendance/roster?from=${dateFrom}&to=${dateTo}`);
+        if (!rows || rows.length === 0) {
+          setExportError('No roster rows for this date range.');
+          return;
+        }
+        const filtered =
+          reportType === 'at-risk'
+            ? rows.filter((r) => r.overallAttendancePct < 75).sort((a, b) => a.overallAttendancePct - b.overallAttendancePct)
+            : rows;
+        if (filtered.length === 0) {
+          setExportError('No rows match this export (try widening the date range).');
+          return;
+        }
+        downloadCsv(
+          `tcheck-${reportType}-${dateTo}.csv`,
+          ['Student ID', 'First Name', 'Last Name', 'Email', 'Overall Attendance %', 'Risk Level'],
+          filtered.map((r) => [r.studentId, r.firstName, r.lastName, r.email, r.overallAttendancePct, r.riskLevel]),
+        );
+      } else if (reportType === 'course-attendance' && selectedCourse) {
+        const rows = await api.get<CourseAttendanceExportRow[]>(
+          `/attendance/course-records?courseId=${selectedCourse}&from=${dateFrom}&to=${dateTo}`,
+        );
+        if (!rows?.length) {
+          setExportError('No attendance rows for this course and range.');
+          return;
+        }
+        downloadCsv(
+          `tcheck-course-${selectedCourse}-${dateTo}.csv`,
+          ['Student ID', 'First Name', 'Last Name', 'Class', 'Class Date', 'Room', 'Check-In', 'Check-Out', 'Method', 'Punctuality'],
+          rows.map((r) => [
+            r.studentId, r.firstName, r.lastName, r.classTitle, r.classDate, r.room ?? '',
+            r.checkInAt, r.checkOutAt ?? '', r.checkInType, r.punctuality,
+          ]),
+        );
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setExportError(
+        msg && msg !== 'Request failed'
+          ? msg
+          : 'Export failed. Verify role, course, and date range.',
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const atRiskCount =
     previewRows?.filter((r) => r.overallAttendancePct < 75).length ?? 0;
 
@@ -248,10 +316,21 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
             </div>
           </div>
 
-          <Button onClick={() => void handleExport()} disabled={!reportType || exporting} className="w-full justify-center gap-2 py-3">
-            {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-            {exporting ? 'Building PDF…' : 'Download PDF'}
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={() => void handleExport()} disabled={!reportType || exporting} className="w-full justify-center gap-2 py-3">
+              {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+              {exporting ? 'Building…' : 'Download PDF'}
+            </Button>
+            <Button
+              onClick={() => void handleExportCsv()}
+              disabled={!reportType || exporting}
+              variant="secondary"
+              className="w-full justify-center gap-2 py-3"
+            >
+              {exporting ? <Loader2 size={18} className="animate-spin" /> : <Table2 size={18} />}
+              {exporting ? 'Building…' : 'Download CSV'}
+            </Button>
+          </div>
           {exportError && (
             <div className="flex gap-2 text-xs text-red-700 dark:text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-3 py-2">
               <AlertCircle size={14} className="shrink-0 mt-0.5" />
@@ -294,7 +373,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
             {!rosterPreviewEligible && reportType !== 'course-attendance' && (
               <div className="flex flex-col items-center justify-center text-center py-14 px-4">
                 <Sparkles className="text-amber-400 mb-3" size={36} />
-                <p className="text-sm font-medium text-[var(--app-text)]">Exports are PDF with TCheck branding</p>
+                <p className="text-sm font-medium text-[var(--app-text)]">Export as branded PDF or plain CSV</p>
                 <p className="text-xs text-[var(--app-text-muted)] mt-2 max-w-md leading-relaxed">
                   Roster and at-risk views pull from your school’s approved students. Course exports include class title, room,
                   punctuality, and check-in method for auditing.
