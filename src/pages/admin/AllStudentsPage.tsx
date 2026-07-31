@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -8,6 +9,7 @@ import type { User } from '../../types';
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
 
 export function AllStudentsPage() {
+  const navigate = useNavigate();
   const { data: users, refetch } = useApi<User[]>('/users?role=STUDENT');
   const { mutate: patch } = useMutation('patch');
   const { mutate: del } = useMutation('delete');
@@ -98,7 +100,11 @@ export function AllStudentsPage() {
           </thead>
           <tbody className="text-gray-700 dark:text-gray-300">
             {filtered?.map((u) => (
-              <tr key={u.id}>
+              <tr
+                key={u.id}
+                onClick={() => navigate(`/admin/users/${u.id}`)}
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+              >
                 <td className="font-medium text-gray-900 dark:text-white">
                   {u.firstName} {u.lastName}
                 </td>
@@ -108,7 +114,7 @@ export function AllStudentsPage() {
                 <td>
                   <Badge color={statusColor[u.status]}>{u.status}</Badge>
                 </td>
-                <td className="text-right">
+                <td className="text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-1">
                     {u.status === 'PENDING' && (
                       <>

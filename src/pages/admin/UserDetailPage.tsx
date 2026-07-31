@@ -1,15 +1,67 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
+import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
 import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp } from 'lucide-react';
 import type { UserDetail } from '../../types';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
+const HISTORY_PAGE_SIZE = 20;
+
+interface HistoryRecord {
+  id: string;
+  checkInAt: string;
+  checkOutAt: string | null;
+  checkInType: string;
+  status: string;
+  class: { title: string; course: { name: string; code: string } } | null;
+}
+
+interface HistoryResponse {
+  records: HistoryRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
 
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: user } = useApi<UserDetail>(id ? `/users/${id}` : null);
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    api.get<HistoryResponse>(`/users/${id}/attendance-history?page=1&pageSize=${HISTORY_PAGE_SIZE}`).then((res) => {
+      if (cancelled) return;
+      setHistory(res.records);
+      setHistoryPage(1);
+      setHasMoreHistory(res.hasMore);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const loadMoreHistory = async () => {
+    if (!id || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const next = historyPage + 1;
+      const res = await api.get<HistoryResponse>(`/users/${id}/attendance-history?page=${next}&pageSize=${HISTORY_PAGE_SIZE}`);
+      setHistory((prev) => [...prev, ...res.records]);
+      setHistoryPage(next);
+      setHasMoreHistory(res.hasMore);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -73,7 +125,7 @@ export function UserDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Total Check-ins</p>
-                  <p className="text-2xl font-bold text-slate-950 dark:text-white">{user.attendances?.length || 0}</p>
+                  <p className="text-2xl font-bold text-slate-950 dark:text-white">{user._count?.attendances ?? user.attendances?.length ?? 0}</p>
                 </div>
               </div>
             </div>
@@ -158,7 +210,7 @@ export function UserDetailPage() {
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full max-w-[120px]">
                         <div
-                          className={`h-2 rounded-full ${cs.percentage >= 70 ? 'bg-green-500' : cs.percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                          className={`h-2 rounded-full ${cs.percentage >= 75 ? 'bg-green-500' : cs.percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
                           style={{ width: `${cs.percentage}%` }}
                         />
                       </div>
@@ -166,8 +218,8 @@ export function UserDetailPage() {
                     </div>
                   </td>
                   <td>
-                    <Badge color={cs.percentage >= 70 ? 'green' : 'red'}>
-                      {cs.percentage >= 70 ? 'Eligible' : 'At Risk'}
+                    <Badge color={cs.percentage >= 75 ? 'green' : 'red'}>
+                      {cs.percentage >= 75 ? 'Eligible' : 'At Risk'}
                     </Badge>
                   </td>
                 </tr>
@@ -209,7 +261,7 @@ export function UserDetailPage() {
       )}
 
       {/* Recent Attendance */}
-      {user.attendances && user.attendances.length > 0 && (
+      {history.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-white/5">
             <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Recent Attendance</h3>
@@ -225,7 +277,7 @@ export function UserDetailPage() {
               </tr>
             </thead>
             <tbody className="text-slate-800 dark:text-gray-300">
-              {user.attendances.slice(0, 20).map((a) => (
+              {history.map((a) => (
                 <tr key={a.id}>
                   <td>{a.class?.course?.name || '-'}</td>
                   <td className="font-medium text-slate-950 dark:text-white">{a.class?.title || '-'}</td>
@@ -244,6 +296,18 @@ export function UserDetailPage() {
               ))}
             </tbody>
           </table>
+          {hasMoreHistory && (
+            <div className="p-4 border-t border-gray-100 dark:border-white/5 text-center">
+              <button
+                type="button"
+                onClick={loadMoreHistory}
+                disabled={loadingMore}
+                className="text-sm font-medium text-blue-500 hover:text-blue-600 disabled:opacity-50 cursor-pointer"
+              >
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

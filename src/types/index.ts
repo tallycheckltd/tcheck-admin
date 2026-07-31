@@ -2,6 +2,12 @@ export type Role = 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT';
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEACTIVATED' | 'DELETED';
 export type CheckInType = 'BLE' | 'QR' | 'MANUAL';
 
+export interface SchoolFeatures {
+  anonymousChat?: boolean;
+  biometricStrictMode?: boolean;
+  broadcasts?: boolean;
+}
+
 export interface School {
   id: string;
   name: string;
@@ -10,6 +16,7 @@ export interface School {
   lateThresholdMinutes?: number;
   extremelyLateThresholdMinutes?: number;
   allowManualLecturerOverride?: boolean;
+  features?: SchoolFeatures;
   createdAt: string;
 }
 
