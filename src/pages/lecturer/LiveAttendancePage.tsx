@@ -61,6 +61,9 @@ export function LiveAttendancePage() {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedAttendanceId, setSelectedAttendanceId] = useState<string | null>(null);
 
+  // Phase 6: online classes show a rotating 60s TOTP code instead of Ping/Manual.
+  const [onlineCode, setOnlineCode] = useState<{ code: string; secondsRemaining: number } | null>(null);
+
   const socketRef = useRef<Socket | null>(null);
   const selectedClassRef = useRef(selectedClass);
   selectedClassRef.current = selectedClass;
@@ -185,6 +188,38 @@ export function LiveAttendancePage() {
     }, 10_000);
     return () => window.clearInterval(id);
   }, [selectedClass, refetchClasses]);
+
+  // Phase 6: for online classes, fetch the current TOTP code and tick a local 1s countdown,
+  // refetching (resyncing) from the server whenever it would hit zero.
+  const isOnlineClass = classDetail?.classInfo.isOnline ?? false;
+  useEffect(() => {
+    if (!selectedClass || !isOnlineClass) {
+      setOnlineCode(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const fetchCode = () => {
+      api
+        .get<{ code: string; secondsRemaining: number }>(`/attendance/class/${selectedClass}/online-code`)
+        .then((d) => { if (!cancelled) setOnlineCode(d); })
+        .catch(() => {});
+    };
+    fetchCode();
+    const tickId = window.setInterval(() => {
+      setOnlineCode((prev) => {
+        if (!prev) return prev;
+        if (prev.secondsRemaining <= 1) {
+          fetchCode();
+          return prev;
+        }
+        return { ...prev, secondsRemaining: prev.secondsRemaining - 1 };
+      });
+    }, 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(tickId);
+    };
+  }, [selectedClass, isOnlineClass]);
 
   const rosterRows = classDetail
     ? [
@@ -328,41 +363,61 @@ export function LiveAttendancePage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={pingSending}
-                  onClick={async () => {
-                    const ping = await sendPing(`/attendance/class/${selectedClass}/ping`);
-                    if (ping) {
-                      setActivePing(ping);
-                      setPingResponseCount(0);
-                    }
-                  }}
-                >
-                  <span className="inline-flex items-center gap-1.5">
-                    <Send size={14} /> Ping Class
+              {classDetail.classInfo.isOnline ? (
+                <div className="glass-card p-5 flex flex-col items-center gap-2 text-center">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    <Wifi size={14} /> Online Class Code
                   </span>
-                </Button>
-                {activePing && new Date(activePing.expiresAt) > new Date() && (
-                  <Badge color="blue">
-                    <span className="inline-flex items-center gap-1">
-                      <Radio size={10} className="animate-pulse" />
-                      {pingResponseCount}/{classDetail.totalCheckedIn} responded
-                    </span>
-                  </Badge>
-                )}
-                {classDetail.classInfo.allowManualLecturerOverride ? (
-                  <Button variant="secondary" size="sm" onClick={() => setManualModal(true)}>
+                  {onlineCode ? (
+                    <>
+                      <p className="text-4xl font-bold tracking-[0.3em] text-slate-950 dark:text-white font-mono">
+                        {onlineCode.code}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Refreshes in {onlineCode.secondsRemaining}s — students enter this to check in
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500 py-2">Loading code…</p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={pingSending}
+                    onClick={async () => {
+                      const ping = await sendPing(`/attendance/class/${selectedClass}/ping`);
+                      if (ping) {
+                        setActivePing(ping);
+                        setPingResponseCount(0);
+                      }
+                    }}
+                  >
                     <span className="inline-flex items-center gap-1.5">
-                      <UserCheck size={14} /> Manual Check-In
+                      <Send size={14} /> Ping Class
                     </span>
                   </Button>
-                ) : (
-                  <Badge color="gray">Manual override disabled for this school</Badge>
-                )}
-              </div>
+                  {activePing && new Date(activePing.expiresAt) > new Date() && (
+                    <Badge color="blue">
+                      <span className="inline-flex items-center gap-1">
+                        <Radio size={10} className="animate-pulse" />
+                        {pingResponseCount}/{classDetail.totalCheckedIn} responded
+                      </span>
+                    </Badge>
+                  )}
+                  {classDetail.classInfo.allowManualLecturerOverride ? (
+                    <Button variant="secondary" size="sm" onClick={() => setManualModal(true)}>
+                      <span className="inline-flex items-center gap-1.5">
+                        <UserCheck size={14} /> Manual Check-In
+                      </span>
+                    </Button>
+                  ) : (
+                    <Badge color="gray">Manual override disabled for this school</Badge>
+                  )}
+                </div>
+              )}
 
               <div className="glass-card p-5">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">

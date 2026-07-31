@@ -32,6 +32,7 @@ export function ClassesPage() {
     startTime: '', endTime: '', room: '', beaconUUID: '',
     checkInStart: '', checkInEnd: '',
     lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
+    isOnline: false,
   });
 
   const myClasses = isAdmin
@@ -102,6 +103,7 @@ export function ClassesPage() {
       checkInEnd: form.checkInEnd ? `${dateStr}T${form.checkInEnd}:00${tz}` : undefined,
       lateThresholdMinutes: form.lateThresholdMinutes ? parseInt(form.lateThresholdMinutes) : undefined,
       extremelyLateThresholdMinutes: form.extremelyLateThresholdMinutes ? parseInt(form.extremelyLateThresholdMinutes) : undefined,
+      isOnline: form.isOnline,
     });
     setModal(false);
     setForm({
@@ -109,6 +111,7 @@ export function ClassesPage() {
       startTime: '', endTime: '', room: '', beaconUUID: '',
       checkInStart: '', checkInEnd: '',
       lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
+      isOnline: false,
     });
     if (created) {
       setClasses((prev) => {
@@ -216,6 +219,18 @@ export function ClassesPage() {
             <Input label="Check-in Closes" type="time" value={form.checkInEnd} onChange={(e) => setForm({ ...form, checkInEnd: e.target.value })} />
           </div>
           <Input label="Room" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} />
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="classIsOnline"
+              checked={form.isOnline}
+              onChange={(e) => setForm({ ...form, isOnline: e.target.checked })}
+              className="rounded border-gray-300 dark:border-white/20"
+            />
+            <label htmlFor="classIsOnline" className="text-sm text-slate-800 dark:text-gray-300">
+              Online Class (students check in with a rotating code instead of BLE/QR)
+            </label>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Late Threshold (min)" type="number" value={form.lateThresholdMinutes} onChange={(e) => setForm({ ...form, lateThresholdMinutes: e.target.value })} placeholder="e.g. 10" />
             <Input label="Very Late Threshold (min)" type="number" value={form.extremelyLateThresholdMinutes} onChange={(e) => setForm({ ...form, extremelyLateThresholdMinutes: e.target.value })} placeholder="e.g. 20" />
