@@ -1,6 +1,6 @@
 export type Role = 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT';
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEACTIVATED' | 'DELETED';
-export type CheckInType = 'BLE' | 'QR' | 'MANUAL';
+export type CheckInType = 'BLE' | 'QR' | 'MANUAL' | 'ONLINE';
 
 export interface SchoolFeatures {
   anonymousChat?: boolean;
@@ -130,6 +130,7 @@ export interface ClassSession {
   checkInStart?: string;
   checkInEnd?: string;
   isActive: boolean;
+  isOnline?: boolean;
   _count?: { attendances: number };
   attendances?: AttendanceRecord[];
 }
@@ -161,6 +162,7 @@ export interface ClassAttendanceDetail {
     courseName: string;
     courseCode: string;
     allowManualLecturerOverride: boolean;
+    isOnline?: boolean;
   };
   totalEnrolled: number;
   totalCheckedIn: number;
