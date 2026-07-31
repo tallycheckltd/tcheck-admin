@@ -85,6 +85,7 @@ const lecturerLinks: NavItem[] = [
   { to: '/classes', icon: Calendar, label: 'Classes' },
   { to: '/attendance', icon: ClipboardList, label: 'Attendance' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
+  { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/announcements', icon: Megaphone, label: 'Announcements' },
