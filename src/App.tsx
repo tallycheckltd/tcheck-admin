@@ -23,6 +23,7 @@ import { ClassAttendancePage } from './pages/lecturer/ClassAttendancePage';
 import { LiveAttendancePage } from './pages/lecturer/LiveAttendancePage';
 import { ReportsPage } from './pages/lecturer/ReportsPage';
 import { MessagesPage } from './pages/lecturer/MessagesPage';
+import { AnnouncementsPage } from './pages/lecturer/AnnouncementsPage';
 import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
 import { FraudDetectionPage } from './pages/admin/FraudDetectionPage';
 import { SchoolAdminsPage } from './pages/admin/SchoolAdminsPage';
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="/admin/attendance-overview" element={<AttendanceOverviewPage />} />
               <Route path="/admin/fraud-detection" element={<FraudDetectionPage />} />
               <Route path="/admin/settings" element={<SettingsPage />} />
+              <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
 
               {/* SUPER_ADMIN-only routes */}
@@ -56,11 +58,11 @@ export default function App() {
                 <Route path="/admin/beacons" element={<BLEBeaconPage />} />
                 <Route path="/admin/device-verification" element={<DeviceVerificationPage />} />
                 <Route path="/admin/messages" element={<AdminMessagesPage />} />
-                <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               </Route>
 
               {/* Lecturer dashboard */}
               <Route path="/lecturer" element={<LecturerDashboard />} />
+              <Route path="/announcements" element={<AnnouncementsPage />} />
 
               {/* Shared routes (admin and lecturer) */}
               <Route path="/courses" element={<CoursesPage />} />

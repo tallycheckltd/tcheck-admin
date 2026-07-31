@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight
+  ShieldAlert, ChevronDown, ChevronRight, X
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -72,6 +72,7 @@ const hodOperations: NavItem[] = [
 const hodGeneral: NavItem[] = [
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/admin/system-announcements', icon: Megaphone, label: 'Announcements' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/legal', icon: Scale, label: 'Legal' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
@@ -86,10 +87,11 @@ const lecturerLinks: NavItem[] = [
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/announcements', icon: Megaphone, label: 'Announcements' },
   { to: '/legal', icon: Scale, label: 'Legal' },
 ];
 
-function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavItem[]; isSuperAdmin: boolean }) {
+function NavSection({ title, links, isSuperAdmin, onNavigate }: { title: string; links: NavItem[]; isSuperAdmin: boolean; onNavigate: () => void }) {
   const visibleLinks = links.filter((l) => !l.superAdminOnly || isSuperAdmin);
   const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
   const location = window.location;
@@ -135,6 +137,7 @@ function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavI
               <NavLink
                 to={link.to}
                 end={link.to === '/admin' || link.to === '/lecturer'}
+                onClick={onNavigate}
                 className={({ isActive }) =>
                   clsx(
                     'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
@@ -158,6 +161,7 @@ function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavI
                   <NavLink
                     key={child.to}
                     to={child.to}
+                    onClick={onNavigate}
                     className={({ isActive }) =>
                       clsx(
                         'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
@@ -180,7 +184,7 @@ function NavSection({ title, links, isSuperAdmin }: { title: string; links: NavI
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, logout } = useAuth();
   const { dark, toggle } = useTheme();
   const navigate = useNavigate();
@@ -210,31 +214,52 @@ export function Sidebar() {
     links.map((l) => l.to === '/alerts' ? { ...l, badge: unreadCount } : l);
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 glass-sidebar flex flex-col z-40 border-r border-[color:var(--sidebar-edge)]">
+    <>
+      {/* Backdrop — mobile only, closes the drawer on tap */}
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`fixed left-0 top-0 h-screen w-64 glass-sidebar flex flex-col z-40 border-r border-[color:var(--sidebar-edge)] transition-transform duration-200 ${
+          open ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
       <div className="p-5 flex items-center gap-3 border-b border-[color:var(--sidebar-edge)]">
         <img src="/logo.svg" alt="Tcheck" className="w-10 h-10" />
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold tracking-tight text-[color:var(--app-text)] dark:text-white">Tcheck</h1>
           <p className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--app-accent-label)]">
             {roleLabel}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="lg:hidden p-1.5 rounded-lg text-[color:var(--app-text)] dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
+          aria-label="Close navigation menu"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       <nav className="flex-1 px-3 pt-4 space-y-1 overflow-y-auto">
         {isSuperAdmin && (
           <>
-            <NavSection title="Overview" links={superAdminOverview} isSuperAdmin={isSuperAdmin} />
-            <NavSection title="Administration" links={superAdminAdmin} isSuperAdmin={isSuperAdmin} />
-            <NavSection title="General" links={addAlertBadge(superAdminGeneral)} isSuperAdmin={isSuperAdmin} />
+            <NavSection title="Overview" links={superAdminOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
+            <NavSection title="Administration" links={superAdminAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
+            <NavSection title="General" links={addAlertBadge(superAdminGeneral)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
           </>
         )}
         {isAdmin && !isSuperAdmin && (
           <>
-            <NavSection title="Overview" links={hodOverview} isSuperAdmin={isSuperAdmin} />
-            <NavSection title="Administration" links={hodAdmin} isSuperAdmin={isSuperAdmin} />
-            <NavSection title="Operations" links={hodOperations} isSuperAdmin={isSuperAdmin} />
-            <NavSection title="General" links={addAlertBadge(hodGeneral)} isSuperAdmin={isSuperAdmin} />
+            <NavSection title="Overview" links={hodOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
+            <NavSection title="Administration" links={hodAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
+            <NavSection title="Operations" links={hodOperations} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
+            <NavSection title="General" links={addAlertBadge(hodGeneral)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
           </>
         )}
         {!isAdmin && lecturerLinks.map((link) => (
@@ -242,6 +267,7 @@ export function Sidebar() {
             key={link.to}
             to={link.to}
             end={link.to === '/lecturer'}
+            onClick={onClose}
             className={({ isActive }) =>
               clsx(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
@@ -283,6 +309,7 @@ export function Sidebar() {
           Logout
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

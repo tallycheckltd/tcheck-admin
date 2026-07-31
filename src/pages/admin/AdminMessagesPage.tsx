@@ -106,8 +106,12 @@ export function AdminMessagesPage() {
   const filteredConversations = conversations?.filter((c) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    const u1 = `${c.user1.firstName} ${c.user1.lastName}`.toLowerCase();
-    const u2 = `${c.user2.firstName} ${c.user2.lastName}`.toLowerCase();
+    if (c.kind !== 'DIRECT') {
+      const roomName = c.room?.title || c.room?.name || '';
+      return roomName.toLowerCase().includes(q);
+    }
+    const u1 = c.user1 ? `${c.user1.firstName} ${c.user1.lastName}`.toLowerCase() : '';
+    const u2 = c.user2 ? `${c.user2.firstName} ${c.user2.lastName}`.toLowerCase() : '';
     return u1.includes(q) || u2.includes(q);
   });
 
@@ -132,6 +136,15 @@ export function AdminMessagesPage() {
       case 'SUB_ADMIN': return 'Admin';
       default: return role || '';
     }
+  };
+
+  const conversationLabel = (conv?: MessageFlag['conversation']) => {
+    if (!conv) return 'a conversation';
+    if (conv.kind && conv.kind !== 'DIRECT') {
+      return `${conv.kind === 'CLASS' ? 'Session Chat' : 'Campus Chat'} — ${conv.room?.title || conv.room?.name || 'room'}`;
+    }
+    if (conv.user1 && conv.user2) return `${conv.user1.firstName} & ${conv.user2.firstName}`;
+    return 'a conversation';
   };
 
   const timeAgo = (dateStr: string) => {
@@ -222,19 +235,30 @@ export function AdminMessagesPage() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-slate-950 dark:text-white truncate">
-                          {c.user1.firstName} {c.user1.lastName}
-                        </p>
-                        <Badge color={roleColor(c.user1.role) as 'blue' | 'gray' | 'purple'}>{roleLabel(c.user1.role)}</Badge>
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <ChevronRight size={10} className="text-slate-600 dark:text-slate-400" />
-                        <span className="text-xs text-slate-600">
-                          {c.user2.firstName} {c.user2.lastName}
-                        </span>
-                        <Badge color={roleColor(c.user2.role) as 'blue' | 'gray' | 'purple'}>{roleLabel(c.user2.role)}</Badge>
-                      </div>
+                      {c.kind === 'DIRECT' && c.user1 && c.user2 ? (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-slate-950 dark:text-white truncate">
+                              {c.user1.firstName} {c.user1.lastName}
+                            </p>
+                            <Badge color={roleColor(c.user1.role) as 'blue' | 'gray' | 'purple'}>{roleLabel(c.user1.role)}</Badge>
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <ChevronRight size={10} className="text-slate-600 dark:text-slate-400" />
+                            <span className="text-xs text-slate-600">
+                              {c.user2.firstName} {c.user2.lastName}
+                            </span>
+                            <Badge color={roleColor(c.user2.role) as 'blue' | 'gray' | 'purple'}>{roleLabel(c.user2.role)}</Badge>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-slate-950 dark:text-white truncate">
+                            {c.room?.title || c.room?.name || 'Room'}
+                          </p>
+                          <Badge color="purple">{c.kind === 'CLASS' ? 'Session Chat' : 'Campus Chat'}</Badge>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className="text-xs text-slate-600 dark:text-slate-400">{timeAgo(c.updatedAt)}</span>
@@ -266,31 +290,40 @@ export function AdminMessagesPage() {
               <>
                 <div className="p-4 border-b border-gray-200 dark:border-white/10">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                          <span className="text-xs font-bold text-blue-500">{convoDetail.conversation.user1.firstName[0]}</span>
+                    {convoDetail.conversation.kind === 'DIRECT' && convoDetail.conversation.user1 && convoDetail.conversation.user2 ? (
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                            <span className="text-xs font-bold text-blue-500">{convoDetail.conversation.user1.firstName[0]}</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-950 dark:text-white">
+                              {convoDetail.conversation.user1.firstName} {convoDetail.conversation.user1.lastName}
+                            </p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">{roleLabel(convoDetail.conversation.user1.role)}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-950 dark:text-white">
-                            {convoDetail.conversation.user1.firstName} {convoDetail.conversation.user1.lastName}
-                          </p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">{roleLabel(convoDetail.conversation.user1.role)}</p>
+                        <ChevronRight size={16} className="text-slate-400 dark:text-slate-600" />
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
+                            <span className="text-xs font-bold text-purple-500">{convoDetail.conversation.user2.firstName[0]}</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-950 dark:text-white">
+                              {convoDetail.conversation.user2.firstName} {convoDetail.conversation.user2.lastName}
+                            </p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">{roleLabel(convoDetail.conversation.user2.role)}</p>
+                          </div>
                         </div>
                       </div>
-                      <ChevronRight size={16} className="text-slate-400 dark:text-slate-600" />
+                    ) : (
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
-                          <span className="text-xs font-bold text-purple-500">{convoDetail.conversation.user2.firstName[0]}</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-950 dark:text-white">
-                            {convoDetail.conversation.user2.firstName} {convoDetail.conversation.user2.lastName}
-                          </p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">{roleLabel(convoDetail.conversation.user2.role)}</p>
-                        </div>
+                        <Badge color="purple">{convoDetail.conversation.kind === 'CLASS' ? 'Session Chat' : 'Campus Chat'}</Badge>
+                        <p className="text-sm font-medium text-slate-950 dark:text-white">
+                          {convoDetail.conversation.room?.title || convoDetail.conversation.room?.name}
+                        </p>
                       </div>
-                    </div>
+                    )}
                     <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-100 dark:bg-white/5">
                       <Eye size={14} className="text-slate-600 dark:text-slate-400" />
                       <span className="text-xs text-slate-600 dark:text-slate-400">Read-only</span>
@@ -300,15 +333,21 @@ export function AdminMessagesPage() {
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                   {convoDetail.messages.map((m) => {
-                    const isUser1 = m.senderId === convoDetail!.conversation.user1.id;
+                    const isDirect = convoDetail!.conversation.kind === 'DIRECT';
+                    const isUser1 = isDirect && m.senderId === convoDetail!.conversation.user1?.id;
                     return (
-                      <div key={m.id} className={`flex ${isUser1 ? 'justify-start' : 'justify-end'}`}>
+                      <div key={m.id} className={`flex ${!isDirect ? 'justify-start' : isUser1 ? 'justify-start' : 'justify-end'}`}>
                         <div className="max-w-sm">
-                          <p className={`text-xs mb-1 ${isUser1 ? 'text-left' : 'text-right'} text-slate-600 dark:text-slate-400`}>
+                          <p className={`text-xs mb-1 ${!isDirect || isUser1 ? 'text-left' : 'text-right'} text-slate-600 dark:text-slate-400 flex items-center gap-1.5`}>
                             {m.sender?.firstName} {m.sender?.lastName}
+                            {m.isAnonymous && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                                Posted anonymously
+                              </span>
+                            )}
                           </p>
                           <div className={`px-4 py-2.5 rounded-2xl text-sm ${
-                            isUser1
+                            !isDirect || isUser1
                               ? 'bg-gray-100 dark:bg-white/5 text-slate-950 dark:text-white rounded-bl-md'
                               : 'bg-blue-500/10 text-slate-950 dark:text-white rounded-br-md'
                           }`}>
@@ -321,7 +360,7 @@ export function AdminMessagesPage() {
                               </div>
                             )}
                           </div>
-                          <p className={`text-xs mt-1 ${isUser1 ? 'text-left' : 'text-right'} text-slate-600 dark:text-slate-400`}>
+                          <p className={`text-xs mt-1 ${!isDirect || isUser1 ? 'text-left' : 'text-right'} text-slate-600 dark:text-slate-400`}>
                             {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             {' · '}
                             {new Date(m.createdAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
@@ -369,10 +408,8 @@ export function AdminMessagesPage() {
 
                         <p className="text-sm text-slate-950 dark:text-white mb-2">
                           <span className="font-medium">{flag.flaggedBy?.firstName} {flag.flaggedBy?.lastName}</span>
-                          <span className="text-slate-600 dark:text-slate-400"> reported a conversation between </span>
-                          <span className="font-medium">{flag.conversation?.user1.firstName} {flag.conversation?.user1.lastName}</span>
-                          <span className="text-slate-600 dark:text-slate-400"> and </span>
-                          <span className="font-medium">{flag.conversation?.user2.firstName} {flag.conversation?.user2.lastName}</span>
+                          <span className="text-slate-600 dark:text-slate-400"> reported </span>
+                          <span className="font-medium">{conversationLabel(flag.conversation)}</span>
                         </p>
 
                         <div className="bg-orange-50 dark:bg-orange-500/5 border border-orange-200 dark:border-orange-500/20 rounded-xl px-4 py-3 mb-3">
@@ -435,7 +472,7 @@ export function AdminMessagesPage() {
                           {flag.flaggedBy?.firstName} {flag.flaggedBy?.lastName}
                         </td>
                         <td>
-                          {flag.conversation?.user1.firstName} & {flag.conversation?.user2.firstName}
+                          {conversationLabel(flag.conversation)}
                         </td>
                         <td className="max-w-xs truncate">{flag.reason}</td>
                         <td>
