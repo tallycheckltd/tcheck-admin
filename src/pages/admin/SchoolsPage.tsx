@@ -3,8 +3,14 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck } from 'lucide-react';
-import type { School } from '../../types';
+import { Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck, MessageSquareOff, ShieldCheck, Megaphone } from 'lucide-react';
+import type { School, SchoolFeatures } from '../../types';
+
+const defaultFeatures: Required<SchoolFeatures> = {
+  anonymousChat: true,
+  biometricStrictMode: false,
+  broadcasts: true,
+};
 
 export function SchoolsPage() {
   const { data: schools, refetch } = useApi<School[]>('/schools');
@@ -14,12 +20,18 @@ export function SchoolsPage() {
 
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
-  const [form, setForm] = useState({ name: '', code: '', color: '#3B82F6', allowManualLecturerOverride: true });
+  const [form, setForm] = useState({ name: '', code: '', color: '#3B82F6', allowManualLecturerOverride: true, features: defaultFeatures });
 
-  const openCreate = () => { setEditing(null); setForm({ name: '', code: '', color: '#3B82F6', allowManualLecturerOverride: true }); setModal(true); };
+  const openCreate = () => { setEditing(null); setForm({ name: '', code: '', color: '#3B82F6', allowManualLecturerOverride: true, features: defaultFeatures }); setModal(true); };
   const openEdit = (s: School) => {
     setEditing(s);
-    setForm({ name: s.name, code: s.code, color: s.color, allowManualLecturerOverride: s.allowManualLecturerOverride ?? true });
+    setForm({
+      name: s.name,
+      code: s.code,
+      color: s.color,
+      allowManualLecturerOverride: s.allowManualLecturerOverride ?? true,
+      features: { ...defaultFeatures, ...s.features },
+    });
     setModal(true);
   };
 
@@ -169,6 +181,71 @@ export function SchoolsPage() {
                       }`}
                     />
                   </span>
+                </span>
+              </label>
+            </div>
+          )}
+          {editing && (
+            <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Features Configuration</h3>
+
+              <label className="flex items-start justify-between gap-4 cursor-pointer">
+                <span className="flex items-start gap-2">
+                  <MessageSquareOff size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Anonymous Chat</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Lets students post anonymously in Campus/Session Chat rooms.
+                    </span>
+                  </span>
+                </span>
+                <span
+                  onClick={() => setForm({ ...form, features: { ...form.features, anonymousChat: !form.features.anonymousChat } })}
+                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    form.features.anonymousChat ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.anonymousChat ? 'translate-x-6' : 'translate-x-1'}`} />
+                </span>
+              </label>
+
+              <label className="flex items-start justify-between gap-4 cursor-pointer">
+                <span className="flex items-start gap-2">
+                  <ShieldCheck size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Biometric Strict Mode</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Blocks the selfie fallback — students without biometric hardware can&apos;t check in.
+                    </span>
+                  </span>
+                </span>
+                <span
+                  onClick={() => setForm({ ...form, features: { ...form.features, biometricStrictMode: !form.features.biometricStrictMode } })}
+                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    form.features.biometricStrictMode ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.biometricStrictMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                </span>
+              </label>
+
+              <label className="flex items-start justify-between gap-4 cursor-pointer">
+                <span className="flex items-start gap-2">
+                  <Megaphone size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Broadcasts</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Lets admins send announcements to this school&apos;s students and lecturers.
+                    </span>
+                  </span>
+                </span>
+                <span
+                  onClick={() => setForm({ ...form, features: { ...form.features, broadcasts: !form.features.broadcasts } })}
+                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    form.features.broadcasts ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.broadcasts ? 'translate-x-6' : 'translate-x-1'}`} />
                 </span>
               </label>
             </div>

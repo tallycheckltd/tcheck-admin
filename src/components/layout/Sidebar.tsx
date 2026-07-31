@@ -213,6 +213,12 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const addAlertBadge = (links: NavItem[]) =>
     links.map((l) => l.to === '/alerts' ? { ...l, badge: unreadCount } : l);
 
+  // Phase 4: hide Announcements when the user's own school has broadcasts switched off — Super
+  // Admin manages every school so always keeps the link regardless of any one school's setting.
+  const broadcastsEnabledForUser = isSuperAdmin || (user?.school?.features?.broadcasts ?? true);
+  const filterByFeatures = (links: NavItem[]) =>
+    broadcastsEnabledForUser ? links : links.filter((l) => l.label !== 'Announcements');
+
   return (
     <>
       {/* Backdrop — mobile only, closes the drawer on tap */}
@@ -259,10 +265,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             <NavSection title="Overview" links={hodOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
             <NavSection title="Administration" links={hodAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
             <NavSection title="Operations" links={hodOperations} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
-            <NavSection title="General" links={addAlertBadge(hodGeneral)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
+            <NavSection title="General" links={filterByFeatures(addAlertBadge(hodGeneral))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} />
           </>
         )}
-        {!isAdmin && lecturerLinks.map((link) => (
+        {!isAdmin && filterByFeatures(lecturerLinks).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { ForensicDetailModal } from '../../components/ForensicDetailModal';
 import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown } from 'lucide-react';
 import { exportSessionLedgerPdf } from '../../lib/adminPdfExport';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
@@ -235,6 +236,7 @@ function ClassDetailView({ classId }: { classId: string }) {
   const { mutate: manualCheck } = useMutation('post');
   const [manualModal, setManualModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedAttendanceId, setSelectedAttendanceId] = useState<string | null>(null);
 
   const handleManualCheckIn = async () => {
     if (!selectedStudent) return;
@@ -337,16 +339,21 @@ function ClassDetailView({ classId }: { classId: string }) {
                 <td>{new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
                 <td>{a.checkOutAt ? new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                 <td>
-                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                    a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
-                    a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                    'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
-                  }`}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAttendanceId(a.id)}
+                    title="View forensic detail"
+                    className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-offset-transparent transition-shadow ${
+                      a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 hover:ring-blue-400/50' :
+                      a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 hover:ring-purple-400/50' :
+                      'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500 hover:ring-gray-400/50'
+                    }`}
+                  >
                     {a.checkInType === 'BLE' && <Bluetooth size={12} />}
                     {a.checkInType === 'QR' && <QrCode size={12} />}
                     {a.checkInType === 'MANUAL' && <UserCheck size={12} />}
                     {a.checkInType}
-                  </span>
+                  </button>
                 </td>
                 <td className="font-mono text-xs">{a.beaconRSSI ?? '-'}</td>
               </tr>
@@ -420,6 +427,8 @@ function ClassDetailView({ classId }: { classId: string }) {
           </Button>
         </div>
       </Modal>
+
+      <ForensicDetailModal attendanceId={selectedAttendanceId} onClose={() => setSelectedAttendanceId(null)} />
     </div>
   );
 }

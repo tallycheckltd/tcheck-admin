@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { ForensicDetailModal } from '../../components/ForensicDetailModal';
 import { Radio, Users, QrCode, UserCheck, RefreshCw, Wifi, WifiOff, Send } from 'lucide-react';
 import type { ClassSession, Course, ClassAttendanceDetail, ClassPing } from '../../types';
 import { api } from '../../lib/api';
@@ -58,6 +59,7 @@ export function LiveAttendancePage() {
   const { mutate: manualCheck, loading: manualChecking } = useMutation('post');
   const [manualModal, setManualModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedAttendanceId, setSelectedAttendanceId] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
   const selectedClassRef = useRef(selectedClass);
@@ -399,17 +401,26 @@ export function LiveAttendancePage() {
                             <p className="text-xs text-gray-500">{row.studentId}</p>
                           </td>
                           <td className="py-3 px-4">
-                            <span
-                              className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                                row.status === 'Present'
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                                  : row.status === 'Late'
-                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                                    : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
-                              }`}
-                            >
-                              {row.status}
-                            </span>
+                            {row.checkInType ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAttendanceId(row.id)}
+                                title="View forensic detail"
+                                className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-offset-transparent transition-shadow ${
+                                  row.status === 'Present'
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:ring-green-400/50'
+                                    : row.status === 'Late'
+                                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 hover:ring-amber-400/50'
+                                      : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 hover:ring-red-400/50'
+                                }`}
+                              >
+                                {row.status}
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                                {row.status}
+                              </span>
+                            )}
                             {row.checkInType === 'MANUAL' && (
                               <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                                 <UserCheck size={10} /> Manual Override
@@ -457,17 +468,26 @@ export function LiveAttendancePage() {
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span
-                          className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                            row.status === 'Present'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                              : row.status === 'Late'
-                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                                : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
-                          }`}
-                        >
-                          {row.status}
-                        </span>
+                        {row.checkInType ? (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAttendanceId(row.id)}
+                            title="View forensic detail"
+                            className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-offset-transparent transition-shadow ${
+                              row.status === 'Present'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:ring-green-400/50'
+                                : row.status === 'Late'
+                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 hover:ring-amber-400/50'
+                                  : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 hover:ring-red-400/50'
+                            }`}
+                          >
+                            {row.status}
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                            {row.status}
+                          </span>
+                        )}
                         {row.checkInType === 'MANUAL' && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                             <UserCheck size={10} /> Manual
@@ -540,6 +560,8 @@ export function LiveAttendancePage() {
           </Button>
         </div>
       </Modal>
+
+      <ForensicDetailModal attendanceId={selectedAttendanceId} onClose={() => setSelectedAttendanceId(null)} />
     </div>
   );
 }
