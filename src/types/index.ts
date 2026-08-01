@@ -78,6 +78,8 @@ export interface UserDetail extends User {
     attended: number;
     percentage: number;
   }[];
+  biometricLockEnabled?: boolean;
+  biometricLockInvalidatedAt?: string | null;
 }
 
 export interface Beacon {

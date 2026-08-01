@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useApi } from '../../hooks/useApi';
+import { useApi, useMutation } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
-import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint } from 'lucide-react';
 import type { UserDetail } from '../../types';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
@@ -29,11 +30,19 @@ interface HistoryResponse {
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: user } = useApi<UserDetail>(id ? `/users/${id}` : null);
+  const { data: user, refetch } = useApi<UserDetail>(id ? `/users/${id}` : null);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const { mutate: resetBiometricLock, loading: resettingBiometricLock } = useMutation('post');
+
+  const handleResetBiometricLock = async () => {
+    if (!id) return;
+    if (!confirm("Reset this student's biometric lock? They'll need to re-verify with Face ID/Touch ID (or another supported method) on their next check-in.")) return;
+    await resetBiometricLock(`/auth/biometric-lock/reset/${id}`);
+    refetch();
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -102,6 +111,34 @@ export function UserDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Biometric Lock Status */}
+      {user.role === 'STUDENT' && user.biometricLockInvalidatedAt && (
+        <div className="glass-card p-5 border-red-200 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/5">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                <Fingerprint size={20} className="text-red-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-950 dark:text-white">Biometric lock invalidated</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                  Invalidated {new Date(user.biometricLockInvalidatedAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })}.
+                  This student cannot check in with Face ID/Touch ID until reset — they'll fall back to the school's other allowed method until then.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleResetBiometricLock}
+              disabled={resettingBiometricLock}
+            >
+              {resettingBiometricLock ? 'Resetting…' : 'Reset Biometric Lock'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
