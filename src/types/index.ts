@@ -196,6 +196,7 @@ export interface Broadcast {
   createdByName: string;
   school: { id: string; name: string } | null;
   course: { id: string; name: string; code: string } | null;
+  major: { id: string; name: string; code: string } | null;
   resourceUrl: string | null;
   resourceLabel: string | null;
   createdAt: string;
@@ -321,14 +322,15 @@ export interface ContactGroup {
 
 export interface ConversationRoomInfo {
   id: string;
-  title?: string; // Class room
-  name?: string;  // School room
-  course?: { name: string; code: string };
+  title?: string; // Class room (legacy)
+  name?: string;  // School room, or Course room
+  code?: string;  // Course room
+  course?: { name: string; code: string }; // Class room's parent course
 }
 
 export interface AdminConversation {
   id: string;
-  kind: 'DIRECT' | 'CLASS' | 'SCHOOL';
+  kind: 'DIRECT' | 'CLASS' | 'COURSE' | 'SCHOOL';
   user1: (Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string }) | null;
   user2: (Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'> & { email?: string }) | null;
   room: ConversationRoomInfo | null;
@@ -343,7 +345,7 @@ export interface AdminConversation {
 export interface AdminConversationDetail {
   conversation: {
     id: string;
-    kind: 'DIRECT' | 'CLASS' | 'SCHOOL';
+    kind: 'DIRECT' | 'CLASS' | 'COURSE' | 'SCHOOL';
     user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'> | null;
     user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'> | null;
     room: ConversationRoomInfo | null;
@@ -369,7 +371,7 @@ export interface MessageFlag {
   resolvedNote?: string;
   conversation?: {
     id: string;
-    kind?: 'DIRECT' | 'CLASS' | 'SCHOOL';
+    kind?: 'DIRECT' | 'CLASS' | 'COURSE' | 'SCHOOL';
     user1: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'> | null;
     user2: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'> | null;
     room?: ConversationRoomInfo | null;
