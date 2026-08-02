@@ -1,12 +1,24 @@
 import { useState } from 'react';
-import { useApi } from '../../hooks/useApi';
+import { useApi, useMutation } from '../../hooks/useApi';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
-import { Users, Mail, School, Search } from 'lucide-react';
-import type { User } from '../../types';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Modal } from '../../components/ui/Modal';
+import { Users, Mail, School, Search, Plus } from 'lucide-react';
+import type { User, School as SchoolType } from '../../types';
+
+const emptyForm = { firstName: '', lastName: '', email: '', password: '', schoolId: '' };
 
 export function SchoolAdminsPage() {
-  const { data: admins, loading } = useApi<User[]>('/users?role=SUB_ADMIN');
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const { data: admins, loading, refetch } = useApi<User[]>('/users?role=SUB_ADMIN');
+  const { data: schools } = useApi<SchoolType[]>(isSuperAdmin ? '/schools' : null);
+  const { mutate: create, error: createError } = useMutation<User>('post');
   const [search, setSearch] = useState('');
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState(emptyForm);
 
   const filtered = (admins || []).filter((a) => {
     if (!search) return true;
@@ -18,13 +30,30 @@ export function SchoolAdminsPage() {
     );
   });
 
+  const handleCreate = async () => {
+    // A SUB_ADMIN's own school always overrides whatever is sent here — enforced server-side too.
+    await create('/users/admin', {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      password: form.password,
+      schoolId: isSuperAdmin ? (form.schoolId || undefined) : undefined,
+    });
+    setModal(false);
+    setForm(emptyForm);
+    refetch();
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">School Admins</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-          Direct clients — University IT Directors and HODs only. Student records are never shown here.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">School Admins</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            Direct clients — University IT Directors and HODs only. Student records are never shown here.
+          </p>
+        </div>
+        <Button onClick={() => { setForm(emptyForm); setModal(true); }}><Plus size={16} className="mr-1" /> New Admin</Button>
       </div>
 
       <div className="flex items-center gap-3">
@@ -106,6 +135,30 @@ export function SchoolAdminsPage() {
           </table>
         )}
       </div>
+
+      <Modal open={modal} onClose={() => setModal(false)} title="Create School Admin">
+        <div className="space-y-4">
+          <Input label="First Name" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+          <Input label="Last Name" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+          <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          {isSuperAdmin && (
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+              <select
+                value={form.schoolId}
+                onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
+                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+              >
+                <option value="">Unaffiliated / platform-wide</option>
+                {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
+          {createError && <p className="text-sm text-red-500">{createError}</p>}
+          <Button onClick={handleCreate} className="w-full">Create Admin</Button>
+        </div>
+      </Modal>
     </div>
   );
 }

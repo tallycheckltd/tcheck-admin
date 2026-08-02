@@ -49,6 +49,7 @@ const hodOverview: NavItem[] = [
 const hodAdmin: NavItem[] = [
   { to: '/admin/users', icon: Users, label: 'Users' },
   { to: '/admin/students', icon: GraduationCap, label: 'Students' },
+  { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
 ];
 
 const hodOperations: NavItem[] = [
