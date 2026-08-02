@@ -29,6 +29,7 @@ import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
 import { FraudDetectionPage } from './pages/admin/FraudDetectionPage';
 import { SchoolAdminsPage } from './pages/admin/SchoolAdminsPage';
 import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
+import { SupportPage } from './pages/admin/SupportPage';
 import { LegalPage } from './pages/LegalPage';
 
 export default function App() {
@@ -51,6 +52,7 @@ export default function App() {
               <Route path="/admin/fraud-detection" element={<FraudDetectionPage />} />
               <Route path="/admin/settings" element={<SettingsPage />} />
               <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
+              <Route path="/admin/support" element={<SupportPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
               {/* SUB_ADMIN is scoped to their own school's beacons; SUPER_ADMIN sees/manages all (beacon.service.ts enforces this) */}
               <Route path="/admin/beacons" element={<BLEBeaconPage />} />

@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight, X
+  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -37,6 +37,7 @@ const superAdminGeneral: NavItem[] = [
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/system-announcements', icon: Megaphone, label: 'System Announcements' },
+  { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
   { to: '/legal', icon: Scale, label: 'Legal' },
 ];
@@ -76,6 +77,7 @@ const hodGeneral: NavItem[] = [
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/admin/system-announcements', icon: Megaphone, label: 'Announcements' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
+  { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
   { to: '/legal', icon: Scale, label: 'Legal' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];

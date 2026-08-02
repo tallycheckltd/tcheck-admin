@@ -416,12 +416,38 @@ export interface MessageFlag {
 export interface Notification {
   id: string;
   userId: string;
-  type: 'MESSAGE' | 'ATTENDANCE' | 'FLAG' | 'SYSTEM';
+  type: 'MESSAGE' | 'ATTENDANCE' | 'FLAG' | 'SYSTEM' | 'TICKET';
   title: string;
   body: string;
   read: boolean;
   metadata?: string;
   createdAt: string;
+}
+
+export interface TicketMessage {
+  id: string;
+  ticketId: string;
+  senderId: string;
+  sender?: Pick<User, 'id' | 'firstName' | 'lastName' | 'role'>;
+  content: string;
+  createdAt: string;
+}
+
+export interface Ticket {
+  id: string;
+  schoolId: string;
+  school?: Pick<School, 'id' | 'name' | 'code' | 'color'>;
+  createdById: string;
+  createdBy?: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>;
+  subject: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+  assignedToId?: string | null;
+  assignedTo?: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'> | null;
+  messages?: TicketMessage[];
+  _count?: { messages: number };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthResponse {

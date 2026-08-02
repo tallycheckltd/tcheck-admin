@@ -4,12 +4,12 @@ import { useApi } from '../hooks/useApi';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import {
-  Bell, MessageSquare, Flag, CheckCircle, Clock, Filter, Users,
+  Bell, MessageSquare, Flag, CheckCircle, Clock, Filter, Users, LifeBuoy,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import type { Notification } from '../types';
 
-type FilterType = 'all' | 'MESSAGE' | 'FLAG' | 'ATTENDANCE' | 'SYSTEM';
+type FilterType = 'all' | 'MESSAGE' | 'FLAG' | 'ATTENDANCE' | 'SYSTEM' | 'TICKET';
 
 export function AlertsPage() {
   const { data: notifications, refetch, setData: setNotifications } = useApi<Notification[]>('/notifications');
@@ -32,6 +32,8 @@ export function AlertsPage() {
     s.on('flag:new', handler);
     s.on('flag:resolved', handler);
     s.on('attendance:update', handler);
+    s.on('ticket:new', handler);
+    s.on('ticket:updated', handler);
 
     return () => { s.disconnect(); };
   }, [refetch, refetchCount]);
@@ -64,15 +66,17 @@ export function AlertsPage() {
       case 'MESSAGE': return <MessageSquare size={16} className="text-blue-500" />;
       case 'FLAG': return <Flag size={16} className="text-yellow-500" />;
       case 'ATTENDANCE': return <Users size={16} className="text-green-500" />;
+      case 'TICKET': return <LifeBuoy size={16} className="text-purple-500" />;
       default: return <Bell size={16} className="text-gray-500" />;
     }
   };
 
-  const typeBadgeColor = (type: string): 'blue' | 'yellow' | 'green' | 'gray' => {
+  const typeBadgeColor = (type: string): 'blue' | 'yellow' | 'green' | 'gray' | 'purple' => {
     switch (type) {
       case 'MESSAGE': return 'blue';
       case 'FLAG': return 'yellow';
       case 'ATTENDANCE': return 'green';
+      case 'TICKET': return 'purple';
       default: return 'gray';
     }
   };
@@ -96,6 +100,7 @@ export function AlertsPage() {
     { key: 'FLAG', label: 'Escalations' },
     { key: 'ATTENDANCE', label: 'Attendance' },
     { key: 'SYSTEM', label: 'System' },
+    { key: 'TICKET', label: 'Support' },
   ];
 
   return (
