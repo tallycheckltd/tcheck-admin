@@ -16,7 +16,8 @@ interface HistoryRecord {
   checkOutAt: string | null;
   checkInType: string;
   status: string;
-  class: { title: string; course: { name: string; code: string } } | null;
+  class: { title: string; room: string | null; course: { name: string; code: string } } | null;
+  verification: { deviceId: string | null; deviceModel: string | null; deviceOSVersion: string | null; verificationMethod: string | null } | null;
 }
 
 interface HistoryResponse {
@@ -239,7 +240,11 @@ export function UserDetailPage() {
             </thead>
             <tbody className="text-slate-800 dark:text-gray-300">
               {user.courseStats.map((cs) => (
-                <tr key={cs.courseId}>
+                <tr
+                  key={cs.courseId}
+                  onClick={() => navigate(`/admin/users/${id}/courses/${cs.courseId}`)}
+                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                >
                   <td className="font-medium text-slate-950 dark:text-white">{cs.courseName}</td>
                   <td>{cs.attended}</td>
                   <td>{cs.total}</td>
@@ -297,28 +302,44 @@ export function UserDetailPage() {
         </div>
       )}
 
-      {/* Recent Attendance */}
+      {/* Attendance History — full lifetime log with the hardware/location data captured at
+          check-in, so there's no ambiguity about whether or how a session was attended. */}
       {history.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-white/5">
-            <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Recent Attendance</h3>
+            <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Attendance History</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Complete lifetime check-in log — timestamp, room, and device used for every entry.</p>
           </div>
           <table className="w-full text-sm gradient-table">
             <thead>
               <tr>
-                <th>Course</th>
-                <th>Class</th>
-                <th>Check-in Time</th>
-                <th>Check-in Type</th>
+                <th>Course / Class</th>
+                <th>Timestamp</th>
+                <th>Room</th>
+                <th>Device</th>
+                <th>Type</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody className="text-slate-800 dark:text-gray-300">
               {history.map((a) => (
                 <tr key={a.id}>
-                  <td>{a.class?.course?.name || '-'}</td>
-                  <td className="font-medium text-slate-950 dark:text-white">{a.class?.title || '-'}</td>
+                  <td>
+                    <p className="font-medium text-slate-950 dark:text-white">{a.class?.course?.name || '-'}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">{a.class?.title || '-'}</p>
+                  </td>
                   <td>{new Date(a.checkInAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                  <td>{a.class?.room || '—'}</td>
+                  <td>
+                    {a.verification?.deviceModel ? (
+                      <div>
+                        <p>{a.verification.deviceModel}</p>
+                        {a.verification.deviceId && (
+                          <p className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]">{a.verification.deviceId}</p>
+                        )}
+                      </div>
+                    ) : '—'}
+                  </td>
                   <td>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
