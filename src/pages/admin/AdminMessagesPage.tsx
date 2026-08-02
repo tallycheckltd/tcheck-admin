@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
 import { useApi, useMutation } from '../../hooks/useApi';
@@ -7,18 +8,20 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import {
   Search, MessageSquare, Eye, Flag, CheckCircle, XCircle,
-  Users, ChevronRight, AlertTriangle, Clock, Shield,
+  Users, ChevronRight, AlertTriangle, Clock, Shield, Megaphone,
 } from 'lucide-react';
 import { api } from '../../lib/api';
-import type { AdminConversation, AdminConversationDetail, MessageFlag } from '../../types';
+import type { AdminConversation, AdminConversationDetail, MessageFlag, Broadcast } from '../../types';
 
 type Tab = 'conversations' | 'flags';
 
 export function AdminMessagesPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('conversations');
   const [search, setSearch] = useState('');
   const { data: conversations, refetch: refetchConvos } = useApi<AdminConversation[]>('/messages/admin/conversations');
   const { data: flags, refetch: refetchFlags } = useApi<MessageFlag[]>('/messages/flags');
+  const { data: broadcasts } = useApi<Broadcast[]>('/broadcasts');
   const socketRef = useRef<Socket | null>(null);
 
   // Conversation detail
@@ -211,6 +214,28 @@ export function AdminMessagesPage() {
         <div className="flex gap-6 h-[calc(100vh-16rem)]">
           {/* Conversation list */}
           <div className="w-96 flex flex-col">
+            {broadcasts && broadcasts.length > 0 && (
+              <div className="mb-4 space-y-1.5">
+                {broadcasts.slice(0, 3).map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => navigate('/admin/system-announcements')}
+                    className="w-full text-left px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Megaphone size={14} className="text-blue-500 flex-shrink-0" />
+                      <p className="text-sm font-medium text-slate-950 dark:text-white truncate">{b.title}</p>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 truncate">{b.body}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 px-1">
+              Other Private Chats
+            </p>
+
             <div className="relative mb-4">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
               <input

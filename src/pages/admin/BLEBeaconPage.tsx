@@ -12,7 +12,7 @@ const emptyForm = {
   name: '',
   major: 1,
   minor: 1,
-  rssiThreshold: -75,
+  rssiThreshold: -90,
   location: '',
   description: '',
   isActive: true,
@@ -150,8 +150,11 @@ export function BLEBeaconPage() {
           <div className="grid grid-cols-3 gap-4">
             <Input label="Major" type="number" value={String(form.major)} onChange={(e) => setForm({ ...form, major: parseInt(e.target.value) || 0 })} />
             <Input label="Minor" type="number" value={String(form.minor)} onChange={(e) => setForm({ ...form, minor: parseInt(e.target.value) || 0 })} />
-            <Input label="RSSI Threshold" type="number" value={String(form.rssiThreshold)} onChange={(e) => setForm({ ...form, rssiThreshold: parseInt(e.target.value) || -75 })} />
+            <Input label="RSSI Threshold" type="number" value={String(form.rssiThreshold)} onChange={(e) => setForm({ ...form, rssiThreshold: parseInt(e.target.value) || -90 })} />
           </div>
+          <p className="text-xs text-slate-500 dark:text-gray-400 -mt-2">
+            The minimum signal strength (dBm) a student's phone must detect to check in. More negative = works from farther away in the room; less negative = requires standing closer to the beacon. -90 is a good default for a typical classroom.
+          </p>
           <Input label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional notes" />
           <div className="flex items-center gap-2">
