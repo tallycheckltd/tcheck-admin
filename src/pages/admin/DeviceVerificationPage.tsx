@@ -21,11 +21,18 @@ interface PendingBinding {
 
 export function DeviceVerificationPage() {
   const { data: pending, loading, refetch } = useApi<PendingBinding[]>('/devices/pending');
+  const { data: bound, refetch: refetchBound } = useApi<PendingBinding[]>('/devices/bound');
   const { mutate: verify } = useMutation('post');
   const { mutate: reset } = useMutation('delete');
   const [search, setSearch] = useState('');
 
-  const filtered = pending?.filter(p => 
+  const filtered = pending?.filter(p =>
+    `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
+    p.studentId.toLowerCase().includes(search.toLowerCase()) ||
+    p.deviceModel.toLowerCase().includes(search.toLowerCase())
+  ) || [];
+
+  const filteredBound = bound?.filter(p =>
     `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
     p.studentId.toLowerCase().includes(search.toLowerCase()) ||
     p.deviceModel.toLowerCase().includes(search.toLowerCase())
@@ -46,6 +53,7 @@ export function DeviceVerificationPage() {
     try {
       await reset(`/devices/${userId}`);
       refetch();
+      refetchBound();
     } catch {
       alert('Failed to reset device');
     }
@@ -211,6 +219,80 @@ export function DeviceVerificationPage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Bound Devices — already-approved bindings; reset here when a student gets a new phone */}
+      <div className="glass-card overflow-hidden">
+        <div className="p-4 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02] flex justify-between items-center">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <ShieldCheck size={16} className="text-green-500" />
+            Bound Devices
+            <Badge color="green">{filteredBound.length}</Badge>
+          </h3>
+          <button onClick={() => refetchBound()} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors">
+            <RefreshCw size={14} />
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
+              <tr>
+                <th className="text-left py-3 px-6">Student</th>
+                <th className="text-left py-3 px-6">Device</th>
+                <th className="text-left py-3 px-6">Bound Since</th>
+                <th className="text-right py-3 px-6">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+              {filteredBound.map((p) => (
+                <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors">
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center font-bold text-xs">
+                        {p.firstName[0]}{p.lastName[0]}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">{p.firstName} {p.lastName}</p>
+                        <p className="text-[10px] text-gray-500">{p.studentId}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex flex-col">
+                      <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1.5 font-medium">
+                        <Smartphone size={14} className="text-gray-400" />
+                        {p.deviceModel}
+                      </span>
+                      <code className="text-[10px] text-gray-400 bg-gray-100 dark:bg-white/5 px-1 py-0.5 rounded mt-1 truncate max-w-[120px]">
+                        {p.deviceId}
+                      </code>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6 text-gray-500 text-xs">
+                    {p.createdAt ? format(new Date(p.createdAt), 'MMM d, h:mm a') : '-'}
+                  </td>
+                  <td className="py-4 px-6 text-right">
+                    <button
+                      onClick={() => handleReset(p.id)}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded-lg text-xs font-bold transition-all ml-auto"
+                    >
+                      <RefreshCw size={12} /> Reset Device
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {filteredBound.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center">
+                    <Smartphone size={40} className="mx-auto text-gray-300 dark:text-gray-700 mb-3" />
+                    <p className="text-sm text-gray-500">No devices bound yet.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
