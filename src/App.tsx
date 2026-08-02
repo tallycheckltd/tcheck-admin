@@ -52,12 +52,13 @@ export default function App() {
               <Route path="/admin/settings" element={<SettingsPage />} />
               <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
+              {/* SUB_ADMIN is scoped to their own school's beacons; SUPER_ADMIN sees/manages all (beacon.service.ts enforces this) */}
+              <Route path="/admin/beacons" element={<BLEBeaconPage />} />
 
               {/* SUPER_ADMIN-only routes */}
               <Route element={<RequireSuperAdmin />}>
                 <Route path="/admin/schools" element={<SchoolsPage />} />
                 <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
-                <Route path="/admin/beacons" element={<BLEBeaconPage />} />
                 <Route path="/admin/messages" element={<AdminMessagesPage />} />
               </Route>
 
