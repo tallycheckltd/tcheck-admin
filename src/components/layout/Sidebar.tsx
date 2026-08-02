@@ -70,6 +70,7 @@ const hodOperations: NavItem[] = [
 ];
 
 const hodGeneral: NavItem[] = [
+  { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Manager' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/admin/system-announcements', icon: Megaphone, label: 'Announcements' },

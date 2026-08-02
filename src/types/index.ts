@@ -94,6 +94,8 @@ export interface Beacon {
   location?: string;
   description?: string;
   isActive: boolean;
+  schoolId?: string | null;
+  school?: School | null;
   createdAt: string;
   updatedAt: string;
   courses?: Pick<Course, 'id' | 'name' | 'code'>[];

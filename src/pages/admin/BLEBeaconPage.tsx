@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
+import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { Plus, Pencil, Trash2, Bluetooth } from 'lucide-react';
-import type { Beacon } from '../../types';
+import type { Beacon, School } from '../../types';
 
 const emptyForm = {
   uuid: '',
@@ -16,10 +17,14 @@ const emptyForm = {
   location: '',
   description: '',
   isActive: true,
+  schoolId: '',
 };
 
 export function BLEBeaconPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const { data: beacons, refetch } = useApi<Beacon[]>('/beacons');
+  const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
   const { mutate: create } = useMutation('post');
   const { mutate: update } = useMutation('put');
   const { mutate: del } = useMutation('delete');
@@ -45,6 +50,7 @@ export function BLEBeaconPage() {
       location: b.location || '',
       description: b.description || '',
       isActive: b.isActive,
+      schoolId: b.schoolId || '',
     });
     setModal(true);
   };
@@ -54,6 +60,9 @@ export function BLEBeaconPage() {
       ...form,
       location: form.location || undefined,
       description: form.description || undefined,
+      // A SUB_ADMIN's schoolId is forced server-side regardless of what's sent here; only
+      // SUPER_ADMIN's choice of school actually takes effect.
+      schoolId: isSuperAdmin ? (form.schoolId || undefined) : undefined,
     };
     if (editing) {
       await update(`/beacons/${editing}`, payload);
@@ -89,6 +98,7 @@ export function BLEBeaconPage() {
           <thead>
             <tr>
               <th>Name</th>
+              {isSuperAdmin && <th>School</th>}
               <th>UUID</th>
               <th>Major</th>
               <th>Minor</th>
@@ -108,6 +118,9 @@ export function BLEBeaconPage() {
                     {b.name}
                   </span>
                 </td>
+                {isSuperAdmin && (
+                  <td>{b.school?.name || <span className="text-slate-600 dark:text-slate-400">Unassigned</span>}</td>
+                )}
                 <td className="font-mono text-xs">{b.uuid.substring(0, 8)}...</td>
                 <td>{b.major}</td>
                 <td>{b.minor}</td>
@@ -137,7 +150,7 @@ export function BLEBeaconPage() {
               </tr>
             ))}
             {(!beacons || beacons.length === 0) && (
-              <tr><td colSpan={9} className="text-center py-8 text-slate-600 dark:text-slate-400">No beacons configured yet</td></tr>
+              <tr><td colSpan={isSuperAdmin ? 10 : 9} className="text-center py-8 text-slate-600 dark:text-slate-400">No beacons configured yet</td></tr>
             )}
           </tbody>
         </table>
@@ -146,6 +159,19 @@ export function BLEBeaconPage() {
       <Modal open={modal} onClose={() => { setModal(false); setEditing(null); }} title={editing ? 'Edit Beacon' : 'Create Beacon'}>
         <div className="space-y-4">
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Room 101 Beacon" />
+          {isSuperAdmin && (
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+              <select
+                value={form.schoolId}
+                onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
+                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+              >
+                <option value="">Unassigned</option>
+                {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
           <Input label="UUID" value={form.uuid} onChange={(e) => setForm({ ...form, uuid: e.target.value })} placeholder="e.g. E2C56DB5-DFFB-48D2-B060-D0F5A71096E0" />
           <div className="grid grid-cols-3 gap-4">
             <Input label="Major" type="number" value={String(form.major)} onChange={(e) => setForm({ ...form, major: parseInt(e.target.value) || 0 })} />
