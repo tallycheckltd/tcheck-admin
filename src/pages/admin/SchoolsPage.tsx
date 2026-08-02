@@ -3,8 +3,11 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer } from 'lucide-react';
-import type { School, SchoolFeatures } from '../../types';
+import { Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer, Mail, Lock, User as UserIcon, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import type { School, SchoolFeatures, User } from '../../types';
+
+const emptySchoolForm = { name: '', code: '', color: '#3B82F6' };
+const emptyAdminForm = { email: '', password: '', firstName: '', lastName: '' };
 
 const defaultFeatures: Required<SchoolFeatures> = {
   anonymousChat: true,
@@ -16,7 +19,8 @@ const defaultFeatures: Required<SchoolFeatures> = {
 
 export function SchoolsPage() {
   const { data: schools, refetch } = useApi<School[]>('/schools');
-  const { mutate: create } = useMutation('post');
+  const { mutate: create } = useMutation<School>('post');
+  const { mutate: createAdmin } = useMutation<User>('post');
   const { mutate: update } = useMutation('put');
   const { mutate: remove } = useMutation('delete');
 
@@ -24,7 +28,26 @@ export function SchoolsPage() {
   const [editing, setEditing] = useState<School | null>(null);
   const [form, setForm] = useState({ name: '', code: '', color: '#3B82F6', allowManualLecturerOverride: true, features: defaultFeatures });
 
-  const openCreate = () => { setEditing(null); setForm({ name: '', code: '', color: '#3B82F6', allowManualLecturerOverride: true, features: defaultFeatures }); setModal(true); };
+  // New-school wizard: step 1 collects the institution, step 2 collects the admin who'll log in
+  // and run it day-to-day. Nothing is created until "Create School & Admin" on step 2 — so
+  // abandoning the wizard between steps leaves nothing behind. If admin creation fails after the
+  // school was already created, createdSchoolId is kept so retrying doesn't create a duplicate school.
+  const [wizardStep, setWizardStep] = useState<1 | 2>(1);
+  const [schoolForm, setSchoolForm] = useState(emptySchoolForm);
+  const [adminForm, setAdminForm] = useState(emptyAdminForm);
+  const [createdSchoolId, setCreatedSchoolId] = useState<string | null>(null);
+  const [wizardError, setWizardError] = useState('');
+  const [wizardSubmitting, setWizardSubmitting] = useState(false);
+
+  const openCreate = () => {
+    setEditing(null);
+    setWizardStep(1);
+    setSchoolForm(emptySchoolForm);
+    setAdminForm(emptyAdminForm);
+    setCreatedSchoolId(null);
+    setWizardError('');
+    setModal(true);
+  };
   const openEdit = (s: School) => {
     setEditing(s);
     setForm({
@@ -38,15 +61,42 @@ export function SchoolsPage() {
   };
 
   const handleSubmit = async () => {
-    if (editing) {
-      await update(`/schools/${editing.id}`, form);
-    } else {
-      // allowManualLecturerOverride defaults true server-side on create; the toggle only applies on edit.
-      const { name, code, color } = form;
-      await create('/schools', { name, code, color });
-    }
+    await update(`/schools/${editing!.id}`, form);
     setModal(false);
     refetch();
+  };
+
+  const handleWizardNext = () => {
+    if (!schoolForm.name.trim() || !schoolForm.code.trim()) {
+      setWizardError('Institution name and code are required.');
+      return;
+    }
+    setWizardError('');
+    setWizardStep(2);
+  };
+
+  const handleCreateWizard = async () => {
+    if (!adminForm.email.trim() || !adminForm.password || !adminForm.firstName.trim() || !adminForm.lastName.trim()) {
+      setWizardError('All admin fields are required.');
+      return;
+    }
+    setWizardError('');
+    setWizardSubmitting(true);
+    try {
+      let schoolId = createdSchoolId;
+      if (!schoolId) {
+        const school = await create('/schools', schoolForm);
+        schoolId = school!.id;
+        setCreatedSchoolId(schoolId);
+      }
+      await createAdmin('/users/admin', { ...adminForm, schoolId });
+      setModal(false);
+      refetch();
+    } catch (e) {
+      setWizardError(e instanceof Error ? e.message : 'Failed to create school/admin');
+    } finally {
+      setWizardSubmitting(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -125,7 +175,36 @@ export function SchoolsPage() {
         </div>
       </div>
 
-      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit School' : 'Add School'}>
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={editing ? 'Edit School' : `Add School — Step ${wizardStep} of 2`}
+      >
+        {!editing && (
+          <div className="flex items-center gap-2 mb-5">
+            {[1, 2].map((step) => (
+              <div key={step} className="flex items-center gap-2 flex-1">
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    wizardStep === step
+                      ? 'bg-blue-500 text-white'
+                      : wizardStep > step
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  {wizardStep > step ? <CheckCircle2 size={16} /> : step}
+                </div>
+                <span className={`text-xs font-medium ${wizardStep === step ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                  {step === 1 ? 'Institution' : 'Admin Account'}
+                </span>
+                {step === 1 && <div className={`flex-1 h-0.5 ${wizardStep > 1 ? 'bg-green-500' : 'bg-gray-200 dark:bg-white/10'}`} />}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {editing ? (
         <div className="space-y-5">
           <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
             <Input 
@@ -293,9 +372,95 @@ export function SchoolsPage() {
             </div>
           )}
           <Button onClick={handleSubmit} className="w-full py-4 shadow-lg shadow-blue-500/20">
-            {editing ? 'Update School Profile' : 'Register New School'}
+            Update School Profile
           </Button>
         </div>
+        ) : wizardStep === 1 ? (
+        <div className="space-y-5">
+          <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
+            <Input
+              label="Institution Name"
+              icon={SchoolIcon}
+              placeholder="e.g. Science & Technology Institute"
+              value={schoolForm.name}
+              onChange={(e) => setSchoolForm({ ...schoolForm, name: e.target.value })}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="School Code"
+                icon={Hash}
+                placeholder="STI"
+                value={schoolForm.code}
+                onChange={(e) => setSchoolForm({ ...schoolForm, code: e.target.value })}
+              />
+              <Input
+                label="Brand Color"
+                icon={Palette}
+                type="color"
+                value={schoolForm.color}
+                onChange={(e) => setSchoolForm({ ...schoolForm, color: e.target.value })}
+              />
+            </div>
+          </div>
+          {wizardError && (
+            <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl px-4 py-2.5">
+              <AlertCircle size={16} className="shrink-0" /> {wizardError}
+            </div>
+          )}
+          <Button onClick={handleWizardNext} className="w-full py-4 shadow-lg shadow-blue-500/20">
+            Next: Assign Admin <ArrowRight size={16} className="ml-2" />
+          </Button>
+        </div>
+        ) : (
+        <div className="space-y-5">
+          <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              This account logs in as this school&apos;s admin — they&apos;ll add lecturers, courses, and approve students from there.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="First Name"
+                icon={UserIcon}
+                value={adminForm.firstName}
+                onChange={(e) => setAdminForm({ ...adminForm, firstName: e.target.value })}
+              />
+              <Input
+                label="Last Name"
+                icon={UserIcon}
+                value={adminForm.lastName}
+                onChange={(e) => setAdminForm({ ...adminForm, lastName: e.target.value })}
+              />
+            </div>
+            <Input
+              label="Email"
+              type="email"
+              icon={Mail}
+              value={adminForm.email}
+              onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+            />
+            <Input
+              label="Password"
+              type="password"
+              icon={Lock}
+              value={adminForm.password}
+              onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
+            />
+          </div>
+          {wizardError && (
+            <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl px-4 py-2.5">
+              <AlertCircle size={16} className="shrink-0" /> {wizardError}
+            </div>
+          )}
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => setWizardStep(1)} disabled={wizardSubmitting} className="gap-2">
+              <ArrowLeft size={16} /> Back
+            </Button>
+            <Button onClick={() => void handleCreateWizard()} disabled={wizardSubmitting} className="flex-1 py-4 shadow-lg shadow-blue-500/20">
+              {wizardSubmitting ? 'Creating…' : 'Create School & Admin'}
+            </Button>
+          </div>
+        </div>
+        )}
       </Modal>
     </div>
   );
