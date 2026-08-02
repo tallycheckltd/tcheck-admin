@@ -7,7 +7,17 @@ import type {
   ClassAttendanceStat,
   CourseAttendanceExportRow,
   DashboardStats,
+  UserDetail,
 } from '../types';
+
+/** One row from GET /users/:id/attendance-history, as rendered on the student profile. */
+export type StudentReportHistoryRow = {
+  checkInAt: string;
+  checkOutAt: string | null;
+  checkInType: string;
+  status: string;
+  class: { title: string; room: string | null; course: { name: string; code: string } } | null;
+};
 
 /** Roster / at-risk rows from `GET /attendance/roster` (same shape as Reports page). */
 export type HodRosterPdfRow = {
@@ -353,6 +363,75 @@ export async function exportAttendanceOverviewPdf(stats: DashboardStats, classSt
     ]),
     styles: { fontSize: 8 },
     headStyles: { fillColor: [71, 85, 105] },
+    margin: { left: 40, right: 40 },
+  });
+
+  doc.save(`${fileBase}.pdf`);
+}
+
+/** Specific-student report: profile summary + per-course stats + full check-in history. */
+export async function exportStudentReportPdf(
+  student: UserDetail,
+  history: StudentReportHistoryRow[],
+  fileBase?: string,
+) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const startY = await addTcheckHeader(
+    doc,
+    'TCheck — Student attendance report',
+    `${student.firstName} ${student.lastName}${student.studentId ? ` · ${student.studentId}` : ''} · Generated ${format(new Date(), 'PPpp')}`,
+  );
+
+  let y = startY;
+  if (student.courseStats && student.courseStats.length > 0) {
+    autoTable(doc, {
+      startY: y,
+      head: [['Course', 'Attended', 'Total', 'Attendance %']],
+      body: student.courseStats.map((cs) => [cs.courseName, String(cs.attended), String(cs.total), `${cs.percentage}%`]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+      margin: { left: 40, right: 40 },
+    });
+    y = afterTableY(doc, y + 120) + 28;
+  }
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Course', 'Class', 'Timestamp', 'Room', 'Type', 'Status']],
+    body: history.map((h) => [
+      h.class?.course?.name ?? '—',
+      h.class?.title ?? '—',
+      format(new Date(h.checkInAt), 'MMM d, yyyy HH:mm'),
+      h.class?.room ?? '—',
+      h.checkInType,
+      h.status,
+    ]),
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 40, right: 40 },
+  });
+
+  const safe = fileBase ?? `tcheck-student-${(student.studentId ?? student.id).replace(/[^\w-]/g, '')}`;
+  doc.save(`${safe}.pdf`);
+}
+
+/** Week-over-week attendance trend, isolated from the full campus-analytics bundle. */
+export async function exportTrendAnalysisPdf(campus: CampusAnalytics, fileBase = 'tcheck-trend-analysis') {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const startY = await addTcheckHeader(
+    doc,
+    'TCheck — Attendance trend analysis',
+    `Scope · ${campus.scopedSchoolId == null ? 'all schools' : campus.scopedSchoolId} · Generated ${format(new Date(), 'PPpp')}`,
+  );
+
+  autoTable(doc, {
+    startY,
+    head: [['Week', 'Attendance %', 'Present', 'Eligible']],
+    body: campus.attendanceDecayByWeek.map((w) => [w.weekLabel, `${w.pct}%`, String(w.volumePresent), String(w.volumeEligible)]),
+    styles: { fontSize: 10, cellPadding: 5 },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     margin: { left: 40, right: 40 },
   });
 

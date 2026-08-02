@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { exportCampusAnalyticsPdf } from '../../lib/adminPdfExport';
+import { exportCampusAnalyticsPdf, exportTrendAnalysisPdf } from '../../lib/adminPdfExport';
+import { downloadCsv } from '../../lib/csv';
 import { format, parseISO } from 'date-fns';
 import {
   ResponsiveContainer,
@@ -101,6 +102,7 @@ export function AttendanceAnalyticsPage() {
   const [search, setSearch] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
   const [pdfExporting, setPdfExporting] = useState(false);
+  const [trendExporting, setTrendExporting] = useState<'pdf' | 'csv' | null>(null);
 
   const statsList = sessionRows ?? [];
   const uniqueCourses = useMemo(
@@ -167,6 +169,32 @@ export function AttendanceAnalyticsPage() {
       window.alert('Could not generate PDF. If this persists, try Chrome or Edge on desktop.');
     } finally {
       setPdfExporting(false);
+    }
+  }
+
+  async function handleExportTrendPdf() {
+    if (!campus) return;
+    setTrendExporting('pdf');
+    try {
+      await exportTrendAnalysisPdf(campus);
+    } catch {
+      window.alert('Could not generate PDF. If this persists, try Chrome or Edge on desktop.');
+    } finally {
+      setTrendExporting(null);
+    }
+  }
+
+  function handleExportTrendCsv() {
+    if (!campus) return;
+    setTrendExporting('csv');
+    try {
+      downloadCsv(
+        'tcheck-trend-analysis.csv',
+        ['Week', 'Attendance %', 'Present', 'Eligible'],
+        campus.attendanceDecayByWeek.map((w) => [w.weekLabel, w.pct, w.volumePresent, w.volumeEligible]),
+      );
+    } finally {
+      setTrendExporting(null);
     }
   }
 
@@ -410,9 +438,29 @@ export function AttendanceAnalyticsPage() {
           </div>
 
           <div className={clsx(cardShell, 'min-h-[320px]')}>
-            <div className="mb-4">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Weekly participation</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Area + line vs 75% target</p>
+            <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Weekly participation</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Area + line vs 75% target</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleExportTrendPdf()}
+                  disabled={!campus || trendExporting !== null}
+                  className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-50 cursor-pointer"
+                >
+                  {trendExporting === 'pdf' ? 'PDF…' : 'Trend PDF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportTrendCsv}
+                  disabled={!campus || trendExporting !== null}
+                  className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-50 cursor-pointer"
+                >
+                  {trendExporting === 'csv' ? 'CSV…' : 'Trend CSV'}
+                </button>
+              </div>
             </div>
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">

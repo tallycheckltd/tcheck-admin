@@ -4,8 +4,10 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint } from 'lucide-react';
+import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2 } from 'lucide-react';
 import type { UserDetail } from '../../types';
+import { exportStudentReportPdf } from '../../lib/adminPdfExport';
+import { downloadCsv } from '../../lib/csv';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const };
 const HISTORY_PAGE_SIZE = 20;
@@ -36,6 +38,7 @@ export function UserDetailPage() {
   const [historyPage, setHistoryPage] = useState(1);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [reportExporting, setReportExporting] = useState<'pdf' | 'csv' | null>(null);
   const { mutate: resetBiometricLock, loading: resettingBiometricLock } = useMutation('post');
 
   const handleResetBiometricLock = async () => {
@@ -43,6 +46,47 @@ export function UserDetailPage() {
     if (!confirm("Reset this student's biometric lock? They'll need to re-verify with Face ID/Touch ID (or another supported method) on their next check-in.")) return;
     await resetBiometricLock(`/auth/biometric-lock/reset/${id}`);
     refetch();
+  };
+
+  /** Reports engine: specific-student report — fetches the student's FULL history (not just the
+   * page currently loaded on screen) so the export is complete, not just what's been scrolled to. */
+  const fetchFullHistory = async (): Promise<HistoryRecord[]> => {
+    if (!id) return [];
+    const res = await api.get<HistoryResponse>(`/users/${id}/attendance-history?page=1&pageSize=1000`);
+    return res.records;
+  };
+
+  const handleExportStudentReportPdf = async () => {
+    if (!id || !user) return;
+    setReportExporting('pdf');
+    try {
+      const fullHistory = await fetchFullHistory();
+      await exportStudentReportPdf(user, fullHistory, `tcheck-student-${user.studentId ?? user.id}`);
+    } finally {
+      setReportExporting(null);
+    }
+  };
+
+  const handleExportStudentReportCsv = async () => {
+    if (!id || !user) return;
+    setReportExporting('csv');
+    try {
+      const fullHistory = await fetchFullHistory();
+      downloadCsv(
+        `tcheck-student-${user.studentId ?? user.id}.csv`,
+        ['Course', 'Class', 'Timestamp', 'Room', 'Type', 'Status'],
+        fullHistory.map((h) => [
+          h.class?.course?.name ?? '',
+          h.class?.title ?? '',
+          h.checkInAt,
+          h.class?.room ?? '',
+          h.checkInType,
+          h.status,
+        ]),
+      );
+    } finally {
+      setReportExporting(null);
+    }
   };
 
   useEffect(() => {
@@ -87,9 +131,21 @@ export function UserDetailPage() {
 
   return (
     <div className="space-y-6">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-slate-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer">
-        <ArrowLeft size={16} /> Back to Users
-      </button>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-slate-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer">
+          <ArrowLeft size={16} /> Back to Users
+        </button>
+        {user.role === 'STUDENT' && (
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={() => void handleExportStudentReportPdf()} disabled={reportExporting !== null}>
+              <Download size={14} className="mr-1.5" /> {reportExporting === 'pdf' ? 'Building…' : 'Export PDF'}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => void handleExportStudentReportCsv()} disabled={reportExporting !== null}>
+              <Table2 size={14} className="mr-1.5" /> {reportExporting === 'csv' ? 'Building…' : 'Export CSV'}
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Profile Header */}
       <div className="glass-card p-6">
