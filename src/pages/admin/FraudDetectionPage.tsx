@@ -1,9 +1,10 @@
 import { useApi } from '../../hooks/useApi';
-import { 
-  AlertTriangle, Users, Battery, Shield, ExternalLink, UserCheck, Smartphone, 
-  CheckCircle
+import {
+  AlertTriangle, Users, Battery, Shield, ExternalLink, UserCheck, Smartphone,
+  CheckCircle, RefreshCw
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
 import { format } from 'date-fns';
 
 interface FraudFlaggedAttendance {
@@ -39,7 +40,19 @@ interface FraudAnalytics {
 }
 
 export function FraudDetectionPage() {
-  const { data, loading } = useApi<FraudAnalytics>('/attendance/fraud-analytics');
+  const { data, loading, error, refetch } = useApi<FraudAnalytics>('/attendance/fraud-analytics');
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-center px-4">
+        <AlertTriangle className="text-red-500" size={36} />
+        <p className="text-sm text-gray-600 dark:text-gray-400">{error}</p>
+        <Button variant="secondary" onClick={() => refetch()} className="gap-2">
+          <RefreshCw size={14} /> Retry
+        </Button>
+      </div>
+    );
+  }
 
   if (loading || !data) {
     return (
