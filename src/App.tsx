@@ -4,6 +4,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { RequireSuperAdmin } from './components/guards/RequireSuperAdmin';
 import { LoginPage } from './pages/auth/LoginPage';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { OverviewPage } from './pages/admin/OverviewPage';
 import { SchoolsPage } from './pages/admin/SchoolsPage';
 import { UsersPage } from './pages/admin/UsersPage';
@@ -39,6 +41,8 @@ export default function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<DashboardLayout />}>
               {/* Admin routes (SUPER_ADMIN + SUB_ADMIN) */}
               <Route path="/admin" element={<OverviewPage />} />
