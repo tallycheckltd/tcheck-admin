@@ -6,6 +6,8 @@ export interface SchoolFeatures {
   anonymousChat?: boolean;
   biometricStrictMode?: boolean;
   broadcasts?: boolean;
+  faceIdCheckIn?: boolean;
+  dwellTimeTracking?: boolean;
 }
 
 export interface School {

@@ -3,13 +3,15 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck, MessageSquareOff, ShieldCheck, Megaphone } from 'lucide-react';
+import { Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer } from 'lucide-react';
 import type { School, SchoolFeatures } from '../../types';
 
 const defaultFeatures: Required<SchoolFeatures> = {
   anonymousChat: true,
   biometricStrictMode: false,
   broadcasts: true,
+  faceIdCheckIn: true,
+  dwellTimeTracking: true,
 };
 
 export function SchoolsPage() {
@@ -246,6 +248,46 @@ export function SchoolsPage() {
                   }`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.broadcasts ? 'translate-x-6' : 'translate-x-1'}`} />
+                </span>
+              </label>
+
+              <label className="flex items-start justify-between gap-4 cursor-pointer">
+                <span className="flex items-start gap-2">
+                  <ScanFace size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Face ID Check-In</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Requires identity verification (Face ID, selfie, or device binding) to check in. Off falls back to a plain tap-to-check-in/out.
+                    </span>
+                  </span>
+                </span>
+                <span
+                  onClick={() => setForm({ ...form, features: { ...form.features, faceIdCheckIn: !form.features.faceIdCheckIn } })}
+                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    form.features.faceIdCheckIn ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.faceIdCheckIn ? 'translate-x-6' : 'translate-x-1'}`} />
+                </span>
+              </label>
+
+              <label className="flex items-start justify-between gap-4 cursor-pointer">
+                <span className="flex items-start gap-2">
+                  <Timer size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Dwell Time Tracking</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Requires ~10s of sustained beacon presence before a BLE check-in is accepted. Off allows an instant tap the moment the beacon is detected.
+                    </span>
+                  </span>
+                </span>
+                <span
+                  onClick={() => setForm({ ...form, features: { ...form.features, dwellTimeTracking: !form.features.dwellTimeTracking } })}
+                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    form.features.dwellTimeTracking ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.dwellTimeTracking ? 'translate-x-6' : 'translate-x-1'}`} />
                 </span>
               </label>
             </div>
