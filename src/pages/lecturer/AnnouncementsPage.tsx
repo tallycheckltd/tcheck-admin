@@ -64,7 +64,7 @@ export function AnnouncementsPage() {
                   <div className="flex items-center gap-3 mt-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
                     <span className="flex items-center gap-1"><Clock size={10} /> {timeAgo(a.createdAt)}</span>
                     <span>· {a.createdByName}</span>
-                    <span>· {a.course ? `${a.course.name} (${a.course.code})` : a.school ? a.school.name : 'All Schools'}</span>
+                    <span>· {a.course ? `${a.course.name} (${a.course.code})` : a.major ? `${a.major.name} (faculty)` : a.school ? a.school.name : 'All Schools'}</span>
                   </div>
                 </div>
               </div>

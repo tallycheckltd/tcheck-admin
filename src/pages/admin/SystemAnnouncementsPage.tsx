@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Megaphone, Send, Clock, AlertTriangle, Info, CheckCircle, Link as LinkIcon } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
-import type { School, Course, Broadcast } from '../../types';
+import type { School, Course, Major, Broadcast } from '../../types';
 
 type Severity = 'INFO' | 'WARNING' | 'CRITICAL';
 
@@ -56,12 +56,14 @@ export function SystemAnnouncementsPage() {
   const [severity, setSeverity] = useState<Severity>('INFO');
   const [targetSchoolId, setTargetSchoolId] = useState<string>(isSuperAdmin ? '' : (user?.schoolId ?? ''));
   const [targetCourseId, setTargetCourseId] = useState<string>('');
+  const [targetMajorId, setTargetMajorId] = useState<string>('');
   const [resourceUrl, setResourceUrl] = useState('');
   const [resourceLabel, setResourceLabel] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
 
   const { data: courses } = useApi<Course[]>(targetSchoolId ? `/courses?schoolId=${targetSchoolId}` : null);
+  const { data: majors } = useApi<Major[]>(targetSchoolId ? `/academic/majors?schoolId=${targetSchoolId}` : null);
 
   const handleSend = async () => {
     if (!title.trim() || !body.trim()) return;
@@ -73,6 +75,7 @@ export function SystemAnnouncementsPage() {
         severity,
         schoolId: targetSchoolId || undefined,
         courseId: targetCourseId || undefined,
+        majorId: !targetCourseId ? targetMajorId || undefined : undefined,
         resourceUrl: resourceUrl.trim() || undefined,
         resourceLabel: resourceLabel.trim() || undefined,
       });
@@ -80,6 +83,7 @@ export function SystemAnnouncementsPage() {
       setBody('');
       setSeverity('INFO');
       setTargetCourseId('');
+      setTargetMajorId('');
       setResourceUrl('');
       setResourceLabel('');
       setSent(true);
@@ -122,13 +126,13 @@ export function SystemAnnouncementsPage() {
             className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Target school</label>
               {isSuperAdmin ? (
                 <select
                   value={targetSchoolId}
-                  onChange={(e) => { setTargetSchoolId(e.target.value); setTargetCourseId(''); }}
+                  onChange={(e) => { setTargetSchoolId(e.target.value); setTargetCourseId(''); setTargetMajorId(''); }}
                   className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
                 >
                   <option value="">All Schools</option>
@@ -146,13 +150,27 @@ export function SystemAnnouncementsPage() {
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Narrow to course (optional)</label>
               <select
                 value={targetCourseId}
-                onChange={(e) => setTargetCourseId(e.target.value)}
+                onChange={(e) => { setTargetCourseId(e.target.value); if (e.target.value) setTargetMajorId(''); }}
                 disabled={!targetSchoolId}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white disabled:opacity-50"
               >
                 <option value="">Whole school</option>
                 {courses?.map((c) => (
                   <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Or by faculty/major (optional)</label>
+              <select
+                value={targetMajorId}
+                onChange={(e) => { setTargetMajorId(e.target.value); if (e.target.value) setTargetCourseId(''); }}
+                disabled={!targetSchoolId || !!targetCourseId}
+                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white disabled:opacity-50"
+              >
+                <option value="">Whole school</option>
+                {majors?.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>
             </div>
@@ -236,7 +254,7 @@ export function SystemAnnouncementsPage() {
                       <div className="flex items-center gap-3 mt-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
                         <span className="flex items-center gap-1"><Clock size={10} /> {timeAgo(a.createdAt)}</span>
                         <span>· Sent by {a.createdByName}</span>
-                        <span>· {a.course ? `${a.course.name} (${a.course.code})` : a.school ? a.school.name : 'All Schools'}</span>
+                        <span>· {a.course ? `${a.course.name} (${a.course.code})` : a.major ? `${a.major.name} (faculty)` : a.school ? a.school.name : 'All Schools'}</span>
                         <span className={`font-semibold capitalize ${cfg.text}`}>{a.severity.toLowerCase()}</span>
                       </div>
                     </div>

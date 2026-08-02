@@ -141,10 +141,19 @@ export function AdminMessagesPage() {
     }
   };
 
+  const roomKindLabel = (kind?: string) => {
+    switch (kind) {
+      case 'CLASS': return 'Session Chat (archived)';
+      case 'COURSE': return 'Course Chat';
+      case 'SCHOOL': return 'Campus Chat';
+      default: return 'Chat';
+    }
+  };
+
   const conversationLabel = (conv?: MessageFlag['conversation']) => {
     if (!conv) return 'a conversation';
     if (conv.kind && conv.kind !== 'DIRECT') {
-      return `${conv.kind === 'CLASS' ? 'Session Chat' : 'Campus Chat'} — ${conv.room?.title || conv.room?.name || 'room'}`;
+      return `${roomKindLabel(conv.kind)} — ${conv.room?.title || conv.room?.name || 'room'}`;
     }
     if (conv.user1 && conv.user2) return `${conv.user1.firstName} & ${conv.user2.firstName}`;
     return 'a conversation';
@@ -281,7 +290,7 @@ export function AdminMessagesPage() {
                           <p className="text-sm font-medium text-slate-950 dark:text-white truncate">
                             {c.room?.title || c.room?.name || 'Room'}
                           </p>
-                          <Badge color="purple">{c.kind === 'CLASS' ? 'Session Chat' : 'Campus Chat'}</Badge>
+                          <Badge color="purple">{roomKindLabel(c.kind)}</Badge>
                         </div>
                       )}
                     </div>
@@ -343,7 +352,7 @@ export function AdminMessagesPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <Badge color="purple">{convoDetail.conversation.kind === 'CLASS' ? 'Session Chat' : 'Campus Chat'}</Badge>
+                        <Badge color="purple">{roomKindLabel(convoDetail.conversation.kind)}</Badge>
                         <p className="text-sm font-medium text-slate-950 dark:text-white">
                           {convoDetail.conversation.room?.title || convoDetail.conversation.room?.name}
                         </p>
