@@ -9,6 +9,7 @@ import { SchoolsPage } from './pages/admin/SchoolsPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
 import { UserDetailPage } from './pages/admin/UserDetailPage';
+import { CourseAttendanceDetailPage } from './pages/admin/CourseAttendanceDetailPage';
 import { AttendanceAnalyticsPage } from './pages/admin/AttendanceAnalyticsPage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
 import { BLEBeaconPage } from './pages/admin/BLEBeaconPage';
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/admin" element={<OverviewPage />} />
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/users/:id" element={<UserDetailPage />} />
+              <Route path="/admin/users/:id/courses/:courseId" element={<CourseAttendanceDetailPage />} />
               <Route path="/admin/attendance-analytics" element={<AttendanceAnalyticsPage />} />
               <Route path="/admin/students" element={<AllStudentsPage />} />
               <Route path="/admin/lecturer-presence" element={<LecturerPresencePage />} />

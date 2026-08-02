@@ -152,6 +152,35 @@ export interface AttendanceRecord {
   deltaMinutes?: number;
 }
 
+export interface CourseAttendanceSession {
+  classId: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  room: string | null;
+  isOnline: boolean;
+  attended: boolean;
+  checkInAt: string | null;
+  checkOutAt: string | null;
+  checkInType: string | null;
+  status: string;
+  deviceId: string | null;
+  deviceModel: string | null;
+  deviceOSVersion: string | null;
+  verificationMethod: string | null;
+}
+
+/** GET /users/:id/courses/:courseId/attendance — session-by-session drill-down for one student. */
+export interface CourseAttendanceDetail {
+  student: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>;
+  course: { id: string; name: string; code: string };
+  totalSessions: number;
+  attended: number;
+  percentage: number;
+  sessions: CourseAttendanceSession[];
+}
+
 export interface ClassAttendanceDetail {
   classInfo: {
     id: string;
