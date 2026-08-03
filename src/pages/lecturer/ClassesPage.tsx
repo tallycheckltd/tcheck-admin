@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Slider } from '../../components/ui/Slider';
 import { Badge } from '../../components/ui/Badge';
 import { Plus, Radio, Eye, Trash2 } from 'lucide-react';
 import type { ClassSession, Course } from '../../types';
@@ -232,8 +233,50 @@ export function ClassesPage() {
             </label>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Late Threshold (min)" type="number" value={form.lateThresholdMinutes} onChange={(e) => setForm({ ...form, lateThresholdMinutes: e.target.value })} placeholder="e.g. 10" />
-            <Input label="Very Late Threshold (min)" type="number" value={form.extremelyLateThresholdMinutes} onChange={(e) => setForm({ ...form, extremelyLateThresholdMinutes: e.target.value })} placeholder="e.g. 20" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="overrideLate"
+                  checked={form.lateThresholdMinutes !== ''}
+                  onChange={(e) => setForm({ ...form, lateThresholdMinutes: e.target.checked ? '10' : '' })}
+                  className="rounded border-gray-300 dark:border-white/20"
+                />
+                <label htmlFor="overrideLate" className="text-sm text-slate-800 dark:text-gray-300">Override late threshold</label>
+              </div>
+              {form.lateThresholdMinutes !== '' && (
+                <Slider
+                  min={0}
+                  max={60}
+                  step={1}
+                  unit=" min"
+                  value={Number(form.lateThresholdMinutes)}
+                  onChange={(v) => setForm({ ...form, lateThresholdMinutes: String(v) })}
+                />
+              )}
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="overrideExtremelyLate"
+                  checked={form.extremelyLateThresholdMinutes !== ''}
+                  onChange={(e) => setForm({ ...form, extremelyLateThresholdMinutes: e.target.checked ? '20' : '' })}
+                  className="rounded border-gray-300 dark:border-white/20"
+                />
+                <label htmlFor="overrideExtremelyLate" className="text-sm text-slate-800 dark:text-gray-300">Override very-late threshold</label>
+              </div>
+              {form.extremelyLateThresholdMinutes !== '' && (
+                <Slider
+                  min={0}
+                  max={90}
+                  step={1}
+                  unit=" min"
+                  value={Number(form.extremelyLateThresholdMinutes)}
+                  onChange={(v) => setForm({ ...form, extremelyLateThresholdMinutes: String(v) })}
+                />
+              )}
+            </div>
           </div>
           <div className="space-y-1">
             <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon UUID</label>

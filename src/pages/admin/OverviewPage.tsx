@@ -4,6 +4,7 @@ import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { BarChartCard } from '../../components/charts/BarChartCard';
 import { Badge } from '../../components/ui/Badge';
+import { StatCard } from '../../components/ui/StatCard';
 import type { DashboardStats, SchoolStats } from '../../types';
 
 function getGreeting(): string {
@@ -29,12 +30,12 @@ export function OverviewPage() {
   });
 
   const statCards = [
-    { title: 'Total Students', value: stats?.totalStudents ?? 0, icon: GraduationCap, color: '#2563eb', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-    { title: 'Lecturers', value: stats?.totalLecturers ?? 0, icon: Users, color: '#7c3aed', bg: 'bg-purple-50 dark:bg-purple-500/10' },
-    { title: 'Total Courses', value: stats?.totalCourses ?? 0, icon: BookOpen, color: '#0891b2', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
-    { title: 'Today Check-ins', value: stats?.todayAttendances ?? 0, icon: UserCheck, color: '#059669', bg: 'bg-emerald-50 dark:bg-green-500/10' },
-    { title: 'Total Classes', value: stats?.totalClasses ?? 0, icon: Calendar, color: '#ea580c', bg: 'bg-orange-50 dark:bg-orange-500/10' },
-    { title: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, icon: Clock, color: '#d97706', bg: 'bg-amber-50 dark:bg-yellow-500/10' },
+    { title: 'Total Students', value: stats?.totalStudents ?? 0, icon: GraduationCap, color: 'blue' as const },
+    { title: 'Lecturers', value: stats?.totalLecturers ?? 0, icon: Users, color: 'purple' as const },
+    { title: 'Total Courses', value: stats?.totalCourses ?? 0, icon: BookOpen, color: 'cyan' as const },
+    { title: 'Today Check-ins', value: stats?.todayAttendances ?? 0, icon: UserCheck, color: 'green' as const },
+    { title: 'Total Classes', value: stats?.totalClasses ?? 0, icon: Calendar, color: 'orange' as const },
+    { title: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, icon: Clock, color: 'amber' as const },
   ];
 
   const quickActions = [
@@ -128,17 +129,13 @@ export function OverviewPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {statCards.map((card) => (
-          <div key={card.title} className="glass-card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{card.title}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{card.value}</p>
-              </div>
-              <div className={`w-14 h-14 rounded-2xl ${card.bg} flex items-center justify-center shadow-inner`}>
-                <card.icon size={28} style={{ color: card.color }} />
-              </div>
-            </div>
-          </div>
+          <StatCard
+            key={card.title}
+            title={card.title}
+            value={card.value}
+            color={card.color}
+            icon={<card.icon size={24} />}
+          />
         ))}
       </div>
 

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { StatCard } from '../../components/ui/StatCard';
 import { format } from 'date-fns';
 
 interface FraudFlaggedAttendance {
@@ -122,30 +123,26 @@ export function FraudDetectionPage() {
           </div>
         </div>
 
-        <div className="glass-card p-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-red-500/10 text-red-500">
-              <AlertTriangle size={20} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Security Alerts</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{data.flaggedAttendances.length}</p>
-            </div>
-          </div>
-          <p className="text-[10px] text-gray-400 mt-2">Check-ins from a device shared with another account, last 90 days</p>
+        <div>
+          <StatCard
+            title="Security Alerts"
+            value={data.flaggedAttendances.length}
+            color="red"
+            size="compact"
+            icon={<AlertTriangle size={20} />}
+          />
+          <p className="text-[10px] text-gray-400 mt-2 px-1">Check-ins from a device shared with another account, last 90 days</p>
         </div>
 
-        <div className="glass-card p-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500">
-              <Users size={20} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Device Sharing</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{data.suspiciousPairs.length}</p>
-            </div>
-          </div>
-          <p className="text-[10px] text-gray-400 mt-2">Distinct devices used by more than one student</p>
+        <div>
+          <StatCard
+            title="Device Sharing"
+            value={data.suspiciousPairs.length}
+            color="orange"
+            size="compact"
+            icon={<Users size={20} />}
+          />
+          <p className="text-[10px] text-gray-400 mt-2 px-1">Distinct devices used by more than one student</p>
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Slider } from '../../components/ui/Slider';
 import {
   Settings, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer, Scale,
   ChevronRight, School as SchoolIcon,
@@ -122,21 +123,27 @@ export function SettingsPage() {
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Attendance Thresholds</h2>
               </div>
               <div className="space-y-4">
-                <Input
-                  label="Late Threshold (minutes)"
-                  type="number"
-                  value={String(form.lateThresholdMinutes)}
-                  onChange={(e) => setForm({ ...form, lateThresholdMinutes: parseInt(e.target.value) || 0 })}
+                <Slider
+                  label="Late Threshold"
+                  min={0}
+                  max={60}
+                  step={1}
+                  unit=" min"
+                  value={form.lateThresholdMinutes}
+                  onChange={(v) => setForm({ ...form, lateThresholdMinutes: v })}
+                  helpText="Minutes after class start before a check-in counts as late."
                 />
-                <p className="text-xs text-gray-500 -mt-2">Minutes after class start before a check-in counts as late.</p>
 
-                <Input
-                  label="Extremely Late Threshold (minutes)"
-                  type="number"
-                  value={String(form.extremelyLateThresholdMinutes)}
-                  onChange={(e) => setForm({ ...form, extremelyLateThresholdMinutes: parseInt(e.target.value) || 0 })}
+                <Slider
+                  label="Extremely Late Threshold"
+                  min={0}
+                  max={90}
+                  step={1}
+                  unit=" min"
+                  value={form.extremelyLateThresholdMinutes}
+                  onChange={(v) => setForm({ ...form, extremelyLateThresholdMinutes: v })}
+                  helpText="Minutes after class start before a check-in counts as extremely late."
                 />
-                <p className="text-xs text-gray-500 -mt-2">Minutes after class start before a check-in counts as extremely late.</p>
               </div>
             </GlassCard>
 

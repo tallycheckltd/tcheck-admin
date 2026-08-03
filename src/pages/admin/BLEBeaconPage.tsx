@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
+import { Slider } from '../../components/ui/Slider';
 import { Plus, Pencil, Trash2, Bluetooth } from 'lucide-react';
 import type { Beacon, School } from '../../types';
 
@@ -173,14 +174,21 @@ export function BLEBeaconPage() {
             </div>
           )}
           <Input label="UUID" value={form.uuid} onChange={(e) => setForm({ ...form, uuid: e.target.value })} placeholder="e.g. E2C56DB5-DFFB-48D2-B060-D0F5A71096E0" />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <Input label="Major" type="number" value={String(form.major)} onChange={(e) => setForm({ ...form, major: parseInt(e.target.value) || 0 })} />
             <Input label="Minor" type="number" value={String(form.minor)} onChange={(e) => setForm({ ...form, minor: parseInt(e.target.value) || 0 })} />
-            <Input label="RSSI Threshold" type="number" value={String(form.rssiThreshold)} onChange={(e) => setForm({ ...form, rssiThreshold: parseInt(e.target.value) || -90 })} />
           </div>
-          <p className="text-xs text-slate-500 dark:text-gray-400 -mt-2">
-            The minimum signal strength (dBm) a student's phone must detect to check in. More negative = works from farther away in the room; less negative = requires standing closer to the beacon. -90 is a good default for a typical classroom.
-          </p>
+          <Slider
+            label="RSSI Threshold"
+            min={-100}
+            max={-30}
+            step={1}
+            unit=" dBm"
+            value={form.rssiThreshold}
+            onChange={(v) => setForm({ ...form, rssiThreshold: v })}
+            marks={[{ value: -100, label: 'Far' }, { value: -30, label: 'Close' }]}
+            helpText="The minimum signal strength a student's phone must detect to check in. More negative = works from farther away in the room; less negative = requires standing closer to the beacon. -90 is a good default for a typical classroom."
+          />
           <Input label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional notes" />
           <div className="flex items-center gap-2">
