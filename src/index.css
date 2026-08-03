@@ -114,17 +114,22 @@ html:not(.dark) option {
   box-shadow: none;
 }
 
-/* ── Sidebar ── */
+/* ── Sidebar ──
+   Previously used --app-elevated-solid, a fully opaque color — backdrop-filter has nothing to
+   blur through an opaque background, so it read as flat/whitish despite the blur being applied.
+   Real translucency (rgba alpha < 1) + saturate() is what actually produces a frosted-glass look. */
 .glass-sidebar {
-  background: var(--app-elevated-solid);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   border-right: 1px solid var(--app-border);
   box-shadow: 1px 0 12px rgba(15, 23, 42, 0.04);
 }
 
 .dark .glass-sidebar {
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
   border-right: 1px solid var(--app-border);
   box-shadow: 2px 0 16px rgba(0, 0, 0, 0.35);
 }

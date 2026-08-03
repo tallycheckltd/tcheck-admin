@@ -7,13 +7,16 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { SearchInput } from '../../components/ui/SearchInput';
-import { Plus, CheckCircle, XCircle, Eye, UserPlus, Trash2, ShieldPlus } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Eye, UserPlus, Trash2, ShieldPlus, Search, ScanEye } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { User, School } from '../../types';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
 
-type CreateType = 'lecturer' | 'student' | 'admin';
+type CreateType = 'lecturer' | 'student' | 'admin' | 'invigilator';
+const createTypeLabel: Record<CreateType, string> = {
+  admin: 'Admin', lecturer: 'Lecturer', student: 'Student', invigilator: 'Invigilator',
+};
 
 export function UsersPage() {
   const { data: users, refetch } = useApi<User[]>('/users');
@@ -72,6 +75,14 @@ export function UsersPage() {
         lastName: form.lastName,
         schoolId: form.schoolId,
       });
+    } else if (createType === 'invigilator') {
+      await create('/users/invigilator', {
+        email: form.email,
+        password: form.password,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        schoolId: form.schoolId,
+      });
     } else {
       await create('/users/student', {
         email: form.email,
@@ -112,6 +123,9 @@ export function UsersPage() {
           )}
           <Button variant="secondary" onClick={() => openCreateModal('student')}>
             <UserPlus size={16} className="mr-1" /> Add Student
+          </Button>
+          <Button variant="secondary" onClick={() => openCreateModal('invigilator')}>
+            <ScanEye size={16} className="mr-1" /> Add Invigilator
           </Button>
           <Button onClick={() => openCreateModal('lecturer')}>
             <Plus size={16} className="mr-1" /> Add Lecturer
@@ -225,13 +239,14 @@ export function UsersPage() {
         </div>
       </div>
 
-      <Modal open={modal} onClose={() => setModal(false)} title={createType === 'admin' ? 'Create Admin' : createType === 'lecturer' ? 'Create Lecturer' : 'Create Student'}>
+      <Modal open={modal} onClose={() => setModal(false)} title={`Create ${createTypeLabel[createType]}`}>
         <div className="space-y-4">
           <div className="flex gap-2 mb-2">
             {isSuperAdmin && (
               <Button variant={createType === 'admin' ? 'primary' : 'secondary'} size="sm" onClick={() => setCreateType('admin')}>Admin</Button>
             )}
             <Button variant={createType === 'lecturer' ? 'primary' : 'secondary'} size="sm" onClick={() => setCreateType('lecturer')}>Lecturer</Button>
+            <Button variant={createType === 'invigilator' ? 'primary' : 'secondary'} size="sm" onClick={() => setCreateType('invigilator')}>Invigilator</Button>
             <Button variant={createType === 'student' ? 'primary' : 'secondary'} size="sm" onClick={() => setCreateType('student')}>Student</Button>
           </div>
           <Input label="First Name" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
@@ -255,7 +270,7 @@ export function UsersPage() {
             </div>
           )}
           <Button onClick={handleCreate} className="w-full">
-            Create {createType === 'admin' ? 'Admin' : createType === 'lecturer' ? 'Lecturer' : 'Student'}
+            Create {createTypeLabel[createType]}
           </Button>
         </div>
       </Modal>

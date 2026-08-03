@@ -1,4 +1,4 @@
-export type Role = 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT';
+export type Role = 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT' | 'INVIGILATOR';
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEACTIVATED' | 'DELETED';
 export type CheckInType = 'BLE' | 'QR' | 'MANUAL' | 'ONLINE';
 
@@ -59,6 +59,8 @@ export interface User {
   createdAt: string;
   updatedAt?: string;
   deactivatedAt?: string | null;
+  /** LECTURER only — grants exam-QR-scanner access without a separate INVIGILATOR account. */
+  canInvigilate?: boolean;
   _count?: {
     enrollments: number;
     attendances: number;
