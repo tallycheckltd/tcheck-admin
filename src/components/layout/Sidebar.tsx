@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen,
+  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket } from '../../types';
@@ -36,6 +36,7 @@ const superAdminAdmin: NavItem[] = [
 const superAdminGeneral: NavItem[] = [
   { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Manager' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
+  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/system-announcements', icon: Megaphone, label: 'System Announcements' },
   { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
@@ -70,6 +71,7 @@ const hodOperations: NavItem[] = [
   { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/admin/lecturer-presence', icon: UserCheck, label: 'Lecturer Presence' },
+  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
 ];
 
 const hodGeneral: NavItem[] = [
@@ -91,6 +93,7 @@ const lecturerLinks: NavItem[] = [
   { to: '/classes', icon: Calendar, label: 'Classes' },
   { to: '/attendance', icon: ClipboardList, label: 'Attendance' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
+  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },

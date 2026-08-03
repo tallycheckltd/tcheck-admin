@@ -4,7 +4,6 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 import { Slider } from '../../components/ui/Slider';
 import {
   Settings, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer, Scale,

@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Search, CheckCircle, XCircle, Trash2, GraduationCap } from 'lucide-react';
 import type { User } from '../../types';
 
-const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const };
+const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
 
 export function AllStudentsPage() {
   const navigate = useNavigate();
@@ -18,7 +18,9 @@ export function AllStudentsPage() {
   const [search, setSearch] = useState('');
 
   const filtered = users?.filter((u) => {
-    if (filter !== 'all' && u.status !== filter) return false;
+    if (filter === 'all') return u.status !== 'DELETED';
+    return u.status === filter;
+  }).filter((u) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (

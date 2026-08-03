@@ -16,6 +16,7 @@ import { AttendanceAnalyticsPage } from './pages/admin/AttendanceAnalyticsPage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
 import { BLEBeaconPage } from './pages/admin/BLEBeaconPage';
 import { DeviceVerificationPage } from './pages/admin/DeviceVerificationPage';
+import { InvigilationPage } from './pages/admin/InvigilationPage';
 import { LecturerPresencePage } from './pages/admin/LecturerPresencePage';
 import { AttendanceOverviewPage } from './pages/admin/AttendanceOverviewPage';
 import { AlertsPage } from './pages/AlertsPage';
@@ -83,6 +84,8 @@ export default function App() {
               <Route path="/messages" element={<MessagesPage />} />
               {/* SUPER_ADMIN + LECTURER (device.routes.ts enforces this on the backend; a lecturer is scoped to their own students) */}
               <Route path="/admin/device-verification" element={<DeviceVerificationPage />} />
+              {/* SUPER_ADMIN + SUB_ADMIN + LECTURER (attendance.routes.ts enforces this; a lecturer is scoped to their own students) */}
+              <Route path="/admin/invigilation" element={<InvigilationPage />} />
               <Route path="/legal" element={<LegalPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />

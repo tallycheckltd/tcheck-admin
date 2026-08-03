@@ -4,12 +4,12 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2, Smartphone, ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2, Smartphone, ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText, ScanEye } from 'lucide-react';
 import type { UserDetail, DeviceChangeReason } from '../../types';
 import { exportStudentReportPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
 
-const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const };
+const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
 const HISTORY_PAGE_SIZE = 20;
 
 const REASON_LABEL: Record<DeviceChangeReason, string> = {
@@ -50,6 +50,13 @@ export function UserDetailPage() {
   const { mutate: resetBiometricLock, loading: resettingBiometricLock } = useMutation('post');
   const { mutate: verifyDevice, loading: verifyingDevice } = useMutation('post');
   const { mutate: resetDevice, loading: resettingDevice } = useMutation('delete');
+  const { mutate: patchCanInvigilate, loading: togglingInvigilate } = useMutation('patch');
+
+  const handleToggleCanInvigilate = async () => {
+    if (!id || !user) return;
+    await patchCanInvigilate(`/users/${id}/can-invigilate`, { canInvigilate: !user.canInvigilate });
+    refetch();
+  };
 
   const handleResetBiometricLock = async () => {
     if (!id) return;
@@ -214,6 +221,31 @@ export function UserDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Invigilation access — LECTURER only; grants the exam-QR scanner without a separate
+          INVIGILATOR account (dedicated invigilator accounts are created directly on Users). */}
+      {user.role === 'LECTURER' && (
+        <div className="glass-card p-5">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${user.canInvigilate ? 'bg-blue-100 dark:bg-blue-500/10' : 'bg-gray-100 dark:bg-white/5'}`}>
+                <ScanEye size={20} className={user.canInvigilate ? 'text-blue-500' : 'text-gray-400'} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-950 dark:text-white">Exam Invigilation Access</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                  {user.canInvigilate
+                    ? 'Can open the QR scanner on mobile to verify student exam eligibility.'
+                    : 'Cannot currently scan exam QR codes — grant access below.'}
+                </p>
+              </div>
+            </div>
+            <Button variant="secondary" size="sm" onClick={handleToggleCanInvigilate} disabled={togglingInvigilate}>
+              {togglingInvigilate ? 'Updating…' : user.canInvigilate ? 'Revoke Access' : 'Grant Access'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Biometric Lock Status */}
       {user.role === 'STUDENT' && user.biometricLockInvalidatedAt && (
