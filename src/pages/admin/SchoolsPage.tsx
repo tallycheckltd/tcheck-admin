@@ -5,8 +5,9 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Slider } from '../../components/ui/Slider';
+import { ColorPickerField } from '../../components/ui/ColorPickerField';
 import {
-  Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck, MessageSquareOff,
+  Plus, Pencil, Trash2, School as SchoolIcon, Hash, UserCheck, MessageSquareOff,
   ShieldCheck, Megaphone, ScanFace, Timer, Mail, Lock, User as UserIcon, ArrowRight, ArrowLeft,
   AlertCircle, CheckCircle2, UserPlus, X
 } from 'lucide-react';
@@ -392,14 +393,12 @@ export function SchoolsPage() {
                 icon={Hash}
                 placeholder="STI"
                 value={form.code}
-                onChange={(e) => setForm({ ...form, code: e.target.value })}
+                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
               />
-              <Input
+              <ColorPickerField
                 label="Brand Color"
-                icon={Palette}
-                type="color"
                 value={form.color}
-                onChange={(e) => setForm({ ...form, color: e.target.value })}
+                onChange={(color) => setForm({ ...form, color })}
               />
             </div>
           </div>
@@ -410,6 +409,25 @@ export function SchoolsPage() {
         </div>
         ) : wizardStep === 1 ? (
         <div className="space-y-5">
+          {/* Live preview — makes the abstract "brand color" pick feel concrete immediately,
+              and doubles as a friendly confirmation of what's about to be created. */}
+          <div className="flex items-center gap-3 p-4 rounded-2xl border border-gray-100 dark:border-white/5 bg-gradient-to-br from-gray-50 to-white dark:from-slate-900/50 dark:to-slate-900/20">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm transition-colors"
+              style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(schoolForm.color) ? schoolForm.color : '#3B82F6' }}
+            >
+              {schoolForm.name.trim() ? schoolForm.name.trim()[0].toUpperCase() : <SchoolIcon size={20} />}
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 dark:text-white truncate">
+                {schoolForm.name.trim() || 'Your institution name'}
+              </p>
+              <p className="text-xs text-gray-400 font-mono tracking-wide">
+                {schoolForm.code.trim() || 'CODE'}
+              </p>
+            </div>
+          </div>
+
           <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
             <Input
               label="Institution Name"
@@ -417,21 +435,24 @@ export function SchoolsPage() {
               placeholder="e.g. Science & Technology Institute"
               value={schoolForm.name}
               onChange={(e) => setSchoolForm({ ...schoolForm, name: e.target.value })}
+              autoFocus
             />
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="School Code"
-                icon={Hash}
-                placeholder="STI"
-                value={schoolForm.code}
-                onChange={(e) => setSchoolForm({ ...schoolForm, code: e.target.value })}
-              />
-              <Input
+              <div className="space-y-1">
+                <Input
+                  label="School Code"
+                  icon={Hash}
+                  placeholder="STI"
+                  value={schoolForm.code}
+                  maxLength={8}
+                  onChange={(e) => setSchoolForm({ ...schoolForm, code: e.target.value.toUpperCase() })}
+                />
+                <p className="text-xs text-gray-400 pl-1">Short, unique — shown across the app</p>
+              </div>
+              <ColorPickerField
                 label="Brand Color"
-                icon={Palette}
-                type="color"
                 value={schoolForm.color}
-                onChange={(e) => setSchoolForm({ ...schoolForm, color: e.target.value })}
+                onChange={(color) => setSchoolForm({ ...schoolForm, color })}
               />
             </div>
           </div>
@@ -440,7 +461,11 @@ export function SchoolsPage() {
               <AlertCircle size={16} className="shrink-0" /> {wizardError}
             </div>
           )}
-          <Button onClick={handleWizardNext} className="w-full py-4 shadow-lg shadow-blue-500/20">
+          <Button
+            onClick={handleWizardNext}
+            disabled={!schoolForm.name.trim() || !schoolForm.code.trim()}
+            className="w-full py-4 shadow-lg shadow-blue-500/20 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed"
+          >
             Next: Assign Admin <ArrowRight size={16} className="ml-2" />
           </Button>
         </div>
