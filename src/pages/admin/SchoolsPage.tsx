@@ -1,9 +1,15 @@
 import { useState } from 'react';
+import type { ElementType } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer, Mail, Lock, User as UserIcon, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Slider } from '../../components/ui/Slider';
+import {
+  Plus, Pencil, Trash2, School as SchoolIcon, Palette, Hash, UserCheck, MessageSquareOff,
+  ShieldCheck, Megaphone, ScanFace, Timer, Mail, Lock, User as UserIcon, ArrowRight, ArrowLeft,
+  AlertCircle, CheckCircle2, UserPlus, X
+} from 'lucide-react';
 import type { School, SchoolFeatures, User } from '../../types';
 
 const emptySchoolForm = { name: '', code: '', color: '#3B82F6' };
@@ -17,25 +23,157 @@ const defaultFeatures: Required<SchoolFeatures> = {
   dwellTimeTracking: true,
 };
 
+interface SchoolSettingsValue {
+  allowManualLecturerOverride: boolean;
+  features: Required<SchoolFeatures>;
+  lateThresholdMinutes: number;
+  extremelyLateThresholdMinutes: number;
+}
+
+const defaultSettings: SchoolSettingsValue = {
+  allowManualLecturerOverride: true,
+  features: defaultFeatures,
+  lateThresholdMinutes: 10,
+  extremelyLateThresholdMinutes: 20,
+};
+
+interface ExtraAdminRow {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: 'SUB_ADMIN' | 'LECTURER';
+  submitted?: boolean;
+}
+const emptyExtraAdminRow = (): ExtraAdminRow => ({ firstName: '', lastName: '', email: '', password: '', role: 'SUB_ADMIN' });
+
+// Shared toggle-switch row — used by every feature/override toggle in SchoolSettingsFields below.
+function ToggleRow({ icon: Icon, title, description, checked, onChange }: {
+  icon: ElementType; title: string; description: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-start justify-between gap-4 cursor-pointer">
+      <span className="flex items-start gap-2">
+        <Icon size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
+        <span>
+          <span className="block text-sm font-medium text-gray-900 dark:text-white">{title}</span>
+          <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</span>
+        </span>
+      </span>
+      <span
+        onClick={() => onChange(!checked)}
+        className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+          checked ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
+        }`}
+      >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+      </span>
+    </label>
+  );
+}
+
+/** Shared between the Edit-School modal and the create wizard's Step 3 — one source of truth so
+ * the two surfaces can't drift apart. */
+function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue; onChange: (v: SchoolSettingsValue) => void }) {
+  return (
+    <div className="space-y-4">
+      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5">
+        <ToggleRow
+          icon={UserCheck}
+          title="Manual check-in override"
+          description="Lets lecturers mark students present by hand (dead battery, hardware exceptions) from the live session dashboard."
+          checked={value.allowManualLecturerOverride}
+          onChange={(v) => onChange({ ...value, allowManualLecturerOverride: v })}
+        />
+      </div>
+
+      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Attendance Thresholds</h3>
+        <Slider
+          label="Late Threshold"
+          min={0} max={60} step={1} unit=" min"
+          value={value.lateThresholdMinutes}
+          onChange={(v) => onChange({ ...value, lateThresholdMinutes: v })}
+        />
+        <Slider
+          label="Extremely Late Threshold"
+          min={0} max={90} step={1} unit=" min"
+          value={value.extremelyLateThresholdMinutes}
+          onChange={(v) => onChange({ ...value, extremelyLateThresholdMinutes: v })}
+        />
+      </div>
+
+      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Features Configuration</h3>
+        <ToggleRow
+          icon={MessageSquareOff}
+          title="Anonymous Chat"
+          description="Lets students post anonymously in Campus/Session Chat rooms."
+          checked={value.features.anonymousChat}
+          onChange={(v) => onChange({ ...value, features: { ...value.features, anonymousChat: v } })}
+        />
+        <ToggleRow
+          icon={ShieldCheck}
+          title="Biometric Strict Mode"
+          description="Blocks the selfie fallback — students without biometric hardware can't check in."
+          checked={value.features.biometricStrictMode}
+          onChange={(v) => onChange({ ...value, features: { ...value.features, biometricStrictMode: v } })}
+        />
+        <ToggleRow
+          icon={Megaphone}
+          title="Broadcasts"
+          description="Lets admins send announcements to this school's students and lecturers."
+          checked={value.features.broadcasts}
+          onChange={(v) => onChange({ ...value, features: { ...value.features, broadcasts: v } })}
+        />
+        <ToggleRow
+          icon={ScanFace}
+          title="Face ID Check-In"
+          description="Requires identity verification (Face ID, selfie, or device binding) to check in. Off falls back to a plain tap-to-check-in/out."
+          checked={value.features.faceIdCheckIn}
+          onChange={(v) => onChange({ ...value, features: { ...value.features, faceIdCheckIn: v } })}
+        />
+        <ToggleRow
+          icon={Timer}
+          title="Dwell Time Tracking"
+          description="Requires ~10s of sustained beacon presence before a BLE check-in is accepted. Off allows an instant tap the moment the beacon is detected."
+          checked={value.features.dwellTimeTracking}
+          onChange={(v) => onChange({ ...value, features: { ...value.features, dwellTimeTracking: v } })}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function SchoolsPage() {
   const { data: schools, refetch } = useApi<School[]>('/schools');
   const { mutate: create } = useMutation<School>('post');
-  const { mutate: createAdmin } = useMutation<User>('post');
+  const { mutate: createUser } = useMutation<User>('post');
   const { mutate: update } = useMutation('put');
   const { mutate: remove } = useMutation('delete');
 
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
-  const [form, setForm] = useState({ name: '', code: '', color: '#3B82F6', allowManualLecturerOverride: true, features: defaultFeatures });
+  const [form, setForm] = useState({
+    name: '', code: '', color: '#3B82F6',
+    allowManualLecturerOverride: true,
+    features: defaultFeatures,
+    lateThresholdMinutes: 10,
+    extremelyLateThresholdMinutes: 20,
+  });
 
   // New-school wizard: step 1 collects the institution, step 2 collects the admin who'll log in
-  // and run it day-to-day. Nothing is created until "Create School & Admin" on step 2 — so
-  // abandoning the wizard between steps leaves nothing behind. If admin creation fails after the
-  // school was already created, createdSchoolId is kept so retrying doesn't create a duplicate school.
-  const [wizardStep, setWizardStep] = useState<1 | 2>(1);
+  // and run it day-to-day, step 3 lets the same flow configure the tenant's settings and invite
+  // additional staff. Nothing is created until "Finish" on step 3 — abandoning the wizard at any
+  // point leaves nothing behind. createdSchoolId/adminCreated/extraAdmins[].submitted track what
+  // already succeeded so a retry after a partial failure only replays the actual remainder.
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [schoolForm, setSchoolForm] = useState(emptySchoolForm);
   const [adminForm, setAdminForm] = useState(emptyAdminForm);
+  const [settingsForm, setSettingsForm] = useState<SchoolSettingsValue>(defaultSettings);
+  const [extraAdmins, setExtraAdmins] = useState<ExtraAdminRow[]>([]);
   const [createdSchoolId, setCreatedSchoolId] = useState<string | null>(null);
+  const [adminCreated, setAdminCreated] = useState(false);
   const [wizardError, setWizardError] = useState('');
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
 
@@ -44,7 +182,10 @@ export function SchoolsPage() {
     setWizardStep(1);
     setSchoolForm(emptySchoolForm);
     setAdminForm(emptyAdminForm);
+    setSettingsForm(defaultSettings);
+    setExtraAdmins([]);
     setCreatedSchoolId(null);
+    setAdminCreated(false);
     setWizardError('');
     setModal(true);
   };
@@ -56,6 +197,8 @@ export function SchoolsPage() {
       color: s.color,
       allowManualLecturerOverride: s.allowManualLecturerOverride ?? true,
       features: { ...defaultFeatures, ...s.features },
+      lateThresholdMinutes: s.lateThresholdMinutes ?? 10,
+      extremelyLateThresholdMinutes: s.extremelyLateThresholdMinutes ?? 20,
     });
     setModal(true);
   };
@@ -75,11 +218,20 @@ export function SchoolsPage() {
     setWizardStep(2);
   };
 
-  const handleCreateWizard = async () => {
+  const handleWizardAdminNext = () => {
     if (!adminForm.email.trim() || !adminForm.password || !adminForm.firstName.trim() || !adminForm.lastName.trim()) {
       setWizardError('All admin fields are required.');
       return;
     }
+    setWizardError('');
+    setWizardStep(3);
+  };
+
+  const updateExtraAdmin = (index: number, patch: Partial<ExtraAdminRow>) => {
+    setExtraAdmins(extraAdmins.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  };
+
+  const handleCreateWizard = async () => {
     setWizardError('');
     setWizardSubmitting(true);
     try {
@@ -89,11 +241,31 @@ export function SchoolsPage() {
         schoolId = school!.id;
         setCreatedSchoolId(schoolId);
       }
-      await createAdmin('/users/admin', { ...adminForm, schoolId });
+
+      if (!adminCreated) {
+        await createUser('/users/admin', { ...adminForm, schoolId });
+        setAdminCreated(true);
+      }
+
+      // Idempotent — updateSchool shallow-merges features, so resending on retry is harmless.
+      await update(`/schools/${schoolId}`, settingsForm);
+
+      // Blank rows (never filled in after clicking "+ Add another") are silently skipped rather
+      // than blocking submission — no need to force the admin to delete an unused row.
+      for (let i = 0; i < extraAdmins.length; i++) {
+        const row = extraAdmins[i]!;
+        if (row.submitted) continue;
+        const filled = row.firstName.trim() && row.lastName.trim() && row.email.trim() && row.password;
+        if (!filled) continue;
+        const path = row.role === 'SUB_ADMIN' ? '/users/admin' : '/users/lecturer';
+        await createUser(path, { firstName: row.firstName, lastName: row.lastName, email: row.email, password: row.password, schoolId });
+        setExtraAdmins((prev) => prev.map((r, idx) => (idx === i ? { ...r, submitted: true } : r)));
+      }
+
       setModal(false);
       refetch();
     } catch (e) {
-      setWizardError(e instanceof Error ? e.message : 'Failed to create school/admin');
+      setWizardError(e instanceof Error ? e.message : 'Failed to create school');
     } finally {
       setWizardSubmitting(false);
     }
@@ -178,11 +350,11 @@ export function SchoolsPage() {
       <Modal
         open={modal}
         onClose={() => setModal(false)}
-        title={editing ? 'Edit School' : `Add School — Step ${wizardStep} of 2`}
+        title={editing ? 'Edit School' : `Add School — Step ${wizardStep} of 3`}
       >
         {!editing && (
           <div className="flex items-center gap-2 mb-5">
-            {[1, 2].map((step) => (
+            {[1, 2, 3].map((step) => (
               <div key={step} className="flex items-center gap-2 flex-1">
                 <div
                   className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
@@ -196,9 +368,9 @@ export function SchoolsPage() {
                   {wizardStep > step ? <CheckCircle2 size={16} /> : step}
                 </div>
                 <span className={`text-xs font-medium ${wizardStep === step ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
-                  {step === 1 ? 'Institution' : 'Admin Account'}
+                  {step === 1 ? 'Institution' : step === 2 ? 'Admin Account' : 'Settings & Team'}
                 </span>
-                {step === 1 && <div className={`flex-1 h-0.5 ${wizardStep > 1 ? 'bg-green-500' : 'bg-gray-200 dark:bg-white/10'}`} />}
+                {step < 3 && <div className={`flex-1 h-0.5 ${wizardStep > step ? 'bg-green-500' : 'bg-gray-200 dark:bg-white/10'}`} />}
               </div>
             ))}
           </div>
@@ -207,170 +379,31 @@ export function SchoolsPage() {
         {editing ? (
         <div className="space-y-5">
           <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
-            <Input 
-              label="Institution Name" 
+            <Input
+              label="Institution Name"
               icon={SchoolIcon}
               placeholder="e.g. Science & Technology Institute"
-              value={form.name} 
-              onChange={(e) => setForm({ ...form, name: e.target.value })} 
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
             <div className="grid grid-cols-2 gap-4">
-              <Input 
-                label="School Code" 
+              <Input
+                label="School Code"
                 icon={Hash}
                 placeholder="STI"
-                value={form.code} 
-                onChange={(e) => setForm({ ...form, code: e.target.value })} 
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value })}
               />
-              <Input 
-                label="Brand Color" 
+              <Input
+                label="Brand Color"
                 icon={Palette}
-                type="color" 
-                value={form.color} 
-                onChange={(e) => setForm({ ...form, color: e.target.value })} 
+                type="color"
+                value={form.color}
+                onChange={(e) => setForm({ ...form, color: e.target.value })}
               />
             </div>
           </div>
-          {editing && (
-            <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5">
-              <label className="flex items-start justify-between gap-4 cursor-pointer">
-                <span className="flex items-start gap-2">
-                  <UserCheck size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
-                  <span>
-                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Manual check-in override</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Lets lecturers mark students present by hand (dead battery, hardware exceptions) from the live session dashboard.
-                    </span>
-                  </span>
-                </span>
-                <span className="shrink-0 pt-0.5">
-                  <input
-                    type="checkbox"
-                    checked={form.allowManualLecturerOverride}
-                    onChange={(e) => setForm({ ...form, allowManualLecturerOverride: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <span
-                    onClick={() => setForm({ ...form, allowManualLecturerOverride: !form.allowManualLecturerOverride })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                      form.allowManualLecturerOverride ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        form.allowManualLecturerOverride ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </span>
-                </span>
-              </label>
-            </div>
-          )}
-          {editing && (
-            <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Features Configuration</h3>
-
-              <label className="flex items-start justify-between gap-4 cursor-pointer">
-                <span className="flex items-start gap-2">
-                  <MessageSquareOff size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
-                  <span>
-                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Anonymous Chat</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Lets students post anonymously in Campus/Session Chat rooms.
-                    </span>
-                  </span>
-                </span>
-                <span
-                  onClick={() => setForm({ ...form, features: { ...form.features, anonymousChat: !form.features.anonymousChat } })}
-                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    form.features.anonymousChat ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.anonymousChat ? 'translate-x-6' : 'translate-x-1'}`} />
-                </span>
-              </label>
-
-              <label className="flex items-start justify-between gap-4 cursor-pointer">
-                <span className="flex items-start gap-2">
-                  <ShieldCheck size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
-                  <span>
-                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Biometric Strict Mode</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Blocks the selfie fallback — students without biometric hardware can&apos;t check in.
-                    </span>
-                  </span>
-                </span>
-                <span
-                  onClick={() => setForm({ ...form, features: { ...form.features, biometricStrictMode: !form.features.biometricStrictMode } })}
-                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    form.features.biometricStrictMode ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.biometricStrictMode ? 'translate-x-6' : 'translate-x-1'}`} />
-                </span>
-              </label>
-
-              <label className="flex items-start justify-between gap-4 cursor-pointer">
-                <span className="flex items-start gap-2">
-                  <Megaphone size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
-                  <span>
-                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Broadcasts</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Lets admins send announcements to this school&apos;s students and lecturers.
-                    </span>
-                  </span>
-                </span>
-                <span
-                  onClick={() => setForm({ ...form, features: { ...form.features, broadcasts: !form.features.broadcasts } })}
-                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    form.features.broadcasts ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.broadcasts ? 'translate-x-6' : 'translate-x-1'}`} />
-                </span>
-              </label>
-
-              <label className="flex items-start justify-between gap-4 cursor-pointer">
-                <span className="flex items-start gap-2">
-                  <ScanFace size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
-                  <span>
-                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Face ID Check-In</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Requires identity verification (Face ID, selfie, or device binding) to check in. Off falls back to a plain tap-to-check-in/out.
-                    </span>
-                  </span>
-                </span>
-                <span
-                  onClick={() => setForm({ ...form, features: { ...form.features, faceIdCheckIn: !form.features.faceIdCheckIn } })}
-                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    form.features.faceIdCheckIn ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.faceIdCheckIn ? 'translate-x-6' : 'translate-x-1'}`} />
-                </span>
-              </label>
-
-              <label className="flex items-start justify-between gap-4 cursor-pointer">
-                <span className="flex items-start gap-2">
-                  <Timer size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
-                  <span>
-                    <span className="block text-sm font-medium text-gray-900 dark:text-white">Dwell Time Tracking</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Requires ~10s of sustained beacon presence before a BLE check-in is accepted. Off allows an instant tap the moment the beacon is detected.
-                    </span>
-                  </span>
-                </span>
-                <span
-                  onClick={() => setForm({ ...form, features: { ...form.features, dwellTimeTracking: !form.features.dwellTimeTracking } })}
-                  className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    form.features.dwellTimeTracking ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/15'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.features.dwellTimeTracking ? 'translate-x-6' : 'translate-x-1'}`} />
-                </span>
-              </label>
-            </div>
-          )}
+          <SchoolSettingsFields value={form} onChange={(v) => setForm({ ...form, ...v })} />
           <Button onClick={handleSubmit} className="w-full py-4 shadow-lg shadow-blue-500/20">
             Update School Profile
           </Button>
@@ -411,7 +444,7 @@ export function SchoolsPage() {
             Next: Assign Admin <ArrowRight size={16} className="ml-2" />
           </Button>
         </div>
-        ) : (
+        ) : wizardStep === 2 ? (
         <div className="space-y-5">
           <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -452,11 +485,78 @@ export function SchoolsPage() {
             </div>
           )}
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setWizardStep(1)} disabled={wizardSubmitting} className="gap-2">
+            <Button variant="secondary" onClick={() => setWizardStep(1)} className="gap-2">
+              <ArrowLeft size={16} /> Back
+            </Button>
+            <Button onClick={handleWizardAdminNext} className="flex-1 py-4 shadow-lg shadow-blue-500/20">
+              Next: Settings & Team <ArrowRight size={16} className="ml-2" />
+            </Button>
+          </div>
+        </div>
+        ) : (
+        <div className="space-y-5">
+          <SchoolSettingsFields value={settingsForm} onChange={setSettingsForm} />
+
+          <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Invite Additional Staff (Optional)</h3>
+            {extraAdmins.map((row, i) => (
+              <div key={i} className="p-3 rounded-xl border border-gray-200 dark:border-white/10 space-y-3 relative">
+                <button
+                  type="button"
+                  onClick={() => setExtraAdmins(extraAdmins.filter((_, idx) => idx !== i))}
+                  className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                  title="Remove"
+                >
+                  <X size={14} />
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateExtraAdmin(i, { role: 'SUB_ADMIN' })}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      row.role === 'SUB_ADMIN' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+                    }`}
+                  >
+                    Co-Admin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateExtraAdmin(i, { role: 'LECTURER' })}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      row.role === 'LECTURER' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+                    }`}
+                  >
+                    Lecturer
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="First Name" value={row.firstName} onChange={(e) => updateExtraAdmin(i, { firstName: e.target.value })} />
+                  <Input placeholder="Last Name" value={row.lastName} onChange={(e) => updateExtraAdmin(i, { lastName: e.target.value })} />
+                </div>
+                <Input placeholder="Email" type="email" value={row.email} onChange={(e) => updateExtraAdmin(i, { email: e.target.value })} />
+                <Input placeholder="Password" type="password" value={row.password} onChange={(e) => updateExtraAdmin(i, { password: e.target.value })} />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setExtraAdmins([...extraAdmins, emptyExtraAdminRow()])}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-300 dark:border-white/15 text-sm text-gray-500 hover:text-blue-500 hover:border-blue-300 transition-colors cursor-pointer"
+            >
+              <UserPlus size={14} /> Add another
+            </button>
+          </div>
+
+          {wizardError && (
+            <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl px-4 py-2.5">
+              <AlertCircle size={16} className="shrink-0" /> {wizardError}
+            </div>
+          )}
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => setWizardStep(2)} disabled={wizardSubmitting} className="gap-2">
               <ArrowLeft size={16} /> Back
             </Button>
             <Button onClick={() => void handleCreateWizard()} disabled={wizardSubmitting} className="flex-1 py-4 shadow-lg shadow-blue-500/20">
-              {wizardSubmitting ? 'Creating…' : 'Create School & Admin'}
+              {wizardSubmitting ? 'Creating…' : 'Finish & Create School'}
             </Button>
           </div>
         </div>
