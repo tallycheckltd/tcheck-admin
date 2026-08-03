@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import {
-  Smartphone, Search, CheckCircle2, XCircle, RefreshCw,
+  Smartphone, CheckCircle2, XCircle, RefreshCw,
   ShieldCheck, ShieldAlert, History, ShieldX, FileText, TrendingUp
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
+import { SearchInput } from '../../components/ui/SearchInput';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { format } from 'date-fns';
 import type { PendingDeviceBinding, DeviceSecurityEvent, DeviceChangeReason } from '../../types';
 
@@ -114,16 +116,12 @@ export function DeviceVerificationPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Device Verification</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Review and approve student device registrations to prevent fraud</p>
         </div>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search students or devices..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-4 py-2 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-w-[280px]"
-          />
-        </div>
+        <SearchInput
+          placeholder="Search students or devices..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="min-w-[280px]"
+        />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -257,9 +255,8 @@ export function DeviceVerificationPage() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center">
-                      <ShieldCheck size={40} className="mx-auto text-green-500/20 mb-3" />
-                      <p className="text-sm text-gray-500">No pending device verifications.</p>
+                    <td colSpan={5}>
+                      <EmptyState icon={ShieldCheck} title="No pending device verifications." size="sm" />
                     </td>
                   </tr>
                 )}
@@ -393,9 +390,8 @@ export function DeviceVerificationPage() {
               ))}
               {filteredBound.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center">
-                    <Smartphone size={40} className="mx-auto text-gray-300 dark:text-gray-700 mb-3" />
-                    <p className="text-sm text-gray-500">No devices bound yet.</p>
+                  <td colSpan={4}>
+                    <EmptyState icon={Smartphone} title="No devices bound yet." size="sm" />
                   </td>
                 </tr>
               )}

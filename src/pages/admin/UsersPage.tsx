@@ -6,7 +6,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
-import { Plus, CheckCircle, XCircle, Eye, Search, UserPlus, Trash2, ShieldPlus } from 'lucide-react';
+import { SearchInput } from '../../components/ui/SearchInput';
+import { Plus, CheckCircle, XCircle, Eye, UserPlus, Trash2, ShieldPlus } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { User, School } from '../../types';
 
@@ -119,14 +120,12 @@ export function UsersPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-4 bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/10 backdrop-blur-md">
-        <div className="relative flex-1 min-w-[300px]">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
+        <div className="flex-1 min-w-[300px]">
+          <SearchInput
             placeholder="Search by name, email, or student ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm"
+            className="!py-3 shadow-sm"
           />
         </div>
         <div className="flex p-1 bg-gray-100/50 dark:bg-white/5 rounded-xl gap-1">
