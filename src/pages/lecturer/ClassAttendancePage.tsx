@@ -25,7 +25,10 @@ export function ClassAttendancePage() {
 
 function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
   const queryParams = lecturerId ? `?lecturerId=${lecturerId}` : '';
-  const { data: stats } = useApi<ClassAttendanceStat[]>(`/attendance/class-stats${queryParams}`);
+  const { data: stats } = useApi<ClassAttendanceStat[]>(`/attendance/class-stats${queryParams}`, {
+    refetchIntervalMs: 30_000,
+    refetchWhenVisible: true,
+  });
   const [search, setSearch] = useState('');
   const [pdfExporting, setPdfExporting] = useState(false);
 
@@ -232,7 +235,10 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
 }
 
 function ClassDetailView({ classId }: { classId: string }) {
-  const { data, refetch } = useApi<ClassAttendanceDetail>(`/attendance/class/${classId}`);
+  const { data, refetch } = useApi<ClassAttendanceDetail>(`/attendance/class/${classId}`, {
+    refetchIntervalMs: 15_000,
+    refetchWhenVisible: true,
+  });
   const { mutate: manualCheck } = useMutation('post');
   const [manualModal, setManualModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState('');

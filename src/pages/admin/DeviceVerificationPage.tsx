@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import {
   Smartphone, Search, CheckCircle2, XCircle, RefreshCw,
-  ShieldCheck, ShieldAlert, History, ShieldX, FileText
+  ShieldCheck, ShieldAlert, History, ShieldX, FileText, TrendingUp
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { format } from 'date-fns';
@@ -43,10 +43,14 @@ const timeAgo = (dateStr: string) => {
   return `${days}d ago`;
 };
 
+const DEVICE_REFRESH_MS = 30_000;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function DeviceVerificationPage() {
-  const { data: pending, loading, refetch } = useApi<PendingDeviceBinding[]>('/devices/pending');
-  const { data: bound, refetch: refetchBound } = useApi<PendingDeviceBinding[]>('/devices/bound');
-  const { data: securityLog, refetch: refetchLog } = useApi<DeviceSecurityEvent[]>('/devices/security-log');
+  const apiOpts = { refetchIntervalMs: DEVICE_REFRESH_MS, refetchWhenVisible: true };
+  const { data: pending, loading, refetch } = useApi<PendingDeviceBinding[]>('/devices/pending', apiOpts);
+  const { data: bound, refetch: refetchBound } = useApi<PendingDeviceBinding[]>('/devices/bound', apiOpts);
+  const { data: securityLog, refetch: refetchLog } = useApi<DeviceSecurityEvent[]>('/devices/security-log', apiOpts);
   const { mutate: verify } = useMutation('post');
   const { mutate: reset } = useMutation('delete');
   const [search, setSearch] = useState('');
@@ -64,6 +68,10 @@ export function DeviceVerificationPage() {
   ) || [];
 
   const refreshAll = () => { refetch(); refetchBound(); refetchLog(); };
+
+  const weekAgo = Date.now() - WEEK_MS;
+  const conflictsThisWeek = securityLog?.filter((e) => e.type === 'CONFLICT_BLOCKED' && new Date(e.createdAt).getTime() >= weekAgo).length ?? 0;
+  const changesThisWeek = securityLog?.filter((e) => e.type === 'CHANGE_REQUESTED' && new Date(e.createdAt).getTime() >= weekAgo).length ?? 0;
 
   const handleVerify = async (p: PendingDeviceBinding) => {
     const msg = p.currentDeviceModel
@@ -115,6 +123,45 @@ export function DeviceVerificationPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 pr-4 py-2 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-w-[280px]"
           />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glass-card p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center flex-shrink-0">
+            <ShieldCheck size={18} />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-gray-900 dark:text-white leading-none">{bound?.length ?? 0}</p>
+            <p className="text-[10px] text-gray-500 mt-1">Devices bound</p>
+          </div>
+        </div>
+        <div className="glass-card p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-yellow-500/10 text-yellow-500 flex items-center justify-center flex-shrink-0">
+            <ShieldAlert size={18} />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-gray-900 dark:text-white leading-none">{pending?.length ?? 0}</p>
+            <p className="text-[10px] text-gray-500 mt-1">Awaiting review</p>
+          </div>
+        </div>
+        <div className="glass-card p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center flex-shrink-0">
+            <ShieldX size={18} />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-gray-900 dark:text-white leading-none">{conflictsThisWeek}</p>
+            <p className="text-[10px] text-gray-500 mt-1">Conflicts blocked, 7d</p>
+          </div>
+        </div>
+        <div className="glass-card p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center flex-shrink-0">
+            <TrendingUp size={18} />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-gray-900 dark:text-white leading-none">{changesThisWeek}</p>
+            <p className="text-[10px] text-gray-500 mt-1">Change requests, 7d</p>
+          </div>
         </div>
       </div>
 
