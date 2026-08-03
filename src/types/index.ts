@@ -82,6 +82,57 @@ export interface UserDetail extends User {
   }[];
   biometricLockEnabled?: boolean;
   biometricLockInvalidatedAt?: string | null;
+  boundDeviceId?: string | null;
+  boundDeviceModel?: string | null;
+  deviceBoundAt?: string | null;
+  pendingDeviceId?: string | null;
+  pendingDeviceModel?: string | null;
+  pendingDeviceRegisteredAt?: string | null;
+  pendingDeviceReason?: DeviceChangeReason | null;
+  pendingDeviceNote?: string | null;
+}
+
+export type DeviceChangeReason = 'LOST_PHONE' | 'NEW_PHONE' | 'DAMAGED' | 'STOLEN' | 'OTHER';
+
+export interface PendingDeviceBinding {
+  id: string;
+  firstName: string;
+  lastName: string;
+  studentId: string;
+  email: string;
+  deviceId: string;
+  deviceModel: string;
+  createdAt: string;
+  reason: DeviceChangeReason | null;
+  note: string | null;
+  /** Present only for change requests (student already had a device bound before this one). */
+  currentDeviceModel: string | null;
+}
+
+export interface DeviceSecurityEvent {
+  id: string;
+  type: 'CONFLICT_BLOCKED' | 'CHANGE_REQUESTED' | 'APPROVED' | 'DENIED';
+  deviceId: string | null;
+  deviceModel: string | null;
+  reason: DeviceChangeReason | null;
+  note: string | null;
+  createdAt: string;
+  user: { id: string; firstName: string; lastName: string; studentId: string | null };
+  conflictingUser: { id: string; firstName: string; lastName: string; studentId: string | null } | null;
+}
+
+export interface SchoolStats {
+  id: string;
+  name: string;
+  code: string;
+  color: string;
+  totalStudents: number;
+  totalLecturers: number;
+  totalCourses: number;
+  pendingApprovals: number;
+  pendingDeviceRequests: number;
+  todayCheckins: number;
+  openTickets: number;
 }
 
 export interface Beacon {

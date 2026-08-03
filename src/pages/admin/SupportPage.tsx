@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { LifeBuoy, Plus, Send, School as SchoolIcon, Search } from 'lucide-react';
-import type { Ticket } from '../../types';
+import type { Ticket, School } from '../../types';
 
 const STATUS_COLOR: Record<Ticket['status'], 'blue' | 'yellow' | 'green' | 'gray'> = {
   OPEN: 'blue',
@@ -40,7 +40,11 @@ const timeAgo = (dateStr: string) => {
 export function SupportPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const { data: tickets, refetch } = useApi<Ticket[]>('/tickets');
+  const [schoolFilter, setSchoolFilter] = useState('');
+  const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
+  const { data: tickets, refetch } = useApi<Ticket[]>(
+    isSuperAdmin && schoolFilter ? `/tickets?schoolId=${schoolFilter}` : '/tickets'
+  );
   const { mutate: createTicket } = useMutation<Ticket>('post');
   const { mutate: sendReply } = useMutation('post');
   const { mutate: patchTicket } = useMutation<Ticket>('patch');
@@ -130,7 +134,7 @@ export function SupportPage() {
 
       <div className="flex gap-6 h-[calc(100vh-16rem)]">
         <div className="w-96 flex flex-col">
-          <div className="relative mb-4">
+          <div className="relative mb-2">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
             <input
               type="text"
@@ -140,6 +144,16 @@ export function SupportPage() {
               className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
           </div>
+          {isSuperAdmin && (
+            <select
+              value={schoolFilter}
+              onChange={(e) => setSchoolFilter(e.target.value)}
+              className="w-full mb-4 rounded-xl px-3 py-2 text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
+            >
+              <option value="">All schools</option>
+              {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )}
 
           <div className="glass-card flex-1 overflow-y-auto p-2 space-y-1">
             {filtered.map((t) => (

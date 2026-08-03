@@ -1,27 +1,52 @@
 import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
-import { 
-  Smartphone, Search, CheckCircle2, XCircle, RefreshCw, 
-  ShieldCheck, ShieldAlert, History
+import {
+  Smartphone, Search, CheckCircle2, XCircle, RefreshCw,
+  ShieldCheck, ShieldAlert, History, ShieldX, FileText
 } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { format } from 'date-fns';
+import type { PendingDeviceBinding, DeviceSecurityEvent, DeviceChangeReason } from '../../types';
 
-interface PendingBinding {
-  id: string;
-  firstName: string;
-  lastName: string;
-  studentId: string;
-  email: string;
-  deviceId: string;
-  deviceModel: string;
-  createdAt: string;
-}
+const REASON_LABEL: Record<DeviceChangeReason, string> = {
+  LOST_PHONE: 'Lost phone',
+  NEW_PHONE: 'Upgraded phone',
+  DAMAGED: 'Phone damaged',
+  STOLEN: 'Phone stolen',
+  OTHER: 'Other',
+};
+
+const REASON_COLOR: Record<DeviceChangeReason, 'red' | 'blue' | 'yellow' | 'gray'> = {
+  LOST_PHONE: 'red',
+  NEW_PHONE: 'blue',
+  DAMAGED: 'yellow',
+  STOLEN: 'red',
+  OTHER: 'gray',
+};
+
+const EVENT_COPY: Record<DeviceSecurityEvent['type'], { icon: typeof CheckCircle2; color: string; verb: string }> = {
+  CONFLICT_BLOCKED: { icon: ShieldX, color: 'text-red-500', verb: 'blocked — device already claimed' },
+  CHANGE_REQUESTED: { icon: ShieldAlert, color: 'text-yellow-500', verb: 'requested a device change' },
+  APPROVED: { icon: CheckCircle2, color: 'text-green-500', verb: 'device approved' },
+  DENIED: { icon: XCircle, color: 'text-gray-400', verb: 'device request denied/reset' },
+};
+
+const timeAgo = (dateStr: string) => {
+  // eslint-disable-next-line react-hooks/purity -- relative time uses wall clock at render
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
 
 export function DeviceVerificationPage() {
-  const { data: pending, loading, refetch } = useApi<PendingBinding[]>('/devices/pending');
-  const { data: bound, refetch: refetchBound } = useApi<PendingBinding[]>('/devices/bound');
+  const { data: pending, loading, refetch } = useApi<PendingDeviceBinding[]>('/devices/pending');
+  const { data: bound, refetch: refetchBound } = useApi<PendingDeviceBinding[]>('/devices/bound');
+  const { data: securityLog, refetch: refetchLog } = useApi<DeviceSecurityEvent[]>('/devices/security-log');
   const { mutate: verify } = useMutation('post');
   const { mutate: reset } = useMutation('delete');
   const [search, setSearch] = useState('');
@@ -38,22 +63,29 @@ export function DeviceVerificationPage() {
     p.deviceModel.toLowerCase().includes(search.toLowerCase())
   ) || [];
 
-  const handleVerify = async (userId: string) => {
-    if (!confirm('Approve this device for this student?')) return;
+  const refreshAll = () => { refetch(); refetchBound(); refetchLog(); };
+
+  const handleVerify = async (p: PendingDeviceBinding) => {
+    const msg = p.currentDeviceModel
+      ? `Approve the switch from ${p.currentDeviceModel} to ${p.deviceModel} for ${p.firstName} ${p.lastName}?`
+      : `Approve ${p.deviceModel} as ${p.firstName} ${p.lastName}'s bound device?`;
+    if (!confirm(msg)) return;
     try {
-      await verify(`/devices/verify/${userId}`);
-      refetch();
+      await verify(`/devices/verify/${p.id}`);
+      refreshAll();
     } catch {
       alert('Failed to verify device');
     }
   };
 
-  const handleReset = async (userId: string) => {
-    if (!confirm('Warning: This will clear the student\'s device binding. They will need to register a new device. Continue?')) return;
+  const handleReset = async (userId: string, isBound: boolean) => {
+    const msg = isBound
+      ? "Warning: This will clear the student's device binding entirely. They'll need to register a new device on next login. Continue?"
+      : 'Deny this device-change request? The student stays bound to their current device.';
+    if (!confirm(msg)) return;
     try {
       await reset(`/devices/${userId}`);
-      refetch();
-      refetchBound();
+      refreshAll();
     } catch {
       alert('Failed to reset device');
     }
@@ -95,24 +127,25 @@ export function DeviceVerificationPage() {
               Pending Verifications
               <Badge color="yellow">{filtered.length}</Badge>
             </h3>
-            <button onClick={() => refetch()} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors">
+            <button onClick={refreshAll} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors">
               <RefreshCw size={14} />
             </button>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="text-left py-3 px-6">Student</th>
                   <th className="text-left py-3 px-6">Device</th>
-                  <th className="text-left py-3 px-6">Request Date</th>
+                  <th className="text-left py-3 px-6">Reason</th>
+                  <th className="text-left py-3 px-6">Requested</th>
                   <th className="text-right py-3 px-6">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                 {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors">
+                  <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors align-top">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-xs">
@@ -130,26 +163,44 @@ export function DeviceVerificationPage() {
                           <Smartphone size={14} className="text-gray-400" />
                           {p.deviceModel}
                         </span>
+                        {p.currentDeviceModel && (
+                          <span className="text-[10px] text-gray-400 mt-0.5">was: {p.currentDeviceModel}</span>
+                        )}
                         <code className="text-[10px] text-gray-400 bg-gray-100 dark:bg-white/5 px-1 py-0.5 rounded mt-1 truncate max-w-[120px]">
                           {p.deviceId}
                         </code>
                       </div>
+                    </td>
+                    <td className="py-4 px-6 max-w-[220px]">
+                      {p.reason ? (
+                        <div className="space-y-1">
+                          <Badge color={REASON_COLOR[p.reason]}>{REASON_LABEL[p.reason]}</Badge>
+                          {p.note && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1" title={p.note}>
+                              <FileText size={11} className="mt-0.5 flex-shrink-0" />
+                              <span className="line-clamp-2">{p.note}</span>
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">First-time bind</span>
+                      )}
                     </td>
                     <td className="py-4 px-6 text-gray-500 text-xs">
                       {format(new Date(p.createdAt), 'MMM d, h:mm a')}
                     </td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={() => handleVerify(p.id)}
+                        <button
+                          onClick={() => handleVerify(p)}
                           className="flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-600 hover:bg-green-500 hover:text-white rounded-lg text-xs font-bold transition-all"
                         >
                           <CheckCircle2 size={14} /> Approve
                         </button>
-                        <button 
-                          onClick={() => handleReset(p.id)}
+                        <button
+                          onClick={() => handleReset(p.id, false)}
                           className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
-                          title="Reject/Reset"
+                          title="Deny request"
                         >
                           <XCircle size={16} />
                         </button>
@@ -159,7 +210,7 @@ export function DeviceVerificationPage() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center">
+                    <td colSpan={5} className="py-12 text-center">
                       <ShieldCheck size={40} className="mx-auto text-green-500/20 mb-3" />
                       <p className="text-sm text-gray-500">No pending device verifications.</p>
                     </td>
@@ -185,38 +236,48 @@ export function DeviceVerificationPage() {
               </div>
               <div className="flex gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-blue-500 text-[10px]">2</div>
-                <p>Logging in from a different device is blocked and shows up here as pending — an admin must approve the switch before that device can be used.</p>
+                <p>Switching devices requires the student to submit a reason in-app — it shows up here for you to approve or deny.</p>
               </div>
               <div className="flex gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-blue-500 text-[10px]">3</div>
-                <p>One device can't be bound to two accounts — blocks a shared phone from checking in for multiple students.</p>
+                <p>One device can't be bound to two accounts — blocked attempts show up in the Security Log too.</p>
               </div>
             </div>
-            <Button className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 h-auto">
-              Policy Settings
-            </Button>
           </div>
 
           <div className="glass-card p-5">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <History size={16} className="text-gray-400" />
-              Security Log
-            </h3>
-            <div className="space-y-4">
-              <div className="flex gap-3 items-start opacity-70">
-                <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-white/5"><CheckCircle2 size={12} className="text-green-500" /></div>
-                <div>
-                  <p className="text-[10px] text-gray-400">2 mins ago</p>
-                  <p className="text-xs text-gray-700 dark:text-gray-300">Device <span className="font-bold">iPhone 15</span> verified for student <span className="font-bold">John Doe</span>.</p>
-                </div>
-              </div>
-              <div className="flex gap-3 items-start opacity-70">
-                <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-white/5"><XCircle size={12} className="text-red-500" /></div>
-                <div>
-                  <p className="text-[10px] text-gray-400">1 hour ago</p>
-                  <p className="text-xs text-gray-700 dark:text-gray-300">Binding reset for <span className="font-bold">Mary Smith</span> by Admin.</p>
-                </div>
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <History size={16} className="text-gray-400" />
+                Security Log
+              </h3>
+              <button onClick={() => refetchLog()} className="p-1 text-gray-400 hover:text-blue-500 transition-colors">
+                <RefreshCw size={12} />
+              </button>
+            </div>
+            <div className="space-y-4 max-h-[420px] overflow-y-auto">
+              {securityLog?.map((e) => {
+                const copy = EVENT_COPY[e.type];
+                const Icon = copy.icon;
+                return (
+                  <div key={e.id} className="flex gap-3 items-start">
+                    <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-white/5 flex-shrink-0"><Icon size={12} className={copy.color} /></div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-gray-400">{timeAgo(e.createdAt)}</p>
+                      <p className="text-xs text-gray-700 dark:text-gray-300">
+                        <span className="font-bold">{e.user.firstName} {e.user.lastName}</span> {copy.verb}
+                        {e.conflictingUser && (
+                          <> — device belongs to <span className="font-bold">{e.conflictingUser.firstName} {e.conflictingUser.lastName}</span></>
+                        )}
+                        {e.deviceModel && <span className="text-gray-500"> ({e.deviceModel})</span>}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+              {(!securityLog || securityLog.length === 0) && (
+                <p className="text-xs text-gray-400 text-center py-6">No device security events yet.</p>
+              )}
             </div>
           </div>
         </div>
@@ -275,7 +336,7 @@ export function DeviceVerificationPage() {
                   </td>
                   <td className="py-4 px-6 text-right">
                     <button
-                      onClick={() => handleReset(p.id)}
+                      onClick={() => handleReset(p.id, true)}
                       className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded-lg text-xs font-bold transition-all ml-auto"
                     >
                       <RefreshCw size={12} /> Reset Device
