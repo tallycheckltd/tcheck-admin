@@ -178,18 +178,18 @@ export function DeviceVerificationPage() {
               About Device Binding
             </h3>
             <div className="space-y-3 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-              <p>Device binding ensures that each student can only check in from their personal, verified hardware.</p>
+              <p>Every student account is locked to a single device — enforced at login, not just check-in.</p>
               <div className="flex gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-blue-500 text-[10px]">1</div>
-                <p>Students register their device during their first check-in attempt.</p>
+                <p>A student's device auto-binds the first time they log in — no approval needed.</p>
               </div>
               <div className="flex gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-blue-500 text-[10px]">2</div>
-                <p>Admins must approve the device before the student can mark attendance via BLE.</p>
+                <p>Logging in from a different device is blocked and shows up here as pending — an admin must approve the switch before that device can be used.</p>
               </div>
               <div className="flex gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-blue-500 text-[10px]">3</div>
-                <p>Only one verified device is allowed per student account.</p>
+                <p>One device can't be bound to two accounts — blocks a shared phone from checking in for multiple students.</p>
               </div>
             </div>
             <Button className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 h-auto">
