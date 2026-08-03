@@ -1,6 +1,8 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import {
-  AlertTriangle, Users, Battery, Shield, ExternalLink, UserCheck, Smartphone,
+  AlertTriangle, Users, Battery, Shield, ChevronDown, UserCheck, Smartphone,
   CheckCircle, RefreshCw
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
@@ -9,6 +11,7 @@ import { format } from 'date-fns';
 
 interface FraudFlaggedAttendance {
   id: string;
+  deviceId: string;
   user: { firstName: string; lastName: string; studentId?: string | null };
   class: { title: string; course: { code: string } };
   flagReason: string;
@@ -19,7 +22,11 @@ interface FraudFlaggedAttendance {
 
 interface FraudSuspiciousPair {
   id: string;
+  deviceId: string;
+  deviceModel: string | null;
   coAttendanceCount: number;
+  users: { id: string; firstName: string; lastName: string; studentId: string | null }[];
+  lastSeenAt: string;
 }
 
 interface FraudLowBatteryBeacon {
@@ -39,8 +46,18 @@ interface FraudAnalytics {
   };
 }
 
+const FRAUD_REFRESH_MS = 30_000;
+
+const initialsOf = (u: { firstName: string; lastName: string }) => `${u.firstName[0] ?? ''}${u.lastName[0] ?? ''}`.toUpperCase();
+const avatarPalette = ['bg-blue-100 text-blue-600', 'bg-indigo-100 text-indigo-600', 'bg-purple-100 text-purple-600', 'bg-rose-100 text-rose-600'];
+
 export function FraudDetectionPage() {
-  const { data, loading, error, refetch } = useApi<FraudAnalytics>('/attendance/fraud-analytics');
+  const navigate = useNavigate();
+  const { data, loading, error, refetch } = useApi<FraudAnalytics>('/attendance/fraud-analytics', {
+    refetchIntervalMs: FRAUD_REFRESH_MS,
+    refetchWhenVisible: true,
+  });
+  const [expandedDeviceId, setExpandedDeviceId] = useState<string | null>(null);
 
   if (error) {
     return (
@@ -62,8 +79,8 @@ export function FraudDetectionPage() {
     );
   }
 
-  const boundPercentage = data.deviceStats.total > 0 
-    ? Math.round((data.deviceStats.bound / data.deviceStats.total) * 100) 
+  const boundPercentage = data.deviceStats.total > 0
+    ? Math.round((data.deviceStats.bound / data.deviceStats.total) * 100)
     : 0;
 
   return (
@@ -74,7 +91,7 @@ export function FraudDetectionPage() {
             <Shield className="text-red-500" />
             Fraud Detection & Monitoring
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Multi-layered analysis for buddy punching and device security</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Multi-layered analysis for buddy punching and device security · refreshes every 30s</p>
         </div>
         <div className="hidden sm:flex gap-2">
            <Badge color="red">{data.flaggedAttendances.length} Active Flags</Badge>
@@ -115,7 +132,7 @@ export function FraudDetectionPage() {
               <p className="text-xl font-bold text-gray-900 dark:text-white">{data.flaggedAttendances.length}</p>
             </div>
           </div>
-          <p className="text-[10px] text-gray-400 mt-2">Active conflicts detected in last 24h</p>
+          <p className="text-[10px] text-gray-400 mt-2">Check-ins from a device shared with another account, last 90 days</p>
         </div>
 
         <div className="glass-card p-5">
@@ -128,18 +145,18 @@ export function FraudDetectionPage() {
               <p className="text-xl font-bold text-gray-900 dark:text-white">{data.suspiciousPairs.length}</p>
             </div>
           </div>
-          <p className="text-[10px] text-gray-400 mt-2">Recurring suspicious co-attendance pairs</p>
+          <p className="text-[10px] text-gray-400 mt-2">Distinct devices used by more than one student</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
+
         {/* 2. Flagged Attendances */}
         <div className="xl:col-span-2 glass-card overflow-hidden">
           <div className="p-6 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                <AlertTriangle size={20} className="text-red-500" />
-               Flagged Check-ins (Real-time)
+               Flagged Check-ins
             </h2>
           </div>
           <div className="overflow-x-auto">
@@ -232,25 +249,56 @@ export function FraudDetectionPage() {
              <Users size={20} className="text-orange-500" />
              Device Sharing Patterns
           </h2>
-          <p className="text-xs text-gray-500 mb-6">Users who consistently check-in from the same device (buddy punching indicator).</p>
-          <div className="space-y-4">
-            {data.suspiciousPairs.map((p) => (
-              <div key={p.id} className="flex items-center justify-between p-4 rounded-xl border border-orange-500/10 bg-orange-500/5 transition-hover hover:border-orange-500/30">
-                <div className="flex items-center gap-3">
-                  <div className="flex -space-x-3">
-                    <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-900 bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">S1</div>
-                    <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-900 bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">S2</div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-gray-900 dark:text-white">Frequent Pair Detected</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">{p.coAttendanceCount} Simultaneous check-ins</div>
-                  </div>
+          <p className="text-xs text-gray-500 mb-6">Devices used by more than one student to check in (buddy punching indicator) — last 90 days.</p>
+          <div className="space-y-3">
+            {data.suspiciousPairs.map((p) => {
+              const isExpanded = expandedDeviceId === p.deviceId;
+              const relatedFlags = data.flaggedAttendances.filter((f) => f.deviceId === p.deviceId);
+              return (
+                <div key={p.id} className="rounded-xl border border-orange-500/10 bg-orange-500/5 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedDeviceId(isExpanded ? null : p.deviceId)}
+                    className="w-full flex items-center justify-between p-4 hover:bg-orange-500/10 transition-colors cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex -space-x-3 flex-shrink-0">
+                        {p.users.slice(0, 4).map((u, i) => (
+                          <div
+                            key={u.id}
+                            title={`${u.firstName} ${u.lastName}`}
+                            className={`w-10 h-10 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-xs font-bold ${avatarPalette[i % avatarPalette.length]}`}
+                          >
+                            {initialsOf(u)}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                          {p.users.map((u) => `${u.firstName} ${u.lastName}`).join(', ')}
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          {p.coAttendanceCount} check-ins {p.deviceModel ? `· ${p.deviceModel}` : ''} · last {format(new Date(p.lastSeenAt), 'MMM d, HH:mm')}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronDown size={18} className={`text-orange-500 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isExpanded && (
+                    <div className="border-t border-orange-500/10 bg-white/60 dark:bg-black/10 p-4 space-y-2">
+                      <p className="text-[10px] text-gray-400 font-mono truncate">Device ID: {p.deviceId}</p>
+                      {relatedFlags.map((f) => (
+                        <div key={f.id} className="flex items-center justify-between text-xs py-1.5 border-b border-gray-100 dark:border-white/5 last:border-0">
+                          <span className="font-medium text-gray-800 dark:text-gray-200">{f.user.firstName} {f.user.lastName}</span>
+                          <span className="text-gray-500">{f.class.course.code}</span>
+                          <span className="text-gray-400">{format(new Date(f.checkInAt), 'MMM d, HH:mm')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <button className="p-2 hover:bg-orange-500/10 rounded-xl text-orange-500 transition-colors">
-                  <ExternalLink size={18} />
-                </button>
-              </div>
-            ))}
+              );
+            })}
             {data.suspiciousPairs.length === 0 && (
               <div className="text-center py-12">
                 <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -270,7 +318,7 @@ export function FraudDetectionPage() {
                 <Smartphone className="text-white" size={40} />
               </div>
               <h3 className="text-white font-extrabold text-xl mb-2">Device Binding</h3>
-              <p className="text-blue-100 text-xs">Tier 1 Security Policy</p>
+              <p className="text-blue-100 text-xs">Enforced at login, platform-wide</p>
             </div>
             <div className="md:w-2/3 p-8 flex flex-col justify-center">
               <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-2 flex items-center gap-2">
@@ -278,16 +326,17 @@ export function FraudDetectionPage() {
                 <Badge color="blue">Active Strategy</Badge>
               </h3>
               <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 leading-relaxed">
-                Our analysis confirms that **Device Binding** is the most effective technique against "buddy punching". By locking each student account to a unique Hardware ID, we block 99% of proxy check-in attempts. 
-                <br /><br />
-                Currently, <span className="text-blue-600 font-bold">{data.deviceStats.bound} students</span> are bound. For the remaining <span className="font-bold">{data.deviceStats.unbound} students</span>, we recommend forcing a **Device Verification** on their next login.
+                Every student account now auto-binds to one device on their first login — no manual setup required.
+                Currently <span className="text-blue-600 font-bold">{data.deviceStats.bound} students</span> are bound;
+                the remaining <span className="font-bold">{data.deviceStats.unbound}</span> simply haven't logged in
+                since this shipped — they'll bind automatically the next time they do, nothing to force.
               </p>
               <div className="flex flex-wrap gap-3">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
-                  Force Verification (Unbound Users)
-                </button>
-                <button className="bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border border-gray-200 dark:border-white/10 cursor-pointer">
-                  View Device Binding Policy
+                <button
+                  onClick={() => navigate('/admin/device-verification')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer"
+                >
+                  Review Device Verification Queue
                 </button>
               </div>
             </div>
