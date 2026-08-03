@@ -4,13 +4,21 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2 } from 'lucide-react';
-import type { UserDetail } from '../../types';
+import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2, Smartphone, ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText } from 'lucide-react';
+import type { UserDetail, DeviceChangeReason } from '../../types';
 import { exportStudentReportPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const };
 const HISTORY_PAGE_SIZE = 20;
+
+const REASON_LABEL: Record<DeviceChangeReason, string> = {
+  LOST_PHONE: 'Lost phone',
+  NEW_PHONE: 'Upgraded phone',
+  DAMAGED: 'Phone damaged',
+  STOLEN: 'Phone stolen',
+  OTHER: 'Other',
+};
 
 interface HistoryRecord {
   id: string;
@@ -40,12 +48,50 @@ export function UserDetailPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [reportExporting, setReportExporting] = useState<'pdf' | 'csv' | null>(null);
   const { mutate: resetBiometricLock, loading: resettingBiometricLock } = useMutation('post');
+  const { mutate: verifyDevice, loading: verifyingDevice } = useMutation('post');
+  const { mutate: resetDevice, loading: resettingDevice } = useMutation('delete');
 
   const handleResetBiometricLock = async () => {
     if (!id) return;
     if (!confirm("Reset this student's biometric lock? They'll need to re-verify with Face ID/Touch ID (or another supported method) on their next check-in.")) return;
     await resetBiometricLock(`/auth/biometric-lock/reset/${id}`);
     refetch();
+  };
+
+  const handleApproveDevice = async () => {
+    if (!id || !user) return;
+    const msg = user.boundDeviceModel
+      ? `Approve the switch from ${user.boundDeviceModel} to ${user.pendingDeviceModel} for ${user.firstName}?`
+      : `Approve ${user.pendingDeviceModel} as ${user.firstName}'s bound device?`;
+    if (!confirm(msg)) return;
+    try {
+      await verifyDevice(`/devices/verify/${id}`);
+      refetch();
+    } catch {
+      alert('Failed to approve device');
+    }
+  };
+
+  const handleDenyDevice = async () => {
+    if (!id) return;
+    if (!confirm('Deny this device-change request? The student stays bound to their current device.')) return;
+    try {
+      await resetDevice(`/devices/${id}`);
+      refetch();
+    } catch {
+      alert('Failed to deny request');
+    }
+  };
+
+  const handleResetDeviceBinding = async () => {
+    if (!id || !user) return;
+    if (!confirm(`Warning: This clears ${user.firstName}'s device binding entirely. They'll need to register a new device on next login. Continue?`)) return;
+    try {
+      await resetDevice(`/devices/${id}`);
+      refetch();
+    } catch {
+      alert('Failed to reset device');
+    }
   };
 
   /** Reports engine: specific-student report — fetches the student's FULL history (not just the
@@ -194,6 +240,72 @@ export function UserDetailPage() {
               {resettingBiometricLock ? 'Resetting…' : 'Reset Biometric Lock'}
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Device Binding — one-account-one-device (Phase 6): what device this student is locked
+          to, plus any pending change request right here instead of only on the aggregate queue. */}
+      {user.role === 'STUDENT' && (
+        <div className="glass-card p-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${user.boundDeviceId ? 'bg-green-100 dark:bg-green-500/10' : 'bg-gray-100 dark:bg-white/5'}`}>
+                <Smartphone size={20} className={user.boundDeviceId ? 'text-green-500' : 'text-gray-400'} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-950 dark:text-white">
+                  {user.boundDeviceId ? user.boundDeviceModel : 'No device bound yet'}
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                  {user.boundDeviceId
+                    ? `Bound since ${user.deviceBoundAt ? new Date(user.deviceBoundAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}. This account can only log in from this device.`
+                    : 'Auto-binds to whichever device this student first logs in from.'}
+                </p>
+                {user.boundDeviceId && (
+                  <code className="text-[10px] text-slate-500 font-mono block mt-1">{user.boundDeviceId}</code>
+                )}
+              </div>
+            </div>
+            {user.boundDeviceId && !user.pendingDeviceId && (
+              <Button variant="secondary" size="sm" onClick={handleResetDeviceBinding} disabled={resettingDevice}>
+                <RefreshCw size={14} className="mr-1.5" /> {resettingDevice ? 'Resetting…' : 'Reset Device'}
+              </Button>
+            )}
+          </div>
+
+          {user.pendingDeviceId && (
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-yellow-100 dark:bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
+                  <ShieldAlert size={20} className="text-yellow-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white">
+                    Requesting change to {user.pendingDeviceModel}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    {user.pendingDeviceReason && <Badge color="yellow">{REASON_LABEL[user.pendingDeviceReason]}</Badge>}
+                    <span className="text-[10px] text-slate-500">
+                      {user.pendingDeviceRegisteredAt ? new Date(user.pendingDeviceRegisteredAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' }) : ''}
+                    </span>
+                  </div>
+                  {user.pendingDeviceNote && (
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 flex items-start gap-1.5 bg-gray-50 dark:bg-white/5 rounded-lg p-2.5">
+                      <FileText size={12} className="mt-0.5 flex-shrink-0" /> {user.pendingDeviceNote}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 mt-3">
+                    <Button size="sm" onClick={handleApproveDevice} disabled={verifyingDevice || resettingDevice}>
+                      <CheckCircle2 size={14} className="mr-1.5" /> Approve
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={handleDenyDevice} disabled={verifyingDevice || resettingDevice}>
+                      <XCircle size={14} className="mr-1.5" /> Deny
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

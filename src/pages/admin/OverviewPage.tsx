@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, GraduationCap, Calendar, BookOpen, Clock, UserCheck, ArrowRight } from 'lucide-react';
+import { Users, GraduationCap, Calendar, BookOpen, Clock, UserCheck, ArrowRight, School, LifeBuoy, Smartphone } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { BarChartCard } from '../../components/charts/BarChartCard';
-import type { DashboardStats } from '../../types';
+import { Badge } from '../../components/ui/Badge';
+import type { DashboardStats, SchoolStats } from '../../types';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -21,6 +22,11 @@ export function OverviewPage() {
   });
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const { data: schoolStats } = useApi<SchoolStats[]>(isSuperAdmin ? '/schools/stats' : null, {
+    refetchIntervalMs: DASHBOARD_REFRESH_MS,
+    refetchWhenVisible: true,
+  });
 
   const statCards = [
     { title: 'Total Students', value: stats?.totalStudents ?? 0, icon: GraduationCap, color: '#2563eb', bg: 'bg-blue-50 dark:bg-blue-500/10' },
@@ -50,6 +56,75 @@ export function OverviewPage() {
         </h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">Here's what's happening with Tcheck today</p>
       </div>
+
+      {/* Platform-wide cross-school breakdown — SUPER_ADMIN only, so a multi-tenant deployment
+          isn't just one flattened number. Each row links into that school's own overview via the
+          same filters the rest of the dashboard already understands. */}
+      {isSuperAdmin && (
+        <div className="glass-card overflow-hidden">
+          <div className="p-5 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <School size={18} className="text-blue-500" /> Schools on the Platform
+            </h3>
+            <Badge color="blue">{schoolStats?.length ?? 0} schools</Badge>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm gradient-table">
+              <thead>
+                <tr>
+                  <th>School</th>
+                  <th>Students</th>
+                  <th>Lecturers</th>
+                  <th>Courses</th>
+                  <th>Today's Check-ins</th>
+                  <th>Pending Approvals</th>
+                  <th>Device Requests</th>
+                  <th>Open Tickets</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-700 dark:text-gray-300">
+                {schoolStats?.map((s) => (
+                  <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                    <td className="font-medium text-gray-900 dark:text-white">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                        {s.name}
+                        <span className="text-xs text-gray-400 font-mono">{s.code}</span>
+                      </span>
+                    </td>
+                    <td>{s.totalStudents}</td>
+                    <td>{s.totalLecturers}</td>
+                    <td>{s.totalCourses}</td>
+                    <td>
+                      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <UserCheck size={13} /> {s.todayCheckins}
+                      </span>
+                    </td>
+                    <td>{s.pendingApprovals > 0 ? <Badge color="yellow">{s.pendingApprovals}</Badge> : <span className="text-gray-400">0</span>}</td>
+                    <td>
+                      {s.pendingDeviceRequests > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <Smartphone size={13} /> {s.pendingDeviceRequests}
+                        </span>
+                      ) : <span className="text-gray-400">0</span>}
+                    </td>
+                    <td>
+                      {s.openTickets > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold">
+                          <LifeBuoy size={13} /> {s.openTickets}
+                        </span>
+                      ) : <span className="text-gray-400">0</span>}
+                    </td>
+                  </tr>
+                ))}
+                {(!schoolStats || schoolStats.length === 0) && (
+                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">No schools yet</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {statCards.map((card) => (
