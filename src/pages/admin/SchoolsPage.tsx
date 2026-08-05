@@ -137,7 +137,7 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
         <ToggleRow
           icon={Timer}
           title="Dwell Time Tracking"
-          description="Requires ~10s of sustained beacon presence before a BLE check-in is accepted. Off allows an instant tap the moment the beacon is detected."
+          description="Requires ~10s of sustained signal presence before a TB check-in is accepted. Off allows an instant tap the moment the signal is detected."
           checked={value.features.dwellTimeTracking}
           onChange={(v) => onChange({ ...value, features: { ...value.features, dwellTimeTracking: v } })}
         />

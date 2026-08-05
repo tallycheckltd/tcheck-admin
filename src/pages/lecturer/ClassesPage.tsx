@@ -7,10 +7,11 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Slider } from '../../components/ui/Slider';
 import { Badge } from '../../components/ui/Badge';
-import { Plus, Radio, Eye, Trash2 } from 'lucide-react';
+import { Plus, Radio, Eye, Trash2, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ClassSession, Course } from '../../types';
 import { getClassTimeStatus } from '../../utils/classTimeStatus';
 import { formatClassCalendarDate, formatClassTimeLocal, localCalendarYmd } from '../../utils/classDateDisplay';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export function ClassesPage() {
   const { user } = useAuth();
@@ -39,6 +40,22 @@ export function ClassesPage() {
   const myClasses = isAdmin
     ? (classes || [])
     : classes?.filter((c) => courses?.some((co) => co.id === c.courseId)) || [];
+
+  // 3-level drill-down: course list (Level 1) -> that course's sessions (Level 2, the existing
+  // table, just pre-filtered) -> existing Eye action (Level 3, unchanged). Grouped client-side
+  // from data already on hand — no new API call.
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const courseGroups = Array.from(
+    myClasses.reduce((map, cls) => {
+      if (!cls.course) return map;
+      const existing = map.get(cls.courseId);
+      if (existing) existing.count += 1;
+      else map.set(cls.courseId, { course: cls.course, count: 1 });
+      return map;
+    }, new Map<string, { course: NonNullable<ClassSession['course']>; count: number }>()).values(),
+  ).sort((a, b) => a.course.code.localeCompare(b.course.code));
+  const sessionsForSelectedCourse = selectedCourseId ? myClasses.filter((c) => c.courseId === selectedCourseId) : myClasses;
+  const selectedCourse = courseGroups.find((g) => g.course.id === selectedCourseId)?.course;
 
   // Auto-populate room and compute default check-in window when course or times change
   const handleCourseChange = (courseId: string) => {
@@ -133,12 +150,54 @@ export function ClassesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Classes</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{myClasses.length} classes</p>
+          {selectedCourseId ? (
+            <button
+              onClick={() => setSelectedCourseId(null)}
+              className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline mb-1 cursor-pointer"
+            >
+              <ChevronLeft size={15} /> All Courses
+            </button>
+          ) : null}
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
+            {selectedCourse ? `${selectedCourse.code} — ${selectedCourse.name}` : 'Classes'}
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            {selectedCourseId ? `${sessionsForSelectedCourse.length} sessions` : `${courseGroups.length} courses, ${myClasses.length} classes`}
+          </p>
         </div>
         <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Class</Button>
       </div>
 
+      {!selectedCourseId ? (
+        /* Level 1: course grid */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {courseGroups.map(({ course, count }) => (
+            <button
+              key={course.id}
+              onClick={() => setSelectedCourseId(course.id)}
+              className="glass-card p-5 text-left hover:ring-2 hover:ring-blue-500/30 transition-all cursor-pointer"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={15} className="text-blue-500 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{course.code}</span>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white mt-1 truncate">{course.name}</p>
+                </div>
+                <ChevronRight size={16} className="text-slate-400 dark:text-slate-600 flex-shrink-0 mt-1" />
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-3">{count} class{count === 1 ? '' : 'es'}</p>
+            </button>
+          ))}
+          {courseGroups.length === 0 && (
+            <div className="col-span-full">
+              <EmptyState icon={BookOpen} title="No classes found" size="md" />
+            </div>
+          )}
+        </div>
+      ) : (
+      /* Level 2: sessions for the selected course — same table as before, pre-filtered */
       <div className="glass-card overflow-hidden">
         <table className="w-full text-sm gradient-table">
           <thead>
@@ -154,7 +213,7 @@ export function ClassesPage() {
             </tr>
           </thead>
           <tbody className="text-slate-800 dark:text-gray-300">
-            {myClasses.map((cls) => (
+            {sessionsForSelectedCourse.map((cls) => (
               <tr key={cls.id}>
                 <td className="font-medium text-slate-950 dark:text-white">{cls.title}</td>
                 <td>{cls.course?.name || '-'} <span className="text-slate-600 dark:text-slate-400">({cls.course?.code})</span></td>
@@ -192,12 +251,13 @@ export function ClassesPage() {
                 </td>
               </tr>
             ))}
-            {myClasses.length === 0 && (
+            {sessionsForSelectedCourse.length === 0 && (
               <tr><td colSpan={8} className="text-center py-8 text-slate-600 dark:text-slate-400">No classes found</td></tr>
             )}
           </tbody>
         </table>
       </div>
+      )}
 
       <Modal open={modal} onClose={() => setModal(false)} title="Create Class">
         <div className="space-y-4">
@@ -229,7 +289,7 @@ export function ClassesPage() {
               className="rounded border-gray-300 dark:border-white/20"
             />
             <label htmlFor="classIsOnline" className="text-sm text-slate-800 dark:text-gray-300">
-              Online Class (students check in with a rotating code instead of BLE/QR)
+              Online Class (students check in with a rotating code instead of TB/QR)
             </label>
           </div>
           <div className="grid grid-cols-2 gap-4">

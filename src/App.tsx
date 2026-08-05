@@ -14,6 +14,7 @@ import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { CourseAttendanceDetailPage } from './pages/admin/CourseAttendanceDetailPage';
 import { AttendanceAnalyticsPage } from './pages/admin/AttendanceAnalyticsPage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
+import { AllLecturersPage } from './pages/admin/AllLecturersPage';
 import { BLEBeaconPage } from './pages/admin/BLEBeaconPage';
 import { DeviceVerificationPage } from './pages/admin/DeviceVerificationPage';
 import { InvigilationPage } from './pages/admin/InvigilationPage';
@@ -31,15 +32,18 @@ import { AnnouncementsPage } from './pages/lecturer/AnnouncementsPage';
 import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
 import { FraudDetectionPage } from './pages/admin/FraudDetectionPage';
 import { SchoolAdminsPage } from './pages/admin/SchoolAdminsPage';
+import { TermsPage } from './pages/admin/TermsPage';
 import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
 import { SupportPage } from './pages/admin/SupportPage';
 import { LegalPage } from './pages/LegalPage';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
+          <RouteErrorBoundary>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -52,6 +56,7 @@ export default function App() {
               <Route path="/admin/users/:id/courses/:courseId" element={<CourseAttendanceDetailPage />} />
               <Route path="/admin/attendance-analytics" element={<AttendanceAnalyticsPage />} />
               <Route path="/admin/students" element={<AllStudentsPage />} />
+              <Route path="/admin/lecturers" element={<AllLecturersPage />} />
               <Route path="/admin/lecturer-presence" element={<LecturerPresencePage />} />
               <Route path="/admin/attendance-overview" element={<AttendanceOverviewPage />} />
               <Route path="/admin/fraud-detection" element={<FraudDetectionPage />} />
@@ -63,6 +68,7 @@ export default function App() {
               <Route path="/admin/beacons" element={<BLEBeaconPage />} />
               {/* SUB_ADMIN sees/adds co-admins for their own school only; SUPER_ADMIN sees/manages all (user.controller.ts + user.service.ts enforce this) */}
               <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
+              <Route path="/admin/terms" element={<TermsPage />} />
 
               {/* SUPER_ADMIN-only routes */}
               <Route element={<RequireSuperAdmin />}>
@@ -78,6 +84,7 @@ export default function App() {
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/classes" element={<ClassesPage />} />
               <Route path="/attendance" element={<ClassAttendancePage />} />
+              <Route path="/attendance/course/:courseId" element={<ClassAttendancePage />} />
               <Route path="/attendance/:classId" element={<ClassAttendancePage />} />
               <Route path="/live" element={<LiveAttendancePage />} />
               <Route path="/reports" element={<ReportsPage />} />
@@ -90,6 +97,7 @@ export default function App() {
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+          </RouteErrorBoundary>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

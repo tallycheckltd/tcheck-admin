@@ -122,7 +122,7 @@ export async function exportSessionLedgerPdf(rows: ClassAttendanceStat[], fileBa
 
   autoTable(doc, {
     startY,
-    head: [['Session', 'Code', 'Course', 'Date', 'Lecturer', 'Present / enrolled', 'Rate', 'BLE / QR / Manual']],
+    head: [['Session', 'Code', 'Course', 'Date', 'Lecturer', 'Present / enrolled', 'Rate', 'TB / QR / Manual']],
     body,
     styles: { fontSize: 8, cellPadding: 4 },
     headStyles: { fillColor: [51, 65, 85], textColor: 255 },
@@ -146,7 +146,7 @@ export async function exportCampusAnalyticsPdf(campus: CampusAnalytics, sessions
   doc.setTextColor(51, 65, 85);
   const kpiLines = [
     `Overall campus attendance: ${campus.overallAttendancePct}%`,
-    `Automated gate blocks (90d): BLE ${campus.blockedGateAttemptsBle} · QR ${campus.blockedGateAttemptsQr}`,
+    `Automated gate blocks (90d): TB ${campus.blockedGateAttemptsBle} · QR ${campus.blockedGateAttemptsQr}`,
     `Students under 75%: ${campus.atRiskStudentCount}`,
     `Sessions in aggregate: ${campus.sessionCount}`,
   ];

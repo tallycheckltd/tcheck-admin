@@ -133,7 +133,7 @@ export function AttendanceAnalyticsPage() {
   const gatePieData = useMemo(() => {
     if (!campus || blockedTotal === 0) return [];
     return [
-      { name: 'BLE blocks', value: campus.blockedGateAttemptsBle, color: C.violet },
+      { name: 'TB blocks', value: campus.blockedGateAttemptsBle, color: C.violet },
       { name: 'QR blocks', value: campus.blockedGateAttemptsQr, color: C.cyan },
     ].filter((d) => d.value > 0);
   }, [campus, blockedTotal]);
@@ -311,7 +311,7 @@ export function AttendanceAnalyticsPage() {
             {
               label: 'Gate blocks (90d)',
               value: blockedTotal.toLocaleString(),
-              hint: `BLE ${campus.blockedGateAttemptsBle} · QR ${campus.blockedGateAttemptsQr}`,
+              hint: `TB ${campus.blockedGateAttemptsBle} · QR ${campus.blockedGateAttemptsQr}`,
               icon: ShieldAlert,
               className:
                 'border-violet-200/80 bg-gradient-to-br from-violet-50 to-indigo-50 text-violet-950 dark:border-violet-500/25 dark:from-violet-950/45 dark:to-indigo-950/35 dark:text-violet-100',
@@ -360,7 +360,7 @@ export function AttendanceAnalyticsPage() {
         <div className={clsx(cardShell, 'flex flex-col items-center justify-center gap-3 py-6 sm:flex-row sm:justify-between sm:px-8')}>
           <div>
             <h3 className="text-sm font-bold text-slate-800 dark:text-white">Gate block mix (90 days)</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">BLE vs QR automated rejections</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">TB vs QR automated rejections</p>
           </div>
           <div className="h-[140px] w-[200px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -672,12 +672,12 @@ export function AttendanceAnalyticsPage() {
         <div className="flex flex-wrap items-end justify-between gap-2 border-b border-slate-200/80 pb-3 dark:border-white/10">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Session ledger</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Rates and BLE / QR / Manual mix per row</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Rates and TB / QR / Manual mix per row</p>
           </div>
           <div className="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-wide">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/15 px-2 py-1 text-violet-800 dark:text-violet-200">
               <span className="h-2 w-2 rounded-full bg-violet-500" />
-              BLE
+              TB
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2 py-1 text-fuchsia-800 dark:text-fuchsia-200">
               <span className="h-2 w-2 rounded-full bg-fuchsia-500" />
@@ -755,7 +755,7 @@ export function AttendanceAnalyticsPage() {
                       <div className="flex flex-wrap justify-end gap-1">
                         {s.checkInBreakdown.BLE > 0 && (
                           <span className="rounded-md bg-gradient-to-r from-violet-500/25 to-indigo-500/20 px-2 py-0.5 text-[11px] font-semibold text-violet-900 dark:text-violet-100">
-                            BLE {s.checkInBreakdown.BLE}
+                            TB {s.checkInBreakdown.BLE}
                           </span>
                         )}
                         {s.checkInBreakdown.QR > 0 && (

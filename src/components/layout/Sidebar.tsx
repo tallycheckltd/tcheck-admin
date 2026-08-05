@@ -31,10 +31,12 @@ const superAdminOverview: NavItem[] = [
 const superAdminAdmin: NavItem[] = [
   { to: '/admin/schools', icon: School, label: 'Schools' },
   { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
+  { to: '/admin/terms', icon: Calendar, label: 'Terms' },
 ];
 
 const superAdminGeneral: NavItem[] = [
-  { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Manager' },
+  { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
@@ -52,7 +54,9 @@ const hodOverview: NavItem[] = [
 const hodAdmin: NavItem[] = [
   { to: '/admin/users', icon: Users, label: 'Users' },
   { to: '/admin/students', icon: GraduationCap, label: 'Students' },
+  { to: '/admin/lecturers', icon: BookOpen, label: 'Lecturers' },
   { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
+  { to: '/admin/terms', icon: Calendar, label: 'Terms' },
 ];
 
 const hodOperations: NavItem[] = [
@@ -75,7 +79,7 @@ const hodOperations: NavItem[] = [
 ];
 
 const hodGeneral: NavItem[] = [
-  { to: '/admin/beacons', icon: Bluetooth, label: 'BLE Manager' },
+  { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },

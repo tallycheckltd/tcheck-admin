@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { SearchInput } from '../../components/ui/SearchInput';
+import { UserDirectoryTabs } from '../../components/admin/UserDirectoryTabs';
 import { Plus, CheckCircle, XCircle, Eye, UserPlus, Trash2, ShieldPlus, Search, ScanEye } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { User, School } from '../../types';
@@ -132,6 +133,8 @@ export function UsersPage() {
           </Button>
         </div>
       </div>
+
+      <UserDirectoryTabs />
 
       <div className="flex flex-wrap items-center gap-4 bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/10 backdrop-blur-md">
         <div className="flex-1 min-w-[300px]">

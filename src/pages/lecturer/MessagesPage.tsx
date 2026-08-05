@@ -8,12 +8,16 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
-import { Send, MessageSquare, Search, Flag, User as UserIcon } from 'lucide-react';
+import { Send, MessageSquare, Search, Flag, User as UserIcon, MessagesSquare, Users2 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { RoomChatPanel } from '../../components/chat/RoomChatPanel';
 import type { Conversation, Message, ContactGroup } from '../../types';
+
+type PageMode = 'direct' | 'rooms';
 
 export function MessagesPage() {
   const { user } = useAuth();
+  const [mode, setMode] = useState<PageMode>('direct');
   const { data: conversations, refetch: refetchConvos } = useApi<Conversation[]>('/messages/conversations');
   const [selected, setSelected] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -209,6 +213,33 @@ export function MessagesPage() {
       : '';
 
   return (
+    <div className="space-y-4">
+      <div className="flex gap-1 bg-gray-100 dark:bg-white/5 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setMode('direct')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+            mode === 'direct'
+              ? 'bg-white dark:bg-white/10 text-slate-950 dark:text-white shadow-sm'
+              : 'text-slate-600 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <MessagesSquare size={16} className="inline mr-1.5 -mt-0.5" /> Direct Messages
+        </button>
+        <button
+          onClick={() => setMode('rooms')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+            mode === 'rooms'
+              ? 'bg-white dark:bg-white/10 text-slate-950 dark:text-white shadow-sm'
+              : 'text-slate-600 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <Users2 size={16} className="inline mr-1.5 -mt-0.5" /> Course & Campus Rooms
+        </button>
+      </div>
+
+      {mode === 'rooms' ? (
+        <RoomChatPanel />
+      ) : (
     <div className="flex gap-6 h-[calc(100vh-8rem)]">
       <GlassCard className="w-80 flex flex-col overflow-hidden">
         {/* Tab toggle */}
@@ -400,6 +431,8 @@ export function MessagesPage() {
         </div>
       </Modal>
 
+    </div>
+      )}
     </div>
   );
 }

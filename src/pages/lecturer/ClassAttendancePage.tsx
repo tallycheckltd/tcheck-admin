@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { ForensicDetailModal } from '../../components/ForensicDetailModal';
-import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown } from 'lucide-react';
+import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { exportSessionLedgerPdf } from '../../lib/adminPdfExport';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { csvField } from '../../lib/csv';
 import { formatClassCalendarDate, formatClassTimeLocal } from '../../utils/classDateDisplay';
+import { formatCheckInType } from '../../utils/checkInTypeLabel';
 
 export function ClassAttendancePage() {
-  const { classId } = useParams<{ classId: string }>();
+  const { classId, courseId } = useParams<{ classId: string; courseId: string }>();
   const { user } = useAuth();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
 
@@ -20,10 +22,66 @@ export function ClassAttendancePage() {
     return <ClassDetailView classId={classId} />;
   }
 
-  return <ClassStatsListView lecturerId={isAdmin ? undefined : user?.id} />;
+  if (courseId) {
+    return <ClassStatsListView lecturerId={isAdmin ? undefined : user?.id} courseId={courseId} />;
+  }
+
+  return <CourseAttendanceListView lecturerId={isAdmin ? undefined : user?.id} />;
 }
 
-function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
+/** Level 1: course cards, grouped client-side from the same class-stats payload Level 2 uses — no new API. */
+function CourseAttendanceListView({ lecturerId }: { lecturerId?: string }) {
+  const navigate = useNavigate();
+  const queryParams = lecturerId ? `?lecturerId=${lecturerId}` : '';
+  const { data: stats } = useApi<ClassAttendanceStat[]>(`/attendance/class-stats${queryParams}`);
+
+  const courseGroups = Array.from(
+    (stats ?? []).reduce((map, s) => {
+      const existing = map.get(s.course.id);
+      if (existing) existing.count += 1;
+      else map.set(s.course.id, { course: s.course, count: 1 });
+      return map;
+    }, new Map<string, { course: ClassAttendanceStat['course']; count: number }>()).values(),
+  ).sort((a, b) => a.course.code.localeCompare(b.course.code));
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Session attendance</h1>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{courseGroups.length} courses with scheduled sessions</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {courseGroups.map(({ course, count }) => (
+          <button
+            key={course.id}
+            onClick={() => navigate(`/attendance/course/${course.id}`)}
+            className="glass-card p-5 text-left hover:ring-2 hover:ring-blue-500/30 transition-all cursor-pointer"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <BookOpen size={15} className="text-blue-500 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{course.code}</span>
+                </div>
+                <p className="text-sm font-semibold text-slate-950 dark:text-white mt-1 truncate">{course.name}</p>
+              </div>
+              <ChevronRight size={16} className="text-slate-400 dark:text-slate-600 flex-shrink-0 mt-1" />
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-3">{count} session{count === 1 ? '' : 's'}</p>
+          </button>
+        ))}
+        {courseGroups.length === 0 && (
+          <div className="col-span-full">
+            <EmptyState icon={BookOpen} title="No sessions yet" size="md" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; courseId?: string }) {
+  const navigate = useNavigate();
   const queryParams = lecturerId ? `?lecturerId=${lecturerId}` : '';
   const { data: stats } = useApi<ClassAttendanceStat[]>(`/attendance/class-stats${queryParams}`, {
     refetchIntervalMs: 30_000,
@@ -32,7 +90,9 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
   const [search, setSearch] = useState('');
   const [pdfExporting, setPdfExporting] = useState(false);
 
-  const filtered = stats?.filter((s) => {
+  const courseScoped = courseId ? stats?.filter((s) => s.course.id === courseId) : stats;
+  const courseName = courseId ? courseScoped?.[0]?.course : undefined;
+  const filtered = courseScoped?.filter((s) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return s.title.toLowerCase().includes(q) || s.course.name.toLowerCase().includes(q) || s.course.code.toLowerCase().includes(q);
@@ -40,7 +100,7 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
 
   const exportCSV = () => {
     if (!filtered) return;
-    const headers = ['Class', 'Course', 'Date', 'Enrolled', 'Checked In', 'Rate', 'BLE', 'QR', 'Manual'];
+    const headers = ['Class', 'Course', 'Date', 'Enrolled', 'Checked In', 'Rate', 'TB', 'QR', 'Manual'];
     const rows = filtered.map((s) =>
       [
         csvField(s.title),
@@ -67,14 +127,24 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-[200px]">
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Session attendance</h1>
+          {courseId && (
+            <button
+              onClick={() => navigate('/attendance')}
+              className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline mb-1 cursor-pointer"
+            >
+              <ChevronLeft size={15} /> All Courses
+            </button>
+          )}
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
+            {courseName ? `${courseName.code} — ${courseName.name}` : 'Session attendance'}
+          </h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Drill into BLE, QR, and manual paths with clear rates per scheduled class.
+            Drill into TB, QR, and manual paths with clear rates per scheduled class.
           </p>
           <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-slate-200/90 bg-white/80 px-3 py-2.5 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-400">
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-sm bg-violet-500/70" aria-hidden />
-              Violet · BLE beacon
+              Violet · TB beacon
             </span>
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-sm bg-purple-400/65" aria-hidden />
@@ -140,7 +210,7 @@ function ClassStatsListView({ lecturerId }: { lecturerId?: string }) {
               <th className="whitespace-nowrap px-4 py-3 tabular-nums">Enrolled</th>
               <th className="whitespace-nowrap px-4 py-3 tabular-nums text-center">Present</th>
               <th className="px-4 py-3">Rate</th>
-              <th className="px-4 py-3 text-center">BLE</th>
+              <th className="px-4 py-3 text-center">TB</th>
               <th className="px-4 py-3 text-center">QR</th>
               <th className="px-4 py-3 text-center">Manual</th>
               <th className="whitespace-nowrap px-5 py-3 text-right"></th>
@@ -303,7 +373,7 @@ function ClassDetailView({ classId }: { classId: string }) {
           <p className="text-2xl font-bold text-green-600 dark:text-green-400">{data.totalCheckedIn}</p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center justify-center gap-1"><Bluetooth size={14} /> BLE</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center justify-center gap-1"><Bluetooth size={14} /> TB</p>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{bleCount}</p>
         </div>
         <div className="glass-card p-4 text-center">
@@ -358,7 +428,7 @@ function ClassDetailView({ classId }: { classId: string }) {
                     {a.checkInType === 'BLE' && <Bluetooth size={12} />}
                     {a.checkInType === 'QR' && <QrCode size={12} />}
                     {a.checkInType === 'MANUAL' && <UserCheck size={12} />}
-                    {a.checkInType}
+                    {formatCheckInType(a.checkInType)}
                   </button>
                 </td>
                 <td className="font-mono text-xs">{a.beaconRSSI ?? '-'}</td>

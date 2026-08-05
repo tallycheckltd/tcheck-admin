@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Users, Mail, School, Search, Plus } from 'lucide-react';
+import { UserDirectoryTabs } from '../../components/admin/UserDirectoryTabs';
 import type { User, School as SchoolType } from '../../types';
 
 const emptyForm = { firstName: '', lastName: '', email: '', password: '', schoolId: '' };
@@ -55,6 +56,8 @@ export function SchoolAdminsPage() {
         </div>
         <Button onClick={() => { setForm(emptyForm); setModal(true); }}><Plus size={16} className="mr-1" /> New Admin</Button>
       </div>
+
+      <UserDirectoryTabs />
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">

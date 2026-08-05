@@ -175,7 +175,7 @@ export function LecturerPresencePage() {
           <p className="text-[11px] text-slate-600 dark:text-gray-400 mt-1 leading-relaxed">
             A proxy metric, not a direct measurement — this app has no dedicated lecturer clock-in.
             "Activated at" is the earliest recorded classroom activity for a session (QR code generated,
-            a Ping Class spot check, or the first student BLE/QR check-in), compared to the scheduled start time.
+            a Ping Class spot check, or the first student TB/QR check-in), compared to the scheduled start time.
           </p>
         </div>
         {punctualityLoading ? (

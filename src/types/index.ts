@@ -22,6 +22,16 @@ export interface School {
   createdAt: string;
 }
 
+export interface Term {
+  id: string;
+  schoolId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface Major {
   id: string;
   name: string;
@@ -400,6 +410,27 @@ export interface AnalyticsStat {
   percentage: number;
 }
 
+export interface RoomTargets {
+  schoolId: string | null;
+  courses: { id: string; name: string; code: string }[];
+}
+
+export interface RoomMessage {
+  id: string;
+  conversationId: string;
+  senderId: string | null;
+  sender: Pick<User, 'id' | 'firstName' | 'lastName'> | null;
+  content: string;
+  isAnonymous: boolean | null;
+  isMine: boolean;
+  createdAt: string;
+}
+
+export interface RoomMessagesResponse {
+  messages: RoomMessage[];
+  isAnonymousEnabled: boolean;
+}
+
 export interface ContactGroup {
   courseId: string;
   courseName: string;
@@ -425,6 +456,8 @@ export interface AdminConversation {
   messageCount: number;
   hasPendingFlags: boolean;
   pendingFlagCount: number;
+  /** COURSE/SCHOOL rooms only — resolved effective value (null for DIRECT/CLASS). */
+  isAnonymousEnabled: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
