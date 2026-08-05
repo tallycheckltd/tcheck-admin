@@ -6,6 +6,7 @@ import { BarChartCard } from '../../components/charts/BarChartCard';
 import { Badge } from '../../components/ui/Badge';
 import { StatCard } from '../../components/ui/StatCard';
 import type { DashboardStats, SchoolStats } from '../../types';
+import { formatCheckInType } from '../../utils/checkInTypeLabel';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -186,7 +187,7 @@ export function OverviewPage() {
                     a.checkInType === 'QR' ? 'bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400' :
                     'bg-slate-100 text-slate-600 dark:bg-gray-500/10 dark:text-gray-400'
                   }`}>
-                    {a.checkInType}
+                    {formatCheckInType(a.checkInType)}
                   </span>
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 font-mono">
                     {new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}

@@ -192,7 +192,7 @@ export function SettingsPage() {
                 <FeatureToggle
                   icon={Timer}
                   title="Dwell Time Tracking"
-                  description="Requires ~10s of sustained beacon presence before a BLE check-in is accepted. Off allows an instant tap the moment the beacon is detected."
+                  description="Requires ~10s of sustained signal presence before a TB check-in is accepted. Off allows an instant tap the moment the signal is detected."
                   checked={form.features.dwellTimeTracking}
                   onChange={(v) => setForm({ ...form, features: { ...form.features, dwellTimeTracking: v } })}
                 />

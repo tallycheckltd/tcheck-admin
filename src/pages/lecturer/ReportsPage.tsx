@@ -23,8 +23,7 @@ import { api } from '../../lib/api';
 import { exportCourseRecordsPdf, exportHodRosterPdf, exportLecturerSessionDetailPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
 import { clsx } from 'clsx';
-import { format, parseISO } from 'date-fns';
-import { formatClassCalendarDate } from '../../utils/classDateDisplay';
+import { formatClassCalendarDate, safeFormat } from '../../utils/classDateDisplay';
 
 /* ---- HOD / admin exports (CSV) ---- */
 interface RosterRow {
@@ -459,8 +458,8 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
 function LecturerReportsView() {
   const { user } = useAuth();
   const coursesPath = user?.id ? `/courses?lecturerId=${user.id}` : null;
-  const { data: courses, loading: coursesLoading } = useApi<Course[]>(coursesPath);
-  const { data: classes, loading: classesLoading } = useApi<ClassSession[]>('/classes');
+  const { data: courses, loading: coursesLoading, error: coursesError } = useApi<Course[]>(coursesPath);
+  const { data: classes, loading: classesLoading, error: classesError } = useApi<ClassSession[]>('/classes');
 
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [detail, setDetail] = useState<ClassAttendanceDetail | null>(null);
@@ -532,6 +531,12 @@ function LecturerReportsView() {
               aria-label="Search sessions"
             />
           </div>
+          {(coursesError || classesError) && (
+            <div className="flex gap-2 text-xs text-red-700 dark:text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-3 py-2 mb-3">
+              <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              Could not load {coursesError && classesError ? 'courses or classes' : coursesError ? 'courses' : 'classes'}. Refresh to try again.
+            </div>
+          )}
           {(coursesLoading || classesLoading) && (
             <div className="flex items-center gap-2 text-xs text-[var(--app-text-muted)] py-6 justify-center">
               <Loader2 className="animate-spin" size={16} />
@@ -598,7 +603,7 @@ function LecturerReportsView() {
                   <Badge color="blue">{detail.classInfo.courseCode}</Badge>
                   <span>{detail.classInfo.courseName}</span>
                   <span aria-hidden>·</span>
-                  <span>{format(parseISO(`${detail.classInfo.date}T12:00:00`), 'MMM d, yyyy')}</span>
+                  <span>{safeFormat(`${detail.classInfo.date}T12:00:00`, 'MMM d, yyyy')}</span>
                   {detail.classInfo.room && (
                     <>
                       <span aria-hidden>·</span>
@@ -656,7 +661,7 @@ function LecturerReportsView() {
                         <td className="font-medium">
                           {r.user?.firstName} {r.user?.lastName}
                         </td>
-                        <td className="text-xs whitespace-nowrap">{format(parseISO(r.checkInAt), 'MMM d HH:mm')}</td>
+                        <td className="text-xs whitespace-nowrap">{safeFormat(r.checkInAt, 'MMM d HH:mm')}</td>
                         <td>
                           <Badge color={r.checkInType === 'QR' ? 'yellow' : r.checkInType === 'MANUAL' ? 'gray' : 'purple'}>
                             {r.checkInType}

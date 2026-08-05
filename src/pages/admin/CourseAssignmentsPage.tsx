@@ -174,7 +174,7 @@ export function CourseAssignmentsPage() {
                 <button
                   onClick={() => openBeaconModal(course)}
                   className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-purple-500/10 text-gray-400 hover:text-purple-600 transition-all border border-transparent hover:border-purple-100"
-                  title="Assign BLE beacon"
+                  title="Assign TB beacon"
                 >
                   <Bluetooth size={16} />
                 </button>
@@ -390,7 +390,7 @@ export function CourseAssignmentsPage() {
       </Modal>
 
       {/* Assign Beacon Modal */}
-      <Modal open={beaconModal} onClose={() => setBeaconModal(false)} title="Assign BLE Beacon">
+      <Modal open={beaconModal} onClose={() => setBeaconModal(false)} title="Assign TB Beacon">
         <div className="space-y-4">
           {beaconCourse && (
             <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-3">

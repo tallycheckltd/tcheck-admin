@@ -68,12 +68,12 @@ export function LoginPage() {
           </h1>
 
           <p className="text-lg text-slate-400 leading-relaxed mb-10">
-            Real-time BLE beacon tracking, QR code check-ins, and comprehensive analytics — all in one unified platform.
+            Real-time TB beacon tracking, QR code check-ins, and comprehensive analytics — all in one unified platform.
           </p>
 
           <div className="space-y-4">
             {[
-              { label: 'BLE Beacon Tracking', desc: 'Automatic proximity-based attendance' },
+              { label: 'TB Beacon Tracking', desc: 'Automatic proximity-based attendance' },
               { label: 'Live Analytics', desc: 'Real-time dashboards and reports' },
               { label: 'Multi-role Access', desc: 'Admin, lecturer, and student views' },
             ].map((feature, i) => (

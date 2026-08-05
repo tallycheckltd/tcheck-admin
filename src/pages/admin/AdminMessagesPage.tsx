@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
@@ -34,6 +34,7 @@ export function AdminMessagesPage() {
   const [resolvingFlag, setResolvingFlag] = useState<MessageFlag | null>(null);
   const [resolveNote, setResolveNote] = useState('');
   const { mutate: resolveFlag } = useMutation('patch');
+  const { mutate: toggleAnon } = useMutation('patch');
 
   // Initialize socket for real-time updates
   useEffect(() => {
@@ -97,6 +98,12 @@ export function AdminMessagesPage() {
     setResolvingFlag(null);
     setResolveNote('');
     refetchFlags();
+  };
+
+  const handleToggleAnon = async (e: MouseEvent, conv: AdminConversation) => {
+    e.stopPropagation();
+    await toggleAnon(`/messages/admin/conversations/${conv.id}/anonymous-toggle`, { isAnonymousEnabled: !conv.isAnonymousEnabled });
+    refetchConvos();
   };
 
   const openResolveModal = (flag: MessageFlag) => {
@@ -286,11 +293,24 @@ export function AdminMessagesPage() {
                           </div>
                         </>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-medium text-slate-950 dark:text-white truncate">
                             {c.room?.title || c.room?.name || 'Room'}
                           </p>
                           <Badge color="purple">{roomKindLabel(c.kind)}</Badge>
+                          {(c.kind === 'COURSE' || c.kind === 'SCHOOL') && (
+                            <button
+                              onClick={(e) => handleToggleAnon(e, c)}
+                              title="Toggle anonymous posting for this room"
+                              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full cursor-pointer transition-colors ${
+                                c.isAnonymousEnabled
+                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-300'
+                              }`}
+                            >
+                              Anon: {c.isAnonymousEnabled ? 'On' : 'Off'}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

@@ -1,3 +1,5 @@
+import { format, parseISO } from 'date-fns';
+
 /** Device-local calendar day as `YYYY-MM-DD` (dashboard forms, live page query). */
 export function localCalendarYmd(d: Date = new Date()): string {
   const y = d.getFullYear();
@@ -28,4 +30,20 @@ export function formatClassTimeLocal(iso: string | Date): string {
   const d = typeof iso === 'string' ? new Date(iso) : iso;
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+/**
+ * Wraps a date-fns `format(parseISO(...))` call so a malformed/null date string from the API
+ * can't throw a synchronous `RangeError` during render — there's no error boundary around most
+ * routes, so an uncaught throw here white-screens the whole app, not just the offending row.
+ */
+export function safeFormat(dateStr: string | null | undefined, formatStr: string): string {
+  if (!dateStr) return '—';
+  try {
+    const d = parseISO(dateStr);
+    if (Number.isNaN(d.getTime())) return '—';
+    return format(d, formatStr);
+  } catch {
+    return '—';
+  }
 }

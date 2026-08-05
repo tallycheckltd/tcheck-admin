@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2, Smartphone, ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText, ScanEye } from 'lucide-react';
 import type { UserDetail, DeviceChangeReason } from '../../types';
+import { formatCheckInType } from '../../utils/checkInTypeLabel';
 import { exportStudentReportPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
 
@@ -546,7 +547,7 @@ export function UserDetailPage() {
                       a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
                       'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
                     }`}>
-                      {a.checkInType}
+                      {formatCheckInType(a.checkInType)}
                     </span>
                   </td>
                   <td><Badge color="green">{a.status}</Badge></td>
