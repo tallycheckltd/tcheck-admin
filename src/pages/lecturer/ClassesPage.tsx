@@ -7,11 +7,11 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Slider } from '../../components/ui/Slider';
 import { Badge } from '../../components/ui/Badge';
-import { Plus, Radio, Eye, Trash2, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Radio, Eye, Trash2 } from 'lucide-react';
 import type { ClassSession, Course } from '../../types';
 import { getClassTimeStatus } from '../../utils/classTimeStatus';
 import { formatClassCalendarDate, formatClassTimeLocal, localCalendarYmd } from '../../utils/classDateDisplay';
-import { EmptyState } from '../../components/ui/EmptyState';
+import { CourseDrilldown, CourseDrilldownBackLink } from '../../components/shared/CourseDrilldown';
 
 export function ClassesPage() {
   const { user } = useAuth();
@@ -150,14 +150,7 @@ export function ClassesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          {selectedCourseId ? (
-            <button
-              onClick={() => setSelectedCourseId(null)}
-              className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline mb-1 cursor-pointer"
-            >
-              <ChevronLeft size={15} /> All Courses
-            </button>
-          ) : null}
+          {selectedCourseId ? <CourseDrilldownBackLink onClick={() => setSelectedCourseId(null)} /> : null}
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
             {selectedCourse ? `${selectedCourse.code} — ${selectedCourse.name}` : 'Classes'}
           </h1>
@@ -170,32 +163,13 @@ export function ClassesPage() {
 
       {!selectedCourseId ? (
         /* Level 1: course grid */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {courseGroups.map(({ course, count }) => (
-            <button
-              key={course.id}
-              onClick={() => setSelectedCourseId(course.id)}
-              className="glass-card p-5 text-left hover:ring-2 hover:ring-blue-500/30 transition-all cursor-pointer"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <BookOpen size={15} className="text-blue-500 flex-shrink-0" />
-                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{course.code}</span>
-                  </div>
-                  <p className="text-sm font-semibold text-slate-950 dark:text-white mt-1 truncate">{course.name}</p>
-                </div>
-                <ChevronRight size={16} className="text-slate-400 dark:text-slate-600 flex-shrink-0 mt-1" />
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-3">{count} class{count === 1 ? '' : 'es'}</p>
-            </button>
-          ))}
-          {courseGroups.length === 0 && (
-            <div className="col-span-full">
-              <EmptyState icon={BookOpen} title="No classes found" size="md" />
-            </div>
-          )}
-        </div>
+        <CourseDrilldown
+          groups={courseGroups}
+          onSelect={(courseId) => setSelectedCourseId(courseId)}
+          countNoun="class"
+          countNounPlural="classes"
+          emptyTitle="No classes found"
+        />
       ) : (
       /* Level 2: sessions for the selected course — same table as before, pre-filtered */
       <div className="glass-card overflow-hidden">

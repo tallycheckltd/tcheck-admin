@@ -476,7 +476,7 @@ function LecturerReportsView() {
       const q = sessionSearch.toLowerCase();
       filtered = filtered.filter(
         (c) =>
-          c.title.toLowerCase().includes(q) ||
+          c.title?.toLowerCase().includes(q) ||
           c.course?.code?.toLowerCase().includes(q) ||
           c.course?.name?.toLowerCase().includes(q),
       );
