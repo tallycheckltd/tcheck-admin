@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search,
+  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket } from '../../types';
@@ -37,6 +37,7 @@ const superAdminAdmin: NavItem[] = [
 const superAdminGeneral: NavItem[] = [
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
+  { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
@@ -80,6 +81,7 @@ const hodOperations: NavItem[] = [
 
 const hodGeneral: NavItem[] = [
   { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
+  { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },

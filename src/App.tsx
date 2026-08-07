@@ -16,6 +16,7 @@ import { AttendanceAnalyticsPage } from './pages/admin/AttendanceAnalyticsPage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
 import { AllLecturersPage } from './pages/admin/AllLecturersPage';
 import { BLEBeaconPage } from './pages/admin/BLEBeaconPage';
+import { BeaconHeatmapSimulatorPage } from './pages/admin/BeaconHeatmapSimulatorPage';
 import { DeviceVerificationPage } from './pages/admin/DeviceVerificationPage';
 import { InvigilationPage } from './pages/admin/InvigilationPage';
 import { LecturerPresencePage } from './pages/admin/LecturerPresencePage';
@@ -66,6 +67,8 @@ export default function App() {
               <Route path="/alerts" element={<AlertsPage />} />
               {/* SUB_ADMIN is scoped to their own school's beacons; SUPER_ADMIN sees/manages all (beacon.service.ts enforces this) */}
               <Route path="/admin/beacons" element={<BLEBeaconPage />} />
+              {/* Same beacon-scoping rules as above — the simulator loads/saves via the same /beacons endpoints */}
+              <Route path="/admin/beacon-heatmap" element={<BeaconHeatmapSimulatorPage />} />
               {/* SUB_ADMIN sees/adds co-admins for their own school only; SUPER_ADMIN sees/manages all (user.controller.ts + user.service.ts enforce this) */}
               <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
               <Route path="/admin/terms" element={<TermsPage />} />
