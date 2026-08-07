@@ -8,6 +8,7 @@ import { GlobalSearchBar } from './GlobalSearchBar';
 export function DashboardLayout() {
   const { user, loading } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
 
   const toggleCollapsed = () => {
@@ -38,25 +39,21 @@ export function DashboardLayout() {
         onClose={() => setMobileNavOpen(false)}
         collapsed={collapsed}
         onToggleCollapse={toggleCollapsed}
+        onOpenSearch={() => setSearchOpen(true)}
       />
-      {/* Persistent header — mobile shows the hamburger + logo, desktop shows just the global
-          search since the sidebar already carries branding there. Phase 2 had this mobile-only;
-          Phase 4's global search needed a header that exists at every width. */}
-      <div className={`sticky top-0 z-30 flex items-center gap-3 px-4 py-3 border-b border-[color:var(--sidebar-edge)] glass-sidebar transition-[margin] duration-200 ${contentMargin}`}>
-        <button
-          type="button"
-          onClick={() => setMobileNavOpen(true)}
-          className="lg:hidden p-2 -ml-2 rounded-xl text-[color:var(--app-text)] dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
-          aria-label="Open navigation menu"
-        >
-          <Menu size={22} />
-        </button>
-        <img src="/logo.svg" alt="Tcheck" className="lg:hidden w-7 h-7" />
-        <span className="lg:hidden font-bold text-[color:var(--app-text)] dark:text-white">Tcheck</span>
-        <div className="flex-1" />
-        <GlobalSearchBar />
-      </div>
-      <main className={`${contentMargin} p-4 sm:p-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
+      {/* Mobile-only menu trigger — floats over page content instead of living in a persistent
+          topbar, since removing that bar (search moved into the sidebar as a modal, see below)
+          was the fix for pages' own headers crowding right up against it. */}
+      <button
+        type="button"
+        onClick={() => setMobileNavOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-20 p-2.5 rounded-xl glass-sidebar border border-[color:var(--sidebar-edge)] text-[color:var(--app-text)] dark:text-white shadow-sm cursor-pointer"
+        aria-label="Open navigation menu"
+      >
+        <Menu size={20} />
+      </button>
+      <GlobalSearchBar open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <main className={`${contentMargin} p-4 pt-16 sm:p-6 lg:pt-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
         <Outlet />
       </main>
     </div>

@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye,
+  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket } from '../../types';
@@ -241,9 +241,9 @@ function NavSection({
 }
 
 export function Sidebar({
-  open, onClose, collapsed, onToggleCollapse,
+  open, onClose, collapsed, onToggleCollapse, onOpenSearch,
 }: {
-  open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void;
+  open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void; onOpenSearch: () => void;
 }) {
   const { user, logout } = useAuth();
   const { dark, toggle } = useTheme();
@@ -400,6 +400,15 @@ export function Sidebar({
             <p className="text-[11px] truncate text-[color:var(--app-text-muted)] dark:text-slate-500">{user?.email}</p>
           </div>
         </div>
+        <button
+          onClick={() => { onOpenSearch(); onClose(); }}
+          type="button"
+          title={collapsed ? 'Search' : undefined}
+          className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle', collapsed && 'lg:justify-center lg:px-0')}
+        >
+          <Search size={18} />
+          <span className={clsx(collapsed && 'lg:hidden')}>Search</span>
+        </button>
         <button
           onClick={toggle}
           type="button"
