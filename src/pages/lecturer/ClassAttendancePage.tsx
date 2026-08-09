@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { ForensicDetailModal } from '../../components/ForensicDetailModal';
 import { CourseDrilldown, CourseDrilldownBackLink } from '../../components/shared/CourseDrilldown';
+import { RoomSignalMap } from '../../components/admin/heatmap/RoomSignalMap';
+import { StudentSignalDrilldown } from '../../components/admin/heatmap/StudentSignalDrilldown';
 import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown } from 'lucide-react';
 import { exportSessionLedgerPdf } from '../../lib/adminPdfExport';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
@@ -287,6 +289,7 @@ function ClassDetailView({ classId }: { classId: string }) {
   const [manualModal, setManualModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedAttendanceId, setSelectedAttendanceId] = useState<string | null>(null);
+  const [drilldownStudent, setDrilldownStudent] = useState<{ id: string; name: string } | null>(null);
 
   const handleManualCheckIn = async () => {
     if (!selectedStudent) return;
@@ -336,6 +339,8 @@ function ClassDetailView({ classId }: { classId: string }) {
         </div>
       </div>
 
+      <RoomSignalMap beacon={data.classInfo.beacon} attendances={data.attendances} />
+
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="glass-card p-4 text-center">
@@ -384,7 +389,16 @@ function ClassDetailView({ classId }: { classId: string }) {
             {data.attendances.map((a, i) => (
               <tr key={a.id}>
                 <td className="text-slate-600 dark:text-slate-400">{i + 1}</td>
-                <td className="font-medium text-slate-950 dark:text-white">{a.user?.firstName} {a.user?.lastName}</td>
+                <td className="font-medium text-slate-950 dark:text-white">
+                  <button
+                    type="button"
+                    onClick={() => setDrilldownStudent({ id: a.userId, name: `${a.user?.firstName} ${a.user?.lastName}` })}
+                    className="hover:underline cursor-pointer"
+                    title="View today's signal activity"
+                  >
+                    {a.user?.firstName} {a.user?.lastName}
+                  </button>
+                </td>
                 <td className="font-mono text-xs">{a.user?.studentId || '-'}</td>
                 <td>{new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
                 <td>{a.checkOutAt ? new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
@@ -438,7 +452,16 @@ function ClassDetailView({ classId }: { classId: string }) {
               {data.absentStudents.map((s, i) => (
                 <tr key={s.id}>
                   <td className="text-slate-600 dark:text-slate-400">{i + 1}</td>
-                  <td className="font-medium text-slate-950 dark:text-white">{s.firstName} {s.lastName}</td>
+                  <td className="font-medium text-slate-950 dark:text-white">
+                    <button
+                      type="button"
+                      onClick={() => setDrilldownStudent({ id: s.id, name: `${s.firstName} ${s.lastName}` })}
+                      className="hover:underline cursor-pointer"
+                      title="View today's signal activity"
+                    >
+                      {s.firstName} {s.lastName}
+                    </button>
+                  </td>
                   <td className="font-mono text-xs">{s.studentId || '-'}</td>
                   <td>
                     <button
@@ -479,6 +502,17 @@ function ClassDetailView({ classId }: { classId: string }) {
       </Modal>
 
       <ForensicDetailModal attendanceId={selectedAttendanceId} onClose={() => setSelectedAttendanceId(null)} />
+
+      {drilldownStudent && (
+        <StudentSignalDrilldown
+          open={!!drilldownStudent}
+          onClose={() => setDrilldownStudent(null)}
+          classId={classId}
+          studentId={drilldownStudent.id}
+          studentName={drilldownStudent.name}
+          successfulCheckIn={data.attendances.find((a) => a.userId === drilldownStudent.id) ?? null}
+        />
+      )}
     </div>
   );
 }

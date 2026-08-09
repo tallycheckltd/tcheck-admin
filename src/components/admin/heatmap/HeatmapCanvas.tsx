@@ -6,6 +6,12 @@ const MAX_CANVAS_HEIGHT = 460;
 const CELL_PX = 8;
 const BEACON_HIT_RADIUS_PX = 16;
 
+interface DistanceRing {
+  label: string;
+  distanceM: number;
+  color: string;
+}
+
 interface Props {
   roomWidthM: number;
   roomLengthM: number;
@@ -14,9 +20,17 @@ interface Props {
   phoneHeightM: number;
   rssiAt1m: number;
   pathLossExponent: number;
-  onBeaconMove: (xy: { x: number; y: number }) => void;
+  onBeaconMove?: (xy: { x: number; y: number }) => void;
   testPhoneXY: { x: number; y: number } | null;
-  onDropTestPhone: (xy: { x: number; y: number }) => void;
+  onDropTestPhone?: (xy: { x: number; y: number }) => void;
+  /** Default true. False disables all drag/click editing — used for the read-only real-data view
+   * on a class roster page (RoomSignalMap.tsx), where the beacon's placement is a saved fact, not
+   * something a viewer should be able to accidentally nudge. Hover-to-inspect still works either way. */
+  interactive?: boolean;
+  /** One dashed labeled ring per entry, radius = distanceM * scale, centered on the beacon — a
+   * student's real recorded RSSI only tells you distance, never direction, so this is rendered as
+   * an honest ring rather than a fabricated (x,y) drop point (see rfPhysics.distanceFromRSSI). */
+  distanceRings?: DistanceRing[];
 }
 
 /**
@@ -38,6 +52,8 @@ export function HeatmapCanvas({
   onBeaconMove,
   testPhoneXY,
   onDropTestPhone,
+  interactive = true,
+  distanceRings,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDraggingBeacon, setIsDraggingBeacon] = useState(false);
@@ -105,6 +121,36 @@ export function HeatmapCanvas({
     ctx.fillStyle = '#2563eb';
     ctx.fill();
 
+    // Real-signal distance rings, if any were passed in (RoomSignalMap's checked-in students).
+    if (distanceRings) {
+      distanceRings.forEach((ring, index) => {
+        const radiusPx = ring.distanceM * scale;
+        ctx.beginPath();
+        ctx.setLineDash([5, 4]);
+        ctx.arc(beaconPx, beaconPy, radiusPx, 0, Math.PI * 2);
+        ctx.strokeStyle = ring.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Staggered by index so multiple rings (common on a real roster) don't stack their
+        // labels on top of each other at the same angle.
+        const labelAngle = -Math.PI / 4 + (index * Math.PI) / 6;
+        const labelX = beaconPx + Math.cos(labelAngle) * radiusPx;
+        const labelY = beaconPy + Math.sin(labelAngle) * radiusPx;
+        ctx.font = '11px sans-serif';
+        const textWidth = ctx.measureText(ring.label).width;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(labelX - textWidth / 2 - 4, labelY - 8, textWidth + 8, 16);
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ring.label, labelX, labelY);
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+      });
+    }
+
     // Test phone pin, if the admin has dropped one.
     if (testPhoneXY) {
       const pinPx = testPhoneXY.x * scale;
@@ -121,7 +167,7 @@ export function HeatmapCanvas({
       ctx.fillStyle = '#7c3aed';
       ctx.fill();
     }
-  }, [canvasWidth, canvasHeight, scale, beaconXY, beaconHeightM, phoneHeightM, rssiAt1m, pathLossExponent, roomWidthM, roomLengthM, testPhoneXY]);
+  }, [canvasWidth, canvasHeight, scale, beaconXY, beaconHeightM, phoneHeightM, rssiAt1m, pathLossExponent, roomWidthM, roomLengthM, testPhoneXY, distanceRings]);
 
   const eventToMeter = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect();
@@ -134,6 +180,7 @@ export function HeatmapCanvas({
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!interactive) return;
     const { pixel } = eventToMeter(e);
     const beaconPx = beaconXY.x * scale;
     const beaconPy = beaconXY.y * scale;
@@ -147,8 +194,8 @@ export function HeatmapCanvas({
     const { meter, pixel } = eventToMeter(e);
     setHoverMeter(meter);
     setHoverPixel(pixel);
-    if (isDraggingBeacon) {
-      onBeaconMove(meter);
+    if (interactive && isDraggingBeacon) {
+      onBeaconMove?.(meter);
     }
   };
 
@@ -160,12 +207,13 @@ export function HeatmapCanvas({
   };
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!interactive) return;
     if (justDraggedRef.current) {
       justDraggedRef.current = false;
       return;
     }
     const { meter } = eventToMeter(e);
-    onDropTestPhone(meter);
+    onDropTestPhone?.(meter);
   };
 
   const hoverRSSI = hoverMeter
@@ -176,7 +224,7 @@ export function HeatmapCanvas({
     <div className="relative inline-block select-none">
       <canvas
         ref={canvasRef}
-        style={{ width: canvasWidth, height: canvasHeight, cursor: isDraggingBeacon ? 'grabbing' : 'crosshair' }}
+        style={{ width: canvasWidth, height: canvasHeight, cursor: !interactive ? 'default' : isDraggingBeacon ? 'grabbing' : 'crosshair' }}
         className="rounded-xl border border-white/10 shadow-inner"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

@@ -51,6 +51,16 @@ export function idealRSSIAt(beacon: Point3D, phone: Point3D, rssiAt1m: number, p
 }
 
 /**
+ * Algebraic inverse of `pathLossRSSI` — turns a real recorded RSSI back into an estimated distance
+ * from the beacon: d = 10^((RSSI_1m - RSSI) / (10*n)). This is the ONLY thing a single RSSI
+ * reading can honestly reconstruct — it gives no bearing/direction, so RoomSignalMap.tsx renders
+ * it as a distance ring around the beacon rather than pretending to know an exact (x,y) spot.
+ */
+export function distanceFromRSSI(rssi: number, rssiAt1m: number, pathLossExponent: number): number {
+  return Math.pow(10, (rssiAt1m - rssi) / (10 * pathLossExponent));
+}
+
+/**
  * Section 3.1 — Gaussian noise per packet, mimicking human bodies/multipath fading. A true Gaussian
  * sample (Box-Muller) is used rather than a flat uniform random so clustering near 0 dB (small,
  * frequent jitters) with occasional larger swings looks like real RF noise, not a sawtooth — then

@@ -162,6 +162,15 @@ export interface Beacon {
   createdAt: string;
   updatedAt: string;
   courses?: Pick<Course, 'id' | 'name' | 'code'>[];
+  // Physical room layout + RF calibration — set once via the admin Heatmap Simulator's "Apply to
+  // a Real Beacon" action. Null on any of these means this beacon has never been placed.
+  roomWidthM?: number | null;
+  roomLengthM?: number | null;
+  ceilingHeightM?: number | null;
+  xPosition?: number | null;
+  yPosition?: number | null;
+  rssiAt1m?: number | null;
+  pathLossExponent?: number | null;
 }
 
 export interface Course {
@@ -213,6 +222,10 @@ export interface AttendanceRecord {
   checkInAt: string;
   checkOutAt?: string;
   beaconRSSI?: number;
+  // Dwell-averaged reading (AttendanceVerification.avgRssi) — more accurate than the single-point
+  // beaconRSSI above for placing this student's real signal on the Room Signal Map; null for
+  // QR/manual/online check-ins, which never touch a beacon.
+  avgRssi?: number | null;
   checkInType: CheckInType;
   checkedInBy?: string;
   status: string;
@@ -261,11 +274,32 @@ export interface ClassAttendanceDetail {
     courseCode: string;
     allowManualLecturerOverride: boolean;
     isOnline?: boolean;
+    // The specific physical Beacon backing this class's check-ins, resolved server-side by
+    // matching (uuid, major, minor) — null if no matching Beacon row exists (e.g. an ad-hoc
+    // class beacon that was never registered in the Beacon Manager).
+    beacon?: Pick<
+      Beacon,
+      'id' | 'name' | 'roomWidthM' | 'roomLengthM' | 'ceilingHeightM' | 'xPosition' | 'yPosition' | 'rssiThreshold' | 'rssiAt1m' | 'pathLossExponent'
+    > | null;
   };
   totalEnrolled: number;
   totalCheckedIn: number;
   attendances: AttendanceRecord[];
   absentStudents: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>[];
+}
+
+/** A logged weak-signal or rejected check-in attempt — see server CheckInGateAttempt. */
+export interface GateAttempt {
+  id: string;
+  userId: string;
+  user: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>;
+  classId: string | null;
+  channel: 'BLE' | 'QR' | 'ONLINE' | 'CHECKOUT';
+  reason: string;
+  avgRssi?: number | null;
+  sampleCount?: number | null;
+  dwellSeconds?: number | null;
+  createdAt: string;
 }
 
 export interface ClassPingResponse {

@@ -1,10 +1,15 @@
+import type { ReactNode } from 'react';
+
 interface Mark {
   value: number;
   label: string;
 }
 
 interface SliderProps {
-  label?: string;
+  // Widened from `string` to `ReactNode` so callers can inject a plain-language qualitative badge
+  // (e.g. "Strong"/"Weak") right next to the label — a plain string remains perfectly valid here,
+  // this is purely additive.
+  label?: ReactNode;
   value: number;
   onChange: (value: number) => void;
   min: number;
@@ -20,9 +25,11 @@ export function Slider({ label, value, onChange, min, max, step = 1, unit = '', 
   return (
     <div className="space-y-1.5">
       {label && (
-        <div className="flex items-center justify-between">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
-          <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{label}</label>
+          </div>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums flex-shrink-0">
             {value}{unit}
           </span>
         </div>
