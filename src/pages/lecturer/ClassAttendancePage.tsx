@@ -383,6 +383,7 @@ function ClassDetailView({ classId }: { classId: string }) {
               <th>Check-out Time</th>
               <th>Method</th>
               <th>Signal (RSSI)</th>
+              <th title="This student's most recent failed attempt before they eventually checked in">Last Failed Attempt</th>
             </tr>
           </thead>
           <tbody className="text-slate-800 dark:text-gray-300">
@@ -420,10 +421,11 @@ function ClassDetailView({ classId }: { classId: string }) {
                   </button>
                 </td>
                 <td className="font-mono text-xs">{a.beaconRSSI ?? '-'}</td>
+                <td className="font-mono text-xs text-amber-600 dark:text-amber-400">{a.lastFailedAvgRssi != null ? `${a.lastFailedAvgRssi} dBm` : '-'}</td>
               </tr>
             ))}
             {data.attendances.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-8 text-slate-600 dark:text-slate-400">No check-ins yet</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-slate-600 dark:text-slate-400">No check-ins yet</td></tr>
             )}
           </tbody>
         </table>
@@ -445,6 +447,7 @@ function ClassDetailView({ classId }: { classId: string }) {
                 <th>#</th>
                 <th>Student Name</th>
                 <th>Student ID</th>
+                <th title="This student's most recent failed check-in attempt today">Last Failed Attempt</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -463,6 +466,7 @@ function ClassDetailView({ classId }: { classId: string }) {
                     </button>
                   </td>
                   <td className="font-mono text-xs">{s.studentId || '-'}</td>
+                  <td className="font-mono text-xs text-amber-600 dark:text-amber-400">{s.lastFailedAvgRssi != null ? `${s.lastFailedAvgRssi} dBm` : '-'}</td>
                   <td>
                     <button
                       onClick={() => { setSelectedStudent(s.id); setManualModal(true); }}

@@ -226,6 +226,10 @@ export interface AttendanceRecord {
   // beaconRSSI above for placing this student's real signal on the Room Signal Map; null for
   // QR/manual/online check-ins, which never touch a beacon.
   avgRssi?: number | null;
+  // This student's most recent FAILED attempt's avgRssi before they eventually checked in, if
+  // any — deliberately just the one most recent reading (not every tap) to keep the roster
+  // readable. Null if they never had a failed attempt logged.
+  lastFailedAvgRssi?: number | null;
   checkInType: CheckInType;
   checkedInBy?: string;
   status: string;
@@ -285,7 +289,7 @@ export interface ClassAttendanceDetail {
   totalEnrolled: number;
   totalCheckedIn: number;
   attendances: AttendanceRecord[];
-  absentStudents: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>[];
+  absentStudents: (Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'> & { lastFailedAvgRssi?: number | null })[];
 }
 
 /** A logged weak-signal or rejected check-in attempt — see server CheckInGateAttempt. */
