@@ -7,9 +7,9 @@ import { Button } from '../../components/ui/Button';
 import { Slider } from '../../components/ui/Slider';
 import {
   Settings, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer, Scale,
-  ChevronRight, School as SchoolIcon,
+  ChevronRight, School as SchoolIcon, CalendarDays, Layers,
 } from 'lucide-react';
-import type { School, SchoolFeatures } from '../../types';
+import type { AttendanceMode, School, SchoolFeatures } from '../../types';
 
 const defaultFeatures: Required<SchoolFeatures> = {
   anonymousChat: true,
@@ -23,6 +23,7 @@ const emptyForm = {
   lateThresholdMinutes: 10,
   extremelyLateThresholdMinutes: 20,
   allowManualLecturerOverride: true,
+  attendanceMode: 'CALENDAR_BASED' as AttendanceMode,
   features: defaultFeatures,
 };
 
@@ -75,6 +76,7 @@ export function SettingsPage() {
         lateThresholdMinutes: school.lateThresholdMinutes ?? 10,
         extremelyLateThresholdMinutes: school.extremelyLateThresholdMinutes ?? 20,
         allowManualLecturerOverride: school.allowManualLecturerOverride ?? true,
+        attendanceMode: school.attendanceMode ?? 'CALENDAR_BASED',
         features: { ...defaultFeatures, ...school.features },
       });
     }
@@ -143,6 +145,45 @@ export function SettingsPage() {
                   onChange={(v) => setForm({ ...form, extremelyLateThresholdMinutes: v })}
                   helpText="Minutes after class start before a check-in counts as extremely late."
                 />
+              </div>
+            </GlassCard>
+
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-4">
+                {form.attendanceMode === 'STAGE_BASED' ? (
+                  <Layers size={20} className="text-blue-500" />
+                ) : (
+                  <CalendarDays size={20} className="text-blue-500" />
+                )}
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Attendance Mode</h2>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Calendar-Based runs on a weekly class schedule. Stage-Based progresses students through
+                a fixed sequence of modules (e.g. Theory → Practical) as instructors promote them, with no calendar involved.
+              </p>
+              <div className="inline-flex rounded-xl bg-gray-100 dark:bg-white/10 p-1">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, attendanceMode: 'CALENDAR_BASED' })}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    form.attendanceMode === 'CALENDAR_BASED'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  Calendar-Based
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, attendanceMode: 'STAGE_BASED' })}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    form.attendanceMode === 'STAGE_BASED'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  Stage-Based
+                </button>
               </div>
             </GlassCard>
 

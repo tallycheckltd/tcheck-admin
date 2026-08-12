@@ -9,9 +9,9 @@ import { ColorPickerField } from '../../components/ui/ColorPickerField';
 import {
   Plus, Pencil, Trash2, School as SchoolIcon, Hash, UserCheck, MessageSquareOff,
   ShieldCheck, Megaphone, ScanFace, Timer, Mail, Lock, User as UserIcon, ArrowRight, ArrowLeft,
-  AlertCircle, CheckCircle2, UserPlus, X
+  AlertCircle, CheckCircle2, UserPlus, X, CalendarDays, Layers
 } from 'lucide-react';
-import type { School, SchoolFeatures, User } from '../../types';
+import type { AttendanceMode, School, SchoolFeatures, User } from '../../types';
 
 const emptySchoolForm = { name: '', code: '', color: '#3B82F6' };
 const emptyAdminForm = { email: '', password: '', firstName: '', lastName: '' };
@@ -29,6 +29,7 @@ interface SchoolSettingsValue {
   features: Required<SchoolFeatures>;
   lateThresholdMinutes: number;
   extremelyLateThresholdMinutes: number;
+  attendanceMode: AttendanceMode;
 }
 
 const defaultSettings: SchoolSettingsValue = {
@@ -36,6 +37,7 @@ const defaultSettings: SchoolSettingsValue = {
   features: defaultFeatures,
   lateThresholdMinutes: 10,
   extremelyLateThresholdMinutes: 20,
+  attendanceMode: 'CALENDAR_BASED',
 };
 
 interface ExtraAdminRow {
@@ -78,6 +80,33 @@ function ToggleRow({ icon: Icon, title, description, checked, onChange }: {
 function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue; onChange: (v: SchoolSettingsValue) => void }) {
   return (
     <div className="space-y-4">
+      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Attendance Mode</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Stage-based schools drop the calendar entirely — students progress through a fixed Program/Module pipeline instead of scheduled classes.
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => onChange({ ...value, attendanceMode: 'CALENDAR_BASED' })}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+              value.attendanceMode === 'CALENDAR_BASED' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            <CalendarDays size={13} /> Calendar-Based
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ ...value, attendanceMode: 'STAGE_BASED' })}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+              value.attendanceMode === 'STAGE_BASED' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            <Layers size={13} /> Stage-Based
+          </button>
+        </div>
+      </div>
+
       <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5">
         <ToggleRow
           icon={UserCheck}
@@ -161,6 +190,7 @@ export function SchoolsPage() {
     features: defaultFeatures,
     lateThresholdMinutes: 10,
     extremelyLateThresholdMinutes: 20,
+    attendanceMode: 'CALENDAR_BASED' as AttendanceMode,
   });
 
   // New-school wizard: step 1 collects the institution, step 2 collects the admin who'll log in
@@ -200,6 +230,7 @@ export function SchoolsPage() {
       features: { ...defaultFeatures, ...s.features },
       lateThresholdMinutes: s.lateThresholdMinutes ?? 10,
       extremelyLateThresholdMinutes: s.extremelyLateThresholdMinutes ?? 20,
+      attendanceMode: s.attendanceMode ?? 'CALENDAR_BASED',
     });
     setModal(true);
   };

@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar,
+  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket } from '../../types';
@@ -32,6 +32,7 @@ const superAdminAdmin: NavItem[] = [
   { to: '/admin/schools', icon: School, label: 'Schools' },
   { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
+  { to: '/admin/programs', icon: Layers, label: 'Programs' },
 ];
 
 const superAdminGeneral: NavItem[] = [
@@ -58,6 +59,7 @@ const hodAdmin: NavItem[] = [
   { to: '/admin/lecturers', icon: BookOpen, label: 'Lecturers' },
   { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
+  { to: '/admin/programs', icon: Layers, label: 'Programs' },
 ];
 
 const hodOperations: NavItem[] = [

@@ -34,6 +34,7 @@ import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
 import { FraudDetectionPage } from './pages/admin/FraudDetectionPage';
 import { SchoolAdminsPage } from './pages/admin/SchoolAdminsPage';
 import { TermsPage } from './pages/admin/TermsPage';
+import { ProgramsPage } from './pages/admin/ProgramsPage';
 import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
 import { SupportPage } from './pages/admin/SupportPage';
 import { LegalPage } from './pages/LegalPage';
@@ -72,6 +73,7 @@ export default function App() {
               {/* SUB_ADMIN sees/adds co-admins for their own school only; SUPER_ADMIN sees/manages all (user.controller.ts + user.service.ts enforce this) */}
               <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
               <Route path="/admin/terms" element={<TermsPage />} />
+              <Route path="/admin/programs" element={<ProgramsPage />} />
 
               {/* SUPER_ADMIN-only routes */}
               <Route element={<RequireSuperAdmin />}>

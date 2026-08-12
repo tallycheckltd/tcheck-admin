@@ -10,6 +10,8 @@ export interface SchoolFeatures {
   dwellTimeTracking?: boolean;
 }
 
+export type AttendanceMode = 'CALENDAR_BASED' | 'STAGE_BASED';
+
 export interface School {
   id: string;
   name: string;
@@ -19,7 +21,51 @@ export interface School {
   extremelyLateThresholdMinutes?: number;
   allowManualLecturerOverride?: boolean;
   features?: SchoolFeatures;
+  // Calendar-scheduled (default) vs. stage-based progression (Program/Module pipeline, no
+  // calendar at all — see Program/Module below).
+  attendanceMode?: AttendanceMode;
   createdAt: string;
+}
+
+export type ProgramTemplate = 'COFFEE_ONLY' | 'BARTENDING_ONLY' | 'COMBINED';
+export type ModuleStatus = 'LOCKED' | 'ACTIVE' | 'COMPLETED';
+
+export interface Program {
+  id: string;
+  name: string;
+  schoolId: string;
+  template: ProgramTemplate;
+  theoryCourseId?: string | null;
+  theoryCourse?: Pick<Course, 'id' | 'name' | 'code'> | null;
+  coffeeCourseId?: string | null;
+  coffeeCourse?: Pick<Course, 'id' | 'name' | 'code'> | null;
+  bartendingCourseId?: string | null;
+  bartendingCourse?: Pick<Course, 'id' | 'name' | 'code'> | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { enrollments: number };
+}
+
+export interface ProgramModule {
+  id: string;
+  programEnrollmentId: string;
+  name: string;
+  sequenceOrder: number;
+  status: ModuleStatus;
+  beaconUUID: string;
+  beaconMajor: number;
+  beaconMinor: number;
+  rssiThreshold: number;
+  sessionsTarget: number;
+  classId?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentModules {
+  program: Pick<Program, 'id' | 'name' | 'template'>;
+  modules: ProgramModule[];
 }
 
 export interface Term {
@@ -285,6 +331,9 @@ export interface ClassAttendanceDetail {
       Beacon,
       'id' | 'name' | 'roomWidthM' | 'roomLengthM' | 'ceilingHeightM' | 'xPosition' | 'yPosition' | 'rssiThreshold' | 'rssiAt1m' | 'pathLossExponent'
     > | null;
+    // Present only when this class is a stage-based Program's Module — lets the roster show a
+    // "Promote to Next Stage" action for that module's one enrolled student.
+    module?: { id: string; status: ModuleStatus; sequenceOrder: number; studentId: string } | null;
   };
   totalEnrolled: number;
   totalCheckedIn: number;

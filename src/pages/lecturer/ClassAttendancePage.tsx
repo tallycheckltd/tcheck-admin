@@ -7,7 +7,7 @@ import { ForensicDetailModal } from '../../components/ForensicDetailModal';
 import { CourseDrilldown, CourseDrilldownBackLink } from '../../components/shared/CourseDrilldown';
 import { RoomSignalMap } from '../../components/admin/heatmap/RoomSignalMap';
 import { StudentSignalDrilldown } from '../../components/admin/heatmap/StudentSignalDrilldown';
-import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown } from 'lucide-react';
+import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown, ArrowUpCircle } from 'lucide-react';
 import { exportSessionLedgerPdf } from '../../lib/adminPdfExport';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -286,6 +286,7 @@ function ClassDetailView({ classId }: { classId: string }) {
     refetchWhenVisible: true,
   });
   const { mutate: manualCheck } = useMutation('post');
+  const { mutate: promote, loading: promoting } = useMutation('post');
   const [manualModal, setManualModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedAttendanceId, setSelectedAttendanceId] = useState<string | null>(null);
@@ -296,6 +297,14 @@ function ClassDetailView({ classId }: { classId: string }) {
     await manualCheck('/attendance/manual-check-in', { userId: selectedStudent, classId });
     setManualModal(false);
     setSelectedStudent('');
+    refetch();
+  };
+
+  const handlePromote = async () => {
+    const module = data?.classInfo.module;
+    if (!module) return;
+    if (!confirm('Complete this module and unlock the next stage for this student?')) return;
+    await promote(`/students/${module.studentId}/promote?moduleId=${module.id}`);
     refetch();
   };
 
@@ -333,9 +342,16 @@ function ClassDetailView({ classId }: { classId: string }) {
               {data.classInfo.room && <span>Room: {data.classInfo.room}</span>}
             </div>
           </div>
-          <Button onClick={() => setManualModal(true)}>
-            <UserCheck size={16} className="mr-1" /> Manual Check-in
-          </Button>
+          <div className="flex items-center gap-2">
+            {data.classInfo.module?.status === 'ACTIVE' && (
+              <Button variant="secondary" onClick={handlePromote} disabled={promoting}>
+                <ArrowUpCircle size={16} className="mr-1" /> {promoting ? 'Promoting…' : 'Promote to Next Stage'}
+              </Button>
+            )}
+            <Button onClick={() => setManualModal(true)}>
+              <UserCheck size={16} className="mr-1" /> Manual Check-in
+            </Button>
+          </div>
         </div>
       </div>
 
