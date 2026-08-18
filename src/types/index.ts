@@ -169,7 +169,7 @@ export interface PendingDeviceBinding {
 
 export interface DeviceSecurityEvent {
   id: string;
-  type: 'CONFLICT_BLOCKED' | 'CHANGE_REQUESTED' | 'APPROVED' | 'DENIED';
+  type: 'CONFLICT_BLOCKED' | 'CHANGE_REQUESTED' | 'APPROVED' | 'DENIED' | 'TAMPER_DEMOTION';
   deviceId: string | null;
   deviceModel: string | null;
   reason: DeviceChangeReason | null;

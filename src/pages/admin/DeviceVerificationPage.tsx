@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import {
   Smartphone, CheckCircle2, XCircle, RefreshCw,
-  ShieldCheck, ShieldAlert, History, ShieldX, FileText, TrendingUp
+  ShieldCheck, ShieldAlert, History, ShieldX, FileText, TrendingUp, Fingerprint
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { SearchInput } from '../../components/ui/SearchInput';
@@ -31,6 +31,7 @@ const EVENT_COPY: Record<DeviceSecurityEvent['type'], { icon: typeof CheckCircle
   CHANGE_REQUESTED: { icon: ShieldAlert, color: 'text-yellow-500', verb: 'requested a device change' },
   APPROVED: { icon: CheckCircle2, color: 'text-green-500', verb: 'device approved' },
   DENIED: { icon: XCircle, color: 'text-gray-400', verb: 'device request denied/reset' },
+  TAMPER_DEMOTION: { icon: Fingerprint, color: 'text-orange-500', verb: 'biometric tampering detected — demoted to camera verification' },
 };
 
 const timeAgo = (dateStr: string) => {
@@ -301,7 +302,9 @@ export function DeviceVerificationPage() {
             </div>
             <div className="space-y-4 max-h-[420px] overflow-y-auto">
               {securityLog?.map((e) => {
-                const copy = EVENT_COPY[e.type];
+                // Falls back rather than crashing the page if the backend ever logs a type this
+                // list doesn't know about yet — happened for real with TAMPER_DEMOTION.
+                const copy = EVENT_COPY[e.type] ?? { icon: ShieldAlert, color: 'text-gray-400', verb: e.type };
                 const Icon = copy.icon;
                 return (
                   <div key={e.id} className="flex gap-3 items-start">
