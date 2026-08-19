@@ -7,7 +7,7 @@ import { ForensicDetailModal } from '../../components/ForensicDetailModal';
 import { CourseDrilldown, CourseDrilldownBackLink } from '../../components/shared/CourseDrilldown';
 import { RoomSignalMap } from '../../components/admin/heatmap/RoomSignalMap';
 import { StudentSignalDrilldown } from '../../components/admin/heatmap/StudentSignalDrilldown';
-import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown, ArrowUpCircle } from 'lucide-react';
+import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown, ArrowUpCircle, AlertTriangle } from 'lucide-react';
 import { exportSessionLedgerPdf } from '../../lib/adminPdfExport';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -425,15 +425,17 @@ function ClassDetailView({ classId }: { classId: string }) {
                     onClick={() => setSelectedAttendanceId(a.id)}
                     title="View forensic detail"
                     className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-offset-transparent transition-shadow ${
+                      a.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 hover:ring-red-400/50' :
                       a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 hover:ring-blue-400/50' :
                       a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 hover:ring-purple-400/50' :
                       'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500 hover:ring-gray-400/50'
                     }`}
                   >
-                    {a.checkInType === 'BLE' && <Bluetooth size={12} />}
-                    {a.checkInType === 'QR' && <QrCode size={12} />}
-                    {a.checkInType === 'MANUAL' && <UserCheck size={12} />}
-                    {formatCheckInType(a.checkInType)}
+                    {a.status === 'REJECTED' && <AlertTriangle size={12} />}
+                    {a.status !== 'REJECTED' && a.checkInType === 'BLE' && <Bluetooth size={12} />}
+                    {a.status !== 'REJECTED' && a.checkInType === 'QR' && <QrCode size={12} />}
+                    {a.status !== 'REJECTED' && a.checkInType === 'MANUAL' && <UserCheck size={12} />}
+                    {a.status === 'REJECTED' ? 'Rejected' : formatCheckInType(a.checkInType)}
                   </button>
                 </td>
                 <td className="font-mono text-xs">{a.beaconRSSI ?? '-'}</td>

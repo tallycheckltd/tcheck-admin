@@ -225,11 +225,16 @@ export function LiveAttendancePage() {
     ? [
         ...classDetail.attendances.map((a) => {
           const isLate = a.punctuality === 'LATE' || a.punctuality === 'EXTREMELY_LATE';
+          // Fraud Audit Trail — a REJECTED row was previously indistinguishable from a real
+          // Present/Late check-in here (same green/amber badge); the existing color logic below
+          // already falls through to red for anything that isn't literally 'Present'/'Late', so
+          // labeling it 'Rejected' is the only change needed to surface it in the roster itself.
+          const status = a.status === 'REJECTED' ? 'Rejected' : isLate ? 'Late' : 'Present';
           return {
             id: a.id,
             name: `${a.user?.firstName || ''} ${a.user?.lastName || ''}`.trim(),
             studentId: a.user?.studentId || 'N/A',
-            status: isLate ? 'Late' : 'Present',
+            status,
             checkInAt: a.checkInAt,
             checkOutAt: a.checkOutAt,
             checkInType: a.checkInType,
