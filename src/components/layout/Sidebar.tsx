@@ -9,10 +9,10 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers,
+  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren,
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { DashboardStats, Ticket } from '../../types';
+import type { DashboardStats, Ticket, Escalation } from '../../types';
 
 interface NavItem {
   to: string;
@@ -41,6 +41,7 @@ const superAdminGeneral: NavItem[] = [
   { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
+  { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/system-announcements', icon: Megaphone, label: 'System Announcements' },
   { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
@@ -76,6 +77,7 @@ const hodOperations: NavItem[] = [
     ],
   },
   { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
+  { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/admin/lecturer-presence', icon: UserCheck, label: 'Lecturer Presence' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
@@ -101,6 +103,7 @@ const lecturerLinks: NavItem[] = [
   { to: '/classes', icon: Calendar, label: 'Classes' },
   { to: '/attendance', icon: ClipboardList, label: 'Attendance' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
+  { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
   { to: '/reports', icon: FileText, label: 'Reports' },
@@ -275,6 +278,14 @@ export function Sidebar({
   );
   const openTicketsCount = ticketsData?.length || 0;
 
+  // Open-escalations badge — shown for every role that can see the page (SUPER_ADMIN, SUB_ADMIN,
+  // LECTURER); the endpoint itself scopes a lecturer down to just their own classes.
+  const { data: escalationsData, refetch: refetchEscalations } = useApi<Escalation[]>(
+    '/escalations?status=OPEN',
+    { refetchIntervalMs: 30_000, refetchWhenVisible: true },
+  );
+  const openEscalationsCount = escalationsData?.length || 0;
+
   // Real-time unread count + ticket updates
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -282,12 +293,17 @@ export function Sidebar({
     const s = createSocket(token);
     const handler = () => refetchUnread({ silent: true });
     const ticketHandler = () => refetchTickets({ silent: true });
+    const escalationHandler = () => refetchEscalations({ silent: true });
     s.on('message:new', handler);
     s.on('flag:new', handler);
     s.on('ticket:new', ticketHandler);
     s.on('ticket:updated', ticketHandler);
+    // No dedicated socket event for escalations yet — the 30s poll above keeps this reasonably
+    // fresh; a new message notification is a decent proxy trigger for an early refresh too, since
+    // every escalation is also a DM to the lecturer.
+    s.on('message:new', escalationHandler);
     return () => { s.disconnect(); };
-  }, [refetchUnread, refetchTickets]);
+  }, [refetchUnread, refetchTickets, refetchEscalations]);
 
   const roleLabel = isSuperAdmin ? 'Super Admin' : isAdmin ? 'Admin' : 'Lecturer';
   const roleAccent = isSuperAdmin ? 'from-purple-500 to-purple-600' : isAdmin ? 'from-blue-500 to-blue-600' : 'from-emerald-500 to-emerald-600';
@@ -298,6 +314,9 @@ export function Sidebar({
 
   const addTicketBadge = (links: NavItem[]) =>
     links.map((l) => l.to === '/admin/support' ? { ...l, badge: openTicketsCount } : l);
+
+  const addEscalationBadge = (links: NavItem[]) =>
+    links.map((l) => l.to === '/admin/escalations' ? { ...l, badge: openEscalationsCount } : l);
 
   const addPendingBadge = (links: NavItem[]) =>
     links.map((l) => l.to === '/admin/students' ? { ...l, badge: pendingApprovals } : l);
@@ -360,18 +379,18 @@ export function Sidebar({
           <>
             <NavSection title="Overview" links={superAdminOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Administration" links={superAdminAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={addTicketBadge(addAlertBadge(superAdminGeneral))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={addEscalationBadge(addTicketBadge(addAlertBadge(superAdminGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isAdmin && !isSuperAdmin && (
           <>
             <NavSection title="Overview" links={hodOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Administration" links={addPendingBadge(hodAdmin)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Operations" links={hodOperations} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Operations" links={addEscalationBadge(hodOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="General" links={filterByFeatures(addTicketBadge(addAlertBadge(hodGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
-        {!isAdmin && filterByFeatures(lecturerLinks).map((link) => (
+        {!isAdmin && addEscalationBadge(filterByFeatures(lecturerLinks)).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -387,7 +406,9 @@ export function Sidebar({
             }
           >
             <NavIcon Icon={link.icon} active={false} />
-            <span className={clsx(collapsed && 'lg:hidden')}>{link.label}</span>
+            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
+            {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
+            {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
       </nav>

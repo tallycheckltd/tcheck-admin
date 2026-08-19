@@ -37,6 +37,7 @@ import { TermsPage } from './pages/admin/TermsPage';
 import { ProgramsPage } from './pages/admin/ProgramsPage';
 import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
 import { SupportPage } from './pages/admin/SupportPage';
+import { EscalationsPage } from './pages/admin/EscalationsPage';
 import { LegalPage } from './pages/LegalPage';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
@@ -98,6 +99,8 @@ export default function App() {
               <Route path="/admin/device-verification" element={<DeviceVerificationPage />} />
               {/* SUPER_ADMIN + SUB_ADMIN + LECTURER (attendance.routes.ts enforces this; a lecturer is scoped to their own students) */}
               <Route path="/admin/invigilation" element={<InvigilationPage />} />
+              {/* SUPER_ADMIN + SUB_ADMIN + LECTURER (escalation.routes.ts enforces this; a lecturer is scoped to their own classes) */}
+              <Route path="/admin/escalations" element={<EscalationsPage />} />
               <Route path="/legal" element={<LegalPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />

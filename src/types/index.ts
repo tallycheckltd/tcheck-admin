@@ -624,6 +624,27 @@ export interface Ticket {
   updatedAt: string;
 }
 
+export interface Escalation {
+  id: string;
+  studentId: string;
+  student?: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>;
+  classId: string;
+  class?: {
+    id: string;
+    title: string;
+    startTime: string;
+    endTime: string;
+    course: { id: string; name: string; code: string; lecturerId: string };
+  };
+  schoolId: string;
+  reason: string;
+  status: 'OPEN' | 'RESOLVED';
+  resolvedById?: string | null;
+  resolvedBy?: Pick<User, 'id' | 'firstName' | 'lastName'> | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+}
+
 export interface AuthResponse {
   user: User;
   accessToken: string;
