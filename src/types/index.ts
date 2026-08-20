@@ -206,6 +206,8 @@ export interface Beacon {
   isActive: boolean;
   schoolId?: string | null;
   school?: School | null;
+  batteryLevel?: number | null;
+  lastSeenAt?: string | null;
   createdAt: string;
   updatedAt: string;
   courses?: Pick<Course, 'id' | 'name' | 'code'>[];

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import {
   Smartphone, CheckCircle2, XCircle, RefreshCw,
-  ShieldCheck, ShieldAlert, History, ShieldX, FileText, TrendingUp, Fingerprint
+  ShieldCheck, ShieldAlert, History, ShieldX, FileText, TrendingUp, Fingerprint, ChevronDown
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { SearchInput } from '../../components/ui/SearchInput';
@@ -57,6 +57,7 @@ export function DeviceVerificationPage() {
   const { mutate: verify } = useMutation('post');
   const { mutate: reset } = useMutation('delete');
   const [search, setSearch] = useState('');
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
   const filtered = pending?.filter(p =>
     `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
@@ -71,6 +72,23 @@ export function DeviceVerificationPage() {
   ) || [];
 
   const refreshAll = () => { refetch(); refetchBound(); refetchLog(); };
+
+  // Grouped by the month a device was bound — a practical cohort that keeps a large bound-device
+  // roster from becoming one endless scroll, without guessing at a student's program/course (a
+  // student can be enrolled in several, so there's no single unambiguous cohort to group by).
+  const boundGroups = useMemo(() => {
+    const groups = new Map<string, { label: string; rows: typeof filteredBound }>();
+    for (const p of filteredBound) {
+      const key = p.createdAt ? p.createdAt.slice(0, 7) : 'unknown';
+      const label = p.createdAt ? format(new Date(p.createdAt), 'MMMM yyyy') : 'Unknown bind date';
+      let g = groups.get(key);
+      if (!g) { g = { label, rows: [] }; groups.set(key, g); }
+      g.rows.push(p);
+    }
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([key, g]) => ({ key, ...g }));
+  }, [filteredBound]);
 
   const weekAgo = Date.now() - WEEK_MS;
   const conflictsThisWeek = securityLog?.filter((e) => e.type === 'CONFLICT_BLOCKED' && new Date(e.createdAt).getTime() >= weekAgo).length ?? 0;
@@ -343,64 +361,81 @@ export function DeviceVerificationPage() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
-              <tr>
-                <th className="text-left py-3 px-6">Student</th>
-                <th className="text-left py-3 px-6">Device</th>
-                <th className="text-left py-3 px-6">Bound Since</th>
-                <th className="text-right py-3 px-6">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-              {filteredBound.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center font-bold text-xs">
-                        {p.firstName[0]}{p.lastName[0]}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-white">{p.firstName} {p.lastName}</p>
-                        <p className="text-[10px] text-gray-500">{p.studentId}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex flex-col">
-                      <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1.5 font-medium">
-                        <Smartphone size={14} className="text-gray-400" />
-                        {p.deviceModel}
-                      </span>
-                      <code className="text-[10px] text-gray-400 bg-gray-100 dark:bg-white/5 px-1 py-0.5 rounded mt-1 truncate max-w-[120px]">
-                        {p.deviceId}
-                      </code>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 text-gray-500 text-xs">
-                    {p.createdAt ? format(new Date(p.createdAt), 'MMM d, h:mm a') : '-'}
-                  </td>
-                  <td className="py-4 px-6 text-right">
-                    <button
-                      onClick={() => handleReset(p.id, true)}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded-lg text-xs font-bold transition-all ml-auto"
-                    >
-                      <RefreshCw size={12} /> Reset Device
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filteredBound.length === 0 && (
-                <tr>
-                  <td colSpan={4}>
-                    <EmptyState icon={Smartphone} title="No devices bound yet." size="sm" />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {filteredBound.length === 0 ? (
+          <EmptyState icon={Smartphone} title="No devices bound yet." size="sm" />
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-white/5">
+            {boundGroups.map((group) => {
+              const isOpen = expandedGroup === group.key || (expandedGroup === null && group === boundGroups[0]);
+              return (
+                <div key={group.key}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedGroup(isOpen ? `__closed_${group.key}` : group.key)}
+                    className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors text-left cursor-pointer"
+                  >
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{group.label}</span>
+                    <span className="flex items-center gap-2 text-xs text-gray-400">
+                      {group.rows.length} device{group.rows.length === 1 ? '' : 's'}
+                      <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
+                        <tr>
+                          <th className="text-left py-2 px-6">Student</th>
+                          <th className="text-left py-2 px-6">Device</th>
+                          <th className="text-left py-2 px-6">Bound Since</th>
+                          <th className="text-right py-2 px-6">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                        {group.rows.map((p) => (
+                          <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors">
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center font-bold text-xs">
+                                  {p.firstName[0]}{p.lastName[0]}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-900 dark:text-white">{p.firstName} {p.lastName}</p>
+                                  <p className="text-[10px] text-gray-500">{p.studentId}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex flex-col">
+                                <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1.5 font-medium">
+                                  <Smartphone size={14} className="text-gray-400" />
+                                  {p.deviceModel}
+                                </span>
+                                <code className="text-[10px] text-gray-400 bg-gray-100 dark:bg-white/5 px-1 py-0.5 rounded mt-1 truncate max-w-[120px]">
+                                  {p.deviceId}
+                                </code>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-gray-500 text-xs">
+                              {p.createdAt ? format(new Date(p.createdAt), 'MMM d, h:mm a') : '-'}
+                            </td>
+                            <td className="py-4 px-6 text-right">
+                              <button
+                                onClick={() => handleReset(p.id, true)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded-lg text-xs font-bold transition-all ml-auto"
+                              >
+                                <RefreshCw size={12} /> Reset Device
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

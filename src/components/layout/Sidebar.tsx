@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, Bluetooth, Smartphone, Bell, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren,
+  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation } from '../../types';
@@ -39,6 +39,7 @@ const superAdminGeneral: NavItem[] = [
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
   { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
+  { to: '/admin/beacon-health', icon: Battery, label: 'Beacon Health' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
@@ -82,6 +83,7 @@ const hodOperations: NavItem[] = [
 const hodGeneral: NavItem[] = [
   { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
   { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
+  { to: '/admin/beacon-health', icon: Battery, label: 'Beacon Health' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
