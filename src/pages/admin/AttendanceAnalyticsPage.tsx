@@ -1,5 +1,7 @@
 import { Fragment, useId, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
+import { api } from '../../lib/api';
 import {
   Activity,
   BarChart3,
@@ -30,6 +32,7 @@ import {
   ComposedChart,
   Legend,
   ReferenceLine,
+  ReferenceArea,
   PieChart,
   Pie,
   Cell,
@@ -91,6 +94,19 @@ const tooltipStyle = {
 
 export function AttendanceAnalyticsPage() {
   const uid = useId().replace(/:/g, '');
+  const navigate = useNavigate();
+  const [warningSending, setWarningSending] = useState<string | null>(null);
+  const handleSendWarning = async (studentDbId: string, displayName: string, pct: number, threshold: number) => {
+    const draft = `Hi ${displayName}, your overall attendance is currently ${pct}%, below the ${threshold}% required for exam eligibility. Please ensure you attend upcoming sessions.`;
+    const text = window.prompt('Send an attendance warning to this student:', draft);
+    if (!text) return;
+    setWarningSending(studentDbId);
+    try {
+      await api.post('/messages/send', { recipientId: studentDbId, content: text });
+    } finally {
+      setWarningSending(null);
+    }
+  };
   const { data: campus, loading: campusLoading, error: campusError, refetch: refetchCampus } = useApi<CampusAnalytics>(
     '/attendance/campus-analytics',
     DASH_OPTS,
@@ -122,9 +138,37 @@ export function AttendanceAnalyticsPage() {
     });
   }, [statsList, search, courseFilter]);
 
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
+  const toggleCourseGroup = (code: string) =>
+    setExpandedCourses((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code); else next.add(code);
+      return next;
+    });
+
+  const ledgerByCourse = useMemo(() => {
+    const groups = new Map<string, { courseCode: string; courseName: string; sessions: ClassAttendanceStat[] }>();
+    for (const s of filtered) {
+      let g = groups.get(s.course.code);
+      if (!g) {
+        g = { courseCode: s.course.code, courseName: s.course.name, sessions: [] };
+        groups.set(s.course.code, g);
+      }
+      g.sessions.push(s);
+    }
+    return Array.from(groups.values()).map((g) => {
+      const totalEnrolled = g.sessions.reduce((sum, s) => sum + s.totalEnrolled, 0);
+      const totalCheckedIn = g.sessions.reduce((sum, s) => sum + s.totalCheckedIn, 0);
+      return { ...g, aggregateRate: totalEnrolled > 0 ? Math.round((totalCheckedIn / totalEnrolled) * 100) : 0 };
+    }).sort((a, b) => a.courseCode.localeCompare(b.courseCode));
+  }, [filtered]);
+
   const trendLineData = useMemo(() => {
     if (!campus?.overallTrendSparkline?.length) return [];
-    return campus.overallTrendSparkline.map((p) => ({ date: p.label, value: p.value }));
+    return campus.overallTrendSparkline.map((p) => {
+      const day = new Date(`${p.date}T00:00:00`).getDay();
+      return { date: p.label, value: p.value, isWeekend: day === 0 || day === 6 };
+    });
   }, [campus]);
 
   const trendHasData = trendLineData.length > 0 && trendLineData.some((d) => d.value > 0);
@@ -415,6 +459,9 @@ export function AttendanceAnalyticsPage() {
                       tickLine={false}
                     />
                     <Tooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v}%`, 'Attendance']} />
+                    {trendLineData.filter((p) => p.isWeekend).map((p) => (
+                      <ReferenceArea key={p.date} x1={p.date} x2={p.date} fill="#94a3b8" fillOpacity={0.12} ifOverflow="visible" />
+                    ))}
                     <ReferenceLine y={campus.attendanceThreshold} stroke={C.emerald} strokeDasharray="6 6" strokeOpacity={0.7} label={{ value: `${campus.attendanceThreshold}%`, fill: '#94a3b8', fontSize: 10 }} />
                     <Area type="monotone" dataKey="value" stroke="none" fill={`url(#${uid}-trendArea)`} isAnimationActive={false} />
                     <Line
@@ -422,7 +469,13 @@ export function AttendanceAnalyticsPage() {
                       dataKey="value"
                       stroke={`url(#${uid}-trendLine)`}
                       strokeWidth={3}
-                      dot={{ r: 4, fill: C.indigo, strokeWidth: 2, stroke: '#fff' }}
+                      dot={(props: { cx?: number; cy?: number; payload?: { isWeekend?: boolean } }) => {
+                        const { cx, cy, payload } = props;
+                        if (cx === undefined || cy === undefined) return <Fragment />;
+                        return payload?.isWeekend
+                          ? <circle key={`dot-${cx}-${cy}`} cx={cx} cy={cy} r={3} fill="#94a3b8" stroke="#fff" strokeWidth={1.5} />
+                          : <circle key={`dot-${cx}-${cy}`} cx={cx} cy={cy} r={4} fill={C.indigo} stroke="#fff" strokeWidth={2} />;
+                      }}
                       activeDot={{ r: 7, fill: C.fuchsia, stroke: '#fff', strokeWidth: 2 }}
                       isAnimationActive={false}
                     />
@@ -512,13 +565,14 @@ export function AttendanceAnalyticsPage() {
                   <tr>
                     <th className="py-3 pl-4 font-semibold">Student</th>
                     <th className="py-3 px-2 font-semibold">ID</th>
-                    <th className="py-3 pr-4 text-right font-semibold">%</th>
+                    <th className="py-3 px-2 text-right font-semibold">%</th>
+                    <th className="py-3 pr-4 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {campus.atRiskStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={4} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
                         No students under {campus.attendanceThreshold}% in this scope.
                       </td>
                     </tr>
@@ -533,7 +587,7 @@ export function AttendanceAnalyticsPage() {
                       >
                         <td className="py-2.5 pl-4 font-medium text-slate-900 dark:text-white">{s.displayName}</td>
                         <td className="px-2 font-mono text-xs text-slate-500 dark:text-slate-400">{s.studentId}</td>
-                        <td className="py-2.5 pr-4 text-right tabular-nums">
+                        <td className="py-2.5 px-2 text-right tabular-nums">
                           <span
                             className="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold"
                             style={{
@@ -543,6 +597,27 @@ export function AttendanceAnalyticsPage() {
                           >
                             {s.attendancePct}%
                           </span>
+                        </td>
+                        <td className="py-2.5 pr-4 text-right">
+                          <div className="flex justify-end gap-1.5">
+                            <button
+                              type="button"
+                              title="View profile"
+                              onClick={() => navigate(`/admin/users/${s.id}`)}
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white cursor-pointer"
+                            >
+                              <Users className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Send warning"
+                              disabled={warningSending === s.id}
+                              onClick={() => handleSendWarning(s.id, s.displayName, s.attendancePct, campus.attendanceThreshold)}
+                              className="rounded-lg p-1.5 text-amber-600 hover:bg-amber-200/50 dark:text-amber-400 dark:hover:bg-amber-500/15 disabled:opacity-50 cursor-pointer"
+                            >
+                              <ShieldAlert className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -599,42 +674,36 @@ export function AttendanceAnalyticsPage() {
       {campus && (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div className={clsx(cardShell)}>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Rooms: eligible vs checked in</h3>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Horizontal bars — compare capacity vs turnout</p>
-            <div className="mt-4 h-[280px]">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Room Utilization %</h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Checked in ÷ eligible seats, per room</p>
+            <div className="mt-4 max-h-[280px] space-y-3 overflow-y-auto pr-1">
               {campus.roomUtilization.length === 0 ? (
-                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
+                <div className="flex h-[240px] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
                   Add rooms on courses or sessions to populate this chart.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={campus.roomUtilization.map((r) => ({
-                      ...r,
-                      name: r.room.length > 16 ? `${r.room.slice(0, 16)}…` : r.room,
-                    }))}
-                    layout="vertical"
-                    margin={{ top: 8, right: 16, bottom: 8, left: 8 }}
-                  >
-                    <defs>
-                      <linearGradient id={`${uid}-barEnroll`} x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#94a3b8" />
-                        <stop offset="100%" stopColor="#475569" />
-                      </linearGradient>
-                      <linearGradient id={`${uid}-barCheck`} x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor={C.cyan} />
-                        <stop offset="100%" stopColor={C.indigo} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke={C.grid} strokeDasharray="4 6" horizontal strokeOpacity={0.6} vertical={false} />
-                    <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="name" width={84} tick={{ fill: '#cbd5e1', fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="enrolledTotal" name="Eligible seats" fill={`url(#${uid}-barEnroll)`} radius={[0, 6, 6, 0]} barSize={14} />
-                    <Bar dataKey="checkedInTotal" name="Checked in" fill={`url(#${uid}-barCheck)`} radius={[0, 6, 6, 0]} barSize={14} />
-                  </BarChart>
-                </ResponsiveContainer>
+                campus.roomUtilization
+                  .map((r) => ({ ...r, pct: r.enrolledTotal > 0 ? Math.round((r.checkedInTotal / r.enrolledTotal) * 100) : 0 }))
+                  .sort((a, b) => b.pct - a.pct)
+                  .map((r) => (
+                    <div key={r.room}>
+                      <div className="mb-1 flex items-center justify-between text-xs">
+                        <span className="font-medium text-slate-700 dark:text-slate-200">{r.room}</span>
+                        <span className="tabular-nums text-slate-500 dark:text-slate-400">
+                          {r.checkedInTotal}/{r.enrolledTotal} · {r.pct}%
+                        </span>
+                      </div>
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(100, r.pct)}%`,
+                            background: `linear-gradient(90deg, ${C.cyan}, ${C.indigo})`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))
               )}
             </div>
           </div>
@@ -702,7 +771,30 @@ export function AttendanceAnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s, idx) => (
+                {ledgerByCourse.map((group) => {
+                  const isOpen = expandedCourses.has(group.courseCode);
+                  return (
+                    <Fragment key={group.courseCode}>
+                      <tr
+                        onClick={() => toggleCourseGroup(group.courseCode)}
+                        className="cursor-pointer border-b border-slate-200 bg-slate-100/70 transition-colors hover:bg-slate-200/60 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]"
+                      >
+                        <td className="px-4 py-3 font-bold text-slate-900 dark:text-white" colSpan={2}>
+                          <span className={`inline-block mr-2 transition-transform ${isOpen ? 'rotate-90' : ''}`}>›</span>
+                          {group.courseName}
+                          <Badge color="gray">{group.courseCode}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center tabular-nums font-bold text-slate-900 dark:text-white">
+                          {group.sessions.length} session{group.sessions.length === 1 ? '' : 's'}
+                        </td>
+                        <td className="px-4 py-3 font-bold tabular-nums">
+                          <span className={group.aggregateRate >= campus.attendanceThreshold ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300'}>
+                            {group.aggregateRate}% avg
+                          </span>
+                        </td>
+                        <td />
+                      </tr>
+                      {isOpen && group.sessions.map((s, idx) => (
                   <tr
                     key={s.id}
                     className={clsx(
@@ -710,11 +802,10 @@ export function AttendanceAnalyticsPage() {
                       idx % 2 === 1 && 'bg-slate-50/50 dark:bg-white/[0.02]',
                     )}
                   >
-                    <td className="px-4 py-3 align-top">
+                    <td className="px-4 py-3 pl-8 align-top">
                       <div className="flex flex-col gap-1">
                         <span className="font-bold text-slate-900 dark:text-white">{s.title}</span>
                         <span className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                          <Badge color="gray">{s.course.code}</Badge>
                           {format(sessionDate(s), 'MMM d, yyyy')}
                         </span>
                       </div>
@@ -774,7 +865,10 @@ export function AttendanceAnalyticsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                      ))}
+                    </Fragment>
+                  );
+                })}
                 {filtered.length === 0 && !rowsError && (
                   <tr>
                     <td colSpan={5} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">

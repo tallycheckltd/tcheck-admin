@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
-import { ScanEye, ChevronDown, CheckCircle2, XCircle, Users, GraduationCap } from 'lucide-react';
+import { ScanEye, ChevronDown, CheckCircle2, XCircle, Users, GraduationCap, BookOpen } from 'lucide-react';
 import { StatCard } from '../../components/ui/StatCard';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -31,19 +31,61 @@ export function InvigilationPage() {
   });
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'eligible' | 'ineligible'>('all');
+  const [courseFilter, setCourseFilter] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const filtered = (cards || [])
-    .filter((c) => (filter === 'eligible' ? c.eligible : filter === 'ineligible' ? !c.eligible : true))
-    .filter((c) => {
-      if (!search) return true;
-      const q = search.toLowerCase();
-      return (
-        c.student.firstName.toLowerCase().includes(q) ||
-        c.student.lastName.toLowerCase().includes(q) ||
-        (c.student.studentId?.toLowerCase().includes(q) ?? false)
-      );
-    });
+  const uniqueCourses = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of cards ?? []) {
+      for (const c of row.courses) map.set(c.courseId, c.courseCode);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [cards]);
+
+  const matchesSearch = (s: ExamCardRow['student']) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      s.firstName.toLowerCase().includes(q) ||
+      s.lastName.toLowerCase().includes(q) ||
+      (s.studentId?.toLowerCase().includes(q) ?? false)
+    );
+  };
+
+  // Single-course view — per-course eligibility takes over, since a course selector implies
+  // the invigilator is proctoring exactly this exam and only this unit's attendance matters.
+  const singleCourseRows = useMemo(() => {
+    if (!courseFilter) return [];
+    return (cards ?? [])
+      .map((row) => ({ student: row.student, course: row.courses.find((c) => c.courseId === courseFilter) }))
+      .filter((r): r is { student: ExamCardRow['student']; course: ExamCardCourse } => !!r.course)
+      .filter((r) => matchesSearch(r.student))
+      .filter((r) => {
+        const eligible = r.course.percentage >= attendanceThreshold;
+        return filter === 'eligible' ? eligible : filter === 'ineligible' ? !eligible : true;
+      });
+  }, [cards, courseFilter, search, filter, attendanceThreshold]);
+
+  // All-courses view — grouped by course, each with its own eligible/not-eligible mini-stat.
+  const courseGroups = useMemo(() => {
+    if (courseFilter) return [];
+    const groups = new Map<string, { courseId: string; courseCode: string; courseName: string; rows: { student: ExamCardRow['student']; course: ExamCardCourse }[] }>();
+    for (const row of cards ?? []) {
+      if (!matchesSearch(row.student)) continue;
+      for (const c of row.courses) {
+        const eligible = c.percentage >= attendanceThreshold;
+        if (filter === 'eligible' && !eligible) continue;
+        if (filter === 'ineligible' && eligible) continue;
+        let g = groups.get(c.courseId);
+        if (!g) {
+          g = { courseId: c.courseId, courseCode: c.courseCode, courseName: c.courseName, rows: [] };
+          groups.set(c.courseId, g);
+        }
+        g.rows.push({ student: row.student, course: c });
+      }
+    }
+    return Array.from(groups.values()).sort((a, b) => a.courseCode.localeCompare(b.courseCode));
+  }, [cards, courseFilter, search, filter, attendanceThreshold]);
 
   const eligibleCount = cards?.filter((c) => c.eligible).length ?? 0;
   const ineligibleCount = (cards?.length ?? 0) - eligibleCount;
@@ -69,6 +111,19 @@ export function InvigilationPage() {
         <div className="flex-1 min-w-[280px]">
           <SearchInput placeholder="Search by name or student ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        <div className="flex items-center gap-2 min-w-[220px]">
+          <BookOpen size={16} className="text-gray-400 flex-shrink-0" />
+          <select
+            value={courseFilter}
+            onChange={(e) => setCourseFilter(e.target.value)}
+            className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white cursor-pointer"
+          >
+            <option value="">All courses (grouped)</option>
+            {uniqueCourses.map(([id, code]) => (
+              <option key={id} value={id}>{code}</option>
+            ))}
+          </select>
+        </div>
         <div className="flex p-1 bg-gray-100/50 dark:bg-white/5 rounded-xl gap-1">
           {(['all', 'eligible', 'ineligible'] as const).map((f) => (
             <button
@@ -91,52 +146,87 @@ export function InvigilationPage() {
           <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
-          <EmptyState icon={GraduationCap} title="No students match" description="Try a different search or filter." />
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-white/5">
-            {filtered.map((row) => {
-              const isOpen = expanded === row.student.id;
-              return (
-                <div key={row.student.id}>
-                  <button
-                    type="button"
-                    onClick={() => setExpanded(isOpen ? null : row.student.id)}
-                    className="w-full flex items-center justify-between gap-4 px-6 py-4 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors text-left cursor-pointer"
-                  >
+        ) : courseFilter ? (
+          singleCourseRows.length === 0 ? (
+            <EmptyState icon={GraduationCap} title="No students match" description="Try a different search or filter." />
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-white/5">
+              {singleCourseRows.map(({ student, course }) => {
+                const eligible = course.percentage >= attendanceThreshold;
+                return (
+                  <div key={student.id} className="flex items-center justify-between gap-4 px-6 py-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-white/10 dark:to-white/5 flex items-center justify-center text-slate-500 dark:text-gray-400 font-bold text-xs flex-shrink-0">
-                        {row.student.firstName[0]}{row.student.lastName[0]}
+                        {student.firstName[0]}{student.lastName[0]}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                          {row.student.firstName} {row.student.lastName}
-                        </p>
-                        <p className="text-xs text-gray-400 font-mono">{row.student.studentId || '—'}</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{student.firstName} {student.lastName}</p>
+                        <p className="text-xs text-gray-400 font-mono">{student.studentId || '—'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-xs text-gray-400 hidden sm:inline">{row.courses.length} course{row.courses.length === 1 ? '' : 's'}</span>
-                      <Badge color={row.eligible ? 'green' : 'red'}>{row.eligible ? 'Eligible' : 'Not Eligible'}</Badge>
+                      <span className="text-xs text-gray-400 hidden sm:inline">
+                        {course.attended}/{course.total} classes · {course.percentage}%
+                      </span>
+                      <Badge color={eligible ? 'green' : 'red'}>{eligible ? 'Eligible' : 'Not Eligible'}</Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : courseGroups.length === 0 ? (
+          <EmptyState icon={GraduationCap} title="No students match" description="Try a different search or filter." />
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-white/5">
+            {courseGroups.map((group) => {
+              const isOpen = expanded === group.courseId;
+              const groupEligible = group.rows.filter((r) => r.course.percentage >= attendanceThreshold).length;
+              return (
+                <div key={group.courseId}>
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(isOpen ? null : group.courseId)}
+                    className="w-full flex items-center justify-between gap-4 px-6 py-4 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors text-left cursor-pointer"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{group.courseName}</p>
+                      <p className="text-xs text-gray-400 font-mono">{group.courseCode}</p>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-xs text-gray-400">
+                        {groupEligible} Eligible / {group.rows.length - groupEligible} Not Eligible
+                      </span>
                       <ChevronDown size={16} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                     </div>
                   </button>
                   {isOpen && (
                     <div className="px-6 pb-4 bg-gray-50/50 dark:bg-white/[0.02]">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
-                        {row.courses.map((c) => (
-                          <div key={c.courseId} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10">
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{c.courseCode}</p>
-                              <p className="text-[10px] text-gray-400 truncate">{c.attended}/{c.total} classes</p>
+                        {group.rows.map(({ student, course }) => {
+                          const eligible = course.percentage >= attendanceThreshold;
+                          return (
+                            <div key={student.id} className="px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{student.firstName} {student.lastName}</p>
+                                <span className={`text-xs font-bold flex-shrink-0 ${eligible ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  {course.percentage}%
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-gray-400">
+                                Attendance: {course.percentage}% ({course.attended}/{course.total} classes) — {eligible ? 'Cleared for Exam' : 'Not cleared'}
+                              </p>
+                              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                                <div
+                                  className={`h-full rounded-full ${eligible ? 'bg-emerald-500' : 'bg-red-500'}`}
+                                  style={{ width: `${Math.min(100, course.percentage)}%` }}
+                                />
+                              </div>
                             </div>
-                            <span className={`text-xs font-bold flex-shrink-0 ml-2 ${c.percentage >= attendanceThreshold ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                              {c.percentage}%
-                            </span>
-                          </div>
-                        ))}
-                        {row.courses.length === 0 && (
-                          <p className="text-xs text-gray-400 italic py-2">Not enrolled in any course.</p>
+                          );
+                        })}
+                        {group.rows.length === 0 && (
+                          <p className="text-xs text-gray-400 italic py-2">No students match.</p>
                         )}
                       </div>
                     </div>

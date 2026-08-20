@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
@@ -29,8 +29,11 @@ export function UsersPage() {
   const navigate = useNavigate();
 
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const [searchParams] = useSearchParams();
 
-  const [filter, setFilter] = useState<'all' | 'PENDING' | 'STUDENT' | 'LECTURER'>('all');
+  const [filter, setFilter] = useState<'all' | 'PENDING' | 'STUDENT' | 'LECTURER'>(
+    searchParams.get('status') === 'PENDING' ? 'PENDING' : 'all',
+  );
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
   const [createType, setCreateType] = useState<CreateType>('lecturer');

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
 import { useApi, useMutation } from '../../hooks/useApi';
@@ -44,7 +45,16 @@ export function LiveAttendancePage() {
     refetchWhenVisible: true,
   });
 
+  const [searchParams] = useSearchParams();
   const [selectedClass, setSelectedClass] = useState<string>('');
+  // Deep-link support from the Attendance Overview "Needs attention" panel — jump straight into
+  // a specific low-attendance session's live roster once today's class list has loaded.
+  useEffect(() => {
+    const deepLinkedClassId = searchParams.get('classId');
+    if (deepLinkedClassId && classes?.some((c) => c.id === deepLinkedClassId)) {
+      setSelectedClass(deepLinkedClassId);
+    }
+  }, [searchParams, classes]);
   const [classDetail, setClassDetail] = useState<ClassAttendanceDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);

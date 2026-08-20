@@ -130,7 +130,7 @@ export interface UserDetail extends User {
     courseId: string;
     course: Course;
   }[];
-  taughtCourses?: Course[];
+  taughtCourses?: (Course & { termId: string | null; termName: string | null; termStatus: 'ACTIVE' | 'ARCHIVED' | null; attendanceRate: number })[];
   attendances?: AttendanceRecord[];
   courseStats?: {
     courseId: string;
@@ -431,7 +431,7 @@ export interface CampusAnalytics {
   scopedSchoolId: string | null;
   attendanceThreshold: number;
   overallAttendancePct: number;
-  overallTrendSparkline: { label: string; value: number }[];
+  overallTrendSparkline: { label: string; date: string; value: number }[];
   attendanceDecayByWeek: {
     weekLabel: string;
     pct: number;
@@ -441,7 +441,7 @@ export interface CampusAnalytics {
   blockedGateAttemptsBle: number;
   blockedGateAttemptsQr: number;
   atRiskStudentCount: number;
-  atRiskStudents: { studentId: string; displayName: string; attendancePct: number }[];
+  atRiskStudents: { id: string; studentId: string; displayName: string; attendancePct: number }[];
   trafficHeatmapCells: { dayIdx: number; hour: number; intensity: number; dayLabel: string }[];
   trafficHeatmapMax: number;
   hourRange: { start: number; end: number };

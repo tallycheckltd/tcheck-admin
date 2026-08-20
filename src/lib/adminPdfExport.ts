@@ -17,6 +17,8 @@ export type StudentReportHistoryRow = {
   checkInType: string;
   status: string;
   class: { title: string; room: string | null; course: { name: string; code: string } } | null;
+  termId: string | null;
+  termName: string | null;
 };
 
 /** Roster / at-risk rows from `GET /attendance/roster` (same shape as Reports page). */
@@ -396,22 +398,63 @@ export async function exportStudentReportPdf(
     y = afterTableY(doc, y + 120) + 28;
   }
 
-  autoTable(doc, {
-    startY: y,
-    head: [['Course', 'Class', 'Timestamp', 'Room', 'Type', 'Status']],
-    body: history.map((h) => [
-      h.class?.course?.name ?? '—',
-      h.class?.title ?? '—',
-      format(new Date(h.checkInAt), 'MMM d, yyyy HH:mm'),
-      h.class?.room ?? '—',
-      h.checkInType,
-      h.status,
-    ]),
-    styles: { fontSize: 8, cellPadding: 3 },
-    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-    margin: { left: 40, right: 40 },
-  });
+  // Nested Term -> Course -> sessions, replacing one giant flat table — keeps a multi-year
+  // history readable instead of dumping every check-in in one chronological block.
+  const termGroups: { termName: string; courses: { courseName: string; rows: StudentReportHistoryRow[] }[] }[] = [];
+  const termIdx = new Map<string, number>();
+  for (const h of history) {
+    const termKey = h.termId ?? h.termName ?? 'unassigned';
+    let ti = termIdx.get(termKey);
+    if (ti === undefined) {
+      ti = termGroups.length;
+      termIdx.set(termKey, ti);
+      termGroups.push({ termName: h.termName ?? 'No term assigned', courses: [] });
+    }
+    const group = termGroups[ti];
+    const courseKey = h.class?.course?.code ?? h.class?.course?.name ?? 'unknown';
+    let course = group.courses.find((c) => c.courseName === courseKey);
+    if (!course) {
+      course = { courseName: h.class?.course?.name ?? 'Unknown course', rows: [] };
+      group.courses.push(course);
+    }
+    course.rows.push(h);
+  }
+
+  const pageHeight = doc.internal.pageSize.getHeight();
+  for (const term of termGroups) {
+    if (y > pageHeight - 100) { doc.addPage(); y = 40; }
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text(term.termName, 40, y);
+    y += 18;
+
+    for (const course of term.courses) {
+      // Rough per-row estimate (16pt) so a course header never lands right at the bottom with
+      // its table pushed alone onto the next page.
+      if (y > pageHeight - 60 - course.rows.length * 16) { doc.addPage(); y = 40; }
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text(course.courseName, 40, y);
+      y += 6;
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Class', 'Timestamp', 'Room', 'Type', 'Status']],
+        body: course.rows.map((h) => [
+          h.class?.title ?? '—',
+          format(new Date(h.checkInAt), 'MMM d, yyyy HH:mm'),
+          h.class?.room ?? '—',
+          h.checkInType,
+          h.status,
+        ]),
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 40, right: 40 },
+      });
+      y = afterTableY(doc, y + course.rows.length * 16 + 20) + 20;
+    }
+  }
 
   const safe = fileBase ?? `tcheck-student-${(student.studentId ?? student.id).replace(/[^\w-]/g, '')}`;
   doc.save(`${safe}.pdf`);

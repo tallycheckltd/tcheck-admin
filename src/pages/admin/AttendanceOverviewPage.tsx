@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import {
   Activity, AlertTriangle, BookOpen, Clock, TrendingUp, ShieldAlert, FileDown,
@@ -14,7 +15,7 @@ import type { ClassAttendanceStat, DashboardStats } from '../../types';
 const DASHBOARD_REFRESH_MS = 30_000;
 
 function buildNeedsAttention(stats: DashboardStats, classStats: ClassAttendanceStat[] | undefined) {
-  const items: { title: string; detail: string; severity: 'high' | 'medium' | 'low' }[] = [];
+  const items: { title: string; detail: string; severity: 'high' | 'medium' | 'low'; href?: string }[] = [];
   const threshold = stats.attendanceThreshold;
 
   const lowAttendance = [...(classStats ?? [])]
@@ -25,6 +26,7 @@ function buildNeedsAttention(stats: DashboardStats, classStats: ClassAttendanceS
       title: `Low attendance — ${s.course.code}`,
       detail: `${s.title} · ${Math.round(s.attendanceRate)}% present (${s.totalCheckedIn}/${s.totalEnrolled} checked in)`,
       severity: 'high' as const,
+      href: `/live?classId=${s.id}`,
     }));
   items.push(...lowAttendance);
 
@@ -33,6 +35,7 @@ function buildNeedsAttention(stats: DashboardStats, classStats: ClassAttendanceS
       title: 'Pending account approvals',
       detail: `${stats.pendingApprovals} user(s) are waiting for administrator approval.`,
       severity: 'medium',
+      href: '/admin/users?status=PENDING',
     });
   }
 
@@ -166,10 +169,13 @@ export function AttendanceOverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 glass-card p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <TrendingUp size={20} className="text-blue-500" />
-              Average attendance by course (%)
-            </h2>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <TrendingUp size={20} className="text-blue-500" />
+                Average attendance by course (%)
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Cumulative across all recorded sessions</p>
+            </div>
           </div>
           <div className="h-[300px] w-full relative">
             {chartData.length > 0 ? (
@@ -226,21 +232,30 @@ export function AttendanceOverviewPage() {
             Needs attention
           </h2>
           <div className="space-y-3">
-            {needsAttention.map((item, idx) => (
-              <div
-                key={`${item.title}-${idx}`}
-                className={`rounded-xl border px-3 py-3 ${
-                  item.severity === 'high'
-                    ? 'border-red-500/30 bg-red-500/10'
-                    : item.severity === 'medium'
-                      ? 'border-amber-500/30 bg-amber-500/10'
-                      : 'border-blue-500/30 bg-blue-500/10'
-                }`}
-              >
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.title}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1 leading-relaxed">{item.detail}</p>
-              </div>
-            ))}
+            {needsAttention.map((item, idx) => {
+              const cardClass = `block rounded-xl border px-3 py-3 transition-colors ${
+                item.severity === 'high'
+                  ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500/15'
+                  : item.severity === 'medium'
+                    ? 'border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15'
+                    : 'border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/15'
+              }`;
+              const content = (
+                <>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.title}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-300 mt-1 leading-relaxed">{item.detail}</p>
+                </>
+              );
+              return item.href ? (
+                <Link key={`${item.title}-${idx}`} to={item.href} className={cardClass}>
+                  {content}
+                </Link>
+              ) : (
+                <div key={`${item.title}-${idx}`} className={cardClass}>
+                  {content}
+                </div>
+              );
+            })}
             {needsAttention.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
                 No sessions under {stats?.attendanceThreshold ?? 80}% attendance and no pending approvals. You&apos;re caught up.

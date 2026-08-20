@@ -11,7 +11,6 @@ import { exportStudentReportPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
-const HISTORY_PAGE_SIZE = 20;
 
 const REASON_LABEL: Record<DeviceChangeReason, string> = {
   LOST_PHONE: 'Lost phone',
@@ -29,6 +28,8 @@ interface HistoryRecord {
   status: string;
   class: { title: string; room: string | null; course: { name: string; code: string } } | null;
   verification: { deviceId: string | null; deviceModel: string | null; deviceOSVersion: string | null; verificationMethod: string | null } | null;
+  termId: string | null;
+  termName: string | null;
 }
 
 interface HistoryResponse {
@@ -44,9 +45,7 @@ export function UserDetailPage() {
   const navigate = useNavigate();
   const { data: user, refetch } = useApi<UserDetail>(id ? `/users/${id}` : null);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
-  const [historyPage, setHistoryPage] = useState(1);
-  const [hasMoreHistory, setHasMoreHistory] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
   const [reportExporting, setReportExporting] = useState<'pdf' | 'csv' | null>(null);
   const { mutate: resetBiometricLock, loading: resettingBiometricLock } = useMutation('post');
   const { mutate: verifyDevice, loading: verifyingDevice } = useMutation('post');
@@ -128,8 +127,9 @@ export function UserDetailPage() {
       const fullHistory = await fetchFullHistory();
       downloadCsv(
         `tcheck-student-${user.studentId ?? user.id}.csv`,
-        ['Course', 'Class', 'Timestamp', 'Room', 'Type', 'Status'],
+        ['Term', 'Course', 'Class', 'Timestamp', 'Room', 'Type', 'Status'],
         fullHistory.map((h) => [
+          h.termName ?? '',
           h.class?.course?.name ?? '',
           h.class?.title ?? '',
           h.checkInAt,
@@ -146,30 +146,51 @@ export function UserDetailPage() {
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    api.get<HistoryResponse>(`/users/${id}/attendance-history?page=1&pageSize=${HISTORY_PAGE_SIZE}`).then((res) => {
+    // Fetched whole (not paginated) so the Term -> Course accordion below can group correctly —
+    // a "Load more" list would risk showing a partial, misleading term bucket. Multi-year history
+    // stays manageable because only the most recent term renders expanded by default (see below).
+    api.get<HistoryResponse>(`/users/${id}/attendance-history?page=1&pageSize=2000`).then((res) => {
       if (cancelled) return;
       setHistory(res.records);
-      setHistoryPage(1);
-      setHasMoreHistory(res.hasMore);
+      const firstTermKey = res.records[0]?.termId ?? res.records[0]?.termName ?? 'unassigned';
+      setExpandedTerms(res.records.length > 0 ? new Set([firstTermKey]) : new Set());
     });
     return () => {
       cancelled = true;
     };
   }, [id]);
 
-  const loadMoreHistory = async () => {
-    if (!id || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const next = historyPage + 1;
-      const res = await api.get<HistoryResponse>(`/users/${id}/attendance-history?page=${next}&pageSize=${HISTORY_PAGE_SIZE}`);
-      setHistory((prev) => [...prev, ...res.records]);
-      setHistoryPage(next);
-      setHasMoreHistory(res.hasMore);
-    } finally {
-      setLoadingMore(false);
-    }
+  const toggleTerm = (termKey: string) => {
+    setExpandedTerms((prev) => {
+      const next = new Set(prev);
+      if (next.has(termKey)) next.delete(termKey); else next.add(termKey);
+      return next;
+    });
   };
+
+  const historyByTerm = (() => {
+    const groups: { termKey: string; termName: string; courses: { courseKey: string; courseName: string; records: HistoryRecord[] }[] }[] = [];
+    const termIndex = new Map<string, number>();
+    for (const rec of history) {
+      const termKey = rec.termId ?? rec.termName ?? 'unassigned';
+      const termName = rec.termName ?? 'No term assigned';
+      let ti = termIndex.get(termKey);
+      if (ti === undefined) {
+        ti = groups.length;
+        termIndex.set(termKey, ti);
+        groups.push({ termKey, termName, courses: [] });
+      }
+      const group = groups[ti];
+      const courseKey = rec.class?.course?.code ?? rec.class?.course?.name ?? 'unknown';
+      let course = group.courses.find((c) => c.courseKey === courseKey);
+      if (!course) {
+        course = { courseKey, courseName: rec.class?.course?.name ?? 'Unknown course', records: [] };
+        group.courses.push(course);
+      }
+      course.records.push(rec);
+    }
+    return groups;
+  })();
 
   if (!user) {
     return (
@@ -475,101 +496,135 @@ export function UserDetailPage() {
         </div>
       )}
 
-      {/* Lecturer's Courses */}
+      {/* Lecturer's Courses — grouped by term, only the active term expanded by default. */}
       {user.role === 'LECTURER' && user.taughtCourses && user.taughtCourses.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-white/5">
             <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Teaching Courses</h3>
           </div>
-          <table className="w-full text-sm gradient-table">
-            <thead>
-              <tr>
-                <th>Course</th>
-                <th>Code</th>
-                <th>School</th>
-                <th>Enrolled Students</th>
-                <th>Total Classes</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-800 dark:text-gray-300">
-              {user.taughtCourses.map((c) => (
-                <tr key={c.id}>
-                  <td className="font-medium text-slate-950 dark:text-white">{c.name}</td>
-                  <td className="font-mono">{c.code}</td>
-                  <td>{c.school?.name || '-'}</td>
-                  <td>{c._count?.enrollments || 0}</td>
-                  <td>{c._count?.classes || 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {(() => {
+            const groups: { key: string; name: string; status: 'ACTIVE' | 'ARCHIVED' | null; courses: NonNullable<typeof user.taughtCourses> }[] = [];
+            const idx = new Map<string, number>();
+            for (const c of user.taughtCourses) {
+              const key = c.termId ?? c.termName ?? 'unassigned';
+              let i = idx.get(key);
+              if (i === undefined) {
+                i = groups.length;
+                idx.set(key, i);
+                groups.push({ key, name: c.termName ?? 'No term assigned', status: c.termStatus, courses: [] });
+              }
+              groups[i].courses.push(c);
+            }
+            return groups.map((g) => (
+              <details key={g.key} open={g.status === 'ACTIVE' || g.key === 'unassigned'} className="border-b border-gray-100 dark:border-white/5 last:border-b-0 group">
+                <summary className="flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors list-none">
+                  <span className="flex items-center gap-2 font-semibold text-sm text-slate-950 dark:text-white">
+                    {g.name}
+                    {g.status === 'ACTIVE' && <Badge color="green">Active</Badge>}
+                    {g.status === 'ARCHIVED' && <Badge color="gray">Archived</Badge>}
+                  </span>
+                  <span className="text-xs text-slate-500">{g.courses.length} course{g.courses.length === 1 ? '' : 's'}</span>
+                </summary>
+                <table className="w-full text-sm gradient-table">
+                  <thead>
+                    <tr>
+                      <th>Course</th>
+                      <th>Code</th>
+                      <th>Enrolled Students</th>
+                      <th>Total Classes</th>
+                      <th>Attendance %</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-slate-800 dark:text-gray-300">
+                    {g.courses.map((c) => (
+                      <tr key={c.id}>
+                        <td className="font-medium text-slate-950 dark:text-white">{c.name}</td>
+                        <td className="font-mono">{c.code}</td>
+                        <td>{c._count?.enrollments || 0}</td>
+                        <td>{c._count?.classes || 0}</td>
+                        <td className={c.attendanceRate < 50 ? 'text-red-600 dark:text-red-400 font-semibold' : ''}>{c.attendanceRate}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            ));
+          })()}
         </div>
       )}
 
-      {/* Attendance History — full lifetime log with the hardware/location data captured at
-          check-in, so there's no ambiguity about whether or how a session was attended. */}
+      {/* Attendance History — grouped Term -> Course -> sessions so a multi-year audit doesn't
+          dump one giant chronological table on the admin; only the most recent term auto-expands. */}
       {history.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-white/5">
             <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Attendance History</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Complete lifetime check-in log — timestamp, room, and device used for every entry.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Complete lifetime check-in log, grouped by term and course.</p>
           </div>
-          <table className="w-full text-sm gradient-table">
-            <thead>
-              <tr>
-                <th>Course / Class</th>
-                <th>Timestamp</th>
-                <th>Room</th>
-                <th>Device</th>
-                <th>Type</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-800 dark:text-gray-300">
-              {history.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    <p className="font-medium text-slate-950 dark:text-white">{a.class?.course?.name || '-'}</p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">{a.class?.title || '-'}</p>
-                  </td>
-                  <td>{new Date(a.checkInAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                  <td>{a.class?.room || '—'}</td>
-                  <td>
-                    {a.verification?.deviceModel ? (
-                      <div>
-                        <p>{a.verification.deviceModel}</p>
-                        {a.verification.deviceId && (
-                          <p className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]">{a.verification.deviceId}</p>
-                        )}
-                      </div>
-                    ) : '—'}
-                  </td>
-                  <td>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
-                      a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                      'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
-                    }`}>
-                      {formatCheckInType(a.checkInType)}
-                    </span>
-                  </td>
-                  <td><Badge color="green">{a.status}</Badge></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {hasMoreHistory && (
-            <div className="p-4 border-t border-gray-100 dark:border-white/5 text-center">
-              <button
-                type="button"
-                onClick={loadMoreHistory}
-                disabled={loadingMore}
-                className="text-sm font-medium text-blue-500 hover:text-blue-600 disabled:opacity-50 cursor-pointer"
-              >
-                {loadingMore ? 'Loading…' : 'Load more'}
-              </button>
-            </div>
-          )}
+          {historyByTerm.map((termGroup) => {
+            const isExpanded = expandedTerms.has(termGroup.termKey);
+            return (
+              <div key={termGroup.termKey} className="border-b border-gray-100 dark:border-white/5 last:border-b-0">
+                <button
+                  type="button"
+                  onClick={() => toggleTerm(termGroup.termKey)}
+                  className="w-full flex items-center justify-between gap-3 px-5 py-3.5 text-left hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  <span className="font-semibold text-sm text-slate-950 dark:text-white">{termGroup.termName}</span>
+                  <span className="flex items-center gap-2 text-xs text-slate-500">
+                    {termGroup.courses.reduce((n, c) => n + c.records.length, 0)} entries
+                    <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>›</span>
+                  </span>
+                </button>
+                {isExpanded && termGroup.courses.map((course) => (
+                  <div key={course.courseKey} className="px-5 pb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5 mt-2">{course.courseName}</p>
+                    <table className="w-full text-sm gradient-table">
+                      <thead>
+                        <tr>
+                          <th>Class</th>
+                          <th>Timestamp</th>
+                          <th>Room</th>
+                          <th>Device</th>
+                          <th>Type</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-slate-800 dark:text-gray-300">
+                        {course.records.map((a) => (
+                          <tr key={a.id}>
+                            <td>{a.class?.title || '-'}</td>
+                            <td>{new Date(a.checkInAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                            <td>{a.class?.room || '—'}</td>
+                            <td>
+                              {a.verification?.deviceModel ? (
+                                <div>
+                                  <p>{a.verification.deviceModel}</p>
+                                  {a.verification.deviceId && (
+                                    <p className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]">{a.verification.deviceId}</p>
+                                  )}
+                                </div>
+                              ) : '—'}
+                            </td>
+                            <td>
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
+                                a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
+                                'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
+                              }`}>
+                                {formatCheckInType(a.checkInType)}
+                              </span>
+                            </td>
+                            <td><Badge color="green">{a.status}</Badge></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
