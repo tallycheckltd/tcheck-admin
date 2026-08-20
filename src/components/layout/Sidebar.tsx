@@ -470,7 +470,17 @@ export function Sidebar({
               onNavigate={onClose}
               collapsed={collapsed}
             />
-            <NavSection title="Operations" links={addEscalationBadge(hierarchyOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection
+              title="Operations"
+              links={addEscalationBadge(
+                user?.role === 'DEPUTY_HOD'
+                  ? hierarchyOperations.filter((l) => l.label !== 'Fraud Detection' && l.label !== 'Escalations')
+                  : hierarchyOperations,
+              )}
+              isSuperAdmin={isSuperAdmin}
+              onNavigate={onClose}
+              collapsed={collapsed}
+            />
             <NavSection title="General" links={filterByFeatures(addTicketBadge(addAlertBadge(hierarchyGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
