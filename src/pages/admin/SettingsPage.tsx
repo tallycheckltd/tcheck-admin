@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Slider } from '../../components/ui/Slider';
 import {
-  Settings, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer, Scale,
-  ChevronRight, School as SchoolIcon, CalendarDays, Layers,
+  Settings, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer,
+  School as SchoolIcon, CalendarDays, Layers,
 } from 'lucide-react';
 import type { AttendanceMode, School, SchoolFeatures } from '../../types';
 
@@ -254,17 +253,6 @@ export function SettingsPage() {
             </div>
           </GlassCard>
         )}
-
-        <Link
-          to="/legal"
-          className="flex items-center justify-between gap-3 p-4 rounded-2xl glass-card hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <Scale size={18} className="text-slate-500 dark:text-gray-400" />
-            <span className="text-sm font-medium text-gray-900 dark:text-white">Privacy Policy &amp; Terms</span>
-          </span>
-          <ChevronRight size={16} className="text-slate-400" />
-        </Link>
       </div>
     </div>
   );

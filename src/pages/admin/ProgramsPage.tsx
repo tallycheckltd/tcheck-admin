@@ -90,7 +90,7 @@ export function ProgramsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Programs</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Stage-based module pipelines for schools running Attendance Mode: Stage-Based.
+            Manage degree tracks and student cohort assignments.
           </p>
         </div>
         <Button onClick={openCreate}><Plus size={16} className="mr-1" /> Add Program</Button>

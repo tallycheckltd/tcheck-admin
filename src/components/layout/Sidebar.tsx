@@ -8,7 +8,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
-  BarChart3, GraduationCap, Bluetooth, Smartphone, Bell, Scale, Megaphone,
+  BarChart3, Bluetooth, Smartphone, Bell, Megaphone,
   ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren,
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -46,7 +46,6 @@ const superAdminGeneral: NavItem[] = [
   { to: '/admin/system-announcements', icon: Megaphone, label: 'System Announcements' },
   { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
-  { to: '/legal', icon: Scale, label: 'Legal' },
 ];
 
 /* ---- ADMIN / SUB_ADMIN (University HOD) ---- */
@@ -56,9 +55,6 @@ const hodOverview: NavItem[] = [
 
 const hodAdmin: NavItem[] = [
   { to: '/admin/users', icon: Users, label: 'Users' },
-  { to: '/admin/students', icon: GraduationCap, label: 'Students' },
-  { to: '/admin/lecturers', icon: BookOpen, label: 'Lecturers' },
-  { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
   { to: '/admin/programs', icon: Layers, label: 'Programs' },
 ];
@@ -92,7 +88,6 @@ const hodGeneral: NavItem[] = [
   { to: '/admin/system-announcements', icon: Megaphone, label: 'Announcements' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
-  { to: '/legal', icon: Scale, label: 'Legal' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -109,7 +104,6 @@ const lecturerLinks: NavItem[] = [
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/announcements', icon: Megaphone, label: 'Announcements' },
-  { to: '/legal', icon: Scale, label: 'Legal' },
 ];
 
 function NavIcon({ Icon, active }: { Icon: React.ComponentType<{ size?: number }>; active: boolean }) {
@@ -319,7 +313,7 @@ export function Sidebar({
     links.map((l) => l.to === '/admin/escalations' ? { ...l, badge: openEscalationsCount } : l);
 
   const addPendingBadge = (links: NavItem[]) =>
-    links.map((l) => l.to === '/admin/students' ? { ...l, badge: pendingApprovals } : l);
+    links.map((l) => l.to === '/admin/users' ? { ...l, badge: pendingApprovals } : l);
 
   // Phase 4: hide Announcements when the user's own school has broadcasts switched off — Super
   // Admin manages every school so always keeps the link regardless of any one school's setting.

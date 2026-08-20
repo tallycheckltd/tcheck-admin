@@ -61,21 +61,21 @@ export function LoginPage() {
           </div>
 
           <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
-            Smart Attendance<br />
+            Enterprise<br />
             <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-              Management
+              Attendance
             </span>
           </h1>
 
           <p className="text-lg text-slate-400 leading-relaxed mb-10">
-            Real-time TB beacon tracking, QR code check-ins, and comprehensive analytics — all in one unified platform.
+            Hardware-verified presence, AI-powered identity checks, and real-time campus analytics — all managed from one unified platform.
           </p>
 
           <div className="space-y-4">
             {[
-              { label: 'TB Beacon Tracking', desc: 'Automatic proximity-based attendance' },
-              { label: 'Live Analytics', desc: 'Real-time dashboards and reports' },
-              { label: 'Multi-role Access', desc: 'Admin, lecturer, and student views' },
+              { label: 'Hardware-Verified Presence', desc: 'Automated Tcheck beacon tracking ensures students are physically inside the lecture hall.' },
+              { label: 'Biometric Anti-Cheat', desc: 'AI-powered liveness and identity verification stops buddy-punching and proxy check-ins instantly.' },
+              { label: 'Live Campus Analytics', desc: 'Real-time dashboards, role-based access, and forensic audit trails for complete administrative control.' },
             ].map((feature, i) => (
               <div key={i} className="flex items-center gap-4">
                 <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
@@ -182,9 +182,18 @@ export function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-white/5">
+          <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
             <p className="text-center text-xs text-slate-600">
               Admin & Lecturer access only. Students use the mobile app.
+            </p>
+            <p className="text-center text-xs text-slate-600">
+              <a href="https://tallycheck.co.ke/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+                Privacy Policy
+              </a>
+              <span className="mx-2">·</span>
+              <a href="https://tallycheck.co.ke/terms" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+                Terms of Service
+              </a>
             </p>
           </div>
         </div>

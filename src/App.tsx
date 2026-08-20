@@ -102,6 +102,7 @@ export default function App() {
               {/* SUPER_ADMIN + SUB_ADMIN + LECTURER (escalation.routes.ts enforces this; a lecturer is scoped to their own classes) */}
               <Route path="/admin/escalations" element={<EscalationsPage />} />
               <Route path="/legal" element={<LegalPage />} />
+              <Route path="/settings/compliance" element={<LegalPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

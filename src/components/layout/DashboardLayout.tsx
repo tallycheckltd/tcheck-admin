@@ -53,9 +53,35 @@ export function DashboardLayout() {
         <Menu size={20} />
       </button>
       <GlobalSearchBar open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <main className={`${contentMargin} p-4 pt-16 sm:p-6 lg:pt-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
-        <Outlet />
+      <main className={`${contentMargin} flex flex-col p-4 pt-16 sm:p-6 lg:pt-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
+        <div className="flex-1">
+          <Outlet />
+        </div>
+        <DashboardFooter />
       </main>
     </div>
+  );
+}
+
+function DashboardFooter() {
+  const year = new Date().getFullYear();
+  return (
+    <footer className="mt-auto pt-6 pb-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[0.75rem] text-slate-500 dark:text-slate-500">
+      <span>&copy; {year} Tallycheck Ltd. All rights reserved.</span>
+      <span className="text-slate-300 dark:text-slate-700">|</span>
+      <span>TCheck Enterprise v1.2 (Moi Pilot)</span>
+      <span className="text-slate-300 dark:text-slate-700">|</span>
+      <a href="https://tallycheck.co.ke/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+        Privacy Policy &#8599;
+      </a>
+      <span className="text-slate-300 dark:text-slate-700">|</span>
+      <a href="https://tallycheck.co.ke/terms" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+        Terms of Service &#8599;
+      </a>
+      <span className="text-slate-300 dark:text-slate-700">|</span>
+      <a href="https://support.tallycheck.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+        Support Desk &#8599;
+      </a>
+    </footer>
   );
 }
