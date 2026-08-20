@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, Bluetooth, Smartphone, Bell, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network,
+  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation } from '../../types';
@@ -33,6 +33,7 @@ const superAdminAdmin: NavItem[] = [
   { to: '/admin/schools', icon: School, label: 'Schools' },
   { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
   { to: '/admin/org-units', icon: Network, label: 'Organization' },
+  { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
   { to: '/admin/programs', icon: Layers, label: 'Programs' },
 ];
@@ -59,6 +60,7 @@ const hodOverview: NavItem[] = [
 const hodAdmin: NavItem[] = [
   { to: '/admin/users', icon: Users, label: 'Users' },
   { to: '/admin/org-units', icon: Network, label: 'Organization' },
+  { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
   { to: '/admin/programs', icon: Layers, label: 'Programs' },
 ];
@@ -121,6 +123,7 @@ const hierarchyOverview: NavItem[] = [
 
 const hierarchyAdmin: NavItem[] = [
   { to: '/admin/users', icon: Users, label: 'Users' },
+  { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
   { to: '/admin/programs', icon: Layers, label: 'Programs' },
 ];
