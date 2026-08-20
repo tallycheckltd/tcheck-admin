@@ -166,7 +166,7 @@ export function FraudDetectionPage() {
                     </td>
                     <td className="px-6 py-4">
                       <Badge color="red">{f.reason}</Badge>
-                      {f.tamperDetected && <div className="mt-1"><Badge color="orange">Tamper detected</Badge></div>}
+                      {f.tamperDetected && <div className="mt-1"><Badge color="yellow">Tamper detected</Badge></div>}
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-400">
                       {format(new Date(f.checkInAt), 'MMM d, HH:mm')}

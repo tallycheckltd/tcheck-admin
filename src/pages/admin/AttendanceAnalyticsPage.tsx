@@ -25,8 +25,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  BarChart,
-  Bar,
   Area,
   Line,
   ComposedChart,
@@ -791,7 +789,7 @@ export function AttendanceAnalyticsPage() {
                           {group.sessions.length} session{group.sessions.length === 1 ? '' : 's'}
                         </td>
                         <td className="px-4 py-3 font-bold tabular-nums">
-                          <span className={group.aggregateRate >= campus.attendanceThreshold ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300'}>
+                          <span className={group.aggregateRate >= (campus?.attendanceThreshold ?? 80) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300'}>
                             {group.aggregateRate}% avg
                           </span>
                         </td>
@@ -827,9 +825,9 @@ export function AttendanceAnalyticsPage() {
                             className="h-full rounded-full"
                             style={{
                               width: `${Math.min(100, s.attendanceRate)}%`,
-                              opacity: s.attendanceRate >= campus.attendanceThreshold ? 1 : 0.9,
+                              opacity: s.attendanceRate >= (campus?.attendanceThreshold ?? 80) ? 1 : 0.9,
                               background:
-                                s.attendanceRate >= campus.attendanceThreshold
+                                s.attendanceRate >= (campus?.attendanceThreshold ?? 80)
                                   ? `linear-gradient(90deg, ${C.emerald}, ${C.cyan})`
                                   : `linear-gradient(90deg, ${C.amber}, ${C.rose})`,
                             }}
@@ -838,7 +836,7 @@ export function AttendanceAnalyticsPage() {
                         <span
                           className={clsx(
                             'text-[11px] font-bold tabular-nums',
-                            s.attendanceRate >= campus.attendanceThreshold ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300',
+                            s.attendanceRate >= (campus?.attendanceThreshold ?? 80) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300',
                           )}
                         >
                           {s.attendanceRate}%
