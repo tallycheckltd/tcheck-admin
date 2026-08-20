@@ -318,7 +318,7 @@ export function AttendanceAnalyticsPage() {
               accent: C.violet,
             },
             {
-              label: 'Under 75%',
+              label: `Under ${campus.attendanceThreshold}%`,
               value: campus.atRiskStudentCount.toLocaleString(),
               hint: 'Approved students on watch list',
               icon: Users,
@@ -415,7 +415,7 @@ export function AttendanceAnalyticsPage() {
                       tickLine={false}
                     />
                     <Tooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v}%`, 'Attendance']} />
-                    <ReferenceLine y={75} stroke={C.emerald} strokeDasharray="6 6" strokeOpacity={0.7} label={{ value: '75%', fill: '#94a3b8', fontSize: 10 }} />
+                    <ReferenceLine y={campus.attendanceThreshold} stroke={C.emerald} strokeDasharray="6 6" strokeOpacity={0.7} label={{ value: `${campus.attendanceThreshold}%`, fill: '#94a3b8', fontSize: 10 }} />
                     <Area type="monotone" dataKey="value" stroke="none" fill={`url(#${uid}-trendArea)`} isAnimationActive={false} />
                     <Line
                       type="monotone"
@@ -441,7 +441,7 @@ export function AttendanceAnalyticsPage() {
             <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">Weekly participation</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Area + line vs 75% target</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Area + line vs {campus.attendanceThreshold}% target</p>
               </div>
               <div className="flex gap-2">
                 <button
@@ -488,7 +488,7 @@ export function AttendanceAnalyticsPage() {
                       'Rate',
                     ]}
                   />
-                  <ReferenceLine y={75} stroke={C.emerald} strokeDasharray="5 5" strokeOpacity={0.85} />
+                  <ReferenceLine y={campus.attendanceThreshold} stroke={C.emerald} strokeDasharray="5 5" strokeOpacity={0.85} />
                   <Area type="monotone" dataKey="pct" legendType="none" stroke={C.cyan} strokeWidth={2} fill={`url(#${uid}-weekFill)`} isAnimationActive={false} />
                   <Line type="monotone" dataKey="pct" name="Weekly %" stroke={C.violet} strokeWidth={2.5} dot={{ r: 3, fill: C.violet }} isAnimationActive={false} />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
@@ -504,7 +504,7 @@ export function AttendanceAnalyticsPage() {
           <div className={clsx(cardShell)}>
             <div className="mb-4 flex items-center gap-2">
               <Users className="h-5 w-5 text-amber-500" aria-hidden />
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Watch list (&lt; 75%)</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Watch list (&lt; {campus.attendanceThreshold}%)</h3>
             </div>
             <div className="max-h-[300px] overflow-auto rounded-xl border border-slate-200/80 dark:border-white/10">
               <table className="w-full border-collapse text-left text-sm">
@@ -519,7 +519,7 @@ export function AttendanceAnalyticsPage() {
                   {campus.atRiskStudents.length === 0 ? (
                     <tr>
                       <td colSpan={3} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
-                        No students under 75% in this scope.
+                        No students under {campus.attendanceThreshold}% in this scope.
                       </td>
                     </tr>
                   ) : (
@@ -733,9 +733,9 @@ export function AttendanceAnalyticsPage() {
                             className="h-full rounded-full"
                             style={{
                               width: `${Math.min(100, s.attendanceRate)}%`,
-                              opacity: s.attendanceRate >= 75 ? 1 : 0.9,
+                              opacity: s.attendanceRate >= campus.attendanceThreshold ? 1 : 0.9,
                               background:
-                                s.attendanceRate >= 75
+                                s.attendanceRate >= campus.attendanceThreshold
                                   ? `linear-gradient(90deg, ${C.emerald}, ${C.cyan})`
                                   : `linear-gradient(90deg, ${C.amber}, ${C.rose})`,
                             }}
@@ -744,7 +744,7 @@ export function AttendanceAnalyticsPage() {
                         <span
                           className={clsx(
                             'text-[11px] font-bold tabular-nums',
-                            s.attendanceRate >= 75 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300',
+                            s.attendanceRate >= campus.attendanceThreshold ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300',
                           )}
                         >
                           {s.attendanceRate}%

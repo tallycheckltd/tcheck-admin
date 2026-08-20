@@ -15,9 +15,10 @@ const DASHBOARD_REFRESH_MS = 30_000;
 
 function buildNeedsAttention(stats: DashboardStats, classStats: ClassAttendanceStat[] | undefined) {
   const items: { title: string; detail: string; severity: 'high' | 'medium' | 'low' }[] = [];
+  const threshold = stats.attendanceThreshold;
 
   const lowAttendance = [...(classStats ?? [])]
-    .filter((s) => s.totalEnrolled > 0 && s.attendanceRate < 75)
+    .filter((s) => s.totalEnrolled > 0 && s.attendanceRate < threshold)
     .sort((a, b) => a.attendanceRate - b.attendanceRate)
     .slice(0, 3)
     .map((s) => ({
@@ -242,7 +243,7 @@ export function AttendanceOverviewPage() {
             ))}
             {needsAttention.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
-                No sessions under 75% attendance and no pending approvals. You&apos;re caught up.
+                No sessions under {stats?.attendanceThreshold ?? 80}% attendance and no pending approvals. You&apos;re caught up.
               </p>
             )}
             <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-3">

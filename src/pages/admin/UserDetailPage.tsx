@@ -440,7 +440,9 @@ export function UserDetailPage() {
               </tr>
             </thead>
             <tbody className="text-slate-800 dark:text-gray-300">
-              {user.courseStats.map((cs) => (
+              {user.courseStats.map((cs) => {
+                const threshold = user.school?.attendanceThreshold ?? 80;
+                return (
                 <tr
                   key={cs.courseId}
                   onClick={() => navigate(`/admin/users/${id}/courses/${cs.courseId}`)}
@@ -453,7 +455,7 @@ export function UserDetailPage() {
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full max-w-[120px]">
                         <div
-                          className={`h-2 rounded-full ${cs.percentage >= 75 ? 'bg-green-500' : cs.percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                          className={`h-2 rounded-full ${cs.percentage >= threshold ? 'bg-green-500' : cs.percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
                           style={{ width: `${cs.percentage}%` }}
                         />
                       </div>
@@ -461,12 +463,13 @@ export function UserDetailPage() {
                     </div>
                   </td>
                   <td>
-                    <Badge color={cs.percentage >= 75 ? 'green' : 'red'}>
-                      {cs.percentage >= 75 ? 'Eligible' : 'At Risk'}
+                    <Badge color={cs.percentage >= threshold ? 'green' : 'red'}>
+                      {cs.percentage >= threshold ? 'Eligible' : 'At Risk'}
                     </Badge>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

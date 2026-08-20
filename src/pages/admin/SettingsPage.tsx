@@ -21,6 +21,7 @@ const defaultFeatures: Required<SchoolFeatures> = {
 const emptyForm = {
   lateThresholdMinutes: 10,
   extremelyLateThresholdMinutes: 20,
+  attendanceThreshold: 80,
   allowManualLecturerOverride: true,
   attendanceMode: 'CALENDAR_BASED' as AttendanceMode,
   features: defaultFeatures,
@@ -74,6 +75,7 @@ export function SettingsPage() {
       setForm({
         lateThresholdMinutes: school.lateThresholdMinutes ?? 10,
         extremelyLateThresholdMinutes: school.extremelyLateThresholdMinutes ?? 20,
+        attendanceThreshold: school.attendanceThreshold ?? 80,
         allowManualLecturerOverride: school.allowManualLecturerOverride ?? true,
         attendanceMode: school.attendanceMode ?? 'CALENDAR_BASED',
         features: { ...defaultFeatures, ...school.features },
@@ -143,6 +145,17 @@ export function SettingsPage() {
                   value={form.extremelyLateThresholdMinutes}
                   onChange={(v) => setForm({ ...form, extremelyLateThresholdMinutes: v })}
                   helpText="Minutes after class start before a check-in counts as extremely late."
+                />
+
+                <Slider
+                  label="Minimum Attendance for Eligibility"
+                  min={50}
+                  max={100}
+                  step={5}
+                  unit="%"
+                  value={form.attendanceThreshold}
+                  onChange={(v) => setForm({ ...form, attendanceThreshold: v })}
+                  helpText="Overall attendance % required for exam eligibility and 'On Track' status."
                 />
               </div>
             </GlassCard>

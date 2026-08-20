@@ -147,7 +147,7 @@ export async function exportCampusAnalyticsPdf(campus: CampusAnalytics, sessions
   const kpiLines = [
     `Overall campus attendance: ${campus.overallAttendancePct}%`,
     `Automated gate blocks (90d): TB ${campus.blockedGateAttemptsBle} · QR ${campus.blockedGateAttemptsQr}`,
-    `Students under 75%: ${campus.atRiskStudentCount}`,
+    `Students under ${campus.attendanceThreshold}%: ${campus.atRiskStudentCount}`,
     `Sessions in aggregate: ${campus.sessionCount}`,
   ];
   kpiLines.forEach((line, i) => {
@@ -193,9 +193,10 @@ export async function exportHodRosterPdf(
   dateFrom: string,
   dateTo: string,
   fileBase?: string,
+  attendanceThreshold = 80,
 ) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-  const label = variant === 'at-risk' ? 'At-risk roster (< 75%)' : 'Semester roster';
+  const label = variant === 'at-risk' ? `At-risk roster (< ${attendanceThreshold}%)` : 'Semester roster';
   const startY = await addTcheckHeader(
     doc,
     `TCheck — ${label}`,

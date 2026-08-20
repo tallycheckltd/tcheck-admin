@@ -65,6 +65,8 @@ function CourseAttendanceListView({ lecturerId }: { lecturerId?: string }) {
 
 function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; courseId?: string }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const attendanceThreshold = user?.school?.attendanceThreshold ?? 80;
   const queryParams = lecturerId ? `?lecturerId=${lecturerId}` : '';
   const { data: stats } = useApi<ClassAttendanceStat[]>(`/attendance/class-stats${queryParams}`, {
     refetchIntervalMs: 30_000,
@@ -220,13 +222,13 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
                         style={{
                           width: `${Math.min(100, s.attendanceRate)}%`,
                           background:
-                            s.attendanceRate >= 75 ? 'rgb(22 163 74 / 0.85)' : s.attendanceRate >= 50 ? 'rgb(180 83 9)' : 'rgb(185 28 28)',
+                            s.attendanceRate >= attendanceThreshold ? 'rgb(22 163 74 / 0.85)' : s.attendanceRate >= 50 ? 'rgb(180 83 9)' : 'rgb(185 28 28)',
                         }}
                       />
                     </div>
                     <span
                       className={`text-xs font-semibold tabular-nums ${
-                        s.attendanceRate >= 75
+                        s.attendanceRate >= attendanceThreshold
                           ? 'text-emerald-700 dark:text-emerald-400/90'
                           : s.attendanceRate >= 50
                             ? 'text-amber-800 dark:text-amber-400/90'

@@ -60,6 +60,8 @@ interface HodReportsViewProps {
 }
 
 function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitle }: HodReportsViewProps) {
+  const { user } = useAuth();
+  const attendanceThreshold = user?.school?.attendanceThreshold ?? 80;
   const [reportType, setReportType] = useState<HodReportType>('');
   const [selectedCourse, setSelectedCourse] = useState('');
   const [dateFrom, setDateFrom] = useState(defaultFromDate);
@@ -125,7 +127,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
 
         const filtered =
           reportType === 'at-risk'
-            ? rows.filter((r) => r.overallAttendancePct < 75).sort((a, b) => a.overallAttendancePct - b.overallAttendancePct)
+            ? rows.filter((r) => r.overallAttendancePct < attendanceThreshold).sort((a, b) => a.overallAttendancePct - b.overallAttendancePct)
             : rows;
 
         if (filtered.length === 0) {
@@ -139,6 +141,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
           dateFrom,
           dateTo,
           `tcheck-${reportType}-${dateTo}`,
+          attendanceThreshold,
         );
       } else if (reportType === 'course-attendance' && selectedCourse) {
         const rows = await api.get<CourseAttendanceExportRow[]>(
@@ -191,7 +194,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
         }
         const filtered =
           reportType === 'at-risk'
-            ? rows.filter((r) => r.overallAttendancePct < 75).sort((a, b) => a.overallAttendancePct - b.overallAttendancePct)
+            ? rows.filter((r) => r.overallAttendancePct < attendanceThreshold).sort((a, b) => a.overallAttendancePct - b.overallAttendancePct)
             : rows;
         if (filtered.length === 0) {
           setExportError('No rows match this export (try widening the date range).');
@@ -232,7 +235,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
   };
 
   const atRiskCount =
-    previewRows?.filter((r) => r.overallAttendancePct < 75).length ?? 0;
+    previewRows?.filter((r) => r.overallAttendancePct < attendanceThreshold).length ?? 0;
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 max-w-6xl">
@@ -263,7 +266,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
               {canUseSemesterRoster && (
                 <>
                   <option value="semester-roster">Semester master roster</option>
-                  <option value="at-risk">At-risk students (&lt; 75%)</option>
+                  <option value="at-risk">At-risk students (&lt; {attendanceThreshold}%)</option>
                 </>
               )}
               <option value="course-attendance">Course attendance (line-level)</option>
@@ -408,7 +411,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
                       </span>
                       {reportType === 'at-risk' && (
                         <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 text-amber-800 dark:text-amber-200 px-2.5 py-1 font-medium">
-                          &lt; 75% in preview: <strong>{atRiskCount}</strong>
+                          &lt; {attendanceThreshold}% in preview: <strong>{atRiskCount}</strong>
                         </span>
                       )}
                     </div>
@@ -422,7 +425,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
                           </tr>
                         </thead>
                         <tbody>
-                          {(reportType === 'at-risk' ? previewRows.filter((r) => r.overallAttendancePct < 75) : previewRows).map(
+                          {(reportType === 'at-risk' ? previewRows.filter((r) => r.overallAttendancePct < attendanceThreshold) : previewRows).map(
                             (r) => (
                               <tr key={`${r.studentId}-${r.email}`} className="border-t border-[var(--app-border-soft)] dark:border-white/10">
                                 <td className="py-2.5 px-3 text-[var(--app-text)]">
@@ -431,7 +434,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
                                 </td>
                                 <td className="py-2.5 px-3 tabular-nums font-semibold">{r.overallAttendancePct}%</td>
                                 <td className="py-2.5 px-3">
-                                  <Badge color={r.overallAttendancePct < 75 ? 'red' : 'green'}>{r.riskLevel}</Badge>
+                                  <Badge color={r.overallAttendancePct < attendanceThreshold ? 'red' : 'green'}>{r.riskLevel}</Badge>
                                 </td>
                               </tr>
                             ),
@@ -439,7 +442,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
                         </tbody>
                       </table>
                     </div>
-                    {reportType === 'at-risk' && previewRows.filter((r) => r.overallAttendancePct < 75).length === 0 && (
+                    {reportType === 'at-risk' && previewRows.filter((r) => r.overallAttendancePct < attendanceThreshold).length === 0 && (
                       <p className="text-sm text-emerald-700 dark:text-emerald-400 text-center py-2">No at-risk rows in preview window.</p>
                     )}
                   </div>

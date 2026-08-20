@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApi } from '../../hooks/useApi';
+import { useAuth } from '../../context/AuthContext';
 import { ScanEye, ChevronDown, CheckCircle2, XCircle, Users, GraduationCap } from 'lucide-react';
 import { StatCard } from '../../components/ui/StatCard';
 import { SearchInput } from '../../components/ui/SearchInput';
@@ -22,6 +23,8 @@ interface ExamCardRow {
 }
 
 export function InvigilationPage() {
+  const { user } = useAuth();
+  const attendanceThreshold = user?.school?.attendanceThreshold ?? 80;
   const { data: cards, loading } = useApi<ExamCardRow[]>('/attendance/exam-cards', {
     refetchIntervalMs: 60_000,
     refetchWhenVisible: true,
@@ -127,7 +130,7 @@ export function InvigilationPage() {
                               <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{c.courseCode}</p>
                               <p className="text-[10px] text-gray-400 truncate">{c.attended}/{c.total} classes</p>
                             </div>
-                            <span className={`text-xs font-bold flex-shrink-0 ml-2 ${c.percentage >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                            <span className={`text-xs font-bold flex-shrink-0 ml-2 ${c.percentage >= attendanceThreshold ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                               {c.percentage}%
                             </span>
                           </div>

@@ -19,6 +19,7 @@ export interface School {
   color: string;
   lateThresholdMinutes?: number;
   extremelyLateThresholdMinutes?: number;
+  attendanceThreshold?: number;
   allowManualLecturerOverride?: boolean;
   features?: SchoolFeatures;
   // Calendar-scheduled (default) vs. stage-based progression (Program/Module pipeline, no
@@ -428,6 +429,7 @@ export interface ClassAttendanceStat {
 export interface CampusAnalytics {
   fetchedAtIso: string;
   scopedSchoolId: string | null;
+  attendanceThreshold: number;
   overallAttendancePct: number;
   overallTrendSparkline: { label: string; value: number }[];
   attendanceDecayByWeek: {
@@ -469,6 +471,7 @@ export interface DashboardStats {
   pendingApprovals: number;
   recentAttendances: AttendanceRecord[];
   attendanceByDay: { date: string; count: number }[];
+  attendanceThreshold: number;
 }
 
 export interface Conversation {
