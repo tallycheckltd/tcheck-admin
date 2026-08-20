@@ -1,4 +1,22 @@
-export type Role = 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT' | 'INVIGILATOR';
+export type Role =
+  | 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT' | 'INVIGILATOR'
+  // Enterprise hierarchy tiers (additive) — see server/prisma/schema.prisma Role enum comment.
+  | 'VC' | 'DVC' | 'REGISTRAR_ACADEMIC' | 'REGISTRAR_ADMIN' | 'DEAN' | 'HOD' | 'DEPUTY_HOD' | 'ICT_ADMIN';
+
+export type ScopeLevel = 'UNIVERSITY' | 'DIVISION' | 'SCHOOL' | 'DEPARTMENT' | 'SUB_DEPARTMENT' | 'INDIVIDUAL';
+export type OrgUnitLevel = 'DIVISION' | 'FACULTY' | 'DEPARTMENT' | 'SUB_DEPARTMENT';
+
+export interface OrgUnit {
+  id: string;
+  schoolId: string;
+  parentId: string | null;
+  parent?: Pick<OrgUnit, 'id' | 'name' | 'level'> | null;
+  level: OrgUnitLevel;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { children: number; users: number };
+}
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEACTIVATED' | 'DELETED';
 export type CheckInType = 'BLE' | 'QR' | 'MANUAL' | 'ONLINE';
 
@@ -118,6 +136,10 @@ export interface User {
   deactivatedAt?: string | null;
   /** LECTURER only — grants exam-QR-scanner access without a separate INVIGILATOR account. */
   canInvigilate?: boolean;
+  /** Enterprise hierarchy tiers only — undefined/default for every legacy role. */
+  scopeLevel?: ScopeLevel;
+  orgUnitId?: string | null;
+  isActingHod?: boolean;
   _count?: {
     enrollments: number;
     attendances: number;

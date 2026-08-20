@@ -9,10 +9,11 @@ import {
   LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, Bluetooth, Smartphone, Bell, Megaphone,
-  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery,
+  ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation } from '../../types';
+import { isHierarchyRole } from '../../lib/rbac';
 
 interface NavItem {
   to: string;
@@ -31,6 +32,7 @@ const superAdminOverview: NavItem[] = [
 const superAdminAdmin: NavItem[] = [
   { to: '/admin/schools', icon: School, label: 'Schools' },
   { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
+  { to: '/admin/org-units', icon: Network, label: 'Organization' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
   { to: '/admin/programs', icon: Layers, label: 'Programs' },
 ];
@@ -56,6 +58,7 @@ const hodOverview: NavItem[] = [
 
 const hodAdmin: NavItem[] = [
   { to: '/admin/users', icon: Users, label: 'Users' },
+  { to: '/admin/org-units', icon: Network, label: 'Organization' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
   { to: '/admin/programs', icon: Layers, label: 'Programs' },
 ];
@@ -106,6 +109,73 @@ const lecturerLinks: NavItem[] = [
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/announcements', icon: Megaphone, label: 'Announcements' },
+];
+
+/* ---- Enterprise hierarchy tiers (Phase 5) — VC/DVC/Dean/HOD/Deputy HOD share one broad
+   operations-facing nav; Registrars get a records-only nav; ICT Admin gets infra-only. See
+   spec §4's Menu Visibility Matrix; DEPUTY_HOD's narrower Terms/Programs access is filtered
+   out at render time below, not by a separate array. ---- */
+const hierarchyOverview: NavItem[] = [
+  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+];
+
+const hierarchyAdmin: NavItem[] = [
+  { to: '/admin/users', icon: Users, label: 'Users' },
+  { to: '/admin/terms', icon: Calendar, label: 'Terms' },
+  { to: '/admin/programs', icon: Layers, label: 'Programs' },
+];
+
+const hierarchyOperations: NavItem[] = [
+  { to: '/courses', icon: BookOpen, label: 'All Courses' },
+  { to: '/classes', icon: Calendar, label: 'Classes' },
+  {
+    to: '/admin/attendance',
+    icon: ClipboardList,
+    label: 'Attendance',
+    children: [
+      { to: '/admin/attendance-overview', icon: ClipboardList, label: 'Overview' },
+      { to: '/admin/attendance-analytics', icon: BarChart3, label: 'Analytics' },
+      { to: '/attendance', icon: UserCheck, label: 'Sessions' },
+    ],
+  },
+  { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
+  { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
+  { to: '/live', icon: Radio, label: 'Live Attendance' },
+  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
+];
+
+const hierarchyGeneral: NavItem[] = [
+  { to: '/reports', icon: FileText, label: 'Reports' },
+  { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/alerts', icon: Bell, label: 'Alerts' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings' },
+];
+
+/* ---- Registrar (Academic/Administration) — records-only, no operational modules ---- */
+const registrarAdmin: NavItem[] = [
+  { to: '/admin/users', icon: Users, label: 'Users' },
+  { to: '/admin/terms', icon: Calendar, label: 'Terms' },
+  { to: '/admin/programs', icon: Layers, label: 'Programs' },
+];
+
+const registrarGeneral: NavItem[] = [
+  { to: '/attendance', icon: ClipboardList, label: 'Attendance Records' },
+  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
+  { to: '/reports', icon: FileText, label: 'Reports' },
+  { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings' },
+];
+
+/* ---- ICT Admin — infrastructure only ---- */
+const ictAdminLinks: NavItem[] = [
+  { to: '/admin', icon: LayoutDashboard, label: 'System Health' },
+  { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
+  { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
+  { to: '/admin/beacon-health', icon: Battery, label: 'Beacon Health' },
+  { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
+  { to: '/live', icon: Radio, label: 'Live Attendance' },
+  { to: '/messages', icon: MessageSquare, label: 'System Alerts' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
 function NavIcon({ Icon, active }: { Icon: React.ComponentType<{ size?: number }>; active: boolean }) {
@@ -253,6 +323,10 @@ export function Sidebar({
   const navigate = useNavigate();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isRegistrar = user?.role === 'REGISTRAR_ACADEMIC' || user?.role === 'REGISTRAR_ADMIN';
+  const isIctAdmin = user?.role === 'ICT_ADMIN';
+  const isHierarchyOps = isHierarchyRole(user?.role) && !isRegistrar && !isIctAdmin;
+  const isLecturer = !isAdmin && !isRegistrar && !isIctAdmin && !isHierarchyOps;
   const { data: unreadData, refetch: refetchUnread } = useApi<{ count: number }>('/notifications/unread-count', {
     refetchIntervalMs: 60_000,
     refetchWhenVisible: true,
@@ -386,7 +460,49 @@ export function Sidebar({
             <NavSection title="General" links={filterByFeatures(addTicketBadge(addAlertBadge(hodGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
-        {!isAdmin && addEscalationBadge(filterByFeatures(lecturerLinks)).map((link) => (
+        {isHierarchyOps && (
+          <>
+            <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection
+              title="Administration"
+              links={user?.role === 'DEPUTY_HOD' ? hierarchyAdmin.filter((l) => l.label === 'Users') : hierarchyAdmin}
+              isSuperAdmin={isSuperAdmin}
+              onNavigate={onClose}
+              collapsed={collapsed}
+            />
+            <NavSection title="Operations" links={addEscalationBadge(hierarchyOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={filterByFeatures(addTicketBadge(addAlertBadge(hierarchyGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+          </>
+        )}
+        {isRegistrar && (
+          <>
+            <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Administration" links={registrarAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={filterByFeatures(registrarGeneral)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+          </>
+        )}
+        {isIctAdmin && addEscalationBadge(ictAdminLinks).map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            end={link.to === '/admin'}
+            onClick={onClose}
+            title={collapsed ? link.label : undefined}
+            className={({ isActive }) =>
+              clsx(
+                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
+                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
+                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
+              )
+            }
+          >
+            <NavIcon Icon={link.icon} active={false} />
+            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
+            {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
+            {collapsed && <NavBadge count={link.badge} collapsed />}
+          </NavLink>
+        ))}
+        {isLecturer && addEscalationBadge(filterByFeatures(lecturerLinks)).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
