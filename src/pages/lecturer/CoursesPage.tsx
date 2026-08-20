@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { BookOpen, Users, Calendar, Plus, Trash2, MapPin, Bluetooth, Edit2, LayoutGrid, List } from 'lucide-react';
-import type { Course, School, User, Beacon } from '../../types';
+import type { Course, School, User, Beacon, OrgUnit } from '../../types';
 import { CourseDataGrid } from '../../components/admin/CourseDataGrid';
 
 export function CoursesPage() {
@@ -17,6 +17,9 @@ export function CoursesPage() {
   const { data: schools } = useApi<School[]>('/schools');
   const { data: lecturers } = useApi<User[]>(isAdmin ? '/users?role=LECTURER&status=APPROVED' : null);
   const { data: beacons } = useApi<Beacon[]>('/beacons?isActive=true');
+  // Only fetched for admins with a home school — an org structure to assign the course into
+  // (Dean/HOD department scoping). Empty/no org units set up means this picker just stays hidden.
+  const { data: orgUnits } = useApi<OrgUnit[]>(isAdmin && user?.schoolId ? `/org-units?schoolId=${user.schoolId}` : null);
   const { mutate: create } = useMutation('post');
   const { mutate: update } = useMutation('put');
   const { mutate: del } = useMutation('delete');
@@ -25,8 +28,8 @@ export function CoursesPage() {
   const [editModal, setEditModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [enrollModal, setEnrollModal] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '' });
-  const [editForm, setEditForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '' });
+  const [form, setForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '', orgUnitId: '' });
+  const [editForm, setEditForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '', orgUnitId: '' });
   const [enrollForm, setEnrollForm] = useState({ userId: '', courseId: '' });
   const [viewMode, setViewMode] = useState<'cards' | 'grid'>(isAdmin ? 'grid' : 'cards');
 
@@ -38,9 +41,10 @@ export function CoursesPage() {
       lecturerId: isAdmin ? form.lecturerId : user?.id,
       room: form.room || undefined,
       beaconId: form.beaconId || undefined,
+      orgUnitId: form.orgUnitId || null,
     });
     setModal(false);
-    setForm({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '' });
+    setForm({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '', orgUnitId: '' });
     refetch();
   };
 
@@ -53,6 +57,7 @@ export function CoursesPage() {
       lecturerId: course.lecturerId,
       room: course.room || '',
       beaconId: course.beaconId || '',
+      orgUnitId: course.orgUnitId || '',
     });
     setEditModal(true);
   };
@@ -63,6 +68,7 @@ export function CoursesPage() {
       ...editForm,
       room: editForm.room || undefined,
       beaconId: editForm.beaconId || null,
+      orgUnitId: editForm.orgUnitId || null,
     });
     setEditModal(false);
     setEditingCourse(null);
@@ -203,6 +209,16 @@ export function CoursesPage() {
               ))}
             </select>
           </div>
+          {isAdmin && orgUnits && orgUnits.length > 0 && (
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Department (optional)</label>
+              <select value={form.orgUnitId} onChange={(e) => setForm({ ...form, orgUnitId: e.target.value })}
+                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
+                <option value="">Unassigned</option>
+                {orgUnits.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+          )}
           <Button onClick={handleCreate} className="w-full">Create Course</Button>
         </div>
       </Modal>
@@ -241,6 +257,16 @@ export function CoursesPage() {
               ))}
             </select>
           </div>
+          {isAdmin && orgUnits && orgUnits.length > 0 && (
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Department (optional)</label>
+              <select value={editForm.orgUnitId} onChange={(e) => setEditForm({ ...editForm, orgUnitId: e.target.value })}
+                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
+                <option value="">Unassigned</option>
+                {orgUnits.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+          )}
           <Button onClick={handleEdit} className="w-full">Save Changes</Button>
         </div>
       </Modal>

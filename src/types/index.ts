@@ -255,6 +255,8 @@ export interface Course {
   room?: string;
   beaconId?: string;
   beacon?: Pick<Beacon, 'id' | 'uuid' | 'name' | 'major' | 'minor' | 'rssiThreshold'>;
+  orgUnitId?: string | null;
+  orgUnit?: Pick<OrgUnit, 'id' | 'name' | 'level'> | null;
   _count?: { enrollments: number; classes: number };
   enrollments?: { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'> }[];
   classes?: ClassSession[];
@@ -496,6 +498,7 @@ export interface DashboardStats {
   recentAttendances: AttendanceRecord[];
   attendanceByDay: { date: string; count: number }[];
   attendanceThreshold: number;
+  biometricFlagsCount: number;
 }
 
 export interface Conversation {

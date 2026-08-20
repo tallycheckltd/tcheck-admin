@@ -107,8 +107,12 @@ export function AttendanceAnalyticsPage() {
       setWarningSending(null);
     }
   };
+  // §12.4 — the course dropdown is a genuine global filter: it's part of the campus-analytics
+  // query key, so picking a course refetches and re-scopes every widget on the page (trend,
+  // heatmap, room utilization, watch list, weekly decay), not just the session ledger table below.
+  const [courseFilter, setCourseFilter] = useState('');
   const { data: campus, loading: campusLoading, error: campusError, refetch: refetchCampus } = useApi<CampusAnalytics>(
-    '/attendance/campus-analytics',
+    `/attendance/campus-analytics${courseFilter ? `?courseId=${courseFilter}` : ''}`,
     DASH_OPTS,
   );
   const { data: sessionRows, loading: rowsLoading, error: rowsError, refetch: refetchRows } = useApi<ClassAttendanceStat[]>(
@@ -116,13 +120,12 @@ export function AttendanceAnalyticsPage() {
     DASH_OPTS,
   );
   const [search, setSearch] = useState('');
-  const [courseFilter, setCourseFilter] = useState('');
   const [pdfExporting, setPdfExporting] = useState(false);
   const [trendExporting, setTrendExporting] = useState<'pdf' | 'csv' | null>(null);
 
   const statsList = sessionRows ?? [];
   const uniqueCourses = useMemo(
-    () => Array.from(new Set(statsList.map((s) => s.course.code))),
+    () => Array.from(new Map(statsList.map((s) => [s.course.id, s.course.code])).entries()),
     [statsList],
   );
 
@@ -133,7 +136,7 @@ export function AttendanceAnalyticsPage() {
         s.course.name.toLowerCase().includes(search.toLowerCase()) ||
         s.course.code.toLowerCase().includes(search.toLowerCase()) ||
         s.title.toLowerCase().includes(search.toLowerCase());
-      const matchesCourse = !courseFilter || s.course.code === courseFilter;
+      const matchesCourse = !courseFilter || s.course.id === courseFilter;
       return matchesSearch && matchesCourse;
     });
   }, [statsList, search, courseFilter]);
@@ -311,8 +314,8 @@ export function AttendanceAnalyticsPage() {
               aria-label="Filter sessions by course"
             >
               <option value="">All courses</option>
-              {uniqueCourses.map((code) => (
-                <option key={code} value={code}>
+              {uniqueCourses.map(([id, code]) => (
+                <option key={id} value={id}>
                   {code}
                 </option>
               ))}

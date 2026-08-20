@@ -155,15 +155,15 @@ export function AttendanceOverviewPage() {
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{stats.totalClasses.toLocaleString()}</p>
           </div>
         </div>
-        <div className="glass-card p-5 flex items-center gap-4">
+        <Link to="/admin/fraud-detection" className="glass-card p-5 flex items-center gap-4 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
           <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500">
             <Clock size={24} />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pending approvals</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{stats.pendingApprovals.toLocaleString()}</p>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Verification holds</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{stats.biometricFlagsCount.toLocaleString()}</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
