@@ -19,15 +19,6 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Diagnose token/project access (temporary)
-        run: |
-          echo "--- whoami ---"
-          vercel whoami --token=${{ secrets.VERCEL_TOKEN }} || true
-          echo "--- teams ls ---"
-          vercel teams ls --token=${{ secrets.VERCEL_TOKEN }} || true
-          echo "--- project ls (scoped to VERCEL_ORG_ID) ---"
-          vercel project ls --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }} || true
-
       - name: Pull Vercel project settings
         run: vercel pull --yes --environment=${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
         env:
