@@ -1,12 +1,73 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, GraduationCap, Calendar, BookOpen, Clock, UserCheck, ArrowRight, School, LifeBuoy, Smartphone } from 'lucide-react';
+import { Users, GraduationCap, Calendar, BookOpen, Clock, UserCheck, ArrowRight, School, LifeBuoy, Smartphone, Percent, ShieldAlert, Radar, TrendingDown } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { BarChartCard } from '../../components/charts/BarChartCard';
 import { Badge } from '../../components/ui/Badge';
 import { StatCard } from '../../components/ui/StatCard';
-import type { DashboardStats, SchoolStats } from '../../types';
+import type { DashboardStats, ExecutiveSummary, SchoolStats } from '../../types';
 import { formatCheckInType } from '../../utils/checkInTypeLabel';
+
+/** §18.4 — VC/DVC see institutional macro-analytics instead of the operational widgets below
+ * (Total Classes, Recent Check-ins, etc.), which assume day-to-day classroom involvement. */
+function ExecutiveOverview({ user, greeting }: { user: { firstName: string } | null | undefined; greeting: string }) {
+  const { data: exec } = useApi<ExecutiveSummary>('/attendance/executive-summary', {
+    refetchIntervalMs: DASHBOARD_REFRESH_MS,
+    refetchWhenVisible: true,
+  });
+
+  const cards = [
+    {
+      title: 'Campus-Wide Attendance Rate',
+      value: `${exec?.campusAttendanceRate ?? 0}%`,
+      hint: exec?.activeTermName ? `Active term: ${exec.activeTermName}` : 'No active term set',
+      icon: Percent,
+      color: 'blue' as const,
+    },
+    {
+      title: 'Total Biometric Flags',
+      value: exec?.totalBiometricFlags ?? 0,
+      hint: 'AI spoofing/fraud attempts blocked',
+      icon: ShieldAlert,
+      color: 'red' as const,
+    },
+    {
+      title: 'Hardware Health',
+      value: `${exec?.hardwareHealthPct ?? 0}%`,
+      hint: `${exec?.beaconsOnline ?? 0} of ${exec?.beaconsTotal ?? 0} beacons online`,
+      icon: Radar,
+      color: 'green' as const,
+    },
+    {
+      title: 'Performance Delta',
+      value: exec?.lowestPerformingFaculty ? `${exec.lowestPerformingFaculty.attendanceRate}%` : '—',
+      hint: exec?.lowestPerformingFaculty
+        ? `Lowest: ${exec.lowestPerformingFaculty.name}`
+        : 'No faculty assigned to courses yet',
+      icon: TrendingDown,
+      color: 'orange' as const,
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{greeting}, {user?.firstName}</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">Institutional overview across the university</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map((card) => (
+          <StatCard key={card.title} title={card.title} value={card.value} color={card.color} icon={<card.icon size={24} />} />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 -mt-2">
+        {cards.map((card) => (
+          <p key={card.title} className="text-xs text-gray-500 dark:text-gray-400 px-1">{card.hint}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -29,6 +90,11 @@ export function OverviewPage() {
     refetchIntervalMs: DASHBOARD_REFRESH_MS,
     refetchWhenVisible: true,
   });
+
+  // §18.4 — no hooks below this point, so bailing out here for VC/DVC never changes hook order.
+  if (user?.role === 'VC' || user?.role === 'DVC') {
+    return <ExecutiveOverview user={user} greeting={getGreeting()} />;
+  }
 
   const statCards = [
     { title: 'Total Students', value: stats?.totalStudents ?? 0, icon: GraduationCap, color: 'blue' as const },

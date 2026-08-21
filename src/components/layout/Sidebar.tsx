@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation } from '../../types';
-import { isHierarchyRole } from '../../lib/rbac';
+import { isHierarchyRole, ROLE_LABEL } from '../../lib/rbac';
 
 interface NavItem {
   to: string;
@@ -145,6 +145,31 @@ const hierarchyOperations: NavItem[] = [
   { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
+];
+
+/* ---- The "Executive Diet" (§18.3) — VC/DVC need institutional oversight, not granular IT or
+   classroom-management tools. A deliberately thin nav: Dashboard, Users (view-only, enforced in
+   UsersPage.tsx), Attendance, Fraud Detection, Reports — nothing else. ---- */
+const execAdmin: NavItem[] = [
+  { to: '/admin/users', icon: Users, label: 'Users' },
+];
+
+const execOperations: NavItem[] = [
+  {
+    to: '/admin/attendance',
+    icon: ClipboardList,
+    label: 'Attendance',
+    children: [
+      { to: '/admin/attendance-overview', icon: ClipboardList, label: 'Overview' },
+      { to: '/admin/attendance-analytics', icon: BarChart3, label: 'Analytics' },
+      { to: '/attendance', icon: UserCheck, label: 'Sessions' },
+    ],
+  },
+  { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
+];
+
+const execGeneral: NavItem[] = [
+  { to: '/reports', icon: FileText, label: 'Reports' },
 ];
 
 const hierarchyGeneral: NavItem[] = [
@@ -328,8 +353,9 @@ export function Sidebar({
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isRegistrar = user?.role === 'REGISTRAR_ACADEMIC' || user?.role === 'REGISTRAR_ADMIN';
   const isIctAdmin = user?.role === 'ICT_ADMIN';
-  const isHierarchyOps = isHierarchyRole(user?.role) && !isRegistrar && !isIctAdmin;
-  const isLecturer = !isAdmin && !isRegistrar && !isIctAdmin && !isHierarchyOps;
+  const isExecutive = user?.role === 'VC' || user?.role === 'DVC';
+  const isHierarchyOps = isHierarchyRole(user?.role) && !isRegistrar && !isIctAdmin && !isExecutive;
+  const isLecturer = !isAdmin && !isRegistrar && !isIctAdmin && !isHierarchyOps && !isExecutive;
   const { data: unreadData, refetch: refetchUnread } = useApi<{ count: number }>('/notifications/unread-count', {
     refetchIntervalMs: 60_000,
     refetchWhenVisible: true,
@@ -378,7 +404,7 @@ export function Sidebar({
     return () => { s.disconnect(); };
   }, [refetchUnread, refetchTickets, refetchEscalations]);
 
-  const roleLabel = isSuperAdmin ? 'Super Admin' : isAdmin ? 'Admin' : 'Lecturer';
+  const roleLabel = user?.role ? ROLE_LABEL[user.role] : 'Lecturer';
   const roleAccent = isSuperAdmin ? 'from-purple-500 to-purple-600' : isAdmin ? 'from-blue-500 to-blue-600' : 'from-emerald-500 to-emerald-600';
 
   // Inject unread badge into Alerts link
@@ -461,6 +487,14 @@ export function Sidebar({
             <NavSection title="Administration" links={addPendingBadge(hodAdmin)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Operations" links={addEscalationBadge(hodOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="General" links={filterByFeatures(addTicketBadge(addAlertBadge(hodGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+          </>
+        )}
+        {isExecutive && (
+          <>
+            <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Administration" links={execAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Operations" links={execOperations} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={execGeneral} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isHierarchyOps && (

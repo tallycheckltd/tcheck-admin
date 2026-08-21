@@ -111,6 +111,8 @@ export function UsersPage() {
   const pendingCount = users?.filter((u) => u.status === 'PENDING').length || 0;
 
   const canDelete = (u: User) => isSuperAdmin && u.role !== 'SUPER_ADMIN' && u.role !== 'SUB_ADMIN';
+  // Executive Diet (§18.3) — VC/DVC get institutional oversight, not account-management actions.
+  const isReadOnlyUsers = currentUser?.role === 'VC' || currentUser?.role === 'DVC';
 
   return (
     <div className="space-y-6">
@@ -119,6 +121,7 @@ export function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{users?.filter((u) => u.status !== 'DELETED').length || 0} total users</p>
         </div>
+        {!isReadOnlyUsers && (
         <div className="flex gap-2">
           {isSuperAdmin && (
             <Button variant="secondary" onClick={() => openCreateModal('admin')}>
@@ -135,6 +138,7 @@ export function UsersPage() {
             <Plus size={16} className="mr-1" /> Add Lecturer
           </Button>
         </div>
+        )}
       </div>
 
       <UserDirectoryTabs />
@@ -211,7 +215,7 @@ export function UsersPage() {
                       <button onClick={() => navigate(`/admin/users/${u.id}`)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-blue-500 transition-all shadow-sm border border-transparent hover:border-blue-100 dark:hover:border-white/10" title="View Details">
                         <Eye size={18} />
                       </button>
-                      {u.status === 'PENDING' && (
+                      {!isReadOnlyUsers && u.status === 'PENDING' && (
                         <>
                           <button onClick={() => approve(u.id)} className="p-2 rounded-xl hover:bg-green-50 dark:hover:bg-green-500/10 text-green-500 transition-all border border-transparent hover:border-green-100 dark:hover:border-white/10" title="Approve">
                             <CheckCircle size={18} />
@@ -221,7 +225,7 @@ export function UsersPage() {
                           </button>
                         </>
                       )}
-                      {canDelete(u) && (
+                      {!isReadOnlyUsers && canDelete(u) && (
                         <button onClick={() => deleteUser(u.id)} className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400 transition-all border border-transparent hover:border-red-100 dark:hover:border-white/10" title="Delete">
                           <Trash2 size={18} />
                         </button>

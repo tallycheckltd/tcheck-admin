@@ -78,10 +78,6 @@ function DashboardFooter() {
       <a href="https://tallycheck.co.ke/terms" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
         Terms of Service &#8599;
       </a>
-      <span className="text-slate-300 dark:text-slate-700">|</span>
-      <a href="https://support.tallycheck.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
-        Support Desk &#8599;
-      </a>
     </footer>
   );
 }

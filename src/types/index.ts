@@ -501,6 +501,16 @@ export interface DashboardStats {
   biometricFlagsCount: number;
 }
 
+export interface ExecutiveSummary {
+  activeTermName: string | null;
+  campusAttendanceRate: number;
+  totalBiometricFlags: number;
+  hardwareHealthPct: number;
+  beaconsOnline: number;
+  beaconsTotal: number;
+  lowestPerformingFaculty: { name: string; attendanceRate: number } | null;
+}
+
 export interface Conversation {
   id: string;
   otherUser: Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'>;
