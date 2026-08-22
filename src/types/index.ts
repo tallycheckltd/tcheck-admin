@@ -43,6 +43,9 @@ export interface School {
   // Calendar-scheduled (default) vs. stage-based progression (Program/Module pipeline, no
   // calendar at all — see Program/Module below).
   attendanceMode?: AttendanceMode;
+  // Set only for schools on isolated, separately-provisioned backend infrastructure (e.g. the
+  // Moi Pilot). Null/undefined means this school lives on the default shared backend.
+  apiBaseUrl?: string | null;
   createdAt: string;
 }
 
