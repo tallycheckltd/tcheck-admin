@@ -3,7 +3,7 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { LifeBuoy, Clock, CheckCircle2, AlertTriangle, GraduationCap, BookOpen, Search, Camera } from 'lucide-react';
+import { LifeBuoy, Clock, CheckCircle2, AlertTriangle, GraduationCap, BookOpen, Search, Camera, Fingerprint } from 'lucide-react';
 import type { Escalation } from '../../types';
 
 // Matches attendance.service.ts's exact rejection string verbatim — the only reliable way to
@@ -45,6 +45,7 @@ export function EscalationsPage() {
   );
   const { mutate: resolve, loading: resolving } = useMutation<Escalation>('patch');
   const { mutate: requestBaselineRetake, loading: requestingRetake } = useMutation<Escalation>('patch');
+  const { mutate: resetBiometricLock, loading: resettingBiometric } = useMutation<Escalation>('patch');
 
   const filtered = useMemo(() => {
     const list = escalations || [];
@@ -67,6 +68,11 @@ export function EscalationsPage() {
 
   const handleRequestBaselineRetake = async (id: string) => {
     await requestBaselineRetake(`/escalations/${id}/request-baseline-retake`);
+    refetch();
+  };
+
+  const handleResetBiometricLock = async (id: string) => {
+    await resetBiometricLock(`/escalations/${id}/reset-biometric-lock`);
     refetch();
   };
 
@@ -229,6 +235,16 @@ export function EscalationsPage() {
                       className="w-full"
                     >
                       <Camera size={16} className="mr-1.5" /> Request Baseline Photo
+                    </Button>
+                  )}
+                  {!!selected.student?.biometricLockInvalidatedAt && (
+                    <Button
+                      onClick={() => handleResetBiometricLock(selected.id)}
+                      disabled={resettingBiometric}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      <Fingerprint size={16} className="mr-1.5" /> Reset Biometric Lock
                     </Button>
                   )}
                   <Button onClick={() => handleResolve(selected.id)} disabled={resolving} className="w-full">
