@@ -30,6 +30,9 @@ interface SchoolSettingsValue {
   lateThresholdMinutes: number;
   extremelyLateThresholdMinutes: number;
   attendanceMode: AttendanceMode;
+  // Empty string means unset (sent to the API as null). Set only for schools on isolated,
+  // separately-provisioned backend infrastructure — e.g. a pilot with its own Railway project.
+  apiBaseUrl: string;
 }
 
 const defaultSettings: SchoolSettingsValue = {
@@ -38,6 +41,7 @@ const defaultSettings: SchoolSettingsValue = {
   lateThresholdMinutes: 10,
   extremelyLateThresholdMinutes: 20,
   attendanceMode: 'CALENDAR_BASED',
+  apiBaseUrl: '',
 };
 
 interface ExtraAdminRow {
@@ -105,6 +109,20 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
             <Layers size={13} /> Stage-Based
           </button>
         </div>
+      </div>
+
+      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Infrastructure</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Leave blank unless this school runs on its own isolated backend (e.g. a pilot with a
+          separate database). If set, the mobile apps redirect to this URL after the school is
+          selected instead of using the default backend.
+        </p>
+        <Input
+          placeholder="https://tcheck-backend-example.up.railway.app/api"
+          value={value.apiBaseUrl}
+          onChange={(e) => onChange({ ...value, apiBaseUrl: e.target.value })}
+        />
       </div>
 
       <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5">
@@ -191,6 +209,7 @@ export function SchoolsPage() {
     lateThresholdMinutes: 10,
     extremelyLateThresholdMinutes: 20,
     attendanceMode: 'CALENDAR_BASED' as AttendanceMode,
+    apiBaseUrl: '',
   });
 
   // New-school wizard: step 1 collects the institution, step 2 collects the admin who'll log in
@@ -231,12 +250,13 @@ export function SchoolsPage() {
       lateThresholdMinutes: s.lateThresholdMinutes ?? 10,
       extremelyLateThresholdMinutes: s.extremelyLateThresholdMinutes ?? 20,
       attendanceMode: s.attendanceMode ?? 'CALENDAR_BASED',
+      apiBaseUrl: s.apiBaseUrl ?? '',
     });
     setModal(true);
   };
 
   const handleSubmit = async () => {
-    await update(`/schools/${editing!.id}`, form);
+    await update(`/schools/${editing!.id}`, { ...form, apiBaseUrl: form.apiBaseUrl || null });
     setModal(false);
     refetch();
   };
@@ -280,7 +300,7 @@ export function SchoolsPage() {
       }
 
       // Idempotent — updateSchool shallow-merges features, so resending on retry is harmless.
-      await update(`/schools/${schoolId}`, settingsForm);
+      await update(`/schools/${schoolId}`, { ...settingsForm, apiBaseUrl: settingsForm.apiBaseUrl || null });
 
       // Blank rows (never filled in after clicking "+ Add another") are silently skipped rather
       // than blocking submission — no need to force the admin to delete an unused row.
