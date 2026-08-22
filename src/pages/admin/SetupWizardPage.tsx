@@ -260,7 +260,7 @@ function StepSummaryRow({ title, summary }: { title: string; summary: IngestSumm
       <p className="text-gray-500 dark:text-gray-400 mt-0.5">
         {summary.totalRows} rows · {summary.created} created · {summary.updated} updated · {summary.skipped} skipped
       </p>
-      {summary.errors.length > 0 && (
+      {(summary.errors?.length ?? 0) > 0 && (
         <div className="mt-1.5 flex items-start gap-1.5 text-amber-600 dark:text-amber-400">
           <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
           <div className="space-y-0.5">
