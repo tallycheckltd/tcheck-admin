@@ -159,7 +159,7 @@ All accounts use the password: **`password123`**
 ## Key Features
 
 ### Attendance Check-in Methods
-- **BLE Beacon** — The iOS app detects classroom beacons via Bluetooth Low Energy. Check-in is validated against the beacon UUID, signal strength (RSSI threshold), and enrollment.
+- **BLE Beacon** — The mobile app detects classroom beacons via Bluetooth Low Energy. Check-in is validated against the beacon UUID, signal strength (RSSI threshold), and enrollment. A course can have **more than one beacon assigned** (large rooms a single beacon's range doesn't cover) — set on the course's Create/Edit form; a class snapshots whichever beacons the course has at creation time, and check-in accepts a match against any of them.
 - **QR Code** — Lecturers generate time-limited QR codes from the dashboard. Students scan with the iOS app camera.
 - **Manual** — Lecturers and admins can manually mark students present from the dashboard.
 
