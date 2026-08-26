@@ -31,7 +31,7 @@ export function CoursesPage() {
   const [form, setForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '' });
   const [editForm, setEditForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '' });
   const [enrollForm, setEnrollForm] = useState({ userId: '', courseId: '' });
-  const [viewMode, setViewMode] = useState<'cards' | 'grid'>(isAdmin ? 'grid' : 'cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'grid'>('cards');
 
   const { data: allStudents } = useApi<User[]>(enrollModal ? '/users?role=STUDENT&status=APPROVED' : null);
 
