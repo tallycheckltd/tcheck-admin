@@ -28,8 +28,8 @@ export function CoursesPage() {
   const [editModal, setEditModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [enrollModal, setEnrollModal] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '', orgUnitId: '' });
-  const [editForm, setEditForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '', orgUnitId: '' });
+  const [form, setForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '' });
+  const [editForm, setEditForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '' });
   const [enrollForm, setEnrollForm] = useState({ userId: '', courseId: '' });
   const [viewMode, setViewMode] = useState<'cards' | 'grid'>(isAdmin ? 'grid' : 'cards');
 
@@ -40,11 +40,10 @@ export function CoursesPage() {
       ...form,
       lecturerId: isAdmin ? form.lecturerId : user?.id,
       room: form.room || undefined,
-      beaconId: form.beaconId || undefined,
       orgUnitId: form.orgUnitId || null,
     });
     setModal(false);
-    setForm({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '', orgUnitId: '' });
+    setForm({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [], orgUnitId: '' });
     refetch();
   };
 
@@ -56,7 +55,7 @@ export function CoursesPage() {
       schoolId: course.schoolId,
       lecturerId: course.lecturerId,
       room: course.room || '',
-      beaconId: course.beaconId || '',
+      beaconIds: course.courseBeacons?.map((cb) => cb.beacon.id) ?? (course.beaconId ? [course.beaconId] : []),
       orgUnitId: course.orgUnitId || '',
     });
     setEditModal(true);
@@ -67,7 +66,6 @@ export function CoursesPage() {
     await update(`/courses/${editingCourse.id}`, {
       ...editForm,
       room: editForm.room || undefined,
-      beaconId: editForm.beaconId || null,
       orgUnitId: editForm.orgUnitId || null,
     });
     setEditModal(false);
@@ -139,18 +137,21 @@ export function CoursesPage() {
               </p>
             )}
 
-            {(course.room || course.beacon) && (
-              <div className="flex items-center gap-3 mb-3 text-xs text-slate-600 dark:text-slate-400">
-                {course.room && (
-                  <span className="flex items-center gap-1"><MapPin size={12} /> {course.room}</span>
-                )}
-                {course.beacon && (
-                  <Badge color="purple">
-                    <span className="flex items-center gap-1"><Bluetooth size={10} /> {course.beacon.name}</span>
-                  </Badge>
-                )}
-              </div>
-            )}
+            {(() => {
+              const courseBeacons = course.courseBeacons?.map((cb) => cb.beacon) ?? (course.beacon ? [course.beacon] : []);
+              return (course.room || courseBeacons.length > 0) && (
+                <div className="flex items-center gap-3 mb-3 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
+                  {course.room && (
+                    <span className="flex items-center gap-1"><MapPin size={12} /> {course.room}</span>
+                  )}
+                  {courseBeacons.map((b) => (
+                    <Badge key={b.id} color="purple">
+                      <span className="flex items-center gap-1"><Bluetooth size={10} /> {b.name}</span>
+                    </Badge>
+                  ))}
+                </div>
+              );
+            })()}
 
             <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-white/5">
               <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
@@ -200,14 +201,25 @@ export function CoursesPage() {
           )}
           <Input label="Room" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon</label>
-            <select value={form.beaconId} onChange={(e) => setForm({ ...form, beaconId: e.target.value })}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
-              <option value="">No beacon assigned</option>
-              {beacons?.map((b) => (
-                <option key={b.id} value={b.id}>{b.name} ({b.uuid.substring(0, 8)}...)</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacons</label>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Select more than one for a large room a single beacon doesn't cover.</p>
+            <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 divide-y divide-gray-100 dark:divide-white/5">
+              {beacons && beacons.length > 0 ? beacons.map((b) => (
+                <label key={b.id} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-950 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5">
+                  <input
+                    type="checkbox"
+                    checked={form.beaconIds.includes(b.id)}
+                    onChange={(e) => setForm({
+                      ...form,
+                      beaconIds: e.target.checked ? [...form.beaconIds, b.id] : form.beaconIds.filter((id) => id !== b.id),
+                    })}
+                  />
+                  {b.name} ({b.uuid.substring(0, 8)}...)
+                </label>
+              )) : (
+                <p className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">No beacons available</p>
+              )}
+            </div>
           </div>
           {isAdmin && orgUnits && orgUnits.length > 0 && (
             <div className="space-y-1">
@@ -248,14 +260,25 @@ export function CoursesPage() {
           )}
           <Input label="Room" value={editForm.room} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon</label>
-            <select value={editForm.beaconId} onChange={(e) => setEditForm({ ...editForm, beaconId: e.target.value })}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
-              <option value="">No beacon assigned</option>
-              {beacons?.map((b) => (
-                <option key={b.id} value={b.id}>{b.name} ({b.uuid.substring(0, 8)}...)</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacons</label>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Select more than one for a large room a single beacon doesn't cover.</p>
+            <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 divide-y divide-gray-100 dark:divide-white/5">
+              {beacons && beacons.length > 0 ? beacons.map((b) => (
+                <label key={b.id} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-950 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5">
+                  <input
+                    type="checkbox"
+                    checked={editForm.beaconIds.includes(b.id)}
+                    onChange={(e) => setEditForm({
+                      ...editForm,
+                      beaconIds: e.target.checked ? [...editForm.beaconIds, b.id] : editForm.beaconIds.filter((id) => id !== b.id),
+                    })}
+                  />
+                  {b.name} ({b.uuid.substring(0, 8)}...)
+                </label>
+              )) : (
+                <p className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">No beacons available</p>
+              )}
+            </div>
           </div>
           {isAdmin && orgUnits && orgUnits.length > 0 && (
             <div className="space-y-1">
