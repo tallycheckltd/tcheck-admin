@@ -258,6 +258,9 @@ export interface Course {
   room?: string;
   beaconId?: string;
   beacon?: Pick<Beacon, 'id' | 'uuid' | 'name' | 'major' | 'minor' | 'rssiThreshold'>;
+  /// Full multi-beacon set (large room, weak single-beacon coverage) — independent of the legacy
+  /// single beaconId/beacon above.
+  courseBeacons?: { beacon: Pick<Beacon, 'id' | 'uuid' | 'name' | 'major' | 'minor' | 'rssiThreshold'> }[];
   orgUnitId?: string | null;
   orgUnit?: Pick<OrgUnit, 'id' | 'name' | 'level'> | null;
   _count?: { enrollments: number; classes: number };

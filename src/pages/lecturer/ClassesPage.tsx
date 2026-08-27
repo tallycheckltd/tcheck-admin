@@ -31,7 +31,7 @@ export function ClassesPage() {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({
     courseId: '', title: '', date: localCalendarYmd(new Date()),
-    startTime: '', endTime: '', room: '', beaconUUID: '',
+    startTime: '', endTime: '', room: '',
     checkInStart: '', checkInEnd: '',
     lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
     isOnline: false,
@@ -57,16 +57,21 @@ export function ClassesPage() {
   const sessionsForSelectedCourse = selectedCourseId ? myClasses.filter((c) => c.courseId === selectedCourseId) : myClasses;
   const selectedCourse = courseGroups.find((g) => g.course.id === selectedCourseId)?.course;
 
-  // Auto-populate room and compute default check-in window when course or times change
+  // Auto-populate room when course changes. Beacon(s) are NOT set here — createClass resolves
+  // the class's full beacon set from the course's CourseBeacon assignments itself; sending an
+  // explicit beaconUUID override would collapse a multi-beacon course back down to one.
   const handleCourseChange = (courseId: string) => {
     const course = courses?.find((c) => c.id === courseId);
     setForm((prev) => ({
       ...prev,
       courseId,
       room: course?.room || prev.room,
-      beaconUUID: course?.beacon ? course.beacon.uuid : prev.beaconUUID,
     }));
   };
+
+  const selectedFormCourse = courses?.find((c) => c.id === form.courseId);
+  const selectedFormCourseBeacons = selectedFormCourse?.courseBeacons?.map((cb) => cb.beacon)
+    ?? (selectedFormCourse?.beacon ? [selectedFormCourse.beacon] : []);
 
   const handleStartTimeChange = (startTime: string) => {
     setForm((prev) => {
@@ -116,7 +121,6 @@ export function ClassesPage() {
       startTime: `${dateStr}T${form.startTime}:00${tz}`,
       endTime: `${dateStr}T${form.endTime}:00${tz}`,
       room: form.room || undefined,
-      beaconUUID: form.beaconUUID || undefined,
       checkInStart: form.checkInStart ? `${dateStr}T${form.checkInStart}:00${tz}` : undefined,
       checkInEnd: form.checkInEnd ? `${dateStr}T${form.checkInEnd}:00${tz}` : undefined,
       lateThresholdMinutes: form.lateThresholdMinutes ? parseInt(form.lateThresholdMinutes) : undefined,
@@ -126,7 +130,7 @@ export function ClassesPage() {
     setModal(false);
     setForm({
       courseId: '', title: '', date: localCalendarYmd(new Date()),
-      startTime: '', endTime: '', room: '', beaconUUID: '',
+      startTime: '', endTime: '', room: '',
       checkInStart: '', checkInEnd: '',
       lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
       isOnline: false,
@@ -313,14 +317,13 @@ export function ClassesPage() {
             </div>
           </div>
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon UUID</label>
-            <input
-              value={form.beaconUUID}
-              readOnly
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-400"
-              placeholder="Auto-populated from course beacon"
-            />
-            <p className="text-xs text-slate-600 dark:text-slate-400">Auto-populated from course beacon. Left blank if no beacon assigned.</p>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon(s)</label>
+            <div className="w-full rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-400">
+              {selectedFormCourseBeacons.length > 0
+                ? selectedFormCourseBeacons.map((b) => b.name).join(', ')
+                : 'No beacon assigned to this course'}
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Auto-assigned from the course's beacons — edit the course to change this.</p>
           </div>
           <Button onClick={handleCreate} className="w-full">Create Class</Button>
         </div>
