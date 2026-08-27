@@ -673,7 +673,7 @@ export interface Ticket {
 export interface Escalation {
   id: string;
   studentId: string;
-  student?: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>;
+  student?: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'> & { biometricLockInvalidatedAt?: string | null };
   classId: string;
   class?: {
     id: string;
