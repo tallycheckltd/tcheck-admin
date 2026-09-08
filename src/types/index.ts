@@ -26,6 +26,7 @@ export interface SchoolFeatures {
   broadcasts?: boolean;
   faceIdCheckIn?: boolean;
   dwellTimeTracking?: boolean;
+  messaging?: boolean;
 }
 
 export type AttendanceMode = 'CALENDAR_BASED' | 'STAGE_BASED';

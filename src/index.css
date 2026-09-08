@@ -122,16 +122,31 @@ html:not(.dark) option {
   background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border-right: 1px solid var(--app-border);
-  box-shadow: 1px 0 12px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
 }
 
 .dark .glass-sidebar {
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(28px) saturate(160%);
   -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border-right: 1px solid var(--app-border);
-  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* Thin, unobtrusive scrollbar for the sidebar's nav list — the default OS scrollbar used to sit
+   right on top of the divider above the profile card, reading as a stray broken line. */
+.sidebar-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sidebar-edge) transparent;
+}
+.sidebar-nav-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-nav-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-nav-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--sidebar-edge);
+  border-radius: 9999px;
 }
 
 /* ── Glass card ── */

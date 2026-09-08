@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createSocket } from '../../lib/socket';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -12,7 +13,7 @@ import {
   ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { DashboardStats, Ticket, Escalation } from '../../types';
+import type { DashboardStats, Ticket, Escalation, User } from '../../types';
 import { isHierarchyRole, ROLE_LABEL } from '../../lib/rbac';
 
 interface NavItem {
@@ -206,6 +207,35 @@ const ictAdminLinks: NavItem[] = [
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
+/** Live clock under the brand header — ticks every second so the glow reads as "live" rather
+ * than a static timestamp that happens to be right once. */
+function LiveClock({ collapsed }: { collapsed: boolean }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const date = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
+  return (
+    <p
+      className={clsx(
+        'mt-1 flex items-center gap-1.5 text-[10px] font-mono tabular-nums tracking-tight text-blue-500 dark:text-blue-400 truncate',
+        collapsed && 'lg:hidden',
+      )}
+      style={{ textShadow: '0 0 8px rgba(59,130,246,0.6)' }}
+    >
+      <span className="relative flex h-1.5 w-1.5 shrink-0">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500" />
+      </span>
+      <span className="truncate">{date} &middot; {time}</span>
+    </p>
+  );
+}
+
 function NavIcon({ Icon, active }: { Icon: React.ComponentType<{ size?: number }>; active: boolean }) {
   return (
     <span
@@ -341,6 +371,118 @@ function NavSection({
   );
 }
 
+/** Collapses Search/Theme/Logout behind one avatar trigger instead of three permanently-visible
+ * rows — was the last thing in the sidebar feeling like "an old sidebar" (a flat list of account
+ * actions with no chrome around them). Opens as a popover above the trigger since the trigger
+ * itself lives at the very bottom of the screen. */
+function ProfileMenu({
+  user, roleAccent, dark, onToggleTheme, onOpenSearch, onLogout, collapsed,
+}: {
+  user: User | null | undefined;
+  roleAccent: string;
+  dark: boolean;
+  onToggleTheme: () => void;
+  onOpenSearch: () => void;
+  onLogout: () => void;
+  collapsed: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const itemClass = 'flex items-center gap-3 w-full px-2.5 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle';
+  const iconBadgeClass = 'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-black/[0.03] dark:bg-white/5';
+
+  return (
+    <div ref={ref} className="relative">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            // Deliberately opaque and painted via inline style rather than Tailwind's dark:
+            // variant — this dropdown sits directly over other content in the same panel (nav
+            // items, or the page behind it when the rail is collapsed), and a solid hex here
+            // guarantees full coverage regardless of any compositing/paint-order quirk.
+            className="absolute bottom-full left-0 z-50 isolate mb-2 w-64 rounded-2xl border border-[color:var(--sidebar-edge)] shadow-xl overflow-hidden p-1.5 space-y-0.5 origin-bottom-left"
+            style={{ backgroundColor: dark ? '#0f172a' : '#ffffff' }}
+          >
+            <button onClick={() => { onOpenSearch(); setOpen(false); }} type="button" className={itemClass}>
+              <span className={iconBadgeClass}><Search size={16} /></span>
+              <span className="flex-1 text-left">Search</span>
+              <kbd className="inline-flex items-center justify-center px-1.5 h-5 rounded-md text-[10px] font-medium border border-[color:var(--sidebar-edge)] text-[color:var(--app-text-muted)]">
+                /
+              </kbd>
+            </button>
+            <button onClick={() => { onToggleTheme(); setOpen(false); }} type="button" className={itemClass}>
+              <span className={iconBadgeClass}>{dark ? <Sun size={16} /> : <Moon size={16} />}</span>
+              <span className="flex-1 text-left">{dark ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
+            <div className="my-1 border-t border-[color:var(--sidebar-edge)]" />
+            <button
+              onClick={() => { onLogout(); setOpen(false); }}
+              type="button"
+              className="flex items-center gap-3 w-full px-2.5 py-2 rounded-xl text-sm text-red-500 hover:bg-red-500/10 cursor-pointer transition-colors"
+            >
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-red-500/10">
+                <LogOut size={16} />
+              </span>
+              <span className="flex-1 text-left">Logout</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        title={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}
+        className={clsx(
+          'flex items-center gap-2 w-full p-2 rounded-2xl border transition-colors cursor-pointer',
+          open
+            ? 'bg-black/[0.04] dark:bg-white/[0.07] border-black/5 dark:border-white/5'
+            : 'bg-black/[0.03] dark:bg-white/[0.05] border-black/5 dark:border-white/5 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]',
+          collapsed && 'lg:justify-center lg:px-0',
+        )}
+      >
+        <div className="relative flex-shrink-0">
+          <div className={clsx(`w-9 h-9 rounded-full bg-gradient-to-br ${roleAccent} flex items-center justify-center text-white text-xs font-bold ring-2 ring-[color:var(--app-elevated-solid)] shadow-sm`)}>
+            {user?.firstName?.[0]}{user?.lastName?.[0]}
+          </div>
+          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[color:var(--app-elevated-solid)]" aria-hidden="true" />
+        </div>
+        <div className={clsx('flex-1 min-w-0 text-left', collapsed && 'lg:hidden')}>
+          <p className="text-sm font-semibold truncate text-[color:var(--app-text)] dark:text-white">
+            {user?.firstName} {user?.lastName}
+          </p>
+          <p className="text-[11px] truncate text-[color:var(--app-text-muted)] dark:text-slate-500">{user?.email}</p>
+        </div>
+        <ChevronDown
+          size={14}
+          className={clsx('shrink-0 transition-transform text-[color:var(--app-text-muted)]', open && 'rotate-180', collapsed && 'lg:hidden')}
+        />
+      </button>
+    </div>
+  );
+}
+
 export function Sidebar({
   open, onClose, collapsed, onToggleCollapse, onOpenSearch,
 }: {
@@ -438,8 +580,13 @@ export function Sidebar({
       )}
       <aside
         className={clsx(
-          'fixed left-0 top-0 h-screen glass-sidebar flex flex-col z-40 border-r border-[color:var(--sidebar-edge)] transition-[transform,width] duration-200',
+          // Floats clear of the viewport edges on desktop (lg:) — a rounded, fully-bordered card
+          // with an ambient shadow instead of a flush panel glued to the browser chrome. The
+          // mobile drawer (below lg:) stays edge-to-edge/square since it's a full-height overlay,
+          // not a persistent piece of chrome, so "floating" there would just cost screen space.
+          'fixed inset-y-0 left-0 h-screen glass-sidebar flex flex-col z-40 border border-[color:var(--sidebar-edge)] transition-[transform,width] duration-200',
           'w-64',
+          'lg:inset-auto lg:left-3 lg:top-3 lg:h-[calc(100vh-1.5rem)] lg:rounded-2xl',
           collapsed ? 'lg:w-[76px]' : 'lg:w-64',
           open ? 'translate-x-0' : '-translate-x-full',
           'lg:translate-x-0',
@@ -450,7 +597,7 @@ export function Sidebar({
         type="button"
         onClick={onToggleCollapse}
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="hidden lg:flex absolute -right-3 top-7 w-6 h-6 rounded-full glass-sidebar items-center justify-center shadow-sm hover:scale-110 transition-transform cursor-pointer text-[color:var(--app-text-muted)]"
+        className="hidden lg:flex absolute -right-3 top-7 w-6 h-6 rounded-full glass-sidebar items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer text-[color:var(--app-text-muted)]"
       >
         {collapsed ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
       </button>
@@ -462,6 +609,7 @@ export function Sidebar({
           <p className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--app-accent-label)] whitespace-nowrap">
             {roleLabel}
           </p>
+          <LiveClock collapsed={collapsed} />
         </div>
         <button
           type="button"
@@ -473,7 +621,7 @@ export function Sidebar({
         </button>
       </div>
 
-      <nav className="flex-1 px-3 pt-4 space-y-1 overflow-y-auto overflow-x-hidden">
+      <nav className="sidebar-nav-scroll flex-1 px-3 pt-4 space-y-1 overflow-y-auto overflow-x-hidden">
         {isSuperAdmin && (
           <>
             <NavSection title="Overview" links={superAdminOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
@@ -572,44 +720,16 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="p-3 border-t border-[color:var(--sidebar-edge)] space-y-1">
-        <div className={clsx('flex items-center gap-3 px-2 py-2 mb-1', collapsed && 'lg:justify-center lg:px-0')} title={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}>
-          <div className={clsx(`w-9 h-9 rounded-full bg-gradient-to-br ${roleAccent} flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ring-2 ring-[color:var(--app-elevated-solid)]`)}>
-            {user?.firstName?.[0]}{user?.lastName?.[0]}
-          </div>
-          <div className={clsx('flex-1 min-w-0', collapsed && 'lg:hidden')}>
-            <p className="text-sm font-medium truncate text-[color:var(--app-text)] dark:text-white">
-              {user?.firstName} {user?.lastName}
-            </p>
-            <p className="text-[11px] truncate text-[color:var(--app-text-muted)] dark:text-slate-500">{user?.email}</p>
-          </div>
-        </div>
-        <button
-          onClick={() => { onOpenSearch(); onClose(); }}
-          type="button"
-          title={collapsed ? 'Search' : undefined}
-          className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle', collapsed && 'lg:justify-center lg:px-0')}
-        >
-          <Search size={18} />
-          <span className={clsx(collapsed && 'lg:hidden')}>Search</span>
-        </button>
-        <button
-          onClick={toggle}
-          type="button"
-          title={collapsed ? (dark ? 'Light Mode' : 'Dark Mode') : undefined}
-          className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle', collapsed && 'lg:justify-center lg:px-0')}
-        >
-          {dark ? <Sun size={18} /> : <Moon size={18} />}
-          <span className={clsx(collapsed && 'lg:hidden')}>{dark ? 'Light Mode' : 'Dark Mode'}</span>
-        </button>
-        <button
-          onClick={() => { logout(); navigate('/login'); }}
-          title={collapsed ? 'Logout' : undefined}
-          className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm text-red-500 hover:bg-red-500/10 cursor-pointer transition-colors', collapsed && 'lg:justify-center lg:px-0')}
-        >
-          <LogOut size={18} />
-          <span className={clsx(collapsed && 'lg:hidden')}>Logout</span>
-        </button>
+      <div className="p-3">
+        <ProfileMenu
+          user={user}
+          roleAccent={roleAccent}
+          dark={dark}
+          onToggleTheme={toggle}
+          onOpenSearch={() => { onOpenSearch(); onClose(); }}
+          onLogout={() => { logout(); navigate('/login'); }}
+          collapsed={collapsed}
+        />
       </div>
       </aside>
     </>

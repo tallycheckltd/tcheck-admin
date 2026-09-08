@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -10,6 +10,21 @@ export function DashboardLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
+
+  // Backs the "/" hint shown next to Search in the sidebar — ignored while typing in any field
+  // so it doesn't hijack a literal "/" character in, say, a school code or a message draft.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      e.preventDefault();
+      setSearchOpen(true);
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -30,7 +45,10 @@ export function DashboardLayout() {
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'STUDENT') return <Navigate to="/login" replace />;
 
-  const contentMargin = collapsed ? 'lg:ml-[76px]' : 'lg:ml-64';
+  // Sidebar now floats lg:left-3 with its own width, plus a matching gap before content starts
+  // (12px offset + width + 12px gap) — content margin has to grow by that offset+gap or it would
+  // sit flush against the floating card instead of clearing it.
+  const contentMargin = collapsed ? 'lg:ml-[100px]' : 'lg:ml-[280px]';
 
   return (
     <div className="min-h-screen app-shell transition-[background-color,color] duration-200">
