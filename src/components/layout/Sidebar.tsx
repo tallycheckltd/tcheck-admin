@@ -438,8 +438,13 @@ export function Sidebar({
       )}
       <aside
         className={clsx(
-          'fixed left-0 top-0 h-screen glass-sidebar flex flex-col z-40 border-r border-[color:var(--sidebar-edge)] transition-[transform,width] duration-200',
+          // Floats clear of the viewport edges on desktop (lg:) — a rounded, fully-bordered card
+          // with an ambient shadow instead of a flush panel glued to the browser chrome. The
+          // mobile drawer (below lg:) stays edge-to-edge/square since it's a full-height overlay,
+          // not a persistent piece of chrome, so "floating" there would just cost screen space.
+          'fixed inset-y-0 left-0 h-screen glass-sidebar flex flex-col z-40 border border-[color:var(--sidebar-edge)] transition-[transform,width] duration-200',
           'w-64',
+          'lg:inset-auto lg:left-3 lg:top-3 lg:h-[calc(100vh-1.5rem)] lg:rounded-2xl',
           collapsed ? 'lg:w-[76px]' : 'lg:w-64',
           open ? 'translate-x-0' : '-translate-x-full',
           'lg:translate-x-0',
@@ -450,7 +455,7 @@ export function Sidebar({
         type="button"
         onClick={onToggleCollapse}
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="hidden lg:flex absolute -right-3 top-7 w-6 h-6 rounded-full glass-sidebar items-center justify-center shadow-sm hover:scale-110 transition-transform cursor-pointer text-[color:var(--app-text-muted)]"
+        className="hidden lg:flex absolute -right-3 top-7 w-6 h-6 rounded-full glass-sidebar items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer text-[color:var(--app-text-muted)]"
       >
         {collapsed ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
       </button>
@@ -572,44 +577,70 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="p-3 border-t border-[color:var(--sidebar-edge)] space-y-1">
-        <div className={clsx('flex items-center gap-3 px-2 py-2 mb-1', collapsed && 'lg:justify-center lg:px-0')} title={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}>
-          <div className={clsx(`w-9 h-9 rounded-full bg-gradient-to-br ${roleAccent} flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ring-2 ring-[color:var(--app-elevated-solid)]`)}>
-            {user?.firstName?.[0]}{user?.lastName?.[0]}
+      <div className="p-3 border-t border-[color:var(--sidebar-edge)] space-y-2">
+        {/* Identity card — a distinct raised surface instead of a bare icon+text row, with an
+            online dot on the avatar so this reads as "who's signed in" rather than a nav item. */}
+        <div
+          className={clsx(
+            'flex items-center gap-3 p-2 rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/5 dark:border-white/5',
+            collapsed && 'lg:justify-center lg:px-0',
+          )}
+          title={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}
+        >
+          <div className="relative flex-shrink-0">
+            <div className={clsx(`w-9 h-9 rounded-full bg-gradient-to-br ${roleAccent} flex items-center justify-center text-white text-xs font-bold ring-2 ring-[color:var(--app-elevated-solid)] shadow-sm`)}>
+              {user?.firstName?.[0]}{user?.lastName?.[0]}
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[color:var(--app-elevated-solid)]" aria-hidden="true" />
           </div>
           <div className={clsx('flex-1 min-w-0', collapsed && 'lg:hidden')}>
-            <p className="text-sm font-medium truncate text-[color:var(--app-text)] dark:text-white">
+            <p className="text-sm font-semibold truncate text-[color:var(--app-text)] dark:text-white">
               {user?.firstName} {user?.lastName}
             </p>
             <p className="text-[11px] truncate text-[color:var(--app-text-muted)] dark:text-slate-500">{user?.email}</p>
           </div>
         </div>
-        <button
-          onClick={() => { onOpenSearch(); onClose(); }}
-          type="button"
-          title={collapsed ? 'Search' : undefined}
-          className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle', collapsed && 'lg:justify-center lg:px-0')}
-        >
-          <Search size={18} />
-          <span className={clsx(collapsed && 'lg:hidden')}>Search</span>
-        </button>
-        <button
-          onClick={toggle}
-          type="button"
-          title={collapsed ? (dark ? 'Light Mode' : 'Dark Mode') : undefined}
-          className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle', collapsed && 'lg:justify-center lg:px-0')}
-        >
-          {dark ? <Sun size={18} /> : <Moon size={18} />}
-          <span className={clsx(collapsed && 'lg:hidden')}>{dark ? 'Light Mode' : 'Dark Mode'}</span>
-        </button>
-        <button
-          onClick={() => { logout(); navigate('/login'); }}
-          title={collapsed ? 'Logout' : undefined}
-          className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm text-red-500 hover:bg-red-500/10 cursor-pointer transition-colors', collapsed && 'lg:justify-center lg:px-0')}
-        >
-          <LogOut size={18} />
-          <span className={clsx(collapsed && 'lg:hidden')}>Logout</span>
-        </button>
+
+        <div className="space-y-0.5">
+          <button
+            onClick={() => { onOpenSearch(); onClose(); }}
+            type="button"
+            title={collapsed ? 'Search' : undefined}
+            className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle', collapsed && 'lg:justify-center lg:px-0')}
+          >
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-black/[0.03] dark:bg-white/5">
+              <Search size={16} />
+            </span>
+            <span className={clsx('flex-1 text-left', collapsed && 'lg:hidden')}>Search</span>
+            <kbd className={clsx('hidden xl:inline-flex items-center justify-center px-1.5 h-5 rounded-md text-[10px] font-medium border border-[color:var(--sidebar-edge)] text-[color:var(--app-text-muted)]', collapsed && 'lg:hidden')}>
+              /
+            </kbd>
+          </button>
+          <button
+            onClick={toggle}
+            type="button"
+            title={collapsed ? (dark ? 'Light Mode' : 'Dark Mode') : undefined}
+            className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle', collapsed && 'lg:justify-center lg:px-0')}
+          >
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-black/[0.03] dark:bg-white/5">
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
+            </span>
+            <span className={clsx('flex-1 text-left', collapsed && 'lg:hidden')}>{dark ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
+
+          <div className={clsx('my-1 border-t border-[color:var(--sidebar-edge)]', collapsed && 'lg:mx-2')} />
+
+          <button
+            onClick={() => { logout(); navigate('/login'); }}
+            title={collapsed ? 'Logout' : undefined}
+            className={clsx('flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm text-red-500 hover:bg-red-500/10 cursor-pointer transition-colors', collapsed && 'lg:justify-center lg:px-0')}
+          >
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-red-500/10">
+              <LogOut size={16} />
+            </span>
+            <span className={clsx('flex-1 text-left', collapsed && 'lg:hidden')}>Logout</span>
+          </button>
+        </div>
       </div>
       </aside>
     </>
