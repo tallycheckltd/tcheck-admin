@@ -5,7 +5,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Slider } from '../../components/ui/Slider';
 import {
-  Settings, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer,
+  Settings, UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer,
   School as SchoolIcon, CalendarDays, Layers,
 } from 'lucide-react';
 import type { AttendanceMode, School, SchoolFeatures } from '../../types';
@@ -16,6 +16,7 @@ const defaultFeatures: Required<SchoolFeatures> = {
   broadcasts: true,
   faceIdCheckIn: true,
   dwellTimeTracking: true,
+  messaging: true,
 };
 
 const emptyForm = {
@@ -214,6 +215,13 @@ export function SettingsPage() {
             <GlassCard>
               <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-4">Features Configuration</h3>
               <div className="space-y-4">
+                <FeatureToggle
+                  icon={MessageSquare}
+                  title="Messaging"
+                  description="Chat, campus/course rooms, and direct messages. Off hides the Chat tab entirely on mobile — no messaging feature at all for this school, not just muted."
+                  checked={form.features.messaging}
+                  onChange={(v) => setForm({ ...form, features: { ...form.features, messaging: v } })}
+                />
                 <FeatureToggle
                   icon={MessageSquareOff}
                   title="Anonymous Chat"

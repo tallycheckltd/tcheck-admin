@@ -7,7 +7,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Slider } from '../../components/ui/Slider';
 import { ColorPickerField } from '../../components/ui/ColorPickerField';
 import {
-  Plus, Pencil, Trash2, School as SchoolIcon, Hash, UserCheck, MessageSquareOff,
+  Plus, Pencil, Trash2, School as SchoolIcon, Hash, UserCheck, MessageSquareOff, MessageSquare,
   ShieldCheck, Megaphone, ScanFace, Timer, Mail, Lock, User as UserIcon, ArrowRight, ArrowLeft,
   AlertCircle, CheckCircle2, UserPlus, X, CalendarDays, Layers
 } from 'lucide-react';
@@ -22,6 +22,7 @@ const defaultFeatures: Required<SchoolFeatures> = {
   broadcasts: true,
   faceIdCheckIn: true,
   dwellTimeTracking: true,
+  messaging: true,
 };
 
 interface SchoolSettingsValue {
@@ -153,6 +154,13 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
 
       <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Features Configuration</h3>
+        <ToggleRow
+          icon={MessageSquare}
+          title="Messaging"
+          description="Chat, campus/course rooms, and direct messages. Off hides the Chat tab entirely on mobile — no messaging feature at all for this school, not just muted."
+          checked={value.features.messaging}
+          onChange={(v) => onChange({ ...value, features: { ...value.features, messaging: v } })}
+        />
         <ToggleRow
           icon={MessageSquareOff}
           title="Anonymous Chat"
