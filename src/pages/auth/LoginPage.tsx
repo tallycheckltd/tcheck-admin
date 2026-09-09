@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Eye, EyeOff, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [otpStage, setOtpStage] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user } = useAuth();
+  const { requestOtp, verifyOtp, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,16 +22,30 @@ export function LoginPage() {
     }
   }, [user, navigate]);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const loggedInUser = await login(email, password);
+      await requestOtp(email, password);
+      setOtpStage(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const loggedInUser = await verifyOtp(email, code);
       const dest = (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'SUB_ADMIN') ? '/admin' : '/lecturer';
       navigate(dest);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Invalid code');
     } finally {
       setLoading(false);
     }
@@ -105,11 +121,68 @@ export function LoginPage() {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
-            <p className="text-slate-400 text-sm">Sign in to your dashboard</p>
+            <h2 className="text-2xl font-bold text-white mb-2">{otpStage ? 'Check your email' : 'Welcome back'}</h2>
+            <p className="text-slate-400 text-sm">
+              {otpStage ? (
+                <>Enter the 6-digit code we sent to <span className="text-slate-300 font-medium">{email}</span>.</>
+              ) : (
+                'Sign in to your dashboard'
+              )}
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {otpStage ? (
+            <form onSubmit={handleOtpSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-300">Verification code</label>
+                <div className="relative group">
+                  <ShieldCheck size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    required
+                    autoFocus
+                    className="w-full pl-12 pr-4 py-3 rounded-xl text-sm tracking-[0.3em] bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in">
+                  <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+                  <p className="text-sm text-red-400">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || code.length !== 6}
+                className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group"
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Verify
+                    <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setOtpStage(false); setCode(''); setError(''); }}
+                className="block mx-auto text-sm text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
+              >
+                Back to sign in
+              </button>
+            </form>
+          ) : (
+          <form onSubmit={handlePasswordSubmit} className="space-y-5">
             {/* Email field */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-300">Email</label>
@@ -181,6 +254,7 @@ export function LoginPage() {
               )}
             </button>
           </form>
+          )}
 
           <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
             <p className="text-center text-xs text-slate-600">
