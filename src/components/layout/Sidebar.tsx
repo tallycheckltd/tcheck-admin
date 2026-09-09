@@ -562,11 +562,23 @@ export function Sidebar({
   const addPendingBadge = (links: NavItem[]) =>
     links.map((l) => l.to === '/admin/users' ? { ...l, badge: pendingApprovals } : l);
 
-  // Phase 4: hide Announcements when the user's own school has broadcasts switched off — Super
-  // Admin manages every school so always keeps the link regardless of any one school's setting.
-  const broadcastsEnabledForUser = isSuperAdmin || (user?.school?.features?.broadcasts ?? true);
-  const filterByFeatures = (links: NavItem[]) =>
-    broadcastsEnabledForUser ? links : links.filter((l) => l.label !== 'Announcements');
+  // Every nav item gated on the viewer's own school configuration resolves here, so there is one
+  // place to change when a new per-school nav rule appears. SUPER_ADMIN manages every school, so
+  // it bypasses all of this and always sees the full set.
+  //
+  // Terms and Programs are mutually exclusive by design (School.attendanceMode): a CALENDAR_BASED
+  // school schedules against academic terms and never touches Programs, while a STAGE_BASED school
+  // runs students through a Program/Module pipeline with no calendar at all. If a school ever needs
+  // both at once, attendanceMode being a single either/or enum is the only thing in the way — split
+  // it into two independent flags and widen this block; no other nav code reads it.
+  const attendanceMode = user?.school?.attendanceMode ?? 'CALENDAR_BASED';
+  const hiddenNavLabels = new Set<string>();
+  if (!isSuperAdmin) {
+    if (!(user?.school?.features?.broadcasts ?? true)) hiddenNavLabels.add('Announcements');
+    hiddenNavLabels.add(attendanceMode === 'STAGE_BASED' ? 'Terms' : 'Programs');
+  }
+  const filterBySchoolConfig = (links: NavItem[]) =>
+    hiddenNavLabels.size === 0 ? links : links.filter((l) => !hiddenNavLabels.has(l.label));
 
   return (
     <>
@@ -632,9 +644,9 @@ export function Sidebar({
         {isAdmin && !isSuperAdmin && (
           <>
             <NavSection title="Overview" links={hodOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Administration" links={addPendingBadge(hodAdmin)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Administration" links={filterBySchoolConfig(addPendingBadge(hodAdmin))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Operations" links={addEscalationBadge(hodOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={filterByFeatures(addTicketBadge(addAlertBadge(hodGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(addAlertBadge(hodGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isExecutive && (
@@ -650,7 +662,7 @@ export function Sidebar({
             <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection
               title="Administration"
-              links={user?.role === 'DEPUTY_HOD' ? hierarchyAdmin.filter((l) => l.label === 'Users') : hierarchyAdmin}
+              links={filterBySchoolConfig(user?.role === 'DEPUTY_HOD' ? hierarchyAdmin.filter((l) => l.label === 'Users') : hierarchyAdmin)}
               isSuperAdmin={isSuperAdmin}
               onNavigate={onClose}
               collapsed={collapsed}
@@ -666,14 +678,14 @@ export function Sidebar({
               onNavigate={onClose}
               collapsed={collapsed}
             />
-            <NavSection title="General" links={filterByFeatures(addTicketBadge(addAlertBadge(hierarchyGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(addAlertBadge(hierarchyGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isRegistrar && (
           <>
             <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Administration" links={registrarAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={filterByFeatures(registrarGeneral)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Administration" links={filterBySchoolConfig(registrarAdmin)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={filterBySchoolConfig(registrarGeneral)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isIctAdmin && addEscalationBadge(ictAdminLinks).map((link) => (
@@ -697,7 +709,7 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isLecturer && addEscalationBadge(filterByFeatures(lecturerLinks)).map((link) => (
+        {isLecturer && addEscalationBadge(filterBySchoolConfig(lecturerLinks)).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
