@@ -13,6 +13,17 @@
   --color-accent: #8B5CF6;
 }
 
+/* OTP box input's wrong-code tell — see components/auth/OtpBoxInput.tsx */
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
 /*
  * Light mode — enterprise matte (flat, low-glare; not pure white everywhere).
  * Dark mode tokens unchanged below; components should prefer these vars where possible.
