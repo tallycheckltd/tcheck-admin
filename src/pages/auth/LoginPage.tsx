@@ -1,19 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, MailCheck, RotateCw } from 'lucide-react';
+import { OtpBoxInput } from '../../components/auth/OtpBoxInput';
+
+const RESEND_COOLDOWN_SECONDS = 30;
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [otpStage, setOtpStage] = useState(false);
+  const [otpErrorTick, setOtpErrorTick] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { requestOtp, verifyOtp, user } = useAuth();
   const navigate = useNavigate();
+  const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (cooldownTimer.current) clearInterval(cooldownTimer.current); }, []);
+
+  const startResendCooldown = () => {
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+    cooldownTimer.current = setInterval(() => {
+      setResendCooldown((s) => {
+        if (s <= 1) {
+          if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  };
 
   useEffect(() => {
     if (user) {
@@ -29,6 +52,7 @@ export function LoginPage() {
     try {
       await requestOtp(email, password);
       setOtpStage(true);
+      startResendCooldown();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -36,18 +60,34 @@ export function LoginPage() {
     }
   };
 
-  const handleOtpSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submitOtp = async (submittedCode: string) => {
     setError('');
     setLoading(true);
     try {
-      const loggedInUser = await verifyOtp(email, code);
+      const loggedInUser = await verifyOtp(email, submittedCode);
       const dest = (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'SUB_ADMIN') ? '/admin' : '/lecturer';
       navigate(dest);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Invalid code');
+      setCode('');
+      setOtpErrorTick((t) => t + 1);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0 || resending) return;
+    setError('');
+    setResending(true);
+    try {
+      await requestOtp(email, password);
+      setCode('');
+      startResendCooldown();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not resend code');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -120,36 +160,26 @@ export function LoginPage() {
             <span className="text-xl font-bold text-white tracking-tight">Tcheck</span>
           </div>
 
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">{otpStage ? 'Check your email' : 'Welcome back'}</h2>
-            <p className="text-slate-400 text-sm">
-              {otpStage ? (
-                <>Enter the 6-digit code we sent to <span className="text-slate-300 font-medium">{email}</span>.</>
-              ) : (
-                'Sign in to your dashboard'
-              )}
-            </p>
-          </div>
-
           {otpStage ? (
-            <form onSubmit={handleOtpSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-300">Verification code</label>
-                <div className="relative group">
-                  <ShieldCheck size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="000000"
-                    required
-                    autoFocus
-                    className="w-full pl-12 pr-4 py-3 rounded-xl text-sm tracking-[0.3em] bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
-                  />
+            <div className="space-y-6">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5">
+                  <MailCheck size={28} className="text-blue-400" />
                 </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Verify It's You</h2>
+                <p className="text-slate-400 text-sm">
+                  Enter the 6-digit code we sent to<br />
+                  <span className="text-slate-200 font-medium">{email}</span>
+                </p>
               </div>
+
+              <OtpBoxInput
+                value={code}
+                onChange={setCode}
+                onComplete={submitOtp}
+                shakeKey={otpErrorTick}
+                disabled={loading}
+              />
 
               {error && (
                 <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in">
@@ -158,30 +188,38 @@ export function LoginPage() {
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading || code.length !== 6}
-                className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group"
-              >
-                {loading ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    Verify
-                    <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
-                  </>
-                )}
-              </button>
+              {loading && (
+                <div className="flex justify-center">
+                  <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                </div>
+              )}
 
-              <button
-                type="button"
-                onClick={() => { setOtpStage(false); setCode(''); setError(''); }}
-                className="block mx-auto text-sm text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
-              >
-                Back to sign in
-              </button>
-            </form>
+              <div className="flex flex-col items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendCooldown > 0 || resending}
+                  className="flex items-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  <RotateCw size={14} className={resending ? 'animate-spin' : ''} />
+                  {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOtpStage(false); setCode(''); setError(''); }}
+                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                >
+                  Use a different account
+                </button>
+              </div>
+            </div>
           ) : (
+          <>
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
+            <p className="text-slate-400 text-sm">Sign in to your dashboard</p>
+          </div>
+
           <form onSubmit={handlePasswordSubmit} className="space-y-5">
             {/* Email field */}
             <div className="space-y-2">
@@ -254,6 +292,7 @@ export function LoginPage() {
               )}
             </button>
           </form>
+          </>
           )}
 
           <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
