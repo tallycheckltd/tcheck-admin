@@ -17,7 +17,14 @@ export type Permission =
   // materials-ready, free-form updates, and on-demand feedback requests.
   | 'BROADCAST_PROGRAM_WELCOME' | 'BROADCAST_MATERIALS_READY' | 'BROADCAST_UPDATE' | 'REQUEST_FEEDBACK'
   | 'VIEW_ANALYTICS_DEMOGRAPHICS'
-  | 'MANAGE_MATERIALS';
+  | 'MANAGE_MATERIALS'
+  // Sidebar-scoped view/manage pairs — see server's Permission enum comment for each.
+  | 'VIEW_LIVE_ATTENDANCE' | 'VIEW_REPORTS'
+  | 'VIEW_ESCALATIONS' | 'MANAGE_ESCALATIONS'
+  | 'VIEW_FACILITIES' | 'MANAGE_FACILITY_TICKETS'
+  | 'VIEW_INVIGILATION' | 'MANAGE_INVIGILATION'
+  | 'VIEW_DEVICE_VERIFICATION' | 'MANAGE_DEVICE_VERIFICATION'
+  | 'VIEW_FRAUD_DETECTION';
 
 /** A school-defined named bundle of Permissions — see server's CustomRole model doc comment.
  * Editing `permissions` here changes what every holder can do immediately. */

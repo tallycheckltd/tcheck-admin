@@ -2,7 +2,8 @@ import { useState } from 'react';
 import {
   ShieldCheck, Plus, Pencil, Trash2, UserPlus, Users, Mail, Lock, User as UserIcon,
   Cake, MapPin, ClipboardCheck, MessageSquare, Megaphone, Settings2, BookOpen, Sparkles, Star,
-  BarChart3, PieChart, Folder, Ticket, CheckSquare, Square,
+  BarChart3, PieChart, Folder, Ticket, CheckSquare, Square, Radio, FileText, Siren, Wrench,
+  ScanEye, Smartphone, ShieldAlert,
 } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
@@ -12,10 +13,17 @@ import { Modal } from '../../components/ui/Modal';
 import type { CustomRole, Permission, Role, User, Course } from '../../types';
 
 /** The full catalog — grouped for the checklist UI. Mirrors server/prisma/schema.prisma's
- * Permission enum exactly, all 21 values across 6 groups: every permission the server will accept
+ * Permission enum exactly, all 32 values across 7 groups: every permission the server will accept
  * on a CustomRole is selectable here (see role.service.ts's ROLE_ASSIGNABLE_PERMISSIONS) —
  * including the Administration group below, which a SCHOOL_ADMIN can now delegate piecemeal
- * instead of it being fixed to their own account only. */
+ * instead of it being fixed to their own account only.
+ *
+ * The "Operations (sidebar visibility)" group is a different kind of permission from the rest:
+ * it only ever controls whether the matching sidebar link shows up for a LECTURER/CLIENT_
+ * EXPERIENCE_MANAGER on a CustomRole (see Sidebar.tsx's requiredPermissionFor) — the backend route
+ * itself still allows the holder's literal Role in regardless (LECTURER already could hit e.g.
+ * /escalations before this existed). It's a nav-declutter/customization tool, not yet a hard
+ * security boundary the way MANUAL_CHECK_IN/VIEW_BLE_CHECKINS/etc. above are. */
 const PERMISSION_GROUPS: { title: string; items: { key: Permission; label: string; icon: React.ElementType }[] }[] = [
   {
     title: 'Sign-in access',
@@ -66,6 +74,22 @@ const PERMISSION_GROUPS: { title: string; items: { key: Permission; label: strin
     items: [
       { key: 'VIEW_ANALYTICS', label: 'View attendance analytics (their assigned courses)', icon: BarChart3 },
       { key: 'VIEW_ANALYTICS_DEMOGRAPHICS', label: 'View gender/nationality breakdowns', icon: PieChart },
+      { key: 'VIEW_FRAUD_DETECTION', label: 'View fraud detection flags', icon: ShieldAlert },
+    ],
+  },
+  {
+    title: 'Operations (sidebar visibility)',
+    items: [
+      { key: 'VIEW_LIVE_ATTENDANCE', label: 'See Live Attendance', icon: Radio },
+      { key: 'VIEW_REPORTS', label: 'See Reports', icon: FileText },
+      { key: 'VIEW_ESCALATIONS', label: 'See the Escalations queue', icon: Siren },
+      { key: 'MANAGE_ESCALATIONS', label: 'Reply to / resolve escalations', icon: Siren },
+      { key: 'VIEW_FACILITIES', label: 'See the Facilities queue', icon: Wrench },
+      { key: 'MANAGE_FACILITY_TICKETS', label: 'Acknowledge / resolve facility tickets', icon: Wrench },
+      { key: 'VIEW_INVIGILATION', label: 'See Invigilation', icon: ScanEye },
+      { key: 'MANAGE_INVIGILATION', label: 'Submit invigilation reports', icon: ScanEye },
+      { key: 'VIEW_DEVICE_VERIFICATION', label: 'See device verification requests', icon: Smartphone },
+      { key: 'MANAGE_DEVICE_VERIFICATION', label: 'Approve / reset devices', icon: Smartphone },
     ],
   },
 ];

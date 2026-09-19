@@ -14,7 +14,7 @@ import {
   User as UserIcon, Plug, Wrench, DoorOpen,
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { DashboardStats, Ticket, Escalation, FacilityTicket, User } from '../../types';
+import type { DashboardStats, Ticket, Escalation, FacilityTicket, Permission, User } from '../../types';
 import { isHierarchyRole, ROLE_LABEL } from '../../lib/rbac';
 
 interface NavItem {
@@ -150,6 +150,22 @@ const cxmLinks: NavItem[] = [
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
 ];
+
+/** Which Permission(s) gate a LECTURER/CLIENT_EXPERIENCE_MANAGER nav item — an array means "any
+ * one of these", matching staff.controller.ts's own granularity for the Staff View tab. A link
+ * with no entry here (Dashboard, Courses, Classes, Attendance, Alerts, Announcements) is core to
+ * the role itself, never gated — only ever applied when the viewer is actually on a CustomRole
+ * (see requiredPermissionFilter below); everyone else keeps seeing the full legacy set unchanged. */
+const requiredPermissionFor: Record<string, Permission | Permission[]> = {
+  '/live': 'VIEW_LIVE_ATTENDANCE',
+  '/reports': 'VIEW_REPORTS',
+  '/admin/escalations': 'VIEW_ESCALATIONS',
+  '/admin/facilities': 'VIEW_FACILITIES',
+  '/admin/invigilation': 'VIEW_INVIGILATION',
+  '/admin/device-verification': 'VIEW_DEVICE_VERIFICATION',
+  '/messages': 'MESSAGING',
+  '/staff': ['VIEW_BIRTHDAYS', 'VIEW_BLE_CHECKINS', 'VIEW_MANUAL_CHECKINS', 'MANUAL_CHECK_IN', 'REQUEST_FEEDBACK'],
+};
 
 /* ---- Enterprise hierarchy tiers (Phase 5) — VC/DVC/Dean/HOD/Deputy HOD share one broad
    operations-facing nav; Registrars get a records-only nav; ICT Admin gets infra-only. See
@@ -654,6 +670,22 @@ export function Sidebar({
   const filterBySchoolConfig = (links: NavItem[]) =>
     hiddenNavLabels.size === 0 ? links : links.filter((l) => !hiddenNavLabels.has(l.label));
 
+  // Only a LECTURER/CEM actually placed on a CustomRole gets their nav customized to what that
+  // role was granted — everyone else (the overwhelming default: no CustomRole assigned) keeps
+  // seeing the exact same nav they always have, so this can never silently take away access from
+  // an existing account. `user.permissions` is already the *effective* set (resolveEffectivePermissions
+  // on the server resolves CustomRole vs. direct grant before it ever reaches the client).
+  const filterByPermission = (links: NavItem[]) => {
+    if (!user?.customRoleId) return links;
+    const granted = user.permissions ?? [];
+    return links.filter((l) => {
+      const required = requiredPermissionFor[l.to];
+      if (!required) return true;
+      const requiredList = Array.isArray(required) ? required : [required];
+      return requiredList.some((p) => granted.includes(p));
+    });
+  };
+
   return (
     <>
       {/* Backdrop — mobile only, closes the drawer on tap */}
@@ -783,7 +815,7 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isLecturer && addFacilitiesBadge(addEscalationBadge(filterBySchoolConfig(lecturerLinks))).map((link) => (
+        {isLecturer && addFacilitiesBadge(addEscalationBadge(filterByPermission(filterBySchoolConfig(lecturerLinks)))).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -804,7 +836,7 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isCxm && addAlertBadge(cxmLinks).map((link) => (
+        {isCxm && addAlertBadge(filterByPermission(cxmLinks)).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
