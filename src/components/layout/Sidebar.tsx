@@ -11,7 +11,7 @@ import {
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, Sparkles, Smartphone, Bell, Megaphone, Star,
   ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
-  User as UserIcon, Plug, Wrench,
+  User as UserIcon, Plug, Wrench, DoorOpen,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation, FacilityTicket, User } from '../../types';
@@ -51,6 +51,7 @@ const superAdminGeneral: NavItem[] = [
   // school's execEdSuite flag); the page itself is empty/harmless for a school with no NPS data.
   { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
   { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
+  { to: '/admin/classrooms', icon: DoorOpen, label: 'Classrooms' },
   { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
   { to: '/admin/beacon-health', icon: Battery, label: 'Aura Health' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
@@ -107,6 +108,7 @@ const hodOperations: NavItem[] = [
 
 const hodGeneral: NavItem[] = [
   { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
+  { to: '/admin/classrooms', icon: DoorOpen, label: 'Classrooms' },
   { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
   { to: '/admin/beacon-health', icon: Battery, label: 'Aura Health' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
@@ -240,6 +242,7 @@ const registrarGeneral: NavItem[] = [
 const ictAdminLinks: NavItem[] = [
   { to: '/admin', icon: LayoutDashboard, label: 'System Health' },
   { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
+  { to: '/admin/classrooms', icon: DoorOpen, label: 'Classrooms' },
   { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
   { to: '/admin/beacon-health', icon: Battery, label: 'Aura Health' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },

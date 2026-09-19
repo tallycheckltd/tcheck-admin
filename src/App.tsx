@@ -19,6 +19,7 @@ import { NpsAnalyticsPage } from './pages/admin/NpsAnalyticsPage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
 import { AllLecturersPage } from './pages/admin/AllLecturersPage';
 import { BLEBeaconPage } from './pages/admin/BLEBeaconPage';
+import { ClassroomsPage } from './pages/admin/ClassroomsPage';
 import { BeaconHeatmapSimulatorPage } from './pages/admin/BeaconHeatmapSimulatorPage';
 import { BeaconHealthPage } from './pages/admin/BeaconHealthPage';
 import { DeviceVerificationPage } from './pages/admin/DeviceVerificationPage';
@@ -88,6 +89,8 @@ export default function App() {
               <Route path="/alerts" element={<AlertsPage />} />
               {/* SUB_ADMIN is scoped to their own school's beacons; SUPER_ADMIN sees/manages all (beacon.service.ts enforces this) */}
               <Route path="/admin/beacons" element={<BLEBeaconPage />} />
+              {/* Same school-scoping as beacons above (academic.service.ts's listClassrooms) */}
+              <Route path="/admin/classrooms" element={<ClassroomsPage />} />
               {/* Same beacon-scoping rules as above — the simulator loads/saves via the same /beacons endpoints */}
               <Route path="/admin/beacon-heatmap" element={<BeaconHeatmapSimulatorPage />} />
               <Route path="/admin/beacon-health" element={<BeaconHealthPage />} />

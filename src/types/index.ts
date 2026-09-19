@@ -173,6 +173,18 @@ export interface Level {
   school?: School;
 }
 
+/// A physical room a Beacon can be assigned to — see server's Classroom model doc comment.
+export interface Classroom {
+  id: string;
+  name: string;
+  schoolId: string;
+  school?: School;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { beacons: number };
+}
+
 export interface User {
   id: string;
   email: string;
@@ -320,6 +332,8 @@ export interface Beacon {
   isActive: boolean;
   schoolId?: string | null;
   school?: School | null;
+  classroomId?: string | null;
+  classroom?: Pick<Classroom, 'id' | 'name'> | null;
   batteryLevel?: number | null;
   lastSeenAt?: string | null;
   createdAt: string;
