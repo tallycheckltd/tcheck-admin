@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Slider } from '../../components/ui/Slider';
 import {
   Settings, UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer,
-  School as SchoolIcon, CalendarDays, Layers, Briefcase, Sparkles,
+  School as SchoolIcon, CalendarDays, Layers, Briefcase, Sparkles, IdCard,
 } from 'lucide-react';
 import type { AttendanceMode, School, SchoolFeatures } from '../../types';
 
@@ -19,6 +19,7 @@ const defaultFeatures: Required<SchoolFeatures> = {
   messaging: true,
   execEdSuite: false,
   onboardingJourney: false,
+  profileCompletionPrompt: true,
 };
 
 const emptyForm = {
@@ -272,6 +273,13 @@ export function SettingsPage() {
                   description="Premium onboarding: an approval email, a registration-progress percentage on each student's profile, a staff alert when they finish their profile, and program-welcome / materials-ready broadcast templates for Client Experience Managers."
                   checked={form.features.onboardingJourney}
                   onChange={(v) => setForm({ ...form, features: { ...form.features, onboardingJourney: v } })}
+                />
+                <FeatureToggle
+                  icon={IdCard}
+                  title={'"Tell Us About You" Profile Prompt'}
+                  description="Asks each student for gender, date of birth, nationality, job title and company once, right after their baseline photo. Off means new students skip this entirely — existing answers are untouched either way."
+                  checked={form.features.profileCompletionPrompt}
+                  onChange={(v) => setForm({ ...form, features: { ...form.features, profileCompletionPrompt: v } })}
                 />
               </div>
             </GlassCard>

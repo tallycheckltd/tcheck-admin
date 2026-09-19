@@ -64,6 +64,10 @@ export interface SchoolFeatures {
   messaging?: boolean;
   execEdSuite?: boolean;
   onboardingJourney?: boolean;
+  /** Opt-out — the "Tell Us About You" progressive-profiling prompt (gender/DOB/etc.) students
+   * are asked once after baseline capture. Off stops asking students who haven't answered yet;
+   * already-answered students are untouched. */
+  profileCompletionPrompt?: boolean;
 }
 
 export type AttendanceMode = 'CALENDAR_BASED' | 'STAGE_BASED';

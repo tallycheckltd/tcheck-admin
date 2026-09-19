@@ -27,6 +27,7 @@ const defaultFeatures: Required<SchoolFeatures> = {
   messaging: true,
   execEdSuite: false,
   onboardingJourney: false,
+  profileCompletionPrompt: true,
 };
 
 interface SchoolSettingsValue {
