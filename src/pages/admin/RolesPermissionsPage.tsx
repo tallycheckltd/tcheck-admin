@@ -160,7 +160,9 @@ function PermissionChecklist({ value, onChange }: { value: Permission[]; onChang
 }
 
 const emptyRoleForm = { name: '', permissions: [] as Permission[], appliesTo: '' as '' | 'LECTURER' | 'CLIENT_EXPERIENCE_MANAGER' };
-const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', role: 'CLIENT_EXPERIENCE_MANAGER' as Role, customRoleId: '', courseIds: [] as string[] };
+// `role` starts unresolved ('') — with custom roles in play, the account type is usually derived
+// from whichever role card gets picked (see rolePick below), not chosen directly up front.
+const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', role: '' as Role | '', customRoleId: '', courseIds: [] as string[] };
 
 const ACCOUNT_TYPE_META: Partial<Record<Role, { label: string; blurb: string }>> = {
   CLIENT_EXPERIENCE_MANAGER: { label: 'Client Experience Manager', blurb: 'Front-of-house — no assigned courses' },
@@ -191,6 +193,11 @@ export function RolesPermissionsPage() {
   const [userModal, setUserModal] = useState(false);
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [userError, setUserError] = useState('');
+  // Drives the "New User" role-card UI — '' = nothing picked yet, 'NONE' = explicitly a plain
+  // account with no custom role, otherwise a CustomRole id. Kept separate from
+  // userForm.customRoleId (which only ever holds a real id or '') so "no role chosen yet" and
+  // "explicitly no role" aren't the same falsy value.
+  const [rolePick, setRolePick] = useState<'' | 'NONE' | string>('');
 
   const staffOnly = (staffUsers ?? []).filter((u) => u.role === 'LECTURER' || u.role === 'CLIENT_EXPERIENCE_MANAGER');
 
@@ -242,12 +249,17 @@ export function RolesPermissionsPage() {
 
   const openCreateUser = () => {
     setUserForm(emptyUserForm);
+    setRolePick('');
     setUserError('');
     setUserModal(true);
   };
   const submitUser = async () => {
     if (!userForm.firstName.trim() || !userForm.lastName.trim() || !userForm.email.trim() || !userForm.password) {
       setUserError('All fields are required.');
+      return;
+    }
+    if (!userForm.role) {
+      setUserError('Pick an account type.');
       return;
     }
     try {
@@ -273,14 +285,19 @@ export function RolesPermissionsPage() {
     refetchUsers();
   };
 
-  // Only offer a custom role that actually makes sense for the account type currently selected —
-  // this is the fix for the confusing case the role list used to allow (e.g. picking "Lecturer"
-  // up top but still being able to pick a role named "CEM" underneath it).
-  const rolesForAccountType = (roles ?? []).filter((r) => !r.appliesTo || r.appliesTo === userForm.role);
-  const setAccountType = (role: Role) => {
-    const stillValid = userForm.customRoleId && (roles ?? []).some((r) => r.id === userForm.customRoleId && (!r.appliesTo || r.appliesTo === role));
-    setUserForm({ ...userForm, role, customRoleId: stillValid ? userForm.customRoleId : '' });
+  // Picking a role card that's scoped to one account type (appliesTo set) resolves userForm.role
+  // automatically — no separate "what kind of account is this" question needed. A role scoped to
+  // "Either" (or "No custom role") leaves it unresolved, so the inline Account Type picker below
+  // shows up only for that ambiguous case.
+  const pickRole = (option: 'NONE' | CustomRole) => {
+    setRolePick(option === 'NONE' ? 'NONE' : option.id);
+    setUserForm({
+      ...userForm,
+      customRoleId: option === 'NONE' ? '' : option.id,
+      role: option !== 'NONE' && option.appliesTo ? option.appliesTo : '',
+    });
   };
+  const needsAccountTypePick = rolePick !== '' && !userForm.role;
 
   return (
     <div className="space-y-8">
@@ -487,26 +504,96 @@ export function RolesPermissionsPage() {
       <Modal open={userModal} onClose={() => setUserModal(false)} title="New User">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Account Type</label>
-            <div className="grid grid-cols-2 gap-2">
-              {ASSIGNABLE_ROLES.map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  onClick={() => setAccountType(r.value)}
-                  className={`px-3 py-2.5 rounded-xl text-left border cursor-pointer transition-colors ${
-                    userForm.role === r.value
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10'
-                  }`}
-                >
-                  <span className="block text-sm font-medium">{r.label}</span>
-                  <span className={`block text-xs mt-0.5 ${userForm.role === r.value ? 'text-blue-100' : 'text-gray-400'}`}>
-                    {ACCOUNT_TYPE_META[r.value]?.blurb}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Role</label>
+            {!roles?.length ? (
+              // Bootstrap case: no custom roles exist yet at all, so there's nothing to pick from
+              // — fall back to the plain account-type choice, with a nudge to set up a role too.
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {ASSIGNABLE_ROLES.map((r) => (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => { setRolePick('NONE'); setUserForm({ ...userForm, role: r.value, customRoleId: '' }); }}
+                      className={`px-3 py-2.5 rounded-xl text-left border cursor-pointer transition-colors ${
+                        userForm.role === r.value
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10'
+                      }`}
+                    >
+                      <span className="block text-sm font-medium">{r.label}</span>
+                      <span className={`block text-xs mt-0.5 ${userForm.role === r.value ? 'text-blue-100' : 'text-gray-400'}`}>
+                        {ACCOUNT_TYPE_META[r.value]?.blurb}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400">
+                  No custom roles yet, so this account gets no extra permissions.{' '}
+                  <button type="button" onClick={() => { setUserModal(false); openCreateRole(); }} className="text-blue-500 font-medium hover:underline cursor-pointer">
+                    Create a role
+                  </button>{' '}
+                  to reuse a named permission bundle instead.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-2">
+                  {roles.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => pickRole(r)}
+                      className={`px-3 py-2.5 rounded-xl text-left border cursor-pointer transition-colors flex items-center justify-between gap-2 ${
+                        rolePick === r.id
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10'
+                      }`}
+                    >
+                      <span className="text-sm font-medium">{r.name}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0 ${
+                        rolePick === r.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400'
+                      }`}>
+                        {r.appliesTo === 'LECTURER' ? 'Lecturer' : r.appliesTo === 'CLIENT_EXPERIENCE_MANAGER' ? 'CEM' : 'Either'}
+                      </span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => pickRole('NONE')}
+                    className={`px-3 py-2.5 rounded-xl text-left border border-dashed cursor-pointer transition-colors ${
+                      rolePick === 'NONE'
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'bg-white dark:bg-white/5 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-white/10'
+                    }`}
+                  >
+                    <span className="text-sm font-medium">No custom role — plain account</span>
+                  </button>
+                </div>
+                {needsAccountTypePick && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                      {rolePick === 'NONE' ? 'This account needs an account type:' : 'This role works for either — pick one:'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {ASSIGNABLE_ROLES.map((r) => (
+                        <button
+                          key={r.value}
+                          type="button"
+                          onClick={() => setUserForm({ ...userForm, role: r.value })}
+                          className="px-3 py-2 rounded-xl text-sm font-medium border cursor-pointer transition-colors bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-blue-400"
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {rolePick && userForm.role && (
+                  <p className="text-xs text-gray-400 mt-1.5">Account type: {ACCOUNT_TYPE_META[userForm.role]?.label}.</p>
+                )}
+              </>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="First Name" icon={UserIcon} value={userForm.firstName} onChange={(e) => setUserForm({ ...userForm, firstName: e.target.value })} />
@@ -514,29 +601,6 @@ export function RolesPermissionsPage() {
           </div>
           <Input label="Email" type="email" icon={Mail} value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} />
           <Input label="Password" type="password" icon={Lock} value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Custom Role (optional)</label>
-            {rolesForAccountType.length > 0 ? (
-              <select
-                value={userForm.customRoleId}
-                onChange={(e) => setUserForm({ ...userForm, customRoleId: e.target.value })}
-                className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
-              >
-                <option value="">— No custom role (no extra permissions yet) —</option>
-                {rolesForAccountType.map((r) => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
-                ))}
-              </select>
-            ) : (
-              <div className="text-sm text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
-                <span>No custom roles set up for {ACCOUNT_TYPE_META[userForm.role]?.label} yet.</span>
-                <button type="button" onClick={() => { setUserModal(false); openCreateRole(); }} className="text-blue-500 font-medium hover:underline shrink-0 cursor-pointer">
-                  Create one
-                </button>
-              </div>
-            )}
-            <p className="text-xs text-gray-400 mt-1.5">Grants extra dashboard/mobile permissions on top of the account type above.</p>
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
               <BookOpen size={14} /> Assigned Courses
@@ -564,7 +628,7 @@ export function RolesPermissionsPage() {
             </div>
           </div>
           {userError && <p className="text-sm text-red-600 dark:text-red-400">{userError}</p>}
-          <Button onClick={() => void submitUser()} disabled={creatingUser} className="w-full">Create User</Button>
+          <Button onClick={() => void submitUser()} disabled={creatingUser || !userForm.role} className="w-full">Create User</Button>
         </div>
       </Modal>
     </div>
