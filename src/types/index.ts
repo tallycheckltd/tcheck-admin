@@ -33,6 +33,10 @@ export interface CustomRole {
   schoolId: string;
   name: string;
   permissions: Permission[];
+  /** UI hint only — which account type this role is meant for (LECTURER or
+   * CLIENT_EXPERIENCE_MANAGER), or null/undefined for "either". Narrows the "New User" form's
+   * custom-role dropdown to roles that actually make sense for the account type just picked. */
+  appliesTo?: 'LECTURER' | 'CLIENT_EXPERIENCE_MANAGER' | null;
   createdAt: string;
   updatedAt: string;
   _count?: { users: number };

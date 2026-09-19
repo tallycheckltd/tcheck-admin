@@ -159,8 +159,13 @@ function PermissionChecklist({ value, onChange }: { value: Permission[]; onChang
   );
 }
 
-const emptyRoleForm = { name: '', permissions: [] as Permission[] };
+const emptyRoleForm = { name: '', permissions: [] as Permission[], appliesTo: '' as '' | 'LECTURER' | 'CLIENT_EXPERIENCE_MANAGER' };
 const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', role: 'CLIENT_EXPERIENCE_MANAGER' as Role, customRoleId: '', courseIds: [] as string[] };
+
+const ACCOUNT_TYPE_META: Partial<Record<Role, { label: string; blurb: string }>> = {
+  CLIENT_EXPERIENCE_MANAGER: { label: 'Client Experience Manager', blurb: 'Front-of-house — no assigned courses' },
+  LECTURER: { label: 'Lecturer', blurb: 'Teaches courses, takes attendance' },
+};
 
 export function RolesPermissionsPage() {
   const { user } = useAuth();
@@ -189,6 +194,18 @@ export function RolesPermissionsPage() {
 
   const staffOnly = (staffUsers ?? []).filter((u) => u.role === 'LECTURER' || u.role === 'CLIENT_EXPERIENCE_MANAGER');
 
+  // Filter bar above the Staff table — "creative" as requested, but kept to two obvious controls
+  // rather than a full search: account type (segmented pills) and custom role (dropdown, since the
+  // list of role names is open-ended and school-specific).
+  const [accountTypeFilter, setAccountTypeFilter] = useState<'ALL' | Role>('ALL');
+  const [customRoleFilter, setCustomRoleFilter] = useState<'ALL' | 'NONE' | string>('ALL');
+  const filteredStaff = staffOnly.filter((u) => {
+    if (accountTypeFilter !== 'ALL' && u.role !== accountTypeFilter) return false;
+    if (customRoleFilter === 'NONE' && u.customRoleId) return false;
+    if (customRoleFilter !== 'ALL' && customRoleFilter !== 'NONE' && u.customRoleId !== customRoleFilter) return false;
+    return true;
+  });
+
   const openCreateRole = () => {
     setEditingRole(null);
     setRoleForm(emptyRoleForm);
@@ -197,17 +214,18 @@ export function RolesPermissionsPage() {
   };
   const openEditRole = (role: CustomRole) => {
     setEditingRole(role);
-    setRoleForm({ name: role.name, permissions: role.permissions });
+    setRoleForm({ name: role.name, permissions: role.permissions, appliesTo: role.appliesTo ?? '' });
     setRoleError('');
     setRoleModal(true);
   };
   const submitRole = async () => {
     if (!roleForm.name.trim()) { setRoleError('Name is required.'); return; }
     try {
+      const payload = { ...roleForm, appliesTo: roleForm.appliesTo || null };
       if (editingRole) {
-        await updateRole(`/roles/${editingRole.id}`, roleForm);
+        await updateRole(`/roles/${editingRole.id}`, payload);
       } else {
-        await createRole('/roles', { ...roleForm, schoolId });
+        await createRole('/roles', { ...payload, schoolId });
       }
       setRoleModal(false);
       refetchRoles();
@@ -255,6 +273,15 @@ export function RolesPermissionsPage() {
     refetchUsers();
   };
 
+  // Only offer a custom role that actually makes sense for the account type currently selected —
+  // this is the fix for the confusing case the role list used to allow (e.g. picking "Lecturer"
+  // up top but still being able to pick a role named "CEM" underneath it).
+  const rolesForAccountType = (roles ?? []).filter((r) => !r.appliesTo || r.appliesTo === userForm.role);
+  const setAccountType = (role: Role) => {
+    const stillValid = userForm.customRoleId && (roles ?? []).some((r) => r.id === userForm.customRoleId && (!r.appliesTo || r.appliesTo === role));
+    setUserForm({ ...userForm, role, customRoleId: stillValid ? userForm.customRoleId : '' });
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -284,13 +311,26 @@ export function RolesPermissionsPage() {
             {roles.map((role) => (
               <div key={role.id} className="p-4 rounded-2xl border border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900 dark:text-white">{role.name}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900 dark:text-white">{role.name}</p>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
+                          role.appliesTo === 'LECTURER'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                            : role.appliesTo === 'CLIENT_EXPERIENCE_MANAGER'
+                            ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400'
+                            : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400'
+                        }`}
+                      >
+                        {role.appliesTo === 'LECTURER' ? 'Lecturer' : role.appliesTo === 'CLIENT_EXPERIENCE_MANAGER' ? 'CEM' : 'Either'}
+                      </span>
+                    </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {role.permissions.length} permission{role.permissions.length === 1 ? '' : 's'} &middot; {role._count?.users ?? 0} user{role._count?.users === 1 ? '' : 's'}
                     </p>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 shrink-0">
                     <button onClick={() => openEditRole(role)} className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-white/10 text-gray-500 cursor-pointer">
                       <Pencil size={14} />
                     </button>
@@ -307,7 +347,7 @@ export function RolesPermissionsPage() {
 
       {/* Users */}
       <div className="glass-card p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Users size={18} /> Staff Users
           </h2>
@@ -318,37 +358,85 @@ export function RolesPermissionsPage() {
             No Client Experience Managers or Lecturers with a role assigned yet.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100 dark:border-white/10">
-                  <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-                  <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Base Role</th>
-                  <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assigned Role</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                {staffOnly.map((u) => (
-                  <tr key={u.id}>
-                    <td className="py-3 text-sm text-gray-900 dark:text-white">{u.firstName} {u.lastName}<br /><span className="text-xs text-gray-400">{u.email}</span></td>
-                    <td className="py-3 text-sm text-gray-500 dark:text-gray-400">{u.role === 'LECTURER' ? 'Lecturer' : 'Client Experience Manager'}</td>
-                    <td className="py-3">
-                      <select
-                        value={u.customRoleId ?? ''}
-                        onChange={(e) => void handleAssignRole(u, e.target.value)}
-                        className="text-sm rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1.5 text-gray-900 dark:text-white"
-                      >
-                        <option value="">— No role (no permissions) —</option>
-                        {(roles ?? []).map((r) => (
-                          <option key={r.id} value={r.id}>{r.name}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {/* Filter bar — account type as pills (small, fixed set), custom role as a dropdown
+                (open-ended, school-defined names). */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              {(['ALL', 'LECTURER', 'CLIENT_EXPERIENCE_MANAGER'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setAccountTypeFilter(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer transition-colors ${
+                    accountTypeFilter === opt
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/10'
+                  }`}
+                >
+                  {opt === 'ALL' ? 'All types' : ACCOUNT_TYPE_META[opt]?.label}
+                </button>
+              ))}
+              <select
+                value={customRoleFilter}
+                onChange={(e) => setCustomRoleFilter(e.target.value)}
+                className="text-xs font-medium rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1.5 text-gray-600 dark:text-gray-300"
+              >
+                <option value="ALL">Any custom role</option>
+                <option value="NONE">No custom role</option>
+                {(roles ?? []).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+              <span className="text-xs text-gray-400 ml-auto">{filteredStaff.length} of {staffOnly.length}</span>
+            </div>
+
+            {!filteredStaff.length ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No staff match this filter.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-white/10">
+                      <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                      <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Account Type</th>
+                      <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Custom Role</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                    {filteredStaff.map((u) => {
+                      const rolesForUser = (roles ?? []).filter((r) => !r.appliesTo || r.appliesTo === u.role);
+                      return (
+                        <tr key={u.id}>
+                          <td className="py-3 text-sm text-gray-900 dark:text-white">{u.firstName} {u.lastName}<br /><span className="text-xs text-gray-400">{u.email}</span></td>
+                          <td className="py-3">
+                            <span
+                              className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                                u.role === 'LECTURER'
+                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                                  : 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400'
+                              }`}
+                            >
+                              {u.role === 'LECTURER' ? 'Lecturer' : 'Client Experience Manager'}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            <select
+                              value={u.customRoleId ?? ''}
+                              onChange={(e) => void handleAssignRole(u, e.target.value)}
+                              className="text-sm rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1.5 text-gray-900 dark:text-white"
+                            >
+                              <option value="">— No role (no permissions) —</option>
+                              {rolesForUser.map((r) => (
+                                <option key={r.id} value={r.id}>{r.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -357,10 +445,36 @@ export function RolesPermissionsPage() {
         <div className="space-y-4">
           <Input
             label="Role Name"
-            placeholder="e.g. Client Experience Manager"
+            placeholder="e.g. Front Desk Lead"
             value={roleForm.name}
             onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
           />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Applies to</label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { value: '' as const, label: 'Either' },
+                { value: 'LECTURER' as const, label: 'Lecturer' },
+                { value: 'CLIENT_EXPERIENCE_MANAGER' as const, label: 'CEM' },
+              ]).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setRoleForm({ ...roleForm, appliesTo: opt.value })}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium border cursor-pointer transition-colors ${
+                    roleForm.appliesTo === opt.value
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">
+              Narrows this role down to just Lecturer or CEM accounts when creating a new user, so it never shows up as an option for the wrong account type. Purely a form hint — doesn&apos;t restrict who a role can be hand-assigned to later.
+            </p>
+          </div>
           <PermissionChecklist value={roleForm.permissions} onChange={(permissions) => setRoleForm({ ...roleForm, permissions })} />
           {roleError && <p className="text-sm text-red-600 dark:text-red-400">{roleError}</p>}
           <Button onClick={() => void submitRole()} disabled={creatingRole} className="w-full">
@@ -373,20 +487,23 @@ export function RolesPermissionsPage() {
       <Modal open={userModal} onClose={() => setUserModal(false)} title="New User">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Role</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Account Type</label>
             <div className="grid grid-cols-2 gap-2">
               {ASSIGNABLE_ROLES.map((r) => (
                 <button
                   key={r.value}
                   type="button"
-                  onClick={() => setUserForm({ ...userForm, role: r.value })}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium border cursor-pointer transition-colors ${
+                  onClick={() => setAccountType(r.value)}
+                  className={`px-3 py-2.5 rounded-xl text-left border cursor-pointer transition-colors ${
                     userForm.role === r.value
                       ? 'bg-blue-500 text-white border-blue-500'
                       : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10'
                   }`}
                 >
-                  {r.label}
+                  <span className="block text-sm font-medium">{r.label}</span>
+                  <span className={`block text-xs mt-0.5 ${userForm.role === r.value ? 'text-blue-100' : 'text-gray-400'}`}>
+                    {ACCOUNT_TYPE_META[r.value]?.blurb}
+                  </span>
                 </button>
               ))}
             </div>
@@ -398,17 +515,27 @@ export function RolesPermissionsPage() {
           <Input label="Email" type="email" icon={Mail} value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} />
           <Input label="Password" type="password" icon={Lock} value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} />
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Role (permissions)</label>
-            <select
-              value={userForm.customRoleId}
-              onChange={(e) => setUserForm({ ...userForm, customRoleId: e.target.value })}
-              className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
-            >
-              <option value="">— No role (no permissions yet) —</option>
-              {(roles ?? []).map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Custom Role (optional)</label>
+            {rolesForAccountType.length > 0 ? (
+              <select
+                value={userForm.customRoleId}
+                onChange={(e) => setUserForm({ ...userForm, customRoleId: e.target.value })}
+                className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
+              >
+                <option value="">— No custom role (no extra permissions yet) —</option>
+                {rolesForAccountType.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-sm text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
+                <span>No custom roles set up for {ACCOUNT_TYPE_META[userForm.role]?.label} yet.</span>
+                <button type="button" onClick={() => { setUserModal(false); openCreateRole(); }} className="text-blue-500 font-medium hover:underline shrink-0 cursor-pointer">
+                  Create one
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mt-1.5">Grants extra dashboard/mobile permissions on top of the account type above.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
