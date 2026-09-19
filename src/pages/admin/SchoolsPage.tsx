@@ -11,11 +11,11 @@ import {
   Plus, Pencil, Trash2, School as SchoolIcon, Hash, UserCheck, MessageSquareOff, MessageSquare,
   ShieldCheck, Megaphone, ScanFace, Timer, Mail, Lock, User as UserIcon, ArrowRight, ArrowLeft,
   AlertCircle, CheckCircle2, UserPlus, X, CalendarDays, Layers, ChevronDown,
-  ToggleRight, Server
+  ToggleRight, Server, Briefcase, Building2
 } from 'lucide-react';
 import type { AttendanceMode, School, SchoolFeatures, User } from '../../types';
 
-const emptySchoolForm = { name: '', code: '', color: '#3B82F6' };
+const emptySchoolForm = { name: '', code: '', color: '#3B82F6', institutionName: '' };
 const emptyAdminForm = { email: '', password: '', firstName: '', lastName: '' };
 
 const defaultFeatures: Required<SchoolFeatures> = {
@@ -25,6 +25,8 @@ const defaultFeatures: Required<SchoolFeatures> = {
   faceIdCheckIn: true,
   dwellTimeTracking: true,
   messaging: true,
+  execEdSuite: false,
+  onboardingJourney: false,
 };
 
 interface SchoolSettingsValue {
@@ -206,7 +208,7 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
         icon={ToggleRight}
         iconColor="bg-violet-500/10 text-violet-500"
         title="Features"
-        summary={`${enabledFeatureCount}/6 enabled`}
+        summary={`${enabledFeatureCount}/7 enabled`}
       >
         <div className="pt-1 divide-y divide-gray-100 dark:divide-white/5">
           <ToggleRow
@@ -247,9 +249,16 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
           <ToggleRow
             icon={Timer}
             title="Dwell Time Tracking"
-            description="Requires ~10s of sustained signal presence before a TB check-in is accepted. Off allows an instant tap the moment the signal is detected."
+            description="Requires ~10s of sustained signal presence before an Aura check-in is accepted. Off allows an instant tap the moment the signal is detected."
             checked={value.features.dwellTimeTracking}
             onChange={(v) => onChange({ ...value, features: { ...value.features, dwellTimeTracking: v } })}
+          />
+          <ToggleRow
+            icon={Briefcase}
+            title="Executive Ed Suite"
+            description="Tools for executive and short-course programs — cohorts and corporate attendees tracked separately from regular class attendance."
+            checked={value.features.execEdSuite}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, execEdSuite: v } })}
           />
         </div>
       </AccordionSection>
@@ -288,7 +297,7 @@ export function SchoolsPage() {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
   const [form, setForm] = useState({
-    name: '', code: '', color: '#3B82F6',
+    name: '', code: '', color: '#3B82F6', institutionName: '',
     allowManualLecturerOverride: true,
     features: defaultFeatures,
     lateThresholdMinutes: 10,
@@ -311,6 +320,10 @@ export function SchoolsPage() {
   const [adminCreated, setAdminCreated] = useState(false);
   const [wizardError, setWizardError] = useState('');
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
+  // Set only when the wizard was opened via "Add Branch" on an existing school's row — changes
+  // the modal title and pre-fills institutionName/color from that parent so the new school groups
+  // with it on the mobile picker without the admin having to retype/remember the exact name.
+  const [branchParent, setBranchParent] = useState<School | null>(null);
 
   const openCreate = () => {
     setEditing(null);
@@ -322,7 +335,34 @@ export function SchoolsPage() {
     setCreatedSchoolId(null);
     setAdminCreated(false);
     setWizardError('');
+    setBranchParent(null);
     setModal(true);
+  };
+
+  /** A "branch" is just another School row sharing the same `institutionName` — the mobile picker
+   * already groups any schools with a matching institutionName into one "N buildings" entry, so
+   * creating a branch is the exact same wizard, just pre-seeded with the parent's grouping value
+   * instead of leaving the admin to retype it (and risk a typo that silently splits the group). */
+  const openCreateBranch = async (parent: School) => {
+    setEditing(null);
+    setWizardStep(1);
+    const sharedInstitutionName = parent.institutionName?.trim() || parent.name.trim();
+    setSchoolForm({ ...emptySchoolForm, color: parent.color, institutionName: sharedInstitutionName });
+    setAdminForm(emptyAdminForm);
+    setSettingsForm(defaultSettings);
+    setExtraAdmins([]);
+    setCreatedSchoolId(null);
+    setAdminCreated(false);
+    setWizardError('');
+    setBranchParent(parent);
+    setModal(true);
+    // The parent didn't belong to any group yet — retroactively give it the same institutionName
+    // so it actually joins the group once the branch is created, instead of only the new branch
+    // being grouped while the parent it was branched from stays a lone standalone school.
+    if (!parent.institutionName) {
+      await update(`/schools/${parent.id}`, { institutionName: sharedInstitutionName });
+      refetch();
+    }
   };
   const openEdit = (s: School) => {
     setEditing(s);
@@ -330,6 +370,7 @@ export function SchoolsPage() {
       name: s.name,
       code: s.code,
       color: s.color,
+      institutionName: s.institutionName ?? '',
       allowManualLecturerOverride: s.allowManualLecturerOverride ?? true,
       features: { ...defaultFeatures, ...s.features },
       lateThresholdMinutes: s.lateThresholdMinutes ?? 10,
@@ -341,7 +382,7 @@ export function SchoolsPage() {
   };
 
   const handleSubmit = async () => {
-    await update(`/schools/${editing!.id}`, { ...form, apiBaseUrl: form.apiBaseUrl || null });
+    await update(`/schools/${editing!.id}`, { ...form, apiBaseUrl: form.apiBaseUrl || null, institutionName: form.institutionName || null });
     setModal(false);
     refetch();
   };
@@ -374,13 +415,16 @@ export function SchoolsPage() {
     try {
       let schoolId = createdSchoolId;
       if (!schoolId) {
-        const school = await create('/schools', schoolForm);
+        const school = await create('/schools', { ...schoolForm, institutionName: schoolForm.institutionName || null });
         schoolId = school!.id;
         setCreatedSchoolId(schoolId);
       }
 
       if (!adminCreated) {
-        await createUser('/users/admin', { ...adminForm, schoolId });
+        // SCHOOL_ADMIN, not the older SUB_ADMIN co-admin role below (/users/admin) — every new
+        // school gets exactly one of these, guaranteed, with the full default permission set
+        // (Users & Permissions management, settings, courses, announcements, analytics, tickets).
+        await createUser('/users/school-admin', { ...adminForm, schoolId });
         setAdminCreated(true);
       }
 
@@ -445,7 +489,14 @@ export function SchoolsPage() {
                       <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-gray-500 border border-gray-100 dark:border-white/10">
                         <SchoolIcon size={20} />
                       </div>
-                      <span className="font-bold text-gray-900 dark:text-white">{s.name}</span>
+                      <div>
+                        <span className="font-bold text-gray-900 dark:text-white block">{s.name}</span>
+                        {s.institutionName && (
+                          <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                            <Building2 size={11} /> {s.institutionName}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -460,7 +511,10 @@ export function SchoolsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => void openCreateBranch(s)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-emerald-500 transition-all border border-transparent hover:border-emerald-100" title="Add a branch/campus grouped with this school">
+                        <Layers size={16} />
+                      </button>
                       <button onClick={() => openEdit(s)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-blue-500 transition-all border border-transparent hover:border-blue-100" title="Edit School">
                         <Pencil size={16} />
                       </button>
@@ -487,16 +541,16 @@ export function SchoolsPage() {
       <Modal
         open={modal}
         onClose={() => setModal(false)}
-        title={editing ? 'Edit School' : `Add School — Step ${wizardStep} of 3`}
+        title={editing ? 'Edit School' : `${branchParent ? `Add Branch to ${branchParent.name}` : 'Add School'} — Step ${wizardStep} of 3`}
       >
         {!editing && (
           <div className="flex items-center gap-2 mb-5">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex items-center gap-2 flex-1">
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
                     wizardStep === step
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30 ring-4 ring-blue-500/15'
                       : wizardStep > step
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'
@@ -563,6 +617,18 @@ export function SchoolsPage() {
                   onChange={(color) => setForm({ ...form, color })}
                 />
               </div>
+              <div className="space-y-1">
+                <Input
+                  label="Parent Institution (optional)"
+                  icon={Building2}
+                  placeholder="e.g. Riverside Group of Schools"
+                  value={form.institutionName}
+                  onChange={(e) => setForm({ ...form, institutionName: e.target.value })}
+                />
+                <p className="text-xs text-gray-400 pl-1">
+                  Groups this school with any others sharing the same parent on the mobile school picker — useful for multiple campuses or programs under one institution.
+                </p>
+              </div>
             </div>
           </div>
           <SchoolSettingsFields value={form} onChange={(v) => setForm({ ...form, ...v })} />
@@ -618,6 +684,18 @@ export function SchoolsPage() {
                 onChange={(color) => setSchoolForm({ ...schoolForm, color })}
               />
             </div>
+            <div className="space-y-1">
+              <Input
+                label="Parent Institution (optional)"
+                icon={Building2}
+                placeholder="e.g. Riverside Group of Schools"
+                value={schoolForm.institutionName}
+                onChange={(e) => setSchoolForm({ ...schoolForm, institutionName: e.target.value })}
+              />
+              <p className="text-xs text-gray-400 pl-1">
+                Groups this school with any others sharing the same parent on the mobile school picker.
+              </p>
+            </div>
           </div>
           {wizardError && (
             <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl px-4 py-2.5">
@@ -627,16 +705,19 @@ export function SchoolsPage() {
           <Button
             onClick={handleWizardNext}
             disabled={!schoolForm.name.trim() || !schoolForm.code.trim()}
-            className="w-full py-4 shadow-lg shadow-blue-500/20 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed"
+            className="w-full py-4 text-[15px] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed group"
           >
-            Next: Assign Admin <ArrowRight size={16} className="ml-2" />
+            Next: Assign Admin
+            <ArrowRight size={16} className="ml-2 inline-block transition-transform duration-150 group-hover:translate-x-1" />
           </Button>
         </div>
         ) : wizardStep === 2 ? (
         <div className="space-y-5">
           <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              This account logs in as this school&apos;s admin — they&apos;ll add lecturers, courses, and approve students from there.
+              This is the School Admin — they&apos;ll add lecturers, courses, and approve students, and can create every other
+              user for this school (Client Experience Managers, custom roles and permissions included) from the Users &amp;
+              Permissions page.
             </p>
             <div className="grid grid-cols-2 gap-4">
               <Input
@@ -672,12 +753,22 @@ export function SchoolsPage() {
               <AlertCircle size={16} className="shrink-0" /> {wizardError}
             </div>
           )}
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setWizardStep(1)} className="gap-2">
-              <ArrowLeft size={16} /> Back
-            </Button>
-            <Button onClick={handleWizardAdminNext} className="flex-1 py-4 shadow-lg shadow-blue-500/20">
-              Next: Settings & Team <ArrowRight size={16} className="ml-2" />
+          <div className="flex items-center gap-3">
+            {/* Back demoted to a quiet circular icon button — a wizard's "previous step" action
+                doesn't need equal visual weight to "next," and a full text+border button here was
+                what made this footer read as two oversized, competing buttons. */}
+            <button
+              type="button"
+              onClick={() => setWizardStep(1)}
+              aria-label="Back to Institution"
+              title="Back to Institution"
+              className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 bg-white dark:bg-white/5 shadow-sm hover:shadow-md hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <Button onClick={handleWizardAdminNext} className="flex-1 group">
+              Next: Settings &amp; Team
+              <ArrowRight size={16} className="ml-2 inline-block transition-transform duration-150 group-hover:translate-x-1" />
             </Button>
           </div>
         </div>
@@ -739,11 +830,18 @@ export function SchoolsPage() {
               <AlertCircle size={16} className="shrink-0" /> {wizardError}
             </div>
           )}
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setWizardStep(2)} disabled={wizardSubmitting} className="gap-2">
-              <ArrowLeft size={16} /> Back
-            </Button>
-            <Button onClick={() => void handleCreateWizard()} disabled={wizardSubmitting} className="flex-1 py-4 shadow-lg shadow-blue-500/20">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setWizardStep(2)}
+              disabled={wizardSubmitting}
+              aria-label="Back to Admin Account"
+              title="Back to Admin Account"
+              className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 bg-white dark:bg-white/5 shadow-sm hover:shadow-md hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <Button onClick={() => void handleCreateWizard()} disabled={wizardSubmitting} className="flex-1">
               {wizardSubmitting ? 'Creating…' : 'Finish & Create School'}
             </Button>
           </div>

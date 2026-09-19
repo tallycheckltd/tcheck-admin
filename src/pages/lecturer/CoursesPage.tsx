@@ -5,7 +5,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { BookOpen, Users, Calendar, Plus, Trash2, MapPin, Bluetooth, Edit2, LayoutGrid, List } from 'lucide-react';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { BookOpen, Users, Calendar, Plus, Trash2, MapPin, Sparkles, Edit2, LayoutGrid, List } from 'lucide-react';
 import type { Course, School, User, Beacon, OrgUnit } from '../../types';
 import { CourseDataGrid } from '../../components/admin/CourseDataGrid';
 
@@ -34,6 +35,11 @@ export function CoursesPage() {
   const [viewMode, setViewMode] = useState<'cards' | 'grid'>('cards');
 
   const { data: allStudents } = useApi<User[]>(enrollModal ? '/users?role=STUDENT&status=APPROVED' : null);
+  const enrollingCourse = courses?.find((c) => c.id === enrollModal) ?? null;
+  // Hides students already on the roster — picking one again would just 400 on the backend's
+  // unique (userId, courseId) constraint with no useful feedback beyond "try someone else".
+  const alreadyEnrolledIds = new Set(enrollingCourse?.enrollments?.map((e) => e.user.id) ?? []);
+  const enrollableStudents = (allStudents ?? []).filter((s) => !alreadyEnrolledIds.has(s.id));
 
   const handleCreate = async () => {
     await create('/courses', {
@@ -146,7 +152,7 @@ export function CoursesPage() {
                   )}
                   {courseBeacons.map((b) => (
                     <Badge key={b.id} color="purple">
-                      <span className="flex items-center gap-1"><Bluetooth size={10} /> {b.name}</span>
+                      <span className="flex items-center gap-1"><Sparkles size={10} /> {b.name}</span>
                     </Badge>
                   ))}
                 </div>
@@ -201,7 +207,7 @@ export function CoursesPage() {
           )}
           <Input label="Room" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacons</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Sensors</label>
             <p className="text-xs text-slate-600 dark:text-slate-400">Select more than one for a large room a single beacon doesn't cover.</p>
             <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 divide-y divide-gray-100 dark:divide-white/5">
               {beacons && beacons.length > 0 ? beacons.map((b) => (
@@ -260,7 +266,7 @@ export function CoursesPage() {
           )}
           <Input label="Room" value={editForm.room} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacons</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Sensors</label>
             <p className="text-xs text-slate-600 dark:text-slate-400">Select more than one for a large room a single beacon doesn't cover.</p>
             <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 divide-y divide-gray-100 dark:divide-white/5">
               {beacons && beacons.length > 0 ? beacons.map((b) => (
@@ -295,17 +301,28 @@ export function CoursesPage() {
       </Modal>
 
       {/* Enroll Student Modal */}
-      <Modal open={!!enrollModal} onClose={() => setEnrollModal(null)} title="Enroll Student">
+      <Modal
+        open={!!enrollModal}
+        onClose={() => setEnrollModal(null)}
+        title={enrollingCourse ? `Enroll Student — ${enrollingCourse.code}` : 'Enroll Student'}
+      >
         <div className="space-y-4">
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Select Student</label>
-            <select value={enrollForm.userId} onChange={(e) => setEnrollForm({ ...enrollForm, userId: e.target.value })}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
-              <option value="">Select student</option>
-              {allStudents?.map((s) => <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.studentId || s.email})</option>)}
-            </select>
-          </div>
-          <Button onClick={handleEnroll} className="w-full">Enroll Student</Button>
+          {enrollingCourse && (
+            <p className="text-sm text-slate-600 dark:text-slate-400">{enrollingCourse.name}</p>
+          )}
+          <SearchableSelect
+            label="Student"
+            placeholder="Search by name, ID, or email…"
+            value={enrollForm.userId}
+            onChange={(userId) => setEnrollForm({ ...enrollForm, userId })}
+            options={enrollableStudents.map((s) => ({
+              value: s.id,
+              label: `${s.firstName} ${s.lastName}`,
+              sublabel: [s.studentId, s.email].filter(Boolean).join(' · '),
+            }))}
+            emptyText={alreadyEnrolledIds.size > 0 ? 'No matches (already-enrolled students are hidden)' : 'No students found'}
+          />
+          <Button onClick={handleEnroll} disabled={!enrollForm.userId} className="w-full">Enroll Student</Button>
         </div>
       </Modal>
     </div>

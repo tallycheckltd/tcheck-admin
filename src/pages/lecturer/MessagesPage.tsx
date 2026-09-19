@@ -37,6 +37,7 @@ export function MessagesPage() {
   const [showContacts, setShowContacts] = useState(false);
 
   const isLecturer = user?.role === 'LECTURER';
+  const isCxm = user?.role === 'CLIENT_EXPERIENCE_MANAGER';
 
   // Keep selectedRef in sync
   useEffect(() => {
@@ -262,7 +263,7 @@ export function MessagesPage() {
                 : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            {isLecturer ? 'My Students' : 'My Lecturers'}
+            {isLecturer ? 'My Students' : isCxm ? 'My Executives' : 'My Lecturers'}
           </button>
         </div>
 

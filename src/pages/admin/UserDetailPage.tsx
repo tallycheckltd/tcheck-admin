@@ -4,7 +4,7 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2, Smartphone, ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText, ScanEye } from 'lucide-react';
+import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2, Smartphone, ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText, ScanEye, Globe2, Briefcase, Building2, Cake, IdCard, ShieldCheck, KeyRound, Network, Link2, AlertTriangle, FileCheck, Camera } from 'lucide-react';
 import type { UserDetail, DeviceChangeReason } from '../../types';
 import { formatCheckInType } from '../../utils/checkInTypeLabel';
 import { exportStudentReportPdf } from '../../lib/adminPdfExport';
@@ -240,9 +240,52 @@ export function UserDetailPage() {
               {user.studentId && <span className="font-mono">{user.studentId}</span>}
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">Joined {new Date(user.createdAt).toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            {user.role === 'STUDENT' && user.school?.features?.onboardingJourney && (
+              <div className="mt-3 max-w-xs">
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+                  <span>Onboarding journey</span>
+                  <span className="tabular-nums font-medium">{user.onboardingProgress ?? 0}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${(user.onboardingProgress ?? 0) === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                    style={{ width: `${user.onboardingProgress ?? 0}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Executive Ed progressive profiling — only ever rendered for a STUDENT who has actually
+          been through the post-baseline-capture prompt (profileCompletedAt set); hidden entirely
+          for every other school/account so this doesn't show up as a permanent empty card on
+          tenants that don't use the feature. Individual fields still fall back to "Not shared"
+          since the prompt lets a student skip any one of them. */}
+      {user.role === 'STUDENT' && user.profileCompletedAt && (
+        <div className="glass-card p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Profile Details</h3>
+            {isBirthdaySoon(user.dateOfBirth) && (
+              <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-1 rounded-full">
+                <Cake size={12} /> Birthday coming up
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <ProfileDetailItem icon={IdCard} label="Gender" value={user.gender} restricted={user.demographicsMasked} />
+            <ProfileDetailItem icon={Globe2} label="Nationality" value={user.nationality} restricted={user.demographicsMasked} />
+            <ProfileDetailItem icon={Briefcase} label="Job Title" value={user.jobTitle} />
+            <ProfileDetailItem icon={Building2} label="Company" value={user.company} />
+            <ProfileDetailItem
+              icon={Cake}
+              label="Date of Birth"
+              value={user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' }) : null}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Invigilation access — LECTURER only; grants the exam-QR scanner without a separate
           INVIGILATOR account (dedicated invigilator accounts are created directly on Users). */}
@@ -360,6 +403,102 @@ export function UserDetailPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Role & Access — CustomRole (if assigned) always wins outright over direct permissions;
+          shown side by side so an admin can see exactly what's granted vs. what actually governs
+          access, plus hierarchy-tier scope for accounts that have one. */}
+      {(user.customRoleName || (user.permissions && user.permissions.length > 0) || user.orgUnit || user.scopeLevel !== 'INDIVIDUAL') && (
+        <div className="glass-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <ShieldCheck size={18} className="text-blue-500" />
+            <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Role &amp; Access</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5">
+                {user.customRoleName ? 'Custom Role' : 'Direct Permissions'}
+              </p>
+              {user.customRoleName && (
+                <Badge color="blue">{user.customRoleName}</Badge>
+              )}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(user.effectivePermissions ?? []).length === 0 ? (
+                  <span className="text-sm text-slate-400 italic">No permissions granted</span>
+                ) : (
+                  user.effectivePermissions?.map((p) => (
+                    <span key={p} className="text-[11px] font-medium px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                      {p.replace(/_/g, ' ')}
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+            {(user.orgUnit || user.scopeLevel !== 'INDIVIDUAL') && (
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5">Organization Scope</p>
+                <div className="flex items-center gap-2 text-sm text-slate-950 dark:text-white">
+                  <Network size={14} className="text-slate-400" />
+                  {user.orgUnit ? `${user.orgUnit.name} (${user.orgUnit.level})` : user.scopeLevel}
+                </div>
+                {user.isActingHod && <Badge color="yellow">Acting HOD</Badge>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Security & Compliance — every account-integrity signal in one place: tamper flag,
+          terms acceptance, auth enrollment mode, baseline capture state. Nothing here is
+          editable — it's a read-only audit view, same spirit as the Attendance History below. */}
+      <div className={`glass-card p-5 ${user.tamperFlag ? 'border-red-200 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/5' : ''}`}>
+        <div className="flex items-center gap-2 mb-4">
+          {user.tamperFlag ? <AlertTriangle size={18} className="text-red-500" /> : <KeyRound size={18} className="text-blue-500" />}
+          <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Security &amp; Compliance</h3>
+          {user.tamperFlag && <Badge color="red">Tamper Flagged</Badge>}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <SecurityDetailItem icon={KeyRound} label="Auth Mode" value={user.authMode?.replace(/_/g, ' ')} />
+          <SecurityDetailItem
+            icon={FileCheck}
+            label="Terms Accepted"
+            value={user.termsAccepted ? `v${user.termsVersion ?? '—'} · ${user.termsAcceptedAt ? new Date(user.termsAcceptedAt).toLocaleDateString('en', { dateStyle: 'medium' }) : ''}` : null}
+          />
+          <SecurityDetailItem
+            icon={Camera}
+            label="Baseline Photo"
+            value={user.baselineCapturedAt ? new Date(user.baselineCapturedAt).toLocaleDateString('en', { dateStyle: 'medium' }) : null}
+          />
+          <SecurityDetailItem
+            icon={AlertTriangle}
+            label="Tamper Flag"
+            value={user.tamperFlag ? `Flagged ${user.tamperFlaggedAt ? new Date(user.tamperFlaggedAt).toLocaleDateString('en', { dateStyle: 'medium' }) : ''}` : 'Clear'}
+          />
+        </div>
+        {user.requiresBaselineRetake && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 flex items-center gap-1.5">
+            <AlertTriangle size={12} /> This account is flagged to retake its baseline photo on next check-in.
+          </p>
+        )}
+      </div>
+
+      {/* External Integrations — Canvas/Moodle/Salesforce mapping, only rendered once this
+          account has actually been matched by a roster sync (see integration groundwork). */}
+      {user.externalIdentifiers && user.externalIdentifiers.length > 0 && (
+        <div className="glass-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Link2 size={18} className="text-blue-500" />
+            <h3 className="text-sm font-semibold text-slate-950 dark:text-white">External Integrations</h3>
+          </div>
+          <div className="space-y-2">
+            {user.externalIdentifiers.map((ext) => (
+              <div key={`${ext.provider}-${ext.externalId}`} className="flex items-center justify-between text-sm bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-2.5">
+                <span className="font-medium text-slate-950 dark:text-white">{ext.provider}</span>
+                <span className="font-mono text-xs text-slate-500">{ext.externalId}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -629,4 +768,75 @@ export function UserDetailPage() {
       )}
     </div>
   );
+}
+
+function ProfileDetailItem({
+  icon: Icon,
+  label,
+  value,
+  restricted,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value?: string | null;
+  /** Executive Ed Phase 4 — true when this field is null only because the viewer's tier can't see
+      it (server's demographicsMasked), not because the student never shared it. Distinguishes
+      "Restricted" (a permissions gate) from "Not shared" (the student's own choice) so an admin
+      isn't misled into thinking a masked field is simply empty. */
+  restricted?: boolean;
+}) {
+  const displayValue = value || (restricted ? 'Restricted' : 'Not shared');
+  return (
+    <div className="flex items-start gap-2.5">
+      <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-white/5 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <Icon size={14} className="text-slate-500 dark:text-slate-400" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+        <p className={`text-sm font-medium truncate ${value ? 'text-slate-950 dark:text-white' : 'text-slate-400 dark:text-slate-600 italic'}`}>
+          {displayValue}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Same layout as ProfileDetailItem, minus the "restricted vs not shared" distinction that only
+ * applies to student-shared profile fields — security/compliance fields are either set or not. */
+function SecurityDetailItem({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-white/5 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <Icon size={14} className="text-slate-500 dark:text-slate-400" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+        <p className={`text-sm font-medium truncate ${value ? 'text-slate-950 dark:text-white' : 'text-slate-400 dark:text-slate-600 italic'}`}>
+          {value || 'Not set'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** True when `dateOfBirth`'s month/day falls within the next 7 days (year-agnostic) — mirrors the
+ * admin-heads-up window the birthday.service.ts sweep notifies on, so this badge and that push
+ * notification agree on what "coming up" means. */
+function isBirthdaySoon(dateOfBirth?: string | null): boolean {
+  if (!dateOfBirth) return false;
+  const dob = new Date(dateOfBirth);
+  const now = new Date();
+  for (let offset = 0; offset <= 7; offset++) {
+    const check = new Date(now.getTime() + offset * 24 * 60 * 60 * 1000);
+    if (check.getUTCMonth() === dob.getUTCMonth() && check.getUTCDate() === dob.getUTCDate()) return true;
+  }
+  return false;
 }

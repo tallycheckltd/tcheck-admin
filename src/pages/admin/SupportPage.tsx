@@ -281,7 +281,7 @@ export function SupportPage() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="Raise a Support Ticket">
         <div className="space-y-4">
-          <Input label="Subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="e.g. Beacons not registering check-ins" />
+          <Input label="Subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="e.g. Sensors not registering check-ins" />
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Message</label>
             <textarea

@@ -33,7 +33,9 @@ export function canAccessTier(role: Role | undefined, minRole: Role): boolean {
 
 export const ROLE_LABEL: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
-  SUB_ADMIN: 'School Admin',
+  // Relabeled from the older "School Admin" now that SCHOOL_ADMIN below is the real, guaranteed
+  // one-per-school admin — SUB_ADMIN is the optional co-admin an existing admin may add later.
+  SUB_ADMIN: 'Co-Admin',
   LECTURER: 'Lecturer',
   STUDENT: 'Student',
   INVIGILATOR: 'Invigilator',
@@ -45,4 +47,11 @@ export const ROLE_LABEL: Record<Role, string> = {
   HOD: 'Head of Department',
   DEPUTY_HOD: 'Deputy HOD',
   ICT_ADMIN: 'ICT Admin',
+  SCHOOL_ADMIN: 'School Admin',
+  CLIENT_EXPERIENCE_MANAGER: 'Client Experience Manager',
 };
+
+export const STAFF_TIER_ROLES: Role[] = ['LECTURER', 'CLIENT_EXPERIENCE_MANAGER'];
+export function isStaffTierRole(role: Role | undefined): boolean {
+  return !!role && STAFF_TIER_ROLES.includes(role);
+}

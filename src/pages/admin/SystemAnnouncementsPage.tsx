@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Megaphone, Send, Clock, AlertTriangle, Info, CheckCircle, Link as LinkIcon } from 'lucide-react';
+import { Megaphone, Send, Clock, AlertTriangle, Info, CheckCircle, Link as LinkIcon, Mail, Smartphone } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
-import type { School, Course, Major, Broadcast } from '../../types';
+import type { School, Course, Major, Cohort, Broadcast } from '../../types';
+
+type Channel = 'IN_APP' | 'EMAIL';
 
 type Severity = 'INFO' | 'WARNING' | 'CRITICAL';
 
@@ -57,6 +59,10 @@ export function SystemAnnouncementsPage() {
   const [targetSchoolId, setTargetSchoolId] = useState<string>(isSuperAdmin ? '' : (user?.schoolId ?? ''));
   const [targetCourseId, setTargetCourseId] = useState<string>('');
   const [targetMajorId, setTargetMajorId] = useState<string>('');
+  const [targetCohortId, setTargetCohortId] = useState<string>('');
+  // IN_APP is always on (every existing broadcast gets it); EMAIL is the Executive Ed Phase 7
+  // opt-in fan-out on top of it — mirrors the server's channels default of ['IN_APP'].
+  const [emailEnabled, setEmailEnabled] = useState(false);
   const [resourceUrl, setResourceUrl] = useState('');
   const [resourceLabel, setResourceLabel] = useState('');
   const [sent, setSent] = useState(false);
@@ -64,11 +70,13 @@ export function SystemAnnouncementsPage() {
 
   const { data: courses } = useApi<Course[]>(targetSchoolId ? `/courses?schoolId=${targetSchoolId}` : null);
   const { data: majors } = useApi<Major[]>(targetSchoolId ? `/academic/majors?schoolId=${targetSchoolId}` : null);
+  const { data: cohorts } = useApi<Cohort[]>(targetSchoolId ? `/academic/cohorts?schoolId=${targetSchoolId}` : null);
 
   const handleSend = async () => {
     if (!title.trim() || !body.trim()) return;
     setError('');
     try {
+      const channels: Channel[] = emailEnabled ? ['IN_APP', 'EMAIL'] : ['IN_APP'];
       await create('/broadcasts', {
         title: title.trim(),
         body: body.trim(),
@@ -76,6 +84,8 @@ export function SystemAnnouncementsPage() {
         schoolId: targetSchoolId || undefined,
         courseId: targetCourseId || undefined,
         majorId: !targetCourseId ? targetMajorId || undefined : undefined,
+        cohortId: !targetCourseId && !targetMajorId ? targetCohortId || undefined : undefined,
+        channels,
         resourceUrl: resourceUrl.trim() || undefined,
         resourceLabel: resourceLabel.trim() || undefined,
       });
@@ -84,6 +94,8 @@ export function SystemAnnouncementsPage() {
       setSeverity('INFO');
       setTargetCourseId('');
       setTargetMajorId('');
+      setTargetCohortId('');
+      setEmailEnabled(false);
       setResourceUrl('');
       setResourceLabel('');
       setSent(true);
@@ -126,13 +138,13 @@ export function SystemAnnouncementsPage() {
             className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Target school</label>
               {isSuperAdmin ? (
                 <select
                   value={targetSchoolId}
-                  onChange={(e) => { setTargetSchoolId(e.target.value); setTargetCourseId(''); setTargetMajorId(''); }}
+                  onChange={(e) => { setTargetSchoolId(e.target.value); setTargetCourseId(''); setTargetMajorId(''); setTargetCohortId(''); }}
                   className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
                 >
                   <option value="">All Schools</option>
@@ -150,7 +162,7 @@ export function SystemAnnouncementsPage() {
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Narrow to course (optional)</label>
               <select
                 value={targetCourseId}
-                onChange={(e) => { setTargetCourseId(e.target.value); if (e.target.value) setTargetMajorId(''); }}
+                onChange={(e) => { setTargetCourseId(e.target.value); if (e.target.value) { setTargetMajorId(''); setTargetCohortId(''); } }}
                 disabled={!targetSchoolId}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white disabled:opacity-50"
               >
@@ -164,13 +176,27 @@ export function SystemAnnouncementsPage() {
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Or by faculty/major (optional)</label>
               <select
                 value={targetMajorId}
-                onChange={(e) => { setTargetMajorId(e.target.value); if (e.target.value) setTargetCourseId(''); }}
+                onChange={(e) => { setTargetMajorId(e.target.value); if (e.target.value) { setTargetCourseId(''); setTargetCohortId(''); } }}
                 disabled={!targetSchoolId || !!targetCourseId}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white disabled:opacity-50"
               >
                 <option value="">Whole school</option>
                 {majors?.map((m) => (
                   <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Or by cohort (optional)</label>
+              <select
+                value={targetCohortId}
+                onChange={(e) => { setTargetCohortId(e.target.value); if (e.target.value) { setTargetCourseId(''); setTargetMajorId(''); } }}
+                disabled={!targetSchoolId || !!targetCourseId || !!targetMajorId}
+                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white disabled:opacity-50"
+              >
+                <option value="">Whole school</option>
+                {cohorts?.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.year})</option>
                 ))}
               </select>
             </div>
@@ -194,6 +220,25 @@ export function SystemAnnouncementsPage() {
               onChange={(e) => setResourceLabel(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Channels:</span>
+            <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+              <Smartphone size={13} className="text-blue-500" />
+              In-app
+              <input type="checkbox" checked readOnly disabled className="rounded" />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+              <Mail size={13} className="text-blue-500" />
+              Email
+              <input
+                type="checkbox"
+                checked={emailEnabled}
+                onChange={(e) => setEmailEnabled(e.target.checked)}
+                className="rounded cursor-pointer"
+              />
+            </label>
           </div>
 
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -254,8 +299,11 @@ export function SystemAnnouncementsPage() {
                       <div className="flex items-center gap-3 mt-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
                         <span className="flex items-center gap-1"><Clock size={10} /> {timeAgo(a.createdAt)}</span>
                         <span>· Sent by {a.createdByName}</span>
-                        <span>· {a.course ? `${a.course.name} (${a.course.code})` : a.major ? `${a.major.name} (faculty)` : a.school ? a.school.name : 'All Schools'}</span>
+                        <span>· {a.course ? `${a.course.name} (${a.course.code})` : a.major ? `${a.major.name} (faculty)` : a.cohort ? `${a.cohort.name} (cohort)` : a.school ? a.school.name : 'All Schools'}</span>
                         <span className={`font-semibold capitalize ${cfg.text}`}>{a.severity.toLowerCase()}</span>
+                        {a.channels?.includes('EMAIL') && (
+                          <span className="flex items-center gap-1 text-blue-500"><Mail size={10} /> Email</span>
+                        )}
                       </div>
                     </div>
                   </div>

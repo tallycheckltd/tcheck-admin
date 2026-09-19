@@ -1,7 +1,42 @@
 export type Role =
   | 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT' | 'INVIGILATOR'
   // Enterprise hierarchy tiers (additive) — see server/prisma/schema.prisma Role enum comment.
-  | 'VC' | 'DVC' | 'REGISTRAR_ACADEMIC' | 'REGISTRAR_ADMIN' | 'DEAN' | 'HOD' | 'DEPUTY_HOD' | 'ICT_ADMIN';
+  | 'VC' | 'DVC' | 'REGISTRAR_ACADEMIC' | 'REGISTRAR_ADMIN' | 'DEAN' | 'HOD' | 'DEPUTY_HOD' | 'ICT_ADMIN'
+  // Guaranteed first account per School, and the front-of-house mobile/dashboard staff persona —
+  // see server/prisma/schema.prisma's Role enum comment for both.
+  | 'SCHOOL_ADMIN' | 'CLIENT_EXPERIENCE_MANAGER';
+
+/** See server/prisma/schema.prisma's Permission enum comment — a permission means the same thing
+ * regardless of which surface (mobile or dashboard) the holder is on. */
+export type Permission =
+  | 'MOBILE_ACCESS' | 'DASHBOARD_ACCESS'
+  | 'MANAGE_USERS' | 'MANAGE_SCHOOL_SETTINGS' | 'MANAGE_COURSES' | 'MANAGE_ANNOUNCEMENTS' | 'VIEW_ANALYTICS' | 'MANAGE_TICKETS'
+  | 'VIEW_BIRTHDAYS' | 'VIEW_BLE_CHECKINS' | 'VIEW_MANUAL_CHECKINS' | 'MANUAL_CHECK_IN' | 'MESSAGING'
+  | 'BROADCAST_STUDENTS_APPROVED' | 'BROADCAST_CLASS_SCHEDULE'
+  // Executive onboarding journey (School.features.onboardingJourney) — program-start welcome,
+  // materials-ready, free-form updates, and on-demand feedback requests.
+  | 'BROADCAST_PROGRAM_WELCOME' | 'BROADCAST_MATERIALS_READY' | 'BROADCAST_UPDATE' | 'REQUEST_FEEDBACK'
+  | 'VIEW_ANALYTICS_DEMOGRAPHICS'
+  | 'MANAGE_MATERIALS';
+
+/** A school-defined named bundle of Permissions — see server's CustomRole model doc comment.
+ * Editing `permissions` here changes what every holder can do immediately. */
+export interface CustomRole {
+  id: string;
+  schoolId: string;
+  name: string;
+  permissions: Permission[];
+  createdAt: string;
+  updatedAt: string;
+  _count?: { users: number };
+}
+
+export interface StaffCourseAssignment {
+  id: string;
+  userId: string;
+  courseId: string;
+  course?: Pick<Course, 'id' | 'name' | 'code'>;
+}
 
 export type ScopeLevel = 'UNIVERSITY' | 'DIVISION' | 'SCHOOL' | 'DEPARTMENT' | 'SUB_DEPARTMENT' | 'INDIVIDUAL';
 export type OrgUnitLevel = 'DIVISION' | 'FACULTY' | 'DEPARTMENT' | 'SUB_DEPARTMENT';
@@ -27,6 +62,8 @@ export interface SchoolFeatures {
   faceIdCheckIn?: boolean;
   dwellTimeTracking?: boolean;
   messaging?: boolean;
+  execEdSuite?: boolean;
+  onboardingJourney?: boolean;
 }
 
 export type AttendanceMode = 'CALENDAR_BASED' | 'STAGE_BASED';
@@ -41,6 +78,11 @@ export interface School {
   attendanceThreshold?: number;
   allowManualLecturerOverride?: boolean;
   features?: SchoolFeatures;
+  // Parent institution name (e.g. "Strathmore University" for SBS). Schools sharing this value
+  // are grouped on mobile into a university → tenant-grid picker (SchoolSelectionView), but only
+  // once at least one of them has execEdSuite on — see execEdInstitutions there. Otherwise purely
+  // informational.
+  institutionName?: string | null;
   // Calendar-scheduled (default) vs. stage-based progression (Program/Module pipeline, no
   // calendar at all — see Program/Module below).
   attendanceMode?: AttendanceMode;
@@ -115,6 +157,9 @@ export interface Cohort {
   year: number;
   schoolId: string;
   school?: School;
+  /** execEdSuite-only Client Experience Manager assignment (SBS Comms & Concierge plan). */
+  assignedCemId?: string | null;
+  assignedCem?: User | null;
 }
 
 export interface Level {
@@ -140,10 +185,32 @@ export interface User {
   deactivatedAt?: string | null;
   /** LECTURER only — grants exam-QR-scanner access without a separate INVIGILATOR account. */
   canInvigilate?: boolean;
+  /** Always the *effective* set — a CustomRole, if assigned, wins outright over these (see
+   * server's resolveEffectivePermissions). Empty for every role that predates this feature. */
+  permissions?: Permission[];
+  customRoleId?: string | null;
+  customRoleName?: string | null;
+  /** Executive onboarding journey (School.features.onboardingJourney) — 25/50/75/100, derived
+   * server-side from status/baselineCapturedAt/profileCompletedAt. Only meaningful for STUDENT;
+   * only worth displaying when the school has the feature on. */
+  onboardingProgress?: number;
   /** Enterprise hierarchy tiers only — undefined/default for every legacy role. */
   scopeLevel?: ScopeLevel;
   orgUnitId?: string | null;
   isActingHod?: boolean;
+  /** Executive Ed progressive profiling — captured once via a post-baseline-capture mobile
+   * prompt (STUDENT only), never a signup-time requirement. All optional even for accounts that
+   * have completed the prompt, since every field can be skipped individually. */
+  gender?: string | null;
+  nationality?: string | null;
+  jobTitle?: string | null;
+  company?: string | null;
+  dateOfBirth?: string | null;
+  profileCompletedAt?: string | null;
+  /** True when gender/nationality read null only because the viewer's tier can't see them (see
+   * server's maskDemographics), not because the student never shared them — only ever set on the
+   * /users/:id detail response. */
+  demographicsMasked?: boolean;
   _count?: {
     enrollments: number;
     attendances: number;
@@ -175,6 +242,23 @@ export interface UserDetail extends User {
   pendingDeviceRegisteredAt?: string | null;
   pendingDeviceReason?: DeviceChangeReason | null;
   pendingDeviceNote?: string | null;
+  /** The set that actually governs access — CustomRole wins outright over `permissions` when
+   * assigned (see resolveEffectivePermissions). Only ever populated on this detail response. */
+  effectivePermissions?: Permission[];
+  orgUnit?: { id: string; name: string; level: string } | null;
+  externalIdentifiers?: { provider: 'CANVAS' | 'MOODLE' | 'SALESFORCE'; externalId: string; createdAt: string }[];
+  // Security/compliance fields — every scalar on User comes through this endpoint already;
+  // these are the ones not otherwise surfaced anywhere in the dashboard yet.
+  tamperFlag?: boolean;
+  tamperFlaggedAt?: string | null;
+  termsAccepted?: boolean;
+  termsAcceptedAt?: string | null;
+  termsVersion?: string | null;
+  authMode?: 'UNENROLLED' | 'BIOMETRIC_LOCK' | 'LIVE_SELFIE' | 'DEVICE_BOUND' | string;
+  claimedAt?: string | null;
+  requiresBaselineRetake?: boolean;
+  baselineCapturedAt?: string | null;
+  fcmToken?: string | null;
 }
 
 export type DeviceChangeReason = 'LOST_PHONE' | 'NEW_PHONE' | 'DAMAGED' | 'STOLEN' | 'OTHER';
@@ -415,10 +499,48 @@ export interface Broadcast {
   school: { id: string; name: string } | null;
   course: { id: string; name: string; code: string } | null;
   major: { id: string; name: string; code: string } | null;
+  /** Executive Ed Phase 7 — cohort-scoped targeting, alongside course/major. */
+  cohort: { id: string; name: string; year: number } | null;
+  /** Delivery channels this broadcast fanned out to — defaults to ['IN_APP'] server-side. */
+  channels?: ('IN_APP' | 'EMAIL')[];
   resourceUrl: string | null;
   resourceLabel: string | null;
   createdAt: string;
   isRead: boolean;
+}
+
+/** "Request Feedback" — a cohort-wide ad hoc survey, distinct from Broadcast (announcement, no
+ * response expected) and from the attendance-scoped NPS engine. See server/src/services/
+ * feedbackRequest.service.ts. */
+export interface FeedbackRequest {
+  id: string;
+  title: string;
+  prompt: string;
+  createdByName: string;
+  cohort: { id: string; name: string; year: number };
+  school: { id: string; name: string };
+  createdAt: string;
+  recipientCount: number;
+  responseCount: number;
+}
+
+export interface FeedbackRequestResponseRow {
+  id: string;
+  studentName: string;
+  npsScore: number;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface FeedbackRequestResults {
+  id: string;
+  title: string;
+  prompt: string;
+  cohort: { id: string; name: string; year: number };
+  createdAt: string;
+  recipientCount: number;
+  avgScore: number | null;
+  responses: FeedbackRequestResponseRow[];
 }
 
 /** One row from GET /attendance/course-records (CSV export). */
@@ -459,6 +581,36 @@ export interface ClassAttendanceStat {
 }
 
 /** GET /attendance/campus-analytics — admin matte analytics bento bundle */
+/** Row from GET /feedback/analytics/participation-by-gender (Executive Ed Phase 9) — one row per
+ * course x gender, already aggregated server-side (v_module_participation_by_gender view), so no
+ * demographic masking needed on this shape. Raw snake_case column names, matching the SQL view. */
+export interface NpsParticipationByGenderRow {
+  course_id: string;
+  course_name: string;
+  course_code: string;
+  gender: string | null;
+  enrolled_count: number;
+  class_count: number;
+  possible_checkins: number;
+  present_checkins: number;
+  participation_rate_pct: number;
+}
+
+/** Row from GET /feedback/analytics/nps-by-lecturer (Executive Ed Phase 9) — one row per class
+ * session with its average NPS score (v_module_nps_by_lecturer view). */
+export interface NpsByLecturerRow {
+  course_id: string;
+  course_name: string;
+  course_code: string;
+  lecturer_id: string;
+  lecturer_name: string;
+  class_id: string;
+  class_title: string;
+  class_date: string;
+  avg_nps: number | null;
+  response_count: number;
+}
+
 export interface CampusAnalytics {
   fetchedAtIso: string;
   scopedSchoolId: string | null;
@@ -671,6 +823,42 @@ export interface Ticket {
   updatedAt: string;
 }
 
+/** SBS Comms & Concierge plan, Phase 3 — Facilities Escalation Engine. Deliberately its own type,
+ * not reusing `Ticket` — a distinct model server-side (`FacilityTicket`), different lifecycle
+ * (acknowledge/resolve vs the platform-support ticket's IN_PROGRESS/CLOSED), and its own SLA
+ * timer (`slaBreachedAt`). */
+export type FacilityTicketPreset = 'AC_TOO_COLD' | 'AV_ISSUE' | 'CATERING' | 'OTHER';
+
+export interface FacilityTicketMessage {
+  id: string;
+  content: string;
+  createdAt: string;
+  sender: Pick<User, 'id' | 'firstName' | 'lastName'> & { role?: Role };
+}
+
+export interface FacilityTicket {
+  id: string;
+  schoolId: string;
+  school?: Pick<School, 'id' | 'name' | 'code' | 'color'>;
+  classId?: string | null;
+  class?: { id: string; title: string; room?: string | null } | null;
+  createdById: string;
+  createdBy?: Pick<User, 'id' | 'firstName' | 'lastName'>;
+  presetType: FacilityTicketPreset;
+  detail?: string | null;
+  status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+  priority: 'NORMAL' | 'URGENT';
+  assignedToId?: string | null;
+  assignedTo?: Pick<User, 'id' | 'firstName' | 'lastName'> | null;
+  acknowledgedAt?: string | null;
+  resolvedAt?: string | null;
+  slaBreachedAt?: string | null;
+  messages?: FacilityTicketMessage[];
+  _count?: { messages: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Escalation {
   id: string;
   studentId: string;
@@ -696,4 +884,30 @@ export interface AuthResponse {
   user: User;
   accessToken: string;
   refreshToken: string;
+}
+
+export type IntegrationProvider = 'CANVAS' | 'MOODLE' | 'SALESFORCE';
+
+export interface IntegrationSyncSummary {
+  coursesMatched?: number;
+  coursesUnmatched?: { externalId: string; name: string; code: string }[];
+  enrollmentsCreated?: number;
+  usersUnmatched?: string[];
+  recordsConsidered?: number;
+  pushed?: number;
+  errors?: string[];
+}
+
+export interface IntegrationConnection {
+  id: string;
+  schoolId: string;
+  provider: IntegrationProvider;
+  config: Record<string, unknown>;
+  isActive: boolean;
+  lastSyncedAt: string | null;
+  lastSyncStatus: 'SUCCESS' | 'PARTIAL' | 'FAILED' | null;
+  lastSyncError: string | null;
+  lastSyncSummary: IntegrationSyncSummary | null;
+  createdAt: string;
+  updatedAt: string;
 }

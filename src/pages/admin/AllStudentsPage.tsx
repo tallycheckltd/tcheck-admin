@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
+import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Search, CheckCircle, XCircle, Trash2, GraduationCap } from 'lucide-react';
@@ -11,6 +12,13 @@ const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, RE
 
 export function AllStudentsPage() {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
+  // Executive Ed Phase 9 — Gender/Nationality/Job Title columns are SBS-only noise everywhere
+  // else, so they're gated on the viewer's own school's flag rather than shown unconditionally.
+  const execEdSuite = Boolean(currentUser?.school?.features?.execEdSuite);
+  // Executive onboarding journey — the 25/50/75/100 progress column is pure noise for a school
+  // that hasn't opted in, same reasoning as the execEdSuite-gated columns above.
+  const onboardingJourney = Boolean(currentUser?.school?.features?.onboardingJourney);
   const { data: users, refetch } = useApi<User[]>('/users?role=STUDENT');
   const { mutate: patch } = useMutation('patch');
   const { mutate: del } = useMutation('delete');
@@ -97,6 +105,10 @@ export function AllStudentsPage() {
               <th>Email</th>
               <th>Student ID</th>
               <th>School</th>
+              {execEdSuite && <th>Gender</th>}
+              {execEdSuite && <th>Nationality</th>}
+              {execEdSuite && <th>Job Title</th>}
+              {onboardingJourney && <th>Onboarding</th>}
               <th>Status</th>
               <th className="text-right">Actions</th>
             </tr>
@@ -114,6 +126,30 @@ export function AllStudentsPage() {
                 <td>{u.email}</td>
                 <td className="font-mono">{u.studentId || '-'}</td>
                 <td>{u.school?.name || '-'}</td>
+                {execEdSuite && (
+                  <td className={u.gender ? '' : 'text-gray-400 italic'}>
+                    {u.gender || (u.demographicsMasked ? 'Restricted' : '-')}
+                  </td>
+                )}
+                {execEdSuite && (
+                  <td className={u.nationality ? '' : 'text-gray-400 italic'}>
+                    {u.nationality || (u.demographicsMasked ? 'Restricted' : '-')}
+                  </td>
+                )}
+                {execEdSuite && <td>{u.jobTitle || '-'}</td>}
+                {onboardingJourney && (
+                  <td>
+                    <div className="flex items-center gap-2 w-24">
+                      <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${(u.onboardingProgress ?? 0) === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                          style={{ width: `${u.onboardingProgress ?? 0}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">{u.onboardingProgress ?? 0}%</span>
+                    </div>
+                  </td>
+                )}
                 <td>
                   <Badge color={statusColor[u.status]}>{u.status}</Badge>
                 </td>
@@ -150,7 +186,7 @@ export function AllStudentsPage() {
             ))}
             {filtered?.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-center py-12">
+                <td colSpan={(execEdSuite ? 9 : 6) + (onboardingJourney ? 1 : 0)} className="text-center py-12">
                   <div className="flex flex-col items-center">
                     <GraduationCap size={40} className="text-gray-300 dark:text-gray-600 mb-2" />
                     <p className="text-gray-400">No students found matching filters</p>

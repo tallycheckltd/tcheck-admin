@@ -7,13 +7,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useApi } from '../../hooks/useApi';
 import {
-  LayoutDashboard, School, Users, Settings, BookOpen, Calendar,
+  LayoutDashboard, School, Users, Users2, Settings, BookOpen, Calendar, ShieldCheck,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
-  BarChart3, Bluetooth, Smartphone, Bell, Megaphone,
+  BarChart3, Sparkles, Smartphone, Bell, Megaphone, Star,
   ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
+  User as UserIcon, Plug, Wrench,
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { DashboardStats, Ticket, Escalation, User } from '../../types';
+import type { DashboardStats, Ticket, Escalation, FacilityTicket, User } from '../../types';
 import { isHierarchyRole, ROLE_LABEL } from '../../lib/rbac';
 
 interface NavItem {
@@ -33,22 +34,32 @@ const superAdminOverview: NavItem[] = [
 const superAdminAdmin: NavItem[] = [
   { to: '/admin/schools', icon: School, label: 'Schools' },
   { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
+  { to: '/admin/roles-permissions', icon: ShieldCheck, label: 'Roles & Permissions' },
   { to: '/admin/org-units', icon: Network, label: 'Organization' },
+  { to: '/admin/integrations', icon: Plug, label: 'Integrations' },
   { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
   { to: '/admin/programs', icon: Layers, label: 'Programs' },
+  // Cohort CRUD existed as a page (CohortsPage.tsx) but had no route/nav entry before the SBS
+  // Comms & Concierge plan (Phase 2) needed cohort->CEM assignment reachable in the UI.
+  { to: '/admin/cohorts', icon: Users2, label: 'Cohorts' },
 ];
 
 const superAdminGeneral: NavItem[] = [
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
+  // Executive Ed Phase 9 — visible to SUPER_ADMIN unconditionally (global role, not scoped to one
+  // school's execEdSuite flag); the page itself is empty/harmless for a school with no NPS data.
+  { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
+  { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
   { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
-  { to: '/admin/beacon-health', icon: Battery, label: 'Beacon Health' },
+  { to: '/admin/beacon-health', icon: Battery, label: 'Aura Health' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
+  { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/system-announcements', icon: Megaphone, label: 'System Announcements' },
+  { to: '/admin/request-feedback', icon: Star, label: 'Request Feedback' },
   { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
@@ -60,7 +71,11 @@ const hodOverview: NavItem[] = [
 
 const hodAdmin: NavItem[] = [
   { to: '/admin/users', icon: Users, label: 'Users' },
+  // The school-scoped "create a user, assign them a role, roles carry permissions" page — see
+  // RolesPermissionsPage.tsx. Distinct from the plain Users list above (roster/approvals).
+  { to: '/admin/roles-permissions', icon: ShieldCheck, label: 'Roles & Permissions' },
   { to: '/admin/org-units', icon: Network, label: 'Organization' },
+  { to: '/admin/integrations', icon: Plug, label: 'Integrations' },
   { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
   { to: '/admin/programs', icon: Layers, label: 'Programs' },
@@ -81,19 +96,24 @@ const hodOperations: NavItem[] = [
   },
   { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
   { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
+  { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/admin/lecturer-presence', icon: UserCheck, label: 'Lecturer Presence' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
+  // Executive Ed Phase 9 — hidden entirely unless this school has execEdSuite on, via
+  // filterBySchoolConfig/hiddenNavLabels below (same mechanism as the Announcements/Terms toggle).
+  { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
 ];
 
 const hodGeneral: NavItem[] = [
-  { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
+  { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
   { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
-  { to: '/admin/beacon-health', icon: Battery, label: 'Beacon Health' },
+  { to: '/admin/beacon-health', icon: Battery, label: 'Aura Health' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/admin/system-announcements', icon: Megaphone, label: 'Announcements' },
+  { to: '/admin/request-feedback', icon: Star, label: 'Request Feedback' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
@@ -107,11 +127,26 @@ const lecturerLinks: NavItem[] = [
   { to: '/attendance', icon: ClipboardList, label: 'Attendance' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
+  { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
+  // Birthdays/check-ins/manual check-in/broadcasts — only shown when the lecturer actually holds
+  // at least one staff-capability permission; the page itself renders an empty state otherwise
+  // rather than being hidden entirely, since that's cheaper than threading permission fetches
+  // into this static nav array. Same page as CLIENT_EXPERIENCE_MANAGER's cxmLinks below.
+  { to: '/staff', icon: UserCheck, label: 'Staff View' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/announcements', icon: Megaphone, label: 'Announcements' },
+];
+
+/* ---- CLIENT_EXPERIENCE_MANAGER — front-of-house, not tied to a taught Course like LECTURER.
+   Deliberately thin: whatever they can actually do lives entirely behind their granted
+   Permissions, rendered inside StaffViewPage (the dashboard mirror of the mobile Staff tab). ---- */
+const cxmLinks: NavItem[] = [
+  { to: '/staff', icon: UserCheck, label: 'Staff View' },
+  { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/alerts', icon: Bell, label: 'Alerts' },
 ];
 
 /* ---- Enterprise hierarchy tiers (Phase 5) — VC/DVC/Dean/HOD/Deputy HOD share one broad
@@ -144,8 +179,11 @@ const hierarchyOperations: NavItem[] = [
   },
   { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
   { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
+  { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
+  // Executive Ed Phase 9 — same execEdSuite gating as hodOperations above.
+  { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
 ];
 
 /* ---- The "Executive Diet" (§18.3) — VC/DVC need institutional oversight, not granular IT or
@@ -167,6 +205,9 @@ const execOperations: NavItem[] = [
     ],
   },
   { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
+  // Executive Ed Phase 9 — the VC/DVC "Executive Diet" nav is exactly this feature's home
+  // audience; gated the same as everywhere else via hiddenNavLabels/filterBySchoolConfig.
+  { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
 ];
 
 const execGeneral: NavItem[] = [
@@ -198,9 +239,9 @@ const registrarGeneral: NavItem[] = [
 /* ---- ICT Admin — infrastructure only ---- */
 const ictAdminLinks: NavItem[] = [
   { to: '/admin', icon: LayoutDashboard, label: 'System Health' },
-  { to: '/admin/beacons', icon: Bluetooth, label: 'TB Manager' },
+  { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
   { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
-  { to: '/admin/beacon-health', icon: Battery, label: 'Beacon Health' },
+  { to: '/admin/beacon-health', icon: Battery, label: 'Aura Health' },
   { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/messages', icon: MessageSquare, label: 'System Alerts' },
@@ -388,6 +429,7 @@ function ProfileMenu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) return;
@@ -430,6 +472,10 @@ function ProfileMenu({
               <kbd className="inline-flex items-center justify-center px-1.5 h-5 rounded-md text-[10px] font-medium border border-[color:var(--sidebar-edge)] text-[color:var(--app-text-muted)]">
                 /
               </kbd>
+            </button>
+            <button onClick={() => { navigate('/profile'); setOpen(false); }} type="button" className={itemClass}>
+              <span className={iconBadgeClass}><UserIcon size={16} /></span>
+              <span className="flex-1 text-left">My Profile</span>
             </button>
             <button onClick={() => { onToggleTheme(); setOpen(false); }} type="button" className={itemClass}>
               <span className={iconBadgeClass}>{dark ? <Sun size={16} /> : <Moon size={16} />}</span>
@@ -491,13 +537,16 @@ export function Sidebar({
   const { user, logout } = useAuth();
   const { dark, toggle } = useTheme();
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
+  // SCHOOL_ADMIN behaves exactly like SUB_ADMIN in the sidebar — same nav, same "Administration"
+  // section — see server-side SCHOOL_ADMIN_TIER for the equivalent backend-side grouping.
+  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN' || user?.role === 'SCHOOL_ADMIN';
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isRegistrar = user?.role === 'REGISTRAR_ACADEMIC' || user?.role === 'REGISTRAR_ADMIN';
   const isIctAdmin = user?.role === 'ICT_ADMIN';
   const isExecutive = user?.role === 'VC' || user?.role === 'DVC';
   const isHierarchyOps = isHierarchyRole(user?.role) && !isRegistrar && !isIctAdmin && !isExecutive;
-  const isLecturer = !isAdmin && !isRegistrar && !isIctAdmin && !isHierarchyOps && !isExecutive;
+  const isCxm = user?.role === 'CLIENT_EXPERIENCE_MANAGER';
+  const isLecturer = !isAdmin && !isRegistrar && !isIctAdmin && !isHierarchyOps && !isExecutive && !isCxm;
   const { data: unreadData, refetch: refetchUnread } = useApi<{ count: number }>('/notifications/unread-count', {
     refetchIntervalMs: 60_000,
     refetchWhenVisible: true,
@@ -527,6 +576,15 @@ export function Sidebar({
   );
   const openEscalationsCount = escalationsData?.length || 0;
 
+  // SBS Comms & Concierge plan, Phase 3 — open facility tickets badge, same shape as the
+  // escalations badge above. STUDENT never renders this sidebar at all, so '/facility-tickets'
+  // here always resolves to the LECTURER/admin "my queue + unclaimed" scope, never a student's own.
+  const { data: facilityTicketsData, refetch: refetchFacilityTickets } = useApi<FacilityTicket[]>(
+    user?.school?.features?.execEdSuite ? '/facility-tickets?status=OPEN' : null,
+    { refetchIntervalMs: 30_000, refetchWhenVisible: true },
+  );
+  const openFacilityTicketsCount = facilityTicketsData?.length || 0;
+
   // Real-time unread count + ticket updates
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -535,6 +593,7 @@ export function Sidebar({
     const handler = () => refetchUnread({ silent: true });
     const ticketHandler = () => refetchTickets({ silent: true });
     const escalationHandler = () => refetchEscalations({ silent: true });
+    const facilityTicketHandler = () => refetchFacilityTickets({ silent: true });
     s.on('message:new', handler);
     s.on('flag:new', handler);
     s.on('ticket:new', ticketHandler);
@@ -543,8 +602,10 @@ export function Sidebar({
     // fresh; a new message notification is a decent proxy trigger for an early refresh too, since
     // every escalation is also a DM to the lecturer.
     s.on('message:new', escalationHandler);
+    s.on('facilityTicket:new', facilityTicketHandler);
+    s.on('facilityTicket:updated', facilityTicketHandler);
     return () => { s.disconnect(); };
-  }, [refetchUnread, refetchTickets, refetchEscalations]);
+  }, [refetchUnread, refetchTickets, refetchEscalations, refetchFacilityTickets]);
 
   const roleLabel = user?.role ? ROLE_LABEL[user.role] : 'Lecturer';
   const roleAccent = isSuperAdmin ? 'from-purple-500 to-purple-600' : isAdmin ? 'from-blue-500 to-blue-600' : 'from-emerald-500 to-emerald-600';
@@ -558,6 +619,9 @@ export function Sidebar({
 
   const addEscalationBadge = (links: NavItem[]) =>
     links.map((l) => l.to === '/admin/escalations' ? { ...l, badge: openEscalationsCount } : l);
+
+  const addFacilitiesBadge = (links: NavItem[]) =>
+    links.map((l) => l.to === '/admin/facilities' ? { ...l, badge: openFacilityTicketsCount } : l);
 
   const addPendingBadge = (links: NavItem[]) =>
     links.map((l) => l.to === '/admin/users' ? { ...l, badge: pendingApprovals } : l);
@@ -576,6 +640,13 @@ export function Sidebar({
   if (!isSuperAdmin) {
     if (!(user?.school?.features?.broadcasts ?? true)) hiddenNavLabels.add('Announcements');
     hiddenNavLabels.add(attendanceMode === 'STAGE_BASED' ? 'Terms' : 'Programs');
+    // Executive Ed Phase 9 — NPS Analytics only means anything for a school actually running the
+    // NPS engine (Phase 6's sweep is itself execEdSuite-gated), so it's hidden everywhere else.
+    if (!user?.school?.features?.execEdSuite) hiddenNavLabels.add('NPS Analytics');
+    // SBS Comms & Concierge plan, Phase 3 — the Facilities queue is empty/unreachable server-side
+    // for any school with execEdSuite off (every /facility-tickets route is gated on it), so hide
+    // the nav entry rather than link to a page that can only ever show a 403.
+    if (!user?.school?.features?.execEdSuite) hiddenNavLabels.add('Facilities');
   }
   const filterBySchoolConfig = (links: NavItem[]) =>
     hiddenNavLabels.size === 0 ? links : links.filter((l) => !hiddenNavLabels.has(l.label));
@@ -638,14 +709,14 @@ export function Sidebar({
           <>
             <NavSection title="Overview" links={superAdminOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Administration" links={superAdminAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={addEscalationBadge(addTicketBadge(addAlertBadge(superAdminGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={addFacilitiesBadge(addEscalationBadge(addTicketBadge(addAlertBadge(superAdminGeneral))))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isAdmin && !isSuperAdmin && (
           <>
             <NavSection title="Overview" links={hodOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Administration" links={filterBySchoolConfig(addPendingBadge(hodAdmin))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Operations" links={addEscalationBadge(hodOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Operations" links={filterBySchoolConfig(addFacilitiesBadge(addEscalationBadge(hodOperations)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(addAlertBadge(hodGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
@@ -653,7 +724,7 @@ export function Sidebar({
           <>
             <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Administration" links={execAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Operations" links={execOperations} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Operations" links={filterBySchoolConfig(execOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="General" links={execGeneral} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
@@ -669,11 +740,11 @@ export function Sidebar({
             />
             <NavSection
               title="Operations"
-              links={addEscalationBadge(
+              links={filterBySchoolConfig(addFacilitiesBadge(addEscalationBadge(
                 user?.role === 'DEPUTY_HOD'
-                  ? hierarchyOperations.filter((l) => l.label !== 'Fraud Detection' && l.label !== 'Escalations')
+                  ? hierarchyOperations.filter((l) => l.label !== 'Fraud Detection' && l.label !== 'Escalations' && l.label !== 'Facilities')
                   : hierarchyOperations,
-              )}
+              )))}
               isSuperAdmin={isSuperAdmin}
               onNavigate={onClose}
               collapsed={collapsed}
@@ -709,11 +780,31 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isLecturer && addEscalationBadge(filterBySchoolConfig(lecturerLinks)).map((link) => (
+        {isLecturer && addFacilitiesBadge(addEscalationBadge(filterBySchoolConfig(lecturerLinks))).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
             end={link.to === '/lecturer'}
+            onClick={onClose}
+            title={collapsed ? link.label : undefined}
+            className={({ isActive }) =>
+              clsx(
+                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
+                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
+                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
+              )
+            }
+          >
+            <NavIcon Icon={link.icon} active={false} />
+            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
+            {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
+            {collapsed && <NavBadge count={link.badge} collapsed />}
+          </NavLink>
+        ))}
+        {isCxm && addAlertBadge(cxmLinks).map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
             onClick={onClose}
             title={collapsed ? link.label : undefined}
             className={({ isActive }) =>

@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Slider } from '../../components/ui/Slider';
 import {
   Settings, UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer,
-  School as SchoolIcon, CalendarDays, Layers,
+  School as SchoolIcon, CalendarDays, Layers, Briefcase, Sparkles,
 } from 'lucide-react';
 import type { AttendanceMode, School, SchoolFeatures } from '../../types';
 
@@ -17,6 +17,8 @@ const defaultFeatures: Required<SchoolFeatures> = {
   faceIdCheckIn: true,
   dwellTimeTracking: true,
   messaging: true,
+  execEdSuite: false,
+  onboardingJourney: false,
 };
 
 const emptyForm = {
@@ -253,9 +255,23 @@ export function SettingsPage() {
                 <FeatureToggle
                   icon={Timer}
                   title="Dwell Time Tracking"
-                  description="Requires ~10s of sustained signal presence before a TB check-in is accepted. Off allows an instant tap the moment the signal is detected."
+                  description="Requires ~10s of sustained signal presence before an Aura check-in is accepted. Off allows an instant tap the moment the signal is detected."
                   checked={form.features.dwellTimeTracking}
                   onChange={(v) => setForm({ ...form, features: { ...form.features, dwellTimeTracking: v } })}
+                />
+                <FeatureToggle
+                  icon={Briefcase}
+                  title="Executive Ed Suite"
+                  description="Tools for executive and short-course programs — cohorts and corporate attendees tracked separately from regular class attendance."
+                  checked={form.features.execEdSuite}
+                  onChange={(v) => setForm({ ...form, features: { ...form.features, execEdSuite: v } })}
+                />
+                <FeatureToggle
+                  icon={Sparkles}
+                  title="Onboarding Journey"
+                  description="Premium onboarding: an approval email, a registration-progress percentage on each student's profile, a staff alert when they finish their profile, and program-welcome / materials-ready broadcast templates for Client Experience Managers."
+                  checked={form.features.onboardingJourney}
+                  onChange={(v) => setForm({ ...form, features: { ...form.features, onboardingJourney: v } })}
                 />
               </div>
             </GlassCard>

@@ -38,6 +38,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // localStorage is shared across every tab of this origin — if a second tab logs in as a
+  // different user, this tab's `user` state never invalidates on its own (it was only ever set
+  // once, at login/mount). A full reload is the simplest safe fix: it re-runs the effect above
+  // against whatever token is now current, rather than trying to hot-swap identity mid-session.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'accessToken' && e.newValue !== e.oldValue) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   const requestOtp = async (email: string, password: string): Promise<void> => {
     await api.post<{ otpRequired: true }>('/auth/dashboard-login', { email, password });
   };

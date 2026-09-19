@@ -6,13 +6,16 @@ import { RequireSuperAdmin } from './components/guards/RequireSuperAdmin';
 import { LoginPage } from './pages/auth/LoginPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { OverviewPage } from './pages/admin/OverviewPage';
 import { SchoolsPage } from './pages/admin/SchoolsPage';
+import { CohortsPage } from './pages/admin/CohortsPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
 import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { CourseAttendanceDetailPage } from './pages/admin/CourseAttendanceDetailPage';
 import { AttendanceAnalyticsPage } from './pages/admin/AttendanceAnalyticsPage';
+import { NpsAnalyticsPage } from './pages/admin/NpsAnalyticsPage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
 import { AllLecturersPage } from './pages/admin/AllLecturersPage';
 import { BLEBeaconPage } from './pages/admin/BLEBeaconPage';
@@ -39,8 +42,14 @@ import { SetupWizardPage } from './pages/admin/SetupWizardPage';
 import { TermsPage } from './pages/admin/TermsPage';
 import { ProgramsPage } from './pages/admin/ProgramsPage';
 import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
+import { RequestFeedbackPage } from './pages/admin/RequestFeedbackPage';
+import { FeedbackRedirectPage } from './pages/public/FeedbackRedirectPage';
 import { SupportPage } from './pages/admin/SupportPage';
 import { EscalationsPage } from './pages/admin/EscalationsPage';
+import { FacilitiesQueuePage } from './pages/admin/FacilitiesQueuePage';
+import { RolesPermissionsPage } from './pages/admin/RolesPermissionsPage';
+import { IntegrationsPage } from './pages/admin/IntegrationsPage';
+import { StaffViewPage } from './pages/admin/StaffViewPage';
 import { LegalPage } from './pages/LegalPage';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
@@ -54,13 +63,19 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            {/* Unauthenticated — the email CTA in sendFeedbackRequestEmail links here. Students
+                aren't dashboard users; this page's only job is bouncing into the mobile app's
+                tcheck://feedback deep link (see FeedbackRedirectPage.tsx). */}
+            <Route path="/feedback/:requestId" element={<FeedbackRedirectPage />} />
             <Route element={<DashboardLayout />}>
               {/* Admin routes (SUPER_ADMIN + SUB_ADMIN) */}
               <Route path="/admin" element={<OverviewPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/users/:id" element={<UserDetailPage />} />
               <Route path="/admin/users/:id/courses/:courseId" element={<CourseAttendanceDetailPage />} />
               <Route path="/admin/attendance-analytics" element={<AttendanceAnalyticsPage />} />
+              <Route path="/admin/nps-analytics" element={<NpsAnalyticsPage />} />
               <Route path="/admin/students" element={<AllStudentsPage />} />
               <Route path="/admin/lecturers" element={<AllLecturersPage />} />
               <Route path="/admin/lecturer-presence" element={<LecturerPresencePage />} />
@@ -68,6 +83,7 @@ export default function App() {
               <Route path="/admin/fraud-detection" element={<FraudDetectionPage />} />
               <Route path="/admin/settings" element={<SettingsPage />} />
               <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
+              <Route path="/admin/request-feedback" element={<RequestFeedbackPage />} />
               <Route path="/admin/support" element={<SupportPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
               {/* SUB_ADMIN is scoped to their own school's beacons; SUPER_ADMIN sees/manages all (beacon.service.ts enforces this) */}
@@ -77,14 +93,19 @@ export default function App() {
               <Route path="/admin/beacon-health" element={<BeaconHealthPage />} />
               {/* SUB_ADMIN sees/adds co-admins for their own school only; SUPER_ADMIN sees/manages all (user.controller.ts + user.service.ts enforce this) */}
               <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
+              <Route path="/admin/roles-permissions" element={<RolesPermissionsPage />} />
+              <Route path="/staff" element={<StaffViewPage />} />
               <Route path="/admin/org-units" element={<OrgUnitsPage />} />
               <Route path="/admin/setup-wizard" element={<SetupWizardPage />} />
               <Route path="/admin/terms" element={<TermsPage />} />
               <Route path="/admin/programs" element={<ProgramsPage />} />
+              {/* SUPER_ADMIN + SCHOOL_ADMIN (integration.routes.ts enforces this; a school admin is scoped to their own school) */}
+              <Route path="/admin/integrations" element={<IntegrationsPage />} />
 
               {/* SUPER_ADMIN-only routes */}
               <Route element={<RequireSuperAdmin />}>
                 <Route path="/admin/schools" element={<SchoolsPage />} />
+                <Route path="/admin/cohorts" element={<CohortsPage />} />
                 <Route path="/admin/messages" element={<AdminMessagesPage />} />
               </Route>
 
@@ -107,6 +128,9 @@ export default function App() {
               <Route path="/admin/invigilation" element={<InvigilationPage />} />
               {/* SUPER_ADMIN + SUB_ADMIN + LECTURER (escalation.routes.ts enforces this; a lecturer is scoped to their own classes) */}
               <Route path="/admin/escalations" element={<EscalationsPage />} />
+              {/* SUPER_ADMIN + SUB_ADMIN + SCHOOL_ADMIN + LECTURER (facilityTicket.routes.ts enforces
+                  this; a lecturer sees their own claim + unclaimed tickets at their school) */}
+              <Route path="/admin/facilities" element={<FacilitiesQueuePage />} />
               <Route path="/legal" element={<LegalPage />} />
               <Route path="/settings/compliance" element={<LegalPage />} />
             </Route>

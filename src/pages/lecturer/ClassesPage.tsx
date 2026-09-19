@@ -317,7 +317,7 @@ export function ClassesPage() {
             </div>
           </div>
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon(s)</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Sensor(s)</label>
             <div className="w-full rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-400">
               {selectedFormCourseBeacons.length > 0
                 ? selectedFormCourseBeacons.map((b) => b.name).join(', ')

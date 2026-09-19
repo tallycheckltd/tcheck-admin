@@ -7,7 +7,7 @@ import { ForensicDetailModal } from '../../components/ForensicDetailModal';
 import { CourseDrilldown, CourseDrilldownBackLink } from '../../components/shared/CourseDrilldown';
 import { RoomSignalMap } from '../../components/admin/heatmap/RoomSignalMap';
 import { StudentSignalDrilldown } from '../../components/admin/heatmap/StudentSignalDrilldown';
-import { QrCode, Bluetooth, UserCheck, Users, Clock, Search, Download, Info, FileDown, ArrowUpCircle, AlertTriangle } from 'lucide-react';
+import { QrCode, Sparkles, UserCheck, Users, Clock, Search, Download, Info, FileDown, ArrowUpCircle, AlertTriangle } from 'lucide-react';
 import { exportSessionLedgerPdf } from '../../lib/adminPdfExport';
 import type { ClassAttendanceStat, ClassAttendanceDetail } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -85,7 +85,7 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
 
   const exportCSV = () => {
     if (!filtered) return;
-    const headers = ['Class', 'Course', 'Date', 'Enrolled', 'Checked In', 'Rate', 'TB', 'QR', 'Manual'];
+    const headers = ['Class', 'Course', 'Date', 'Enrolled', 'Checked In', 'Rate', 'Aura', 'QR', 'Manual'];
     const rows = filtered.map((s) =>
       [
         csvField(s.title),
@@ -117,12 +117,12 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
             {courseName ? `${courseName.code} — ${courseName.name}` : 'Session attendance'}
           </h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Drill into TB, QR, and manual paths with clear rates per scheduled class.
+            Drill into Aura, QR, and manual paths with clear rates per scheduled class.
           </p>
           <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-slate-200/90 bg-white/80 px-3 py-2.5 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-400">
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-sm bg-violet-500/70" aria-hidden />
-              Violet · TB beacon
+              Violet · Aura sensor
             </span>
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-sm bg-purple-400/65" aria-hidden />
@@ -188,7 +188,7 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
               <th className="whitespace-nowrap px-4 py-3 tabular-nums">Enrolled</th>
               <th className="whitespace-nowrap px-4 py-3 tabular-nums text-center">Present</th>
               <th className="px-4 py-3">Rate</th>
-              <th className="px-4 py-3 text-center">TB</th>
+              <th className="px-4 py-3 text-center">Aura</th>
               <th className="px-4 py-3 text-center">QR</th>
               <th className="px-4 py-3 text-center">Manual</th>
               <th className="whitespace-nowrap px-5 py-3 text-right"></th>
@@ -241,7 +241,7 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
                 </td>
                 <td className="px-4 py-3 text-center align-top">
                   <span className="inline-flex items-center justify-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-800 dark:bg-violet-500/15 dark:text-violet-300">
-                    <Bluetooth size={12} className="shrink-0" aria-hidden />
+                    <Sparkles size={12} className="shrink-0" aria-hidden />
                     {s.checkInBreakdown.BLE}
                   </span>
                 </td>
@@ -370,7 +370,7 @@ function ClassDetailView({ classId }: { classId: string }) {
           <p className="text-2xl font-bold text-green-600 dark:text-green-400">{data.totalCheckedIn}</p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center justify-center gap-1"><Bluetooth size={14} /> TB</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center justify-center gap-1"><Sparkles size={14} /> Aura</p>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{bleCount}</p>
         </div>
         <div className="glass-card p-4 text-center">
@@ -434,7 +434,7 @@ function ClassDetailView({ classId }: { classId: string }) {
                     }`}
                   >
                     {a.status === 'REJECTED' && <AlertTriangle size={12} />}
-                    {a.status !== 'REJECTED' && a.checkInType === 'BLE' && <Bluetooth size={12} />}
+                    {a.status !== 'REJECTED' && a.checkInType === 'BLE' && <Sparkles size={12} />}
                     {a.status !== 'REJECTED' && a.checkInType === 'QR' && <QrCode size={12} />}
                     {a.status !== 'REJECTED' && a.checkInType === 'MANUAL' && <UserCheck size={12} />}
                     {a.status === 'REJECTED' ? 'Rejected' : formatCheckInType(a.checkInType)}

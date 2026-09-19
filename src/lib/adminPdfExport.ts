@@ -7,6 +7,8 @@ import type {
   ClassAttendanceStat,
   CourseAttendanceExportRow,
   DashboardStats,
+  NpsByLecturerRow,
+  NpsParticipationByGenderRow,
   UserDetail,
 } from '../types';
 
@@ -124,7 +126,7 @@ export async function exportSessionLedgerPdf(rows: ClassAttendanceStat[], fileBa
 
   autoTable(doc, {
     startY,
-    head: [['Session', 'Code', 'Course', 'Date', 'Lecturer', 'Present / enrolled', 'Rate', 'TB / QR / Manual']],
+    head: [['Session', 'Code', 'Course', 'Date', 'Lecturer', 'Present / enrolled', 'Rate', 'Aura / QR / Manual']],
     body,
     styles: { fontSize: 8, cellPadding: 4 },
     headStyles: { fillColor: [51, 65, 85], textColor: 255 },
@@ -148,7 +150,7 @@ export async function exportCampusAnalyticsPdf(campus: CampusAnalytics, sessions
   doc.setTextColor(51, 65, 85);
   const kpiLines = [
     `Overall campus attendance: ${campus.overallAttendancePct}%`,
-    `Automated gate blocks (90d): TB ${campus.blockedGateAttemptsBle} · QR ${campus.blockedGateAttemptsQr}`,
+    `Automated gate blocks (90d): Aura ${campus.blockedGateAttemptsBle} · QR ${campus.blockedGateAttemptsQr}`,
     `Students under ${campus.attendanceThreshold}%: ${campus.atRiskStudentCount}`,
     `Sessions in aggregate: ${campus.sessionCount}`,
   ];
@@ -458,6 +460,69 @@ export async function exportStudentReportPdf(
 
   const safe = fileBase ?? `tcheck-student-${(student.studentId ?? student.id).replace(/[^\w-]/g, '')}`;
   doc.save(`${safe}.pdf`);
+}
+
+/** Executive Ed Phase 9 — NPS engine analytics bundle (session-level averages + gender
+ * participation), same two-table layout exportSessionLedgerPdf/exportHodRosterPdf use. */
+export async function exportNpsAnalyticsPdf(
+  nps: NpsByLecturerRow[],
+  participation: NpsParticipationByGenderRow[],
+  fileBase = 'tcheck-nps-analytics',
+) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  let startY = await addTcheckHeader(doc, 'TCheck — Executive Ed NPS analytics', `Generated ${format(new Date(), 'PPpp')}`);
+
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Session NPS by lecturer', 40, startY);
+  autoTable(doc, {
+    startY: startY + 10,
+    head: [['Course', 'Lecturer', 'Session', 'Date', 'Avg NPS', 'Responses']],
+    body: nps.map((r) => [
+      r.course_code,
+      r.lecturer_name,
+      r.class_title,
+      formatIsoDate(r.class_date),
+      r.avg_nps == null ? '—' : r.avg_nps.toFixed(1),
+      String(r.response_count),
+    ]),
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 40, right: 40 },
+  });
+
+  startY = afterTableY(doc, startY + 10) + 30;
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Participation by gender', 40, startY);
+  autoTable(doc, {
+    startY: startY + 10,
+    head: [['Course', 'Gender', 'Enrolled', 'Present check-ins', 'Possible check-ins', 'Participation %']],
+    body: participation.map((r) => [
+      r.course_code,
+      r.gender ?? 'Not shared',
+      String(r.enrolled_count),
+      String(r.present_checkins),
+      String(r.possible_checkins),
+      `${r.participation_rate_pct}%`,
+    ]),
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 40, right: 40 },
+  });
+
+  doc.save(`${fileBase}.pdf`);
+}
+
+function formatIsoDate(iso: string) {
+  try {
+    const raw = typeof iso === 'string' ? parseISO(iso) : new Date(iso);
+    return format(Number.isNaN(raw.getTime()) ? new Date(iso) : raw, 'MMM d, yyyy');
+  } catch {
+    return String(iso);
+  }
 }
 
 /** Week-over-week attendance trend, isolated from the full campus-analytics bundle. */

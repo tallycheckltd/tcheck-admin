@@ -4,7 +4,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import {
-  Link2, Search, BookOpen, Users, GraduationCap, UserCheck, Edit2, Trash2, Bluetooth,
+  Link2, Search, BookOpen, Users, GraduationCap, UserCheck, Edit2, Trash2, Sparkles,
   School as SchoolIcon, Calendar,
 } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -174,9 +174,9 @@ export function CourseAssignmentsPage() {
                 <button
                   onClick={() => openBeaconModal(course)}
                   className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-purple-500/10 text-gray-400 hover:text-purple-600 transition-all border border-transparent hover:border-purple-100"
-                  title="Assign TB beacon"
+                  title="Assign Aura Sensor"
                 >
-                  <Bluetooth size={16} />
+                  <Sparkles size={16} />
                 </button>
                 <button
                   onClick={() => openReassign(course)}
@@ -220,7 +220,7 @@ export function CourseAssignmentsPage() {
                   'w-8 h-8 rounded-lg flex items-center justify-center shadow-md',
                   course.beacon ? 'bg-purple-500 text-white shadow-purple-500/20' : 'bg-gray-200 dark:bg-white/10 text-gray-400 shadow-none'
                 )}>
-                  <Bluetooth size={16} />
+                  <Sparkles size={16} />
                 </div>
                 <div className="overflow-hidden flex-1">
                   <p className={clsx(
@@ -390,7 +390,7 @@ export function CourseAssignmentsPage() {
       </Modal>
 
       {/* Assign Beacon Modal */}
-      <Modal open={beaconModal} onClose={() => setBeaconModal(false)} title="Assign TB Beacon">
+      <Modal open={beaconModal} onClose={() => setBeaconModal(false)} title="Assign Aura Sensor">
         <div className="space-y-4">
           {beaconCourse && (
             <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-3">
@@ -400,29 +400,29 @@ export function CourseAssignmentsPage() {
               </p>
               {beaconCourse.beacon && (
                 <p className="text-xs text-purple-500 mt-1">
-                  Current: {beaconCourse.beacon.name} (UUID: {beaconCourse.beacon.uuid.slice(0, 8)}...)
+                  Current: {beaconCourse.beacon.name} (ID: {beaconCourse.beacon.uuid.slice(0, 8)}...)
                 </p>
               )}
             </div>
           )}
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Beacon</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Sensor</label>
             <div className="relative group">
               <select
                 value={selectedBeaconId}
                 onChange={(e) => setSelectedBeaconId(e.target.value)}
                 className="w-full appearance-none rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all cursor-pointer"
               >
-                <option value="" className="dark:bg-zinc-950 text-gray-400">No beacon (remove assignment)</option>
+                <option value="" className="dark:bg-zinc-950 text-gray-400">No sensor (remove assignment)</option>
                 {beacons?.map((b) => (
                   <option key={b.id} value={b.id} className="dark:bg-zinc-950">
-                    {b.name} — {b.uuid.slice(0, 8)}... (Min: {b.minor})
+                    {b.name} — {b.uuid.slice(0, 8)}... (Unit: {b.minor})
                   </option>
                 ))}
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-hover:text-purple-500 transition-colors">
-                <Bluetooth size={14} />
+                <Sparkles size={14} />
               </div>
             </div>
           </div>
@@ -432,11 +432,11 @@ export function CourseAssignmentsPage() {
             if (!beacon) return null;
             return (
               <div className="bg-purple-50 dark:bg-purple-500/5 rounded-xl px-4 py-3 space-y-1">
-                <p className="text-xs font-semibold text-purple-600 dark:text-purple-400">Beacon Details</p>
+                <p className="text-xs font-semibold text-purple-600 dark:text-purple-400">Sensor Details</p>
                 <div className="grid grid-cols-2 gap-1 text-xs text-gray-600 dark:text-gray-400">
-                  <span>UUID: <span className="font-mono text-gray-900 dark:text-white">{beacon.uuid}</span></span>
-                  <span>Major: <span className="font-mono text-gray-900 dark:text-white">{beacon.major}</span></span>
-                  <span>Minor: <span className="font-mono text-gray-900 dark:text-white">{beacon.minor}</span></span>
+                  <span>Sensor ID: <span className="font-mono text-gray-900 dark:text-white">{beacon.uuid}</span></span>
+                  <span>Zone: <span className="font-mono text-gray-900 dark:text-white">{beacon.major}</span></span>
+                  <span>Unit: <span className="font-mono text-gray-900 dark:text-white">{beacon.minor}</span></span>
                   <span>RSSI Threshold: <span className="font-mono text-gray-900 dark:text-white">{beacon.rssiThreshold}</span></span>
                   {beacon.location && (
                     <span className="col-span-2">Location: <span className="text-gray-900 dark:text-white">{beacon.location}</span></span>
@@ -447,7 +447,7 @@ export function CourseAssignmentsPage() {
           })()}
 
           <Button onClick={handleAssignBeacon} disabled={assigningBeacon} className="w-full">
-            {assigningBeacon ? 'Assigning...' : selectedBeaconId ? 'Assign Beacon' : 'Remove Beacon Assignment'}
+            {assigningBeacon ? 'Assigning...' : selectedBeaconId ? 'Assign Sensor' : 'Remove Sensor Assignment'}
           </Button>
         </div>
       </Modal>

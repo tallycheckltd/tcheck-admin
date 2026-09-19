@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, GraduationCap, Calendar, BookOpen, Clock, UserCheck, ArrowRight, School, LifeBuoy, Smartphone, Percent, ShieldAlert, Radar, TrendingDown } from 'lucide-react';
+import { useState } from 'react';
+import { Users, GraduationCap, Calendar, BookOpen, Clock, UserCheck, ArrowRight, School, LifeBuoy, Smartphone, Percent, ShieldAlert, Radar, TrendingDown, Activity, Building2, Globe2, Sparkles, Plus } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { BarChartCard } from '../../components/charts/BarChartCard';
@@ -116,19 +117,85 @@ export function OverviewPage() {
     value: d.count,
   })) || [];
 
+  const platformTotals = (schoolStats ?? []).reduce(
+    (acc, s) => ({
+      students: acc.students + s.totalStudents,
+      lecturers: acc.lecturers + s.totalLecturers,
+      openTickets: acc.openTickets + s.openTickets,
+    }),
+    { students: 0, lecturers: 0, openTickets: 0 },
+  );
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {getGreeting()}, {user?.firstName}
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Here's what's happening with Tcheck today</p>
-      </div>
+      {/* A platform operator (Tallycheck itself) monitoring every tenant is a fundamentally
+          different vantage point from a single school's own admin looking at their own data —
+          reusing the exact same plain greeting header for both read as "this is just one more
+          school's dashboard," which is the opposite of what SUPER_ADMIN should feel like. */}
+      {isSuperAdmin ? (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-6 py-7 sm:px-8 sm:py-8">
+          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-indigo-500/10 blur-3xl" />
+          <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+            <div>
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-blue-300/80 bg-blue-400/10 px-2.5 py-1 rounded-full border border-blue-400/20">
+                <Globe2 size={12} /> Platform Console
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mt-3">
+                {getGreeting()}, {user?.firstName}
+              </h1>
+              <p className="text-slate-400 mt-1.5 text-sm">
+                You're operating Tallycheck across every school on the platform — not a single institution's own view.
+              </p>
+            </div>
+            <div className="flex gap-3 sm:gap-4 shrink-0">
+              {[
+                { label: 'Schools', value: schoolStats?.length ?? 0, icon: Building2 },
+                { label: 'Students', value: platformTotals.students, icon: GraduationCap },
+                { label: 'Staff', value: platformTotals.lecturers, icon: Users },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="text-center px-3 sm:px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 min-w-[76px]">
+                  <Icon size={15} className="mx-auto text-blue-300 mb-1" />
+                  <p className="text-lg font-bold text-white leading-tight">{value}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-slate-400">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {getGreeting()}, {user?.firstName}
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Here's what's happening with Tcheck today</p>
+        </div>
+      )}
+
+      {isSuperAdmin && <PulseLeaderboard />}
 
       {/* Platform-wide cross-school breakdown — SUPER_ADMIN only, so a multi-tenant deployment
           isn't just one flattened number. Each row links into that school's own overview via the
           same filters the rest of the dashboard already understands. */}
-      {isSuperAdmin && (
+      {isSuperAdmin && (schoolStats?.length ?? 0) === 0 && (
+        <div className="glass-card p-10 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
+            <Sparkles size={28} className="text-blue-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">No schools on the platform yet</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 max-w-sm mx-auto">
+            Onboard your first customer to see live attendance, staff, and analytics roll up here across every school you run.
+          </p>
+          <button
+            onClick={() => navigate('/admin/schools')}
+            className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-b from-blue-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <Plus size={16} /> Add Your First School
+          </button>
+        </div>
+      )}
+
+      {isSuperAdmin && (schoolStats?.length ?? 0) > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -193,6 +260,8 @@ export function OverviewPage() {
           </div>
         </div>
       )}
+
+      {!isSuperAdmin && <MyPulse />}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {statCards.map((card) => (
@@ -266,6 +335,99 @@ export function OverviewPage() {
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+type PulseRange = 'day' | 'week' | 'month' | 'year';
+interface PulseSchool { id: string; name: string; code: string; color: string; checkIns: number }
+
+const RANGE_LABEL: Record<PulseRange, string> = { day: 'Today', week: 'This week', month: 'This month', year: 'This year' };
+
+/** Which school is bringing in the most check-ins, right now — Tallycheck's own cross-tenant
+ * view (see server's pulse.service.ts). Deliberately a ranked list, not another flat table: the
+ * "Schools on the Platform" table below already has the raw per-school columns; this answers one
+ * specific question — who's leading — at a glance. */
+function PulseLeaderboard() {
+  const [range, setRange] = useState<PulseRange>('day');
+  const { data: rows } = useApi<PulseSchool[]>(`/pulse/leaderboard?range=${range}`, { refetchIntervalMs: DASHBOARD_REFRESH_MS, refetchWhenVisible: true });
+  const top = rows?.slice(0, 6) ?? [];
+  const max = Math.max(1, ...top.map((r) => r.checkIns));
+
+  return (
+    <div className="glass-card p-5">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <Activity size={18} className="text-blue-500" /> Pulse
+        </h3>
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden">
+          {(['day', 'week', 'month', 'year'] as PulseRange[]).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRange(r)}
+              className={`px-3 py-1.5 text-xs font-medium cursor-pointer transition-colors ${
+                range === r ? 'bg-blue-500 text-white' : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10'
+              }`}
+            >
+              {RANGE_LABEL[r]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2.5">
+        {top.map((s, i) => (
+          <div key={s.id} className="flex items-center gap-3">
+            <span
+              className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
+                : i === 1 ? 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-gray-300'
+                : i === 2 ? 'bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400'
+                : 'bg-gray-50 text-gray-400 dark:bg-white/5 dark:text-gray-500'
+              }`}
+            >
+              {i + 1}
+            </span>
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200 w-40 truncate">{s.name}</span>
+            <div className="flex-1 h-2 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                style={{ width: `${(s.checkIns / max) * 100}%` }}
+              />
+            </div>
+            <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums w-10 text-right">{s.checkIns}</span>
+          </div>
+        ))}
+        {top.length === 0 && <p className="text-sm text-gray-400 text-center py-6">No check-ins {RANGE_LABEL[range].toLowerCase()}.</p>}
+      </div>
+    </div>
+  );
+}
+
+/** A school's own day/week/month/year check-in volume, all four at once — the tenant-scoped
+ * counterpart to SUPER_ADMIN's cross-school PulseLeaderboard above. */
+function MyPulse() {
+  const { data } = useApi<Record<PulseRange, number>>('/pulse/mine', { refetchIntervalMs: DASHBOARD_REFRESH_MS, refetchWhenVisible: true });
+  const tiles: { range: PulseRange; label: string }[] = [
+    { range: 'day', label: 'Today' },
+    { range: 'week', label: 'This week' },
+    { range: 'month', label: 'This month' },
+    { range: 'year', label: 'This year' },
+  ];
+  return (
+    <div className="glass-card p-5">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+        <Activity size={18} className="text-blue-500" /> Pulse
+      </h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {tiles.map((t) => (
+          <div key={t.range} className="rounded-xl border border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 p-4 text-center">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">{data?.[t.range] ?? 0}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t.label}</p>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -31,6 +31,8 @@ const SCOPE_FOR_ROLE: Record<Role, ScopeLevel> = {
   LECTURER: 'INDIVIDUAL',
   STUDENT: 'INDIVIDUAL',
   INVIGILATOR: 'INDIVIDUAL',
+  SCHOOL_ADMIN: 'SCHOOL',
+  CLIENT_EXPERIENCE_MANAGER: 'INDIVIDUAL',
 };
 
 // Which OrgUnit level each hierarchy role is meant to be assigned into — null means the role is
