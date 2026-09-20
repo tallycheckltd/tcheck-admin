@@ -818,7 +818,7 @@ export interface MessageFlag {
 export interface Notification {
   id: string;
   userId: string;
-  type: 'MESSAGE' | 'ATTENDANCE' | 'FLAG' | 'SYSTEM' | 'TICKET';
+  type: 'MESSAGE' | 'ATTENDANCE' | 'FLAG' | 'SYSTEM' | 'TICKET' | 'FACILITY_TICKET' | 'FACILITY_TICKET_ACKNOWLEDGED';
   title: string;
   body: string;
   read: boolean;

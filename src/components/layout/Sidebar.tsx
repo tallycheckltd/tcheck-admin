@@ -9,7 +9,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   LayoutDashboard, School, Users, Users2, Settings, BookOpen, Calendar, ShieldCheck,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
-  BarChart3, Sparkles, Smartphone, Bell, Megaphone, Star,
+  BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star,
   ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
   User as UserIcon, Plug, Wrench, DoorOpen,
 } from 'lucide-react';
@@ -43,6 +43,9 @@ const superAdminAdmin: NavItem[] = [
   // Cohort CRUD existed as a page (CohortsPage.tsx) but had no route/nav entry before the SBS
   // Comms & Concierge plan (Phase 2) needed cohort->CEM assignment reachable in the UI.
   { to: '/admin/cohorts', icon: Users2, label: 'Cohorts' },
+  { to: '/admin/levels', icon: GraduationCap, label: 'Levels' },
+  { to: '/admin/majors', icon: Tags, label: 'Majors' },
+  { to: '/admin/course-assignments', icon: Link2, label: 'Course Assignments' },
 ];
 
 const superAdminGeneral: NavItem[] = [
@@ -58,7 +61,6 @@ const superAdminGeneral: NavItem[] = [
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
   { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/system-announcements', icon: Megaphone, label: 'System Announcements' },
   { to: '/admin/request-feedback', icon: Star, label: 'Request Feedback' },
   { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
@@ -80,6 +82,9 @@ const hodAdmin: NavItem[] = [
   { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
   { to: '/admin/programs', icon: Layers, label: 'Programs' },
+  { to: '/admin/levels', icon: GraduationCap, label: 'Levels' },
+  { to: '/admin/majors', icon: Tags, label: 'Majors' },
+  { to: '/admin/course-assignments', icon: Link2, label: 'Course Assignments' },
 ];
 
 const hodOperations: NavItem[] = [
@@ -116,7 +121,6 @@ const hodGeneral: NavItem[] = [
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/admin/system-announcements', icon: Megaphone, label: 'Announcements' },
   { to: '/admin/request-feedback', icon: Star, label: 'Request Feedback' },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
@@ -150,7 +154,6 @@ const cxmLinks: NavItem[] = [
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   // Shown only with VIEW_FACILITIES (see CEM_PERMISSION_GATED below) and only for schools with the Executive Ed suite on.
   { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
 ];
 
 /** CEM nav items that are hidden without their permission. A CEM has never had its other links filtered
@@ -241,7 +244,6 @@ const execGeneral: NavItem[] = [
 const hierarchyGeneral: NavItem[] = [
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -572,11 +574,6 @@ export function Sidebar({
   const isHierarchyOps = isHierarchyRole(user?.role) && !isRegistrar && !isIctAdmin && !isExecutive;
   const isCxm = user?.role === 'CLIENT_EXPERIENCE_MANAGER';
   const isLecturer = !isAdmin && !isRegistrar && !isIctAdmin && !isHierarchyOps && !isExecutive && !isCxm;
-  const { data: unreadData, refetch: refetchUnread } = useApi<{ count: number }>('/notifications/unread-count', {
-    refetchIntervalMs: 60_000,
-    refetchWhenVisible: true,
-  });
-  const unreadCount = unreadData?.count || 0;
 
   // Pending-approvals badge — only SUB_ADMIN gets a Students link in the sidebar today, and
   // dashboard-stats is already scoped to their own school server-side.
@@ -610,17 +607,14 @@ export function Sidebar({
   );
   const openFacilityTicketsCount = facilityTicketsData?.length || 0;
 
-  // Real-time unread count + ticket updates
+  // Real-time ticket / escalation / facility-ticket badge updates
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
     const s = createSocket(token);
-    const handler = () => refetchUnread({ silent: true });
     const ticketHandler = () => refetchTickets({ silent: true });
     const escalationHandler = () => refetchEscalations({ silent: true });
     const facilityTicketHandler = () => refetchFacilityTickets({ silent: true });
-    s.on('message:new', handler);
-    s.on('flag:new', handler);
     s.on('ticket:new', ticketHandler);
     s.on('ticket:updated', ticketHandler);
     // No dedicated socket event for escalations yet — the 30s poll above keeps this reasonably
@@ -630,14 +624,10 @@ export function Sidebar({
     s.on('facilityTicket:new', facilityTicketHandler);
     s.on('facilityTicket:updated', facilityTicketHandler);
     return () => { s.disconnect(); };
-  }, [refetchUnread, refetchTickets, refetchEscalations, refetchFacilityTickets]);
+  }, [refetchTickets, refetchEscalations, refetchFacilityTickets]);
 
   const roleLabel = user?.role ? ROLE_LABEL[user.role] : 'Lecturer';
   const roleAccent = isSuperAdmin ? 'from-purple-500 to-purple-600' : isAdmin ? 'from-blue-500 to-blue-600' : 'from-emerald-500 to-emerald-600';
-
-  // Inject unread badge into Alerts link
-  const addAlertBadge = (links: NavItem[]) =>
-    links.map((l) => l.to === '/alerts' ? { ...l, badge: unreadCount } : l);
 
   const addTicketBadge = (links: NavItem[]) =>
     links.map((l) => l.to === '/admin/support' ? { ...l, badge: openTicketsCount } : l);
@@ -759,7 +749,7 @@ export function Sidebar({
           <>
             <NavSection title="Overview" links={superAdminOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Administration" links={superAdminAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={addFacilitiesBadge(addEscalationBadge(addTicketBadge(addAlertBadge(superAdminGeneral))))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={addFacilitiesBadge(addEscalationBadge(addTicketBadge(superAdminGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isAdmin && !isSuperAdmin && (
@@ -767,7 +757,7 @@ export function Sidebar({
             <NavSection title="Overview" links={hodOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Administration" links={filterBySchoolConfig(addPendingBadge(hodAdmin))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Operations" links={filterBySchoolConfig(addFacilitiesBadge(addEscalationBadge(hodOperations)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(addAlertBadge(hodGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(hodGeneral))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isExecutive && (
@@ -799,7 +789,7 @@ export function Sidebar({
               onNavigate={onClose}
               collapsed={collapsed}
             />
-            <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(addAlertBadge(hierarchyGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(hierarchyGeneral))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isRegistrar && (
@@ -851,7 +841,7 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isCxm && filterBySchoolConfig(addFacilitiesBadge(addAlertBadge(filterByPermission(cxmLinks)))).map((link) => (
+        {isCxm && filterBySchoolConfig(addFacilitiesBadge(filterByPermission(cxmLinks))).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}

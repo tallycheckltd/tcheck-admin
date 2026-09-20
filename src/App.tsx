@@ -26,7 +26,6 @@ import { DeviceVerificationPage } from './pages/admin/DeviceVerificationPage';
 import { InvigilationPage } from './pages/admin/InvigilationPage';
 import { LecturerPresencePage } from './pages/admin/LecturerPresencePage';
 import { AttendanceOverviewPage } from './pages/admin/AttendanceOverviewPage';
-import { AlertsPage } from './pages/AlertsPage';
 import { LecturerDashboard } from './pages/lecturer/LecturerDashboard';
 import { CoursesPage } from './pages/lecturer/CoursesPage';
 import { ClassesPage } from './pages/lecturer/ClassesPage';
@@ -42,6 +41,9 @@ import { OrgUnitsPage } from './pages/admin/OrgUnitsPage';
 import { SetupWizardPage } from './pages/admin/SetupWizardPage';
 import { TermsPage } from './pages/admin/TermsPage';
 import { ProgramsPage } from './pages/admin/ProgramsPage';
+import { LevelsPage } from './pages/admin/LevelsPage';
+import { MajorsPage } from './pages/admin/MajorsPage';
+import { CourseAssignmentsPage } from './pages/admin/CourseAssignmentsPage';
 import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
 import { RequestFeedbackPage } from './pages/admin/RequestFeedbackPage';
 import { FeedbackRedirectPage } from './pages/public/FeedbackRedirectPage';
@@ -86,7 +88,6 @@ export default function App() {
               <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               <Route path="/admin/request-feedback" element={<RequestFeedbackPage />} />
               <Route path="/admin/support" element={<SupportPage />} />
-              <Route path="/alerts" element={<AlertsPage />} />
               {/* SUB_ADMIN is scoped to their own school's beacons; SUPER_ADMIN sees/manages all (beacon.service.ts enforces this) */}
               <Route path="/admin/beacons" element={<BLEBeaconPage />} />
               {/* Same school-scoping as beacons above (academic.service.ts's listClassrooms) */}
@@ -102,6 +103,10 @@ export default function App() {
               <Route path="/admin/setup-wizard" element={<SetupWizardPage />} />
               <Route path="/admin/terms" element={<TermsPage />} />
               <Route path="/admin/programs" element={<ProgramsPage />} />
+              {/* Previously built but unrouted (QA plan Phase 15) — same school-admin tier as the backend routes they call. */}
+              <Route path="/admin/levels" element={<LevelsPage />} />
+              <Route path="/admin/majors" element={<MajorsPage />} />
+              <Route path="/admin/course-assignments" element={<CourseAssignmentsPage />} />
               {/* SUPER_ADMIN + SCHOOL_ADMIN (integration.routes.ts enforces this; a school admin is scoped to their own school) */}
               <Route path="/admin/integrations" element={<IntegrationsPage />} />
 
