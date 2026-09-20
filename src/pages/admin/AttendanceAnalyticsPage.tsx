@@ -1,3 +1,4 @@
+import { UnitComparisonChart } from '../../components/analytics/UnitComparisonChart';
 import { Fragment, useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
@@ -340,6 +341,8 @@ export function AttendanceAnalyticsPage() {
           </div>
         </div>
       </header>
+
+      <UnitComparisonChart />
 
       {campus && (
         <section aria-label="Summary" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
