@@ -45,6 +45,7 @@ function mergeHeaders(extra?: HeadersInit): Record<string, string> {
 
 export const PERMISSION_DENIED_MESSAGE = "You don't have permission to do this.";
 export const PERMISSION_DENIED_EVENT = 'app:permission-denied';
+export const TERMS_REQUIRED_EVENT = 'app:terms-required';
 export class PermissionDeniedError extends Error {
   constructor(message = PERMISSION_DENIED_MESSAGE) {
     super(message);
@@ -80,6 +81,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Request failed' }));
+    if (res.status === 403 && err.code === 'TERMS_REQUIRED') {
+      // Staff who haven't accepted the current terms — AuthContext shows the acceptance screen.
+      window.dispatchEvent(new CustomEvent(TERMS_REQUIRED_EVENT));
+      throw new Error(err.error || 'You must accept the Terms & Privacy Policy to continue.');
+    }
     if (res.status === 403) {
       // A 403 means "not allowed", never "signed out": no logout, no redirect. The generic server
       // message gets a friendly wording; a specific one (e.g. "Not one of your assigned courses") is kept.

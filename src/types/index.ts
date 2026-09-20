@@ -199,6 +199,10 @@ export interface Classroom {
 export interface User {
   id: string;
   email: string;
+  /** True until the account has accepted the *current* terms version (QA plan Phase 21). */
+  termsRequired?: boolean;
+  currentTermsVersion?: string;
+  termsAcceptedAt?: string | null;
   firstName: string;
   lastName: string;
   studentId?: string;

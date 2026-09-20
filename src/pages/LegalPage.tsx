@@ -60,7 +60,7 @@ function Bullet({ label, detail }: { label: string; detail: string }) {
   );
 }
 
-function PrivacyPolicy() {
+export function PrivacyPolicy() {
   return (
     <div className="space-y-8 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
       <div className="text-center pb-4 border-b border-gray-100 dark:border-white/5">
@@ -117,7 +117,7 @@ function PrivacyPolicy() {
   );
 }
 
-function TermsOfService() {
+export function TermsOfService() {
   return (
     <div className="space-y-8 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
       <div className="text-center pb-4 border-b border-gray-100 dark:border-white/5">

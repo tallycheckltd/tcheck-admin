@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Sidebar } from './Sidebar';
 import { GlobalSearchBar } from './GlobalSearchBar';
 import { PermissionNotice } from '../shared/PermissionNotice';
+import { TermsAcceptancePage } from '../../pages/TermsAcceptancePage';
 
 export function DashboardLayout() {
   const { user, loading } = useAuth();
@@ -45,6 +46,9 @@ export function DashboardLayout() {
 
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'STUDENT') return <Navigate to="/login" replace />;
+  // First login of an admin-created account, or the terms changed since it last accepted (QA plan Phase 21):
+  // nothing else in the dashboard is reachable until the current terms are accepted.
+  if (user.termsRequired) return <TermsAcceptancePage />;
 
   // Sidebar now floats lg:left-3 with its own width, plus a matching gap before content starts
   // (12px offset + width + 12px gap) — content margin has to grow by that offset+gap or it would

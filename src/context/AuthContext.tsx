@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { api } from '../lib/api';
+import { api, TERMS_REQUIRED_EVENT } from '../lib/api';
 import type { User, AuthResponse } from '../types';
 
 interface AuthContextType {
@@ -12,6 +12,8 @@ interface AuthContextType {
   requestOtp: (email: string, password: string) => Promise<void>;
   verifyOtp: (email: string, code: string) => Promise<User>;
   logout: () => void;
+  /** Records acceptance of the current terms version (QA plan Phase 21) and clears the gate. */
+  acceptTerms: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>(null!);
@@ -52,6 +54,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  // A staff API call answered 403 TERMS_REQUIRED (e.g. the terms version was bumped mid-session):
+  // re-read /auth/me, which now says termsRequired, and the layout swaps to the acceptance screen.
+  useEffect(() => {
+    const onTermsRequired = () => {
+      api.get<User>('/auth/me').then(setUser).catch(() => {});
+    };
+    window.addEventListener(TERMS_REQUIRED_EVENT, onTermsRequired);
+    return () => window.removeEventListener(TERMS_REQUIRED_EVENT, onTermsRequired);
+  }, []);
+
+  const acceptTerms = async (): Promise<void> => {
+    const res = await api.post<{ user: User }>('/auth/accept-terms', { termsVersion: user?.currentTermsVersion });
+    setUser(res.user);
+  };
+
   const requestOtp = async (email: string, password: string): Promise<void> => {
     await api.post<{ otpRequired: true }>('/auth/dashboard-login', { email, password });
   };
@@ -71,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, requestOtp, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ user, loading, requestOtp, verifyOtp, logout, acceptTerms }}>
       {children}
     </AuthContext.Provider>
   );
