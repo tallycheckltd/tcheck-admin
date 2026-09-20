@@ -3,15 +3,19 @@ import {
   ShieldCheck, Plus, Pencil, Trash2, UserPlus, Users, Mail, Lock, User as UserIcon,
   Cake, MapPin, ClipboardCheck, MessageSquare, Megaphone, Settings2, BookOpen, Sparkles, Star,
   BarChart3, PieChart, Folder, Ticket, CheckSquare, Square, Radio, FileText, Siren, Wrench,
-  ScanEye, Smartphone, ShieldAlert, Search, UserX,
+  ScanEye, Smartphone, ShieldAlert, Search, UserX, Network,
 } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import type { CustomRole, Permission, Role, User, Course, OrgUnit } from '../../types';
+import type { CustomRole, Permission, Role, User, Course, OrgUnit, School } from '../../types';
 import { ROLE_LABEL } from '../../lib/rbac';
+import { OrgUnitsSection } from '../../components/org/OrgUnitsSection';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Badge } from '../../components/ui/Badge';
+import { LEVEL_LABEL, ORG_LEVEL_FOR_ROLE, SCOPE_FOR_ROLE, roleHasOrgUnit, roleRequiresOrgUnit } from '../../lib/hierarchyRoles';
 
 /** The full catalog — grouped for the checklist UI. Mirrors server/prisma/schema.prisma's
  * Permission enum exactly, all 32 values across 7 groups. Every description says what the server
@@ -109,15 +113,11 @@ const ASSIGNABLE_ROLES: { value: Role; label: string; blurb: string }[] = [
   { value: 'REGISTRAR_ADMIN', label: 'Registrar (Administration)', blurb: 'Staff and admin records' },
   { value: 'ICT_ADMIN', label: 'ICT Admin', blurb: 'Devices and infrastructure' },
 ];
-const SWITCHABLE_ROLE_VALUES = ASSIGNABLE_ROLES.map((r) => r.value);
-/** DVC / Dean / HOD belong to one organisation unit; the server refuses them without one. */
-const UNIT_BOUND_ROLES: Role[] = ['DVC', 'DEAN', 'HOD'];
+/** A Deputy HOD can be created here but not switched to/from (the server's account-type switch excludes it). */
+const CREATABLE_ROLES = [...ASSIGNABLE_ROLES, { value: 'DEPUTY_HOD' as Role, label: 'Deputy HOD', blurb: 'Supports a head of department' }];
+const STAFF_TABLE_ROLE_VALUES = CREATABLE_ROLES.map((r) => r.value);
 /** Account types that can hold a custom role / permissions (everything else is decided by the account type alone). */
 const CAN_HOLD_ROLE: Role[] = ['LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'VC', 'DVC', 'DEAN', 'HOD'];
-const DEFAULT_SCOPE: Partial<Record<Role, string>> = {
-  VC: 'UNIVERSITY', DVC: 'DIVISION', DEAN: 'DEPARTMENT', HOD: 'DEPARTMENT',
-  REGISTRAR_ACADEMIC: 'UNIVERSITY', REGISTRAR_ADMIN: 'UNIVERSITY', ICT_ADMIN: 'INDIVIDUAL',
-};
 /** The Roles card (custom role bundles) is hidden for now — flip this back on to show it again. */
 const SHOW_ROLES_CARD = false;
 
@@ -194,7 +194,7 @@ const emptyRoleForm = { name: '', permissions: [] as Permission[] };
 // this page already treats them: a role is just a bundle of permissions, usable by either account type.
 const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', role: '' as Role | '', customRoleId: '', orgUnitId: '', courseIds: [] as string[] };
 
-const LEADERSHIP_ROLES: Role[] = ['VC', 'DVC', 'DEAN', 'HOD'];
+const LEADERSHIP_ROLES: Role[] = ['VC', 'DVC', 'DEAN', 'HOD', 'DEPUTY_HOD'];
 
 const ACCOUNT_TYPE_META: Partial<Record<Role, { label: string; blurb: string }>> = {
   CLIENT_EXPERIENCE_MANAGER: { label: 'Client Experience Manager', blurb: 'Front-of-house — no assigned courses' },
@@ -202,16 +202,20 @@ const ACCOUNT_TYPE_META: Partial<Record<Role, { label: string; blurb: string }>>
   INVIGILATOR: { label: 'Invigilator', blurb: 'Scans exam cards' },
 };
 
-export function RolesPermissionsPage() {
+export function PeopleOrganizationPage() {
   const { user } = useAuth();
-  const schoolId = user?.schoolId;
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  // SUPER_ADMIN works on one school at a time (the org tree is per school); everyone else is pinned to theirs.
+  const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
+  const [selectedSchoolId, setSelectedSchoolId] = useState('');
+  const schoolId = isSuperAdmin ? selectedSchoolId || undefined : user?.schoolId;
 
   const { data: roles, refetch: refetchRoles } = useApi<CustomRole[]>('/roles');
   const { data: staffUsers, refetch: refetchUsers } = useApi<User[]>(
     schoolId ? `/users?schoolId=${schoolId}` : '/users',
   );
   const { data: courses } = useApi<Course[]>('/courses');
-  const { data: orgUnits } = useApi<OrgUnit[]>(schoolId ? `/org-units?schoolId=${schoolId}` : null);
+  const { data: orgUnits, refetch: refetchUnits } = useApi<OrgUnit[]>(schoolId ? `/org-units?schoolId=${schoolId}` : null);
 
   const { mutate: createRole, loading: creatingRole } = useMutation<CustomRole>('post');
   const { mutate: updateRole } = useMutation<CustomRole>('patch');
@@ -219,6 +223,8 @@ export function RolesPermissionsPage() {
   const { mutate: createUser, loading: creatingUser } = useMutation<User>('post');
   const { mutate: assignRole } = useMutation<User>('patch');
   const { mutate: deleteUser } = useMutation('delete');
+  const { mutate: assignUnit } = useMutation('patch');
+  const { mutate: toggleActing } = useMutation('patch');
 
   const [roleModal, setRoleModal] = useState(false);
   const [editingRole, setEditingRole] = useState<CustomRole | null>(null);
@@ -238,7 +244,7 @@ export function RolesPermissionsPage() {
   const [switchUnitId, setSwitchUnitId] = useState('');
 
   // Lecturers, Client Experience Managers and the four leadership roles that can hold MANAGE_COURSES.
-  const staffOnly = (staffUsers ?? []).filter((u) => SWITCHABLE_ROLE_VALUES.includes(u.role));
+  const staffOnly = (staffUsers ?? []).filter((u) => STAFF_TABLE_ROLE_VALUES.includes(u.role));
 
   // Filter bar above the Staff table — account type as pills (small, fixed set), custom role as a
   // dropdown (open-ended, school-defined names).
@@ -300,7 +306,7 @@ export function RolesPermissionsPage() {
       setUserError('Pick an account type.');
       return;
     }
-    if (UNIT_BOUND_ROLES.includes(userForm.role) && !userForm.orgUnitId) {
+    if (roleRequiresOrgUnit(userForm.role) && !userForm.orgUnitId) {
       setUserError('Pick the organisation unit this account belongs to.');
       return;
     }
@@ -318,8 +324,8 @@ export function RolesPermissionsPage() {
         await createUser('/users/hierarchy', {
           ...base,
           role: userForm.role,
-          scopeLevel: DEFAULT_SCOPE[userForm.role],
-          orgUnitId: UNIT_BOUND_ROLES.includes(userForm.role) ? userForm.orgUnitId : undefined,
+          scopeLevel: SCOPE_FOR_ROLE[userForm.role],
+          orgUnitId: roleHasOrgUnit(userForm.role) ? userForm.orgUnitId || undefined : undefined,
           customRoleId: CAN_HOLD_ROLE.includes(userForm.role) ? userForm.customRoleId || undefined : undefined,
         });
       }
@@ -335,7 +341,7 @@ export function RolesPermissionsPage() {
   const requestSwitch = (target: User, role: Role) => {
     if (role === target.role) return;
     setSwitchError('');
-    if (UNIT_BOUND_ROLES.includes(role)) {
+    if (roleRequiresOrgUnit(role)) {
       setSwitchUnitId('');
       setSwitchTarget({ user: target, role });
       return;
@@ -360,6 +366,17 @@ export function RolesPermissionsPage() {
     refetchUsers();
   };
 
+  // Re-place a unit-bound account (DVC / Dean / HOD / Deputy HOD) into another org unit.
+  const handleReassign = async (target: User, orgUnitId: string) => {
+    await assignUnit(`/org-units/users/${target.id}/assign`, { orgUnitId: orgUnitId || null, scopeLevel: SCOPE_FOR_ROLE[target.role] });
+    refetchUsers();
+    refetchUnits();
+  };
+  const handleToggleActing = async (target: User) => {
+    await toggleActing(`/org-units/users/${target.id}/acting-hod`, { isActingHod: !target.isActingHod });
+    refetchUsers();
+  };
+
   const handleDeleteUser = async (targetUser: User) => {
     if (!confirm(`Delete ${targetUser.firstName} ${targetUser.lastName}? This permanently removes their account, attendance records and enrollments. This can't be undone.`)) return;
     await deleteUser(`/users/${targetUser.id}`);
@@ -370,12 +387,29 @@ export function RolesPermissionsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <ShieldCheck size={24} className="text-blue-500" /> Roles &amp; Permissions
+          <ShieldCheck size={24} className="text-blue-500" /> People &amp; Organization
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Manage your staff accounts: create a new account, or switch a person to a different account type.
+          Your org structure (divisions, faculties, departments) and everyone who works in it — Lecturers, CEMs, Invigilators, VC, DVC, Dean, HOD,
+          Deputy HOD, Registrars and ICT Admin. Create an account, place it in a unit, or switch a person to a different account type.
         </p>
+        {isSuperAdmin && (
+          <select
+            value={selectedSchoolId}
+            onChange={(e) => setSelectedSchoolId(e.target.value)}
+            className="mt-3 text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white cursor-pointer min-w-[220px]"
+          >
+            <option value="">Select a school…</option>
+            {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        )}
       </div>
+
+      {isSuperAdmin && !schoolId ? (
+        <EmptyState icon={Network} title="Select a school" description="Choose a school above to manage its people and org structure." />
+      ) : (
+      <>
+      {schoolId && <OrgUnitsSection schoolId={schoolId} units={orgUnits ?? []} onChanged={() => { refetchUnits(); refetchUsers(); }} />}
 
       {/* Roles — hidden for now (SHOW_ROLES_CARD) */}
       {SHOW_ROLES_CARD && (
@@ -442,7 +476,7 @@ export function RolesPermissionsPage() {
         </div>
         {!staffOnly.length ? (
           <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
-            No staff accounts yet — create a Lecturer or Client Experience Manager, or add VC / DVC / Dean / HOD accounts under Organisation.
+            No staff accounts yet — use New User to add a Lecturer, Client Experience Manager, or any leadership account.
           </p>
         ) : (
           <>
@@ -480,13 +514,14 @@ export function RolesPermissionsPage() {
                 {switchError && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{switchError}</p>}
                 <p className="text-xs text-gray-400 mb-2">
                   VC, DVC, Dean and HOD accounts can hold <strong>Manage courses</strong> only — it lets them manage the courses inside their own
-                  organisation unit (they are created and assigned a unit under Organisation). Other permissions have no effect for them.
+                  organisation unit (set in the Org Unit column). Other permissions have no effect for them.
                 </p>
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-white/10">
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Account Type</th>
+                      <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Org Unit</th>
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Custom Role</th>
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
                     </tr>
@@ -496,6 +531,12 @@ export function RolesPermissionsPage() {
                       <tr key={u.id}>
                         <td className="py-3 text-sm text-gray-900 dark:text-white">{u.firstName} {u.lastName}<br /><span className="text-xs text-gray-400">{u.email}</span></td>
                         <td className="py-3">
+                          {u.role === 'DEPUTY_HOD' ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Badge color="blue">{ROLE_LABEL[u.role]}</Badge>
+                              {u.isActingHod && <Badge color="green">Acting HOD</Badge>}
+                            </span>
+                          ) : (
                           <select
                             value={u.role}
                             onChange={(e) => requestSwitch(u, e.target.value as Role)}
@@ -510,6 +551,24 @@ export function RolesPermissionsPage() {
                           >
                             {ASSIGNABLE_ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                           </select>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          {roleHasOrgUnit(u.role) ? (
+                            <select
+                              value={u.orgUnitId ?? ''}
+                              onChange={(e) => void handleReassign(u, e.target.value)}
+                              aria-label={`Org unit for ${u.firstName} ${u.lastName}`}
+                              className="text-xs rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-2 py-1.5 text-gray-900 dark:text-white cursor-pointer"
+                            >
+                              <option value="">— unassigned —</option>
+                              {(orgUnits ?? []).filter((ou) => ou.level === ORG_LEVEL_FOR_ROLE[u.role]).map((ou) => (
+                                <option key={ou.id} value={ou.id}>{ou.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-xs text-gray-400">{['LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'INVIGILATOR'].includes(u.role) ? '—' : 'Whole school'}</span>
+                          )}
                         </td>
                         <td className="py-3">
                           {!CAN_HOLD_ROLE.includes(u.role) ? <span className="text-xs text-gray-400">—</span> : <select
@@ -524,6 +583,14 @@ export function RolesPermissionsPage() {
                           </select>}
                         </td>
                         <td className="py-3 text-right">
+                          {u.role === 'DEPUTY_HOD' && (
+                            <button
+                              onClick={() => void handleToggleActing(u)}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                            >
+                              <ShieldCheck size={12} /> {u.isActingHod ? 'Revoke Acting HOD' : 'Grant Acting HOD'}
+                            </button>
+                          )}
                           {['LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'INVIGILATOR'].includes(u.role) && <button
                             onClick={() => void handleDeleteUser(u)}
                             title="Delete staff member"
@@ -542,6 +609,9 @@ export function RolesPermissionsPage() {
         )}
       </div>
 
+      </>
+      )}
+
       {/* Switch to DVC / Dean / HOD: which organisation unit? */}
       <Modal open={!!switchTarget} onClose={() => setSwitchTarget(null)} title="Choose organisation unit">
         <div className="space-y-4">
@@ -556,7 +626,7 @@ export function RolesPermissionsPage() {
             <option value="">— Select a unit —</option>
             {(orgUnits ?? []).map((o) => <option key={o.id} value={o.id}>{o.name} ({o.level.toLowerCase().replace('_', ' ')})</option>)}
           </select>
-          {!orgUnits?.length && <p className="text-xs text-gray-400">No organisation units yet — create them under Organisation first.</p>}
+          {!orgUnits?.length && <p className="text-xs text-gray-400">No organisation units yet — add them in the Organization section first.</p>}
           {switchError && <p className="text-sm text-red-600 dark:text-red-400">{switchError}</p>}
           <Button onClick={() => switchTarget && void applySwitch(switchTarget.user, switchTarget.role, switchUnitId)} disabled={!switchUnitId} className="w-full">
             Switch account type
@@ -587,7 +657,7 @@ export function RolesPermissionsPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Account Type</label>
             <div className="grid grid-cols-2 gap-2">
-              {ASSIGNABLE_ROLES.map((r) => (
+              {CREATABLE_ROLES.map((r) => (
                 <button
                   key={r.value}
                   type="button"
@@ -612,18 +682,20 @@ export function RolesPermissionsPage() {
           </div>
           <Input label="Email" type="email" icon={Mail} value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} />
           <Input label="Password" type="password" icon={Lock} value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} />
-          {userForm.role && UNIT_BOUND_ROLES.includes(userForm.role) && (
+          {userForm.role && roleHasOrgUnit(userForm.role) && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Organisation unit</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                {LEVEL_LABEL[ORG_LEVEL_FOR_ROLE[userForm.role]!]}{roleRequiresOrgUnit(userForm.role) ? '' : ' (optional)'}
+              </label>
               <select
                 value={userForm.orgUnitId}
                 onChange={(e) => setUserForm({ ...userForm, orgUnitId: e.target.value })}
                 className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
               >
                 <option value="">— Select a unit —</option>
-                {(orgUnits ?? []).map((o) => <option key={o.id} value={o.id}>{o.name} ({o.level.toLowerCase().replace('_', ' ')})</option>)}
+                {(orgUnits ?? []).filter((o) => o.level === ORG_LEVEL_FOR_ROLE[userForm.role as Role]).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
               </select>
-              {!orgUnits?.length && <p className="text-xs text-gray-400 mt-1.5">No organisation units yet — create them under Organisation first.</p>}
+              {!orgUnits?.some((o) => o.level === ORG_LEVEL_FOR_ROLE[userForm.role as Role]) && <p className="text-xs text-gray-400 mt-1.5">No {LEVEL_LABEL[ORG_LEVEL_FOR_ROLE[userForm.role as Role]!].toLowerCase()} units yet — add one in the Organization section above first.</p>}
             </div>
           )}
           {(!userForm.role || CAN_HOLD_ROLE.includes(userForm.role)) && (

@@ -1,3 +1,4 @@
+import { LEGAL_URLS } from '../../lib/legalUrls';
 import { useState, useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
@@ -95,11 +96,11 @@ function DashboardFooter() {
       <span className="text-slate-300 dark:text-slate-700">|</span>
       <span>TCheck Enterprise v1.2 (Moi Pilot)</span>
       <span className="text-slate-300 dark:text-slate-700">|</span>
-      <a href="https://tallycheck.co.ke/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+      <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
         Privacy Policy &#8599;
       </a>
       <span className="text-slate-300 dark:text-slate-700">|</span>
-      <a href="https://tallycheck.co.ke/terms" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+      <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
         Terms of Service &#8599;
       </a>
     </footer>

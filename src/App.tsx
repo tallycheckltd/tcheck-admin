@@ -37,7 +37,6 @@ import { AnnouncementsPage } from './pages/lecturer/AnnouncementsPage';
 import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
 import { FraudDetectionPage } from './pages/admin/FraudDetectionPage';
 import { SchoolAdminsPage } from './pages/admin/SchoolAdminsPage';
-import { OrgUnitsPage } from './pages/admin/OrgUnitsPage';
 import { SetupWizardPage } from './pages/admin/SetupWizardPage';
 import { TermsPage } from './pages/admin/TermsPage';
 import { ProgramsPage } from './pages/admin/ProgramsPage';
@@ -50,7 +49,7 @@ import { FeedbackRedirectPage } from './pages/public/FeedbackRedirectPage';
 import { SupportPage } from './pages/admin/SupportPage';
 import { EscalationsPage } from './pages/admin/EscalationsPage';
 import { FacilitiesQueuePage } from './pages/admin/FacilitiesQueuePage';
-import { RolesPermissionsPage } from './pages/admin/RolesPermissionsPage';
+import { PeopleOrganizationPage } from './pages/admin/PeopleOrganizationPage';
 import { IntegrationsPage } from './pages/admin/IntegrationsPage';
 import { StaffViewPage } from './pages/admin/StaffViewPage';
 import { LegalPage } from './pages/LegalPage';
@@ -97,9 +96,11 @@ export default function App() {
               <Route path="/admin/beacon-health" element={<BeaconHealthPage />} />
               {/* SUB_ADMIN sees/adds co-admins for their own school only; SUPER_ADMIN sees/manages all (user.controller.ts + user.service.ts enforce this) */}
               <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
-              <Route path="/admin/roles-permissions" element={<RolesPermissionsPage />} />
+              <Route path="/admin/people" element={<PeopleOrganizationPage />} />
+              {/* The two old pages were merged (QA plan Phase 11) — keep their URLs working. */}
+              <Route path="/admin/roles-permissions" element={<Navigate to="/admin/people" replace />} />
               <Route path="/staff" element={<StaffViewPage />} />
-              <Route path="/admin/org-units" element={<OrgUnitsPage />} />
+              <Route path="/admin/org-units" element={<Navigate to="/admin/people" replace />} />
               <Route path="/admin/setup-wizard" element={<SetupWizardPage />} />
               <Route path="/admin/terms" element={<TermsPage />} />
               <Route path="/admin/programs" element={<ProgramsPage />} />

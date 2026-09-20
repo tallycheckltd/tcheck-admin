@@ -1,3 +1,4 @@
+import { LEGAL_URLS } from '../../lib/legalUrls';
 import { useState, useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -300,11 +301,11 @@ export function LoginPage() {
               Admin & Lecturer access only. Students use the mobile app.
             </p>
             <p className="text-center text-xs text-slate-600">
-              <a href="https://tallycheck.co.ke/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+              <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
                 Privacy Policy
               </a>
               <span className="mx-2">·</span>
-              <a href="https://tallycheck.co.ke/terms" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
                 Terms of Service
               </a>
             </p>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { PrivacyPolicy, TermsOfService } from './LegalPage';
+import { ExternalLink } from 'lucide-react';
+import { LEGAL_URLS } from '../lib/legalUrls';
 
 /**
  * QA plan Phase 21 — the gate every admin-created account (Lecturer, CEM, School Admin, every
@@ -10,7 +11,6 @@ import { PrivacyPolicy, TermsOfService } from './LegalPage';
  */
 export function TermsAcceptancePage() {
   const { user, acceptTerms, logout } = useAuth();
-  const [tab, setTab] = useState<'terms' | 'privacy'>('terms');
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -43,25 +43,22 @@ export function TermsAcceptancePage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
-          {(['terms', 'privacy'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium cursor-pointer ${
-                tab === t
-                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                  : 'bg-white dark:bg-white/5 text-slate-800 dark:text-gray-300 border border-gray-200 dark:border-white/10'
-              }`}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            { label: 'Read the Terms of Service', href: LEGAL_URLS.terms },
+            { label: 'Read the Privacy Policy', href: LEGAL_URLS.privacy },
+          ].map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-white/10 px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-white/5"
             >
-              {t === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
-            </button>
+              {l.label}
+              <ExternalLink size={16} aria-hidden />
+            </a>
           ))}
-        </div>
-
-        <div className="max-h-[45vh] overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 p-4">
-          {tab === 'terms' ? <TermsOfService /> : <PrivacyPolicy />}
         </div>
 
         <label className="flex items-start gap-3 text-sm text-slate-800 dark:text-gray-200 cursor-pointer">

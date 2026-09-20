@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useApi } from '../../hooks/useApi';
 import {
-  LayoutDashboard, School, Users, Users2, Settings, BookOpen, Calendar, ShieldCheck,
+  LayoutDashboard, School, Users, Users2, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star,
   ShieldAlert, ChevronDown, ChevronRight, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
@@ -34,8 +34,7 @@ const superAdminOverview: NavItem[] = [
 const superAdminAdmin: NavItem[] = [
   { to: '/admin/schools', icon: School, label: 'Schools' },
   { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
-  { to: '/admin/roles-permissions', icon: ShieldCheck, label: 'Roles & Permissions' },
-  { to: '/admin/org-units', icon: Network, label: 'Organization' },
+  { to: '/admin/people', icon: Network, label: 'People & Organization' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrations' },
   { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },
@@ -75,9 +74,8 @@ const hodOverview: NavItem[] = [
 const hodAdmin: NavItem[] = [
   { to: '/admin/users', icon: Users, label: 'Users' },
   // The school-scoped "create a user, assign them a role, roles carry permissions" page — see
-  // RolesPermissionsPage.tsx. Distinct from the plain Users list above (roster/approvals).
-  { to: '/admin/roles-permissions', icon: ShieldCheck, label: 'Roles & Permissions' },
-  { to: '/admin/org-units', icon: Network, label: 'Organization' },
+  // PeopleOrganizationPage.tsx. Distinct from the plain Users list above (roster/approvals).
+  { to: '/admin/people', icon: Network, label: 'People & Organization' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrations' },
   { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
   { to: '/admin/terms', icon: Calendar, label: 'Terms' },

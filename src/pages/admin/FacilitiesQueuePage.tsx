@@ -8,7 +8,7 @@ import {
   Wrench, Clock, CheckCircle2, AlertTriangle, Search, Send, Siren,
   ThermometerSnowflake, Tv, Coffee, HelpCircle, MapPin,
 } from 'lucide-react';
-import type { FacilityTicket, FacilityTicketPreset } from '../../types';
+import type { FacilityTicket, FacilityTicketMessage, FacilityTicketPreset } from '../../types';
 
 const PRESET_META: Record<FacilityTicketPreset, { label: string; icon: typeof Wrench }> = {
   AC_TOO_COLD: { label: 'AC too cold', icon: ThermometerSnowflake },
@@ -59,7 +59,7 @@ export function FacilitiesQueuePage() {
   );
   // Full detail (including the reply thread, which the list endpoint only summarizes via
   // `_count`) is fetched separately, same reasoning as the mobile clients' own detail calls.
-  const { data: selected, error: detailError, refetch: refetchDetail } = useApi<FacilityTicket>(
+  const { data: selected, error: detailError, refetch: refetchDetail, setData } = useApi<FacilityTicket>(
     selectedId ? `/facility-tickets/${selectedId}` : null,
   );
   const { mutate: acknowledge, loading: acknowledging } = useMutation<FacilityTicket>('post');
@@ -100,11 +100,26 @@ export function FacilitiesQueuePage() {
     refetchDetail();
   };
 
+  const [replyError, setReplyError] = useState('');
+
+  // The input is only cleared once the server accepted the reply, a failure (e.g. 403 because this
+  // account lacks MANAGE_FACILITY_TICKETS) stays visible next to the box and keeps the typed text
+  // instead of silently discarding it, and a sent reply is shown immediately, not only after the
+  // detail refetch round-trips (QA plan Phase 6).
   const handleReply = async () => {
-    if (!selected || !replyText.trim()) return;
-    await reply(`/facility-tickets/${selected.id}/reply`, { message: replyText.trim() });
-    setReplyText('');
-    refetchDetail();
+    if (!selected || !replyText.trim() || replying) return;
+    const text = replyText.trim();
+    setReplyError('');
+    try {
+      const sent = await reply(`/facility-tickets/${selected.id}/reply`, { message: text }) as unknown as FacilityTicketMessage | undefined;
+      setReplyText('');
+      if (sent?.id) {
+        setData((prev) => (prev ? { ...prev, messages: [...(prev.messages ?? []).filter((m) => m.id !== sent.id), sent] } : prev));
+      }
+      refetchDetail({ silent: true });
+    } catch (e) {
+      setReplyError(e instanceof Error ? e.message : 'Could not send this reply — try again.');
+    }
   };
 
   return (
@@ -293,12 +308,13 @@ export function FacilitiesQueuePage() {
 
               <div className="pt-4 space-y-2 flex-shrink-0">
                 <Can perm="MANAGE_FACILITY_TICKETS">
+                {replyError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{replyError}</p>}
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Reply to the student..."
                     value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
+                    onChange={(e) => { setReplyText(e.target.value); if (replyError) setReplyError(''); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleReply(); }}
                     className="flex-1 px-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                   />
