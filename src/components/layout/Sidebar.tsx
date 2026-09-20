@@ -148,8 +148,14 @@ const lecturerLinks: NavItem[] = [
 const cxmLinks: NavItem[] = [
   { to: '/staff', icon: UserCheck, label: 'Staff View' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
+  // Shown only with VIEW_FACILITIES (see CEM_PERMISSION_GATED below) and only for schools with the Executive Ed suite on.
+  { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
 ];
+
+/** CEM nav items that are hidden without their permission. A CEM has never had its other links filtered
+ * (Staff View, Messages, Alerts stay visible as before), so only the newly added Facilities link is gated. */
+const CEM_PERMISSION_GATED = new Set(['/admin/facilities']);
 
 /** Which Permission(s) gate a LECTURER/CLIENT_EXPERIENCE_MANAGER nav item — an array means "any
  * one of these", matching staff.controller.ts's own granularity for the Staff View tab. A link
@@ -676,6 +682,15 @@ export function Sidebar({
   // an existing account. `user.permissions` is already the *effective* set (resolveEffectivePermissions
   // on the server resolves CustomRole vs. direct grant before it ever reaches the client).
   const filterByPermission = (links: NavItem[]) => {
+    if (user?.role === 'CLIENT_EXPERIENCE_MANAGER') {
+      const granted = user.permissions ?? [];
+      return links.filter((l) => {
+        if (!CEM_PERMISSION_GATED.has(l.to)) return true;
+        const required = requiredPermissionFor[l.to];
+        const requiredList = Array.isArray(required) ? required : required ? [required] : [];
+        return requiredList.some((p) => granted.includes(p));
+      });
+    }
     if (!user?.customRoleId) return links;
     const granted = user.permissions ?? [];
     return links.filter((l) => {
@@ -836,7 +851,7 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isCxm && addAlertBadge(filterByPermission(cxmLinks)).map((link) => (
+        {isCxm && filterBySchoolConfig(addFacilitiesBadge(addAlertBadge(filterByPermission(cxmLinks)))).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}

@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import type { CustomRole, Permission, Role, User, Course } from '../../types';
+import type { CustomRole, Permission, Role, User, Course, OrgUnit } from '../../types';
 import { ROLE_LABEL } from '../../lib/rbac';
 
 /** The full catalog — grouped for the checklist UI. Mirrors server/prisma/schema.prisma's
@@ -96,10 +96,30 @@ const PERMISSION_GROUPS: { title: string; hint?: string; items: PermItem[] }[] =
 
 const ALL_PERMISSION_KEYS: Permission[] = PERMISSION_GROUPS.flatMap((g) => g.items.map((i) => i.key));
 
+/** Account types a school admin can create and switch staff between (mirrors the server's SWITCHABLE_ROLES). */
 const ASSIGNABLE_ROLES: { value: Role; label: string; blurb: string }[] = [
   { value: 'LECTURER', label: 'Lecturer', blurb: 'Teaches courses, takes attendance' },
   { value: 'CLIENT_EXPERIENCE_MANAGER', label: 'Client Experience Manager', blurb: 'Front-of-house — no assigned courses' },
+  { value: 'INVIGILATOR', label: 'Invigilator', blurb: 'Scans exam cards' },
+  { value: 'VC', label: 'Vice Chancellor', blurb: 'Leads the whole school' },
+  { value: 'DVC', label: 'Deputy Vice Chancellor', blurb: 'Leads a division' },
+  { value: 'DEAN', label: 'Dean', blurb: 'Leads a faculty' },
+  { value: 'HOD', label: 'Head of Department', blurb: 'Leads a department' },
+  { value: 'REGISTRAR_ACADEMIC', label: 'Registrar (Academic)', blurb: 'Student records' },
+  { value: 'REGISTRAR_ADMIN', label: 'Registrar (Administration)', blurb: 'Staff and admin records' },
+  { value: 'ICT_ADMIN', label: 'ICT Admin', blurb: 'Devices and infrastructure' },
 ];
+const SWITCHABLE_ROLE_VALUES = ASSIGNABLE_ROLES.map((r) => r.value);
+/** DVC / Dean / HOD belong to one organisation unit; the server refuses them without one. */
+const UNIT_BOUND_ROLES: Role[] = ['DVC', 'DEAN', 'HOD'];
+/** Account types that can hold a custom role / permissions (everything else is decided by the account type alone). */
+const CAN_HOLD_ROLE: Role[] = ['LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'VC', 'DVC', 'DEAN', 'HOD'];
+const DEFAULT_SCOPE: Partial<Record<Role, string>> = {
+  VC: 'UNIVERSITY', DVC: 'DIVISION', DEAN: 'DEPARTMENT', HOD: 'DEPARTMENT',
+  REGISTRAR_ACADEMIC: 'UNIVERSITY', REGISTRAR_ADMIN: 'UNIVERSITY', ICT_ADMIN: 'INDIVIDUAL',
+};
+/** The Roles card (custom role bundles) is hidden for now — flip this back on to show it again. */
+const SHOW_ROLES_CARD = false;
 
 function PermissionChecklist({ value, onChange }: { value: Permission[]; onChange: (next: Permission[]) => void }) {
   const toggle = (perm: Permission) => {
@@ -172,13 +192,14 @@ const emptyRoleForm = { name: '', permissions: [] as Permission[] };
 // `role` (account type) and `customRoleId` (permission bundle) are two independent, always-visible
 // fields now — no more inferring one from the other. Simpler and matches how every other part of
 // this page already treats them: a role is just a bundle of permissions, usable by either account type.
-const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', role: '' as Role | '', customRoleId: '', courseIds: [] as string[] };
+const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', role: '' as Role | '', customRoleId: '', orgUnitId: '', courseIds: [] as string[] };
 
 const LEADERSHIP_ROLES: Role[] = ['VC', 'DVC', 'DEAN', 'HOD'];
 
 const ACCOUNT_TYPE_META: Partial<Record<Role, { label: string; blurb: string }>> = {
   CLIENT_EXPERIENCE_MANAGER: { label: 'Client Experience Manager', blurb: 'Front-of-house — no assigned courses' },
   LECTURER: { label: 'Lecturer', blurb: 'Teaches courses, takes attendance' },
+  INVIGILATOR: { label: 'Invigilator', blurb: 'Scans exam cards' },
 };
 
 export function RolesPermissionsPage() {
@@ -190,6 +211,7 @@ export function RolesPermissionsPage() {
     schoolId ? `/users?schoolId=${schoolId}` : '/users',
   );
   const { data: courses } = useApi<Course[]>('/courses');
+  const { data: orgUnits } = useApi<OrgUnit[]>(schoolId ? `/org-units?schoolId=${schoolId}` : null);
 
   const { mutate: createRole, loading: creatingRole } = useMutation<CustomRole>('post');
   const { mutate: updateRole } = useMutation<CustomRole>('patch');
@@ -210,16 +232,21 @@ export function RolesPermissionsPage() {
   const [userModal, setUserModal] = useState(false);
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [userError, setUserError] = useState('');
+  // Switching a staff member's account type (Lecturer <-> CEM <-> Invigilator <-> leadership ...).
+  const [switchError, setSwitchError] = useState('');
+  const [switchTarget, setSwitchTarget] = useState<{ user: User; role: Role } | null>(null);
+  const [switchUnitId, setSwitchUnitId] = useState('');
 
   // Lecturers, Client Experience Managers and the four leadership roles that can hold MANAGE_COURSES.
-  const staffOnly = (staffUsers ?? []).filter((u) => u.role === 'LECTURER' || u.role === 'CLIENT_EXPERIENCE_MANAGER' || LEADERSHIP_ROLES.includes(u.role));
+  const staffOnly = (staffUsers ?? []).filter((u) => SWITCHABLE_ROLE_VALUES.includes(u.role));
 
   // Filter bar above the Staff table — account type as pills (small, fixed set), custom role as a
   // dropdown (open-ended, school-defined names).
-  const [accountTypeFilter, setAccountTypeFilter] = useState<'ALL' | Role | 'LEADERSHIP'>('ALL');
+  const [accountTypeFilter, setAccountTypeFilter] = useState<'ALL' | Role | 'LEADERSHIP' | 'RECORDS_ICT'>('ALL');
   const [customRoleFilter, setCustomRoleFilter] = useState<'ALL' | 'NONE' | string>('ALL');
   const filteredStaff = staffOnly.filter((u) => {
     if (accountTypeFilter === 'LEADERSHIP') { if (!LEADERSHIP_ROLES.includes(u.role)) return false; }
+    else if (accountTypeFilter === 'RECORDS_ICT') { if (!['REGISTRAR_ACADEMIC', 'REGISTRAR_ADMIN', 'ICT_ADMIN'].includes(u.role)) return false; }
     else if (accountTypeFilter !== 'ALL' && u.role !== accountTypeFilter) return false;
     if (customRoleFilter === 'NONE' && u.customRoleId) return false;
     if (customRoleFilter !== 'ALL' && customRoleFilter !== 'NONE' && u.customRoleId !== customRoleFilter) return false;
@@ -273,21 +300,58 @@ export function RolesPermissionsPage() {
       setUserError('Pick an account type.');
       return;
     }
+    if (UNIT_BOUND_ROLES.includes(userForm.role) && !userForm.orgUnitId) {
+      setUserError('Pick the organisation unit this account belongs to.');
+      return;
+    }
+    const base = { firstName: userForm.firstName, lastName: userForm.lastName, email: userForm.email, password: userForm.password, schoolId };
     try {
-      const path = userForm.role === 'LECTURER' ? '/users/lecturer' : '/users/client-experience-manager';
-      await createUser(path, {
-        firstName: userForm.firstName,
-        lastName: userForm.lastName,
-        email: userForm.email,
-        password: userForm.password,
-        schoolId,
-        customRoleId: userForm.customRoleId || undefined,
-        courseIds: userForm.courseIds,
-      });
+      if (userForm.role === 'LECTURER' || userForm.role === 'CLIENT_EXPERIENCE_MANAGER') {
+        await createUser(userForm.role === 'LECTURER' ? '/users/lecturer' : '/users/client-experience-manager', {
+          ...base,
+          customRoleId: userForm.customRoleId || undefined,
+          courseIds: userForm.courseIds,
+        });
+      } else if (userForm.role === 'INVIGILATOR') {
+        await createUser('/users/invigilator', base);
+      } else {
+        await createUser('/users/hierarchy', {
+          ...base,
+          role: userForm.role,
+          scopeLevel: DEFAULT_SCOPE[userForm.role],
+          orgUnitId: UNIT_BOUND_ROLES.includes(userForm.role) ? userForm.orgUnitId : undefined,
+          customRoleId: CAN_HOLD_ROLE.includes(userForm.role) ? userForm.customRoleId || undefined : undefined,
+        });
+      }
       setUserModal(false);
       refetchUsers();
     } catch (e) {
       setUserError(e instanceof Error ? e.message : 'Failed to create user');
+    }
+  };
+
+  // Switch a staff member to another account type. DVC / Dean / HOD need an organisation unit, so those
+  // open a small picker first; everything else asks for confirmation and applies straight away.
+  const requestSwitch = (target: User, role: Role) => {
+    if (role === target.role) return;
+    setSwitchError('');
+    if (UNIT_BOUND_ROLES.includes(role)) {
+      setSwitchUnitId('');
+      setSwitchTarget({ user: target, role });
+      return;
+    }
+    const label = ASSIGNABLE_ROLES.find((r) => r.value === role)?.label ?? role;
+    if (!confirm(`Switch ${target.firstName} ${target.lastName} to ${label}?\n\nTheir custom role and permissions are cleared (unless you are switching between Lecturer and Client Experience Manager), and they will need to sign in again.`)) return;
+    void applySwitch(target, role, null);
+  };
+  const applySwitch = async (target: User, role: Role, orgUnitId: string | null) => {
+    try {
+      await assignRole(`/users/${target.id}/account-type`, { role, ...(orgUnitId ? { orgUnitId } : {}) } as never);
+      setSwitchTarget(null);
+      refetchUsers();
+    } catch (e) {
+      setSwitchError(e instanceof Error ? e.message : 'Could not switch the account type');
+      refetchUsers();
     }
   };
 
@@ -309,12 +373,12 @@ export function RolesPermissionsPage() {
           <ShieldCheck size={24} className="text-blue-500" /> Roles &amp; Permissions
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Create a role, pick its permissions, then assign users to it — editing a role updates every user holding it immediately,
-          on mobile and the dashboard alike.
+          Manage your staff accounts: create a new account, or switch a person to a different account type.
         </p>
       </div>
 
-      {/* Roles */}
+      {/* Roles — hidden for now (SHOW_ROLES_CARD) */}
+      {SHOW_ROLES_CARD && (
       <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -366,6 +430,8 @@ export function RolesPermissionsPage() {
         )}
       </div>
 
+      )}
+
       {/* Users */}
       <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -381,7 +447,7 @@ export function RolesPermissionsPage() {
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              {(['ALL', 'LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'LEADERSHIP'] as const).map((opt) => (
+              {(['ALL', 'LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'INVIGILATOR', 'LEADERSHIP', 'RECORDS_ICT'] as const).map((opt) => (
                 <button
                   key={opt}
                   type="button"
@@ -392,7 +458,7 @@ export function RolesPermissionsPage() {
                       : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/10'
                   }`}
                 >
-                  {opt === 'ALL' ? 'All types' : opt === 'LEADERSHIP' ? 'VC / DVC / Dean / HOD' : ACCOUNT_TYPE_META[opt]?.label}
+                  {opt === 'ALL' ? 'All types' : opt === 'LEADERSHIP' ? 'VC / DVC / Dean / HOD' : opt === 'RECORDS_ICT' ? 'Registrar / ICT' : ACCOUNT_TYPE_META[opt]?.label}
                 </button>
               ))}
               <select
@@ -411,6 +477,7 @@ export function RolesPermissionsPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No staff match this filter.</p>
             ) : (
               <div className="overflow-x-auto">
+                {switchError && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{switchError}</p>}
                 <p className="text-xs text-gray-400 mb-2">
                   VC, DVC, Dean and HOD accounts can hold <strong>Manage courses</strong> only — it lets them manage the courses inside their own
                   organisation unit (they are created and assigned a unit under Organisation). Other permissions have no effect for them.
@@ -429,20 +496,23 @@ export function RolesPermissionsPage() {
                       <tr key={u.id}>
                         <td className="py-3 text-sm text-gray-900 dark:text-white">{u.firstName} {u.lastName}<br /><span className="text-xs text-gray-400">{u.email}</span></td>
                         <td className="py-3">
-                          <span
-                            className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          <select
+                            value={u.role}
+                            onChange={(e) => requestSwitch(u, e.target.value as Role)}
+                            aria-label={`Account type for ${u.firstName} ${u.lastName}`}
+                            className={`text-xs font-semibold rounded-full border px-2.5 py-1.5 cursor-pointer ${
                               u.role === 'LECTURER'
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20'
                                 : LEADERSHIP_ROLES.includes(u.role)
-                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
-                                  : 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20'
+                                  : 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20'
                             }`}
                           >
-                            {ROLE_LABEL[u.role]}
-                          </span>
+                            {ASSIGNABLE_ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                          </select>
                         </td>
                         <td className="py-3">
-                          <select
+                          {!CAN_HOLD_ROLE.includes(u.role) ? <span className="text-xs text-gray-400">—</span> : <select
                             value={u.customRoleId ?? ''}
                             onChange={(e) => void handleAssignRole(u, e.target.value)}
                             className="text-sm rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1.5 text-gray-900 dark:text-white"
@@ -451,10 +521,10 @@ export function RolesPermissionsPage() {
                             {(roles ?? []).map((r) => (
                               <option key={r.id} value={r.id}>{r.name}</option>
                             ))}
-                          </select>
+                          </select>}
                         </td>
                         <td className="py-3 text-right">
-                          {!LEADERSHIP_ROLES.includes(u.role) && <button
+                          {['LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'INVIGILATOR'].includes(u.role) && <button
                             onClick={() => void handleDeleteUser(u)}
                             title="Delete staff member"
                             className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 cursor-pointer inline-flex"
@@ -471,6 +541,28 @@ export function RolesPermissionsPage() {
           </>
         )}
       </div>
+
+      {/* Switch to DVC / Dean / HOD: which organisation unit? */}
+      <Modal open={!!switchTarget} onClose={() => setSwitchTarget(null)} title="Choose organisation unit">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            {switchTarget && <>Switching <strong>{switchTarget.user.firstName} {switchTarget.user.lastName}</strong> to <strong>{ROLE_LABEL[switchTarget.role]}</strong>. Their custom role and permissions are cleared, and they will need to sign in again.</>}
+          </p>
+          <select
+            value={switchUnitId}
+            onChange={(e) => setSwitchUnitId(e.target.value)}
+            className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
+          >
+            <option value="">— Select a unit —</option>
+            {(orgUnits ?? []).map((o) => <option key={o.id} value={o.id}>{o.name} ({o.level.toLowerCase().replace('_', ' ')})</option>)}
+          </select>
+          {!orgUnits?.length && <p className="text-xs text-gray-400">No organisation units yet — create them under Organisation first.</p>}
+          {switchError && <p className="text-sm text-red-600 dark:text-red-400">{switchError}</p>}
+          <Button onClick={() => switchTarget && void applySwitch(switchTarget.user, switchTarget.role, switchUnitId)} disabled={!switchUnitId} className="w-full">
+            Switch account type
+          </Button>
+        </div>
+      </Modal>
 
       {/* Create/edit role modal */}
       <Modal open={roleModal} onClose={() => setRoleModal(false)} title={editingRole ? 'Edit Role' : 'New Role'}>
@@ -520,6 +612,21 @@ export function RolesPermissionsPage() {
           </div>
           <Input label="Email" type="email" icon={Mail} value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} />
           <Input label="Password" type="password" icon={Lock} value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} />
+          {userForm.role && UNIT_BOUND_ROLES.includes(userForm.role) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Organisation unit</label>
+              <select
+                value={userForm.orgUnitId}
+                onChange={(e) => setUserForm({ ...userForm, orgUnitId: e.target.value })}
+                className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
+              >
+                <option value="">— Select a unit —</option>
+                {(orgUnits ?? []).map((o) => <option key={o.id} value={o.id}>{o.name} ({o.level.toLowerCase().replace('_', ' ')})</option>)}
+              </select>
+              {!orgUnits?.length && <p className="text-xs text-gray-400 mt-1.5">No organisation units yet — create them under Organisation first.</p>}
+            </div>
+          )}
+          {(!userForm.role || CAN_HOLD_ROLE.includes(userForm.role)) && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Custom Role (optional)</label>
             {roles?.length ? (
@@ -536,13 +643,17 @@ export function RolesPermissionsPage() {
             ) : (
               <div className="text-sm text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
                 <span>No custom roles yet.</span>
-                <button type="button" onClick={() => { setUserModal(false); openCreateRole(); }} className="text-blue-500 font-medium hover:underline shrink-0 cursor-pointer">
-                  Create one
-                </button>
+                {SHOW_ROLES_CARD && (
+                  <button type="button" onClick={() => { setUserModal(false); openCreateRole(); }} className="text-blue-500 font-medium hover:underline shrink-0 cursor-pointer">
+                    Create one
+                  </button>
+                )}
               </div>
             )}
             <p className="text-xs text-gray-400 mt-1.5">Grants extra dashboard/mobile permissions on top of the account type above.</p>
           </div>
+          )}
+          {(!userForm.role || userForm.role === 'LECTURER' || userForm.role === 'CLIENT_EXPERIENCE_MANAGER') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
               <BookOpen size={14} /> Assigned Courses
@@ -569,6 +680,7 @@ export function RolesPermissionsPage() {
               {!courses?.length && <p className="text-xs text-gray-400 px-2 py-1">No courses yet.</p>}
             </div>
           </div>
+          )}
           {userError && <p className="text-sm text-red-600 dark:text-red-400">{userError}</p>}
           <Button onClick={() => void submitUser()} disabled={creatingUser || !userForm.role} className="w-full">Create User</Button>
         </div>
