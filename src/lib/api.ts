@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || '/api';
+import { API_BASE as BASE } from './apiBase';
 
 type RefreshTokens = { accessToken: string; refreshToken: string };
 
