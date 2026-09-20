@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Can } from '../../components/shared/Can';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -170,6 +171,7 @@ export function CourseAssignmentsPage() {
                   </p>
                 )}
               </div>
+              <Can perm="MANAGE_COURSES">
               <div className="flex gap-1.5">
                 <button
                   onClick={() => openBeaconModal(course)}
@@ -193,6 +195,7 @@ export function CourseAssignmentsPage() {
                   <Users size={16} />
                 </button>
               </div>
+              </Can>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">

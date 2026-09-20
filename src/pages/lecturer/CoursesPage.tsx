@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
+import { useCan } from '../../hooks/useCan';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -12,7 +13,12 @@ import { CourseDataGrid } from '../../components/admin/CourseDataGrid';
 
 export function CoursesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
+  // Everyone except a lecturer sees the school's (or, for leadership roles, their unit's) courses — the
+  // server scopes the list — instead of only courses they personally teach. Lecturers are unchanged.
+  const isAdmin = !!user && !['LECTURER', 'STUDENT', 'INVIGILATOR'].includes(user.role);
+  // Mirrors what the server allows for course writes (MANAGE_COURSES), so nobody clicks a button that answers 403.
+  // A lecturer with no CustomRole keeps every button they have today.
+  const canManage = useCan('MANAGE_COURSES');
   const queryParams = isAdmin ? '' : `?lecturerId=${user?.id}`;
   const { data: courses, refetch } = useApi<Course[]>(`/courses${queryParams}`);
   const { data: schools } = useApi<School[]>('/schools');
@@ -46,7 +52,8 @@ export function CoursesPage() {
       ...form,
       lecturerId: isAdmin ? form.lecturerId : user?.id,
       room: form.room || undefined,
-      orgUnitId: form.orgUnitId || null,
+      // DVC/Dean/HOD must place a course inside their own unit tree; default to their own unit (the server enforces it).
+      orgUnitId: form.orgUnitId || (['DVC', 'DEAN', 'HOD'].includes(user?.role ?? '') ? user?.orgUnitId : null) || null,
     });
     setModal(false);
     setForm({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [], orgUnitId: '' });
@@ -113,7 +120,7 @@ export function CoursesPage() {
               </button>
             </div>
           )}
-          <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Course</Button>
+          {canManage && <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Course</Button>}
         </div>
       </div>
 
@@ -165,13 +172,17 @@ export function CoursesPage() {
                 <span className="flex items-center gap-1"><Calendar size={14} /> {course._count?.classes || 0}</span>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => openEdit(course)} className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer" title="Edit course">
-                  <Edit2 size={14} className="text-blue-400" />
-                </button>
-                <button onClick={() => setEnrollModal(course.id)} className="text-xs text-blue-500 hover:text-blue-600 font-medium cursor-pointer px-2 py-1">
-                  Enroll
-                </button>
-                {isAdmin && (
+                {canManage && (
+                  <>
+                    <button onClick={() => openEdit(course)} className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer" title="Edit course">
+                      <Edit2 size={14} className="text-blue-400" />
+                    </button>
+                    <button onClick={() => setEnrollModal(course.id)} className="text-xs text-blue-500 hover:text-blue-600 font-medium cursor-pointer px-2 py-1">
+                      Enroll
+                    </button>
+                  </>
+                )}
+                {isAdmin && canManage && (
                   <button onClick={() => deleteCourse(course.id)} className="p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer">
                     <Trash2 size={14} className="text-red-400" />
                   </button>

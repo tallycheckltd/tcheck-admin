@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Can } from '../../components/shared/Can';
 import {
   Wrench, Clock, CheckCircle2, AlertTriangle, Search, Send, Siren,
   ThermometerSnowflake, Tv, Coffee, HelpCircle, MapPin,
@@ -291,6 +292,7 @@ export function FacilitiesQueuePage() {
               </div>
 
               <div className="pt-4 space-y-2 flex-shrink-0">
+                <Can perm="MANAGE_FACILITY_TICKETS">
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -304,7 +306,9 @@ export function FacilitiesQueuePage() {
                     <Send size={16} />
                   </Button>
                 </div>
+                </Can>
                 {selected.status !== 'RESOLVED' && (
+                  <Can perm="MANAGE_FACILITY_TICKETS">
                   <div className="flex gap-2">
                     {selected.status === 'OPEN' && (
                       <Button onClick={() => handleAcknowledge(selected.id)} disabled={acknowledging} variant="secondary" className="flex-1">
@@ -320,6 +324,7 @@ export function FacilitiesQueuePage() {
                       <CheckCircle2 size={16} className="mr-1.5" /> Mark Resolved
                     </Button>
                   </div>
+                  </Can>
                 )}
                 {selected.status === 'RESOLVED' && (
                   <div className="rounded-xl bg-emerald-50/60 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20 p-3 flex items-center gap-2">

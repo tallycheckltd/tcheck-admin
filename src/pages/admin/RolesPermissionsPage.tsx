@@ -11,85 +11,85 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import type { CustomRole, Permission, Role, User, Course } from '../../types';
+import { ROLE_LABEL } from '../../lib/rbac';
 
 /** The full catalog — grouped for the checklist UI. Mirrors server/prisma/schema.prisma's
- * Permission enum exactly, all 32 values across 7 groups: every permission the server will accept
- * on a CustomRole is selectable here (see role.service.ts's ROLE_ASSIGNABLE_PERMISSIONS) —
- * including the Administration group below, which a SCHOOL_ADMIN can now delegate piecemeal
- * instead of it being fixed to their own account only.
+ * Permission enum exactly, all 32 values across 7 groups. Every description says what the server
+ * actually enforces today (see the backend's requireCapability routes).
  *
- * The "Operations (sidebar visibility)" group is a different kind of permission from the rest:
- * it only ever controls whether the matching sidebar link shows up for a LECTURER/CLIENT_
- * EXPERIENCE_MANAGER on a CustomRole (see Sidebar.tsx's requiredPermissionFor) — the backend route
- * itself still allows the holder's literal Role in regardless (LECTURER already could hit e.g.
- * /escalations before this existed). It's a nav-declutter/customization tool, not yet a hard
- * security boundary the way MANUAL_CHECK_IN/VIEW_BLE_CHECKINS/etc. above are. */
-const PERMISSION_GROUPS: { title: string; items: { key: Permission; label: string; icon: React.ElementType }[] }[] = [
+ * Two kinds of entry are flagged honestly instead of pretending to be a real boundary:
+ *   - `navOnly`:   only decides whether a sidebar link shows for a lecturer on a role. The pages behind
+ *                  them share endpoints with pages everyone can use, so they are not blocked on the server.
+ *   - `reserved`:  no action uses it yet (kept so roles that already ticked it stay valid). */
+type PermItem = { key: Permission; label: string; icon: React.ElementType; note?: 'navOnly' | 'reserved' };
+const PERMISSION_GROUPS: { title: string; hint?: string; items: PermItem[] }[] = [
   {
     title: 'Sign-in access',
     items: [
-      { key: 'MOBILE_ACCESS', label: 'Can log in on mobile', icon: UserPlus },
-      { key: 'DASHBOARD_ACCESS', label: 'Can log in on the dashboard', icon: UserPlus },
+      { key: 'MOBILE_ACCESS', label: 'Can sign in on the mobile app', icon: UserPlus },
+      { key: 'DASHBOARD_ACCESS', label: 'Can sign in on the dashboard', icon: UserPlus },
     ],
   },
   {
     title: 'Administration',
+    hint: 'Real limits: someone without the permission is refused, even if they can see the page.',
     items: [
-      { key: 'MANAGE_USERS', label: 'Create and manage users', icon: Users },
-      { key: 'MANAGE_SCHOOL_SETTINGS', label: 'Edit school settings and branding', icon: Settings2 },
-      { key: 'MANAGE_COURSES', label: 'Manage courses, classes and beacons', icon: BookOpen },
-      { key: 'MANAGE_ANNOUNCEMENTS', label: 'Compose dashboard announcements', icon: Megaphone },
-      { key: 'MANAGE_TICKETS', label: 'Manage support tickets', icon: Ticket },
+      { key: 'MANAGE_USERS', label: 'Create lecturers, invigilators and students, approve or deactivate them, and see the user list', icon: Users },
+      { key: 'MANAGE_SCHOOL_SETTINGS', label: "Change this school's attendance settings and feature switches (not its name or branding)", icon: Settings2 },
+      { key: 'MANAGE_COURSES', label: 'Create, edit and delete courses and classes, enrol students and tag courses (leadership roles: only inside their own unit)', icon: BookOpen },
+      { key: 'MANAGE_ANNOUNCEMENTS', label: 'Send school-wide announcements from the dashboard (school admins)', icon: Megaphone },
+      { key: 'MANAGE_TICKETS', label: "Raise and reply to this school's support tickets", icon: Ticket },
     ],
   },
   {
     title: 'Students',
     items: [
-      { key: 'VIEW_BIRTHDAYS', label: 'View student birthdays', icon: Cake },
-      { key: 'VIEW_BLE_CHECKINS', label: 'View on-site (automatic) check-ins', icon: MapPin },
-      { key: 'VIEW_MANUAL_CHECKINS', label: 'View manual check-ins', icon: ClipboardCheck },
-      { key: 'MANUAL_CHECK_IN', label: 'Check students in manually', icon: ClipboardCheck },
+      { key: 'VIEW_BIRTHDAYS', label: 'See student birthdays', icon: Cake },
+      { key: 'VIEW_BLE_CHECKINS', label: 'See students who checked in automatically on site', icon: MapPin },
+      { key: 'VIEW_MANUAL_CHECKINS', label: 'See students who were checked in manually', icon: ClipboardCheck },
+      { key: 'MANUAL_CHECK_IN', label: 'Check a student in by hand (dashboard and mobile app)', icon: ClipboardCheck },
     ],
   },
   {
     title: 'Communication',
     items: [
       { key: 'MESSAGING', label: 'Use messaging', icon: MessageSquare },
-      { key: 'BROADCAST_STUDENTS_APPROVED', label: 'Send "students approved" broadcast', icon: Megaphone },
-      { key: 'BROADCAST_CLASS_SCHEDULE', label: 'Send "class starting" broadcast', icon: Megaphone },
+      { key: 'BROADCAST_STUDENTS_APPROVED', label: 'Send the "all students approved" message', icon: Megaphone },
+      { key: 'BROADCAST_CLASS_SCHEDULE', label: 'Send the "class starting" message', icon: Megaphone },
     ],
   },
   {
     title: 'Onboarding journey',
     items: [
-      { key: 'BROADCAST_PROGRAM_WELCOME', label: 'Send "program welcome" broadcast', icon: Sparkles },
-      { key: 'BROADCAST_MATERIALS_READY', label: 'Send "materials ready" broadcast', icon: Sparkles },
-      { key: 'BROADCAST_UPDATE', label: 'Send free-form update broadcasts', icon: Megaphone },
-      { key: 'REQUEST_FEEDBACK', label: 'Request feedback from a student', icon: Star },
-      { key: 'MANAGE_MATERIALS', label: 'List and add course materials', icon: Folder },
+      { key: 'BROADCAST_PROGRAM_WELCOME', label: 'Send the "program welcome" message', icon: Sparkles },
+      { key: 'BROADCAST_MATERIALS_READY', label: 'Send the "materials ready" message', icon: Sparkles },
+      { key: 'BROADCAST_UPDATE', label: 'Send a free-form update to a course', icon: Megaphone },
+      { key: 'REQUEST_FEEDBACK', label: 'Ask a student to fill in the feedback form', icon: Star },
+      { key: 'MANAGE_MATERIALS', label: 'See and add course materials', icon: Folder },
     ],
   },
   {
     title: 'Analytics',
     items: [
-      { key: 'VIEW_ANALYTICS', label: 'View attendance analytics (their assigned courses)', icon: BarChart3 },
-      { key: 'VIEW_ANALYTICS_DEMOGRAPHICS', label: 'View gender/nationality breakdowns', icon: PieChart },
-      { key: 'VIEW_FRAUD_DETECTION', label: 'View fraud detection flags', icon: ShieldAlert },
+      { key: 'VIEW_ANALYTICS', label: 'See attendance analytics for their assigned courses', icon: BarChart3 },
+      { key: 'VIEW_ANALYTICS_DEMOGRAPHICS', label: 'See gender and nationality breakdowns', icon: PieChart },
+      { key: 'VIEW_FRAUD_DETECTION', label: "See fraud detection flags for the whole school (including flagged check-in photos)", icon: ShieldAlert },
     ],
   },
   {
-    title: 'Operations (sidebar visibility)',
+    title: 'Operations',
+    hint: 'Each "see" permission shows the queue; each "manage" permission lets the holder act on it. Lecturers without a role keep the access they have always had.',
     items: [
-      { key: 'VIEW_LIVE_ATTENDANCE', label: 'See Live Attendance', icon: Radio },
-      { key: 'VIEW_REPORTS', label: 'See Reports', icon: FileText },
-      { key: 'VIEW_ESCALATIONS', label: 'See the Escalations queue', icon: Siren },
-      { key: 'MANAGE_ESCALATIONS', label: 'Reply to / resolve escalations', icon: Siren },
-      { key: 'VIEW_FACILITIES', label: 'See the Facilities queue', icon: Wrench },
-      { key: 'MANAGE_FACILITY_TICKETS', label: 'Acknowledge / resolve facility tickets', icon: Wrench },
-      { key: 'VIEW_INVIGILATION', label: 'See Invigilation', icon: ScanEye },
-      { key: 'MANAGE_INVIGILATION', label: 'Submit invigilation reports', icon: ScanEye },
-      { key: 'VIEW_DEVICE_VERIFICATION', label: 'See device verification requests', icon: Smartphone },
-      { key: 'MANAGE_DEVICE_VERIFICATION', label: 'Approve / reset devices', icon: Smartphone },
+      { key: 'VIEW_LIVE_ATTENDANCE', label: 'Show Live Attendance in the menu', icon: Radio, note: 'navOnly' },
+      { key: 'VIEW_REPORTS', label: 'Show Reports in the menu', icon: FileText, note: 'navOnly' },
+      { key: 'VIEW_ESCALATIONS', label: 'See the escalation queue (students who flagged a problem during a class)', icon: Siren },
+      { key: 'MANAGE_ESCALATIONS', label: 'Resolve escalations, request a fresh baseline photo, reset a biometric lock', icon: Siren },
+      { key: 'VIEW_FACILITIES', label: 'See the facilities queue (room and equipment issues)', icon: Wrench },
+      { key: 'MANAGE_FACILITY_TICKETS', label: 'Reply to, acknowledge, resolve or escalate facility tickets', icon: Wrench },
+      { key: 'VIEW_INVIGILATION', label: 'See the exam-card and gate-attempt lists', icon: ScanEye },
+      { key: 'MANAGE_INVIGILATION', label: 'Reserved for a future update — has no effect yet', icon: ScanEye, note: 'reserved' },
+      { key: 'VIEW_DEVICE_VERIFICATION', label: 'See pending and approved student devices', icon: Smartphone },
+      { key: 'MANAGE_DEVICE_VERIFICATION', label: 'Approve or reset a student device, reset a biometric lock', icon: Smartphone },
     ],
   },
 ];
@@ -140,8 +140,9 @@ function PermissionChecklist({ value, onChange }: { value: Permission[]; onChang
                 {groupSelected ? '(clear)' : '(select all)'}
               </span>
             </button>
+            {group.hint && <p className="text-xs text-gray-400 mb-2">{group.hint}</p>}
             <div className="space-y-1.5">
-              {group.items.map(({ key, label, icon: Icon }) => (
+              {group.items.map(({ key, label, icon: Icon, note }) => (
                 <label
                   key={key}
                   className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer"
@@ -149,6 +150,14 @@ function PermissionChecklist({ value, onChange }: { value: Permission[]; onChang
                   <input type="checkbox" checked={value.includes(key)} onChange={() => toggle(key)} className="w-4 h-4 rounded accent-blue-500" />
                   <Icon size={16} className="text-gray-400" />
                   <span className="text-sm text-gray-700 dark:text-gray-200">{label}</span>
+                  {note && (
+                    <span
+                      title={note === 'navOnly' ? 'Only shows or hides the menu link. The page behind it is not blocked on the server.' : 'No action uses this permission yet.'}
+                      className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+                    >
+                      {note === 'navOnly' ? 'Navigation only' : 'Not used yet'}
+                    </span>
+                  )}
                 </label>
               ))}
             </div>
@@ -164,6 +173,8 @@ const emptyRoleForm = { name: '', permissions: [] as Permission[] };
 // fields now — no more inferring one from the other. Simpler and matches how every other part of
 // this page already treats them: a role is just a bundle of permissions, usable by either account type.
 const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', role: '' as Role | '', customRoleId: '', courseIds: [] as string[] };
+
+const LEADERSHIP_ROLES: Role[] = ['VC', 'DVC', 'DEAN', 'HOD'];
 
 const ACCOUNT_TYPE_META: Partial<Record<Role, { label: string; blurb: string }>> = {
   CLIENT_EXPERIENCE_MANAGER: { label: 'Client Experience Manager', blurb: 'Front-of-house — no assigned courses' },
@@ -200,14 +211,16 @@ export function RolesPermissionsPage() {
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [userError, setUserError] = useState('');
 
-  const staffOnly = (staffUsers ?? []).filter((u) => u.role === 'LECTURER' || u.role === 'CLIENT_EXPERIENCE_MANAGER');
+  // Lecturers, Client Experience Managers and the four leadership roles that can hold MANAGE_COURSES.
+  const staffOnly = (staffUsers ?? []).filter((u) => u.role === 'LECTURER' || u.role === 'CLIENT_EXPERIENCE_MANAGER' || LEADERSHIP_ROLES.includes(u.role));
 
   // Filter bar above the Staff table — account type as pills (small, fixed set), custom role as a
   // dropdown (open-ended, school-defined names).
-  const [accountTypeFilter, setAccountTypeFilter] = useState<'ALL' | Role>('ALL');
+  const [accountTypeFilter, setAccountTypeFilter] = useState<'ALL' | Role | 'LEADERSHIP'>('ALL');
   const [customRoleFilter, setCustomRoleFilter] = useState<'ALL' | 'NONE' | string>('ALL');
   const filteredStaff = staffOnly.filter((u) => {
-    if (accountTypeFilter !== 'ALL' && u.role !== accountTypeFilter) return false;
+    if (accountTypeFilter === 'LEADERSHIP') { if (!LEADERSHIP_ROLES.includes(u.role)) return false; }
+    else if (accountTypeFilter !== 'ALL' && u.role !== accountTypeFilter) return false;
     if (customRoleFilter === 'NONE' && u.customRoleId) return false;
     if (customRoleFilter !== 'ALL' && customRoleFilter !== 'NONE' && u.customRoleId !== customRoleFilter) return false;
     return true;
@@ -363,12 +376,12 @@ export function RolesPermissionsPage() {
         </div>
         {!staffOnly.length ? (
           <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
-            No Client Experience Managers or Lecturers with a role assigned yet.
+            No staff accounts yet — create a Lecturer or Client Experience Manager, or add VC / DVC / Dean / HOD accounts under Organisation.
           </p>
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              {(['ALL', 'LECTURER', 'CLIENT_EXPERIENCE_MANAGER'] as const).map((opt) => (
+              {(['ALL', 'LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'LEADERSHIP'] as const).map((opt) => (
                 <button
                   key={opt}
                   type="button"
@@ -379,7 +392,7 @@ export function RolesPermissionsPage() {
                       : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/10'
                   }`}
                 >
-                  {opt === 'ALL' ? 'All types' : ACCOUNT_TYPE_META[opt]?.label}
+                  {opt === 'ALL' ? 'All types' : opt === 'LEADERSHIP' ? 'VC / DVC / Dean / HOD' : ACCOUNT_TYPE_META[opt]?.label}
                 </button>
               ))}
               <select
@@ -398,6 +411,10 @@ export function RolesPermissionsPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No staff match this filter.</p>
             ) : (
               <div className="overflow-x-auto">
+                <p className="text-xs text-gray-400 mb-2">
+                  VC, DVC, Dean and HOD accounts can hold <strong>Manage courses</strong> only — it lets them manage the courses inside their own
+                  organisation unit (they are created and assigned a unit under Organisation). Other permissions have no effect for them.
+                </p>
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-white/10">
@@ -416,10 +433,12 @@ export function RolesPermissionsPage() {
                             className={`text-xs font-semibold px-2 py-1 rounded-full ${
                               u.role === 'LECTURER'
                                 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
-                                : 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400'
+                                : LEADERSHIP_ROLES.includes(u.role)
+                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
+                                  : 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400'
                             }`}
                           >
-                            {u.role === 'LECTURER' ? 'Lecturer' : 'Client Experience Manager'}
+                            {ROLE_LABEL[u.role]}
                           </span>
                         </td>
                         <td className="py-3">
@@ -435,13 +454,13 @@ export function RolesPermissionsPage() {
                           </select>
                         </td>
                         <td className="py-3 text-right">
-                          <button
+                          {!LEADERSHIP_ROLES.includes(u.role) && <button
                             onClick={() => void handleDeleteUser(u)}
                             title="Delete staff member"
                             className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 cursor-pointer inline-flex"
                           >
                             <UserX size={16} />
-                          </button>
+                          </button>}
                         </td>
                       </tr>
                     ))}

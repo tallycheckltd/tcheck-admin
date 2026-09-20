@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Can } from '../../components/shared/Can';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
 import { useApi, useMutation } from '../../hooks/useApi';
@@ -128,7 +129,9 @@ export function SupportPage() {
           </p>
         </div>
         {!isSuperAdmin && (
-          <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Ticket</Button>
+          <Can perm="MANAGE_TICKETS" newForLecturer>
+            <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Ticket</Button>
+          </Can>
         )}
       </div>
 
@@ -251,6 +254,7 @@ export function SupportPage() {
                 <div ref={chatEndRef} />
               </div>
 
+              <Can perm="MANAGE_TICKETS" newForLecturer>
               <div className="p-4 border-t border-gray-200 dark:border-white/10 flex items-center gap-2">
                 <input
                   type="text"
@@ -267,6 +271,7 @@ export function SupportPage() {
                   <Send size={16} />
                 </button>
               </div>
+              </Can>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">

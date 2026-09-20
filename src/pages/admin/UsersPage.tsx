@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Can } from '../../components/shared/Can';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
@@ -128,15 +129,17 @@ export function UsersPage() {
               <ShieldPlus size={16} className="mr-1" /> Add Admin
             </Button>
           )}
-          <Button variant="secondary" onClick={() => openCreateModal('student')}>
-            <UserPlus size={16} className="mr-1" /> Add Student
-          </Button>
-          <Button variant="secondary" onClick={() => openCreateModal('invigilator')}>
-            <ScanEye size={16} className="mr-1" /> Add Invigilator
-          </Button>
-          <Button onClick={() => openCreateModal('lecturer')}>
-            <Plus size={16} className="mr-1" /> Add Lecturer
-          </Button>
+          <Can perm="MANAGE_USERS">
+            <Button variant="secondary" onClick={() => openCreateModal('student')}>
+              <UserPlus size={16} className="mr-1" /> Add Student
+            </Button>
+            <Button variant="secondary" onClick={() => openCreateModal('invigilator')}>
+              <ScanEye size={16} className="mr-1" /> Add Invigilator
+            </Button>
+            <Button onClick={() => openCreateModal('lecturer')}>
+              <Plus size={16} className="mr-1" /> Add Lecturer
+            </Button>
+          </Can>
         </div>
         )}
       </div>
@@ -216,14 +219,14 @@ export function UsersPage() {
                         <Eye size={18} />
                       </button>
                       {!isReadOnlyUsers && u.status === 'PENDING' && (
-                        <>
+                        <Can perm="MANAGE_USERS">
                           <button onClick={() => approve(u.id)} className="p-2 rounded-xl hover:bg-green-50 dark:hover:bg-green-500/10 text-green-500 transition-all border border-transparent hover:border-green-100 dark:hover:border-white/10" title="Approve">
                             <CheckCircle size={18} />
                           </button>
                           <button onClick={() => reject(u.id)} className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 transition-all border border-transparent hover:border-red-100 dark:hover:border-white/10" title="Reject">
                             <XCircle size={18} />
                           </button>
-                        </>
+                        </Can>
                       )}
                       {!isReadOnlyUsers && canDelete(u) && (
                         <button onClick={() => deleteUser(u.id)} className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400 transition-all border border-transparent hover:border-red-100 dark:hover:border-white/10" title="Delete">

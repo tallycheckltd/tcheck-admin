@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Can } from '../../components/shared/Can';
 import { useApi, useMutation } from '../../hooks/useApi';
 import {
   Smartphone, CheckCircle2, XCircle, RefreshCw,
@@ -255,6 +256,7 @@ export function DeviceVerificationPage() {
                     </td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <Can perm="MANAGE_DEVICE_VERIFICATION">
                         <button
                           onClick={() => handleVerify(p)}
                           className="flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-600 hover:bg-green-500 hover:text-white rounded-lg text-xs font-bold transition-all"
@@ -268,6 +270,7 @@ export function DeviceVerificationPage() {
                         >
                           <XCircle size={16} />
                         </button>
+                        </Can>
                       </div>
                     </td>
                   </tr>
@@ -419,12 +422,14 @@ export function DeviceVerificationPage() {
                               {p.createdAt ? format(new Date(p.createdAt), 'MMM d, h:mm a') : '-'}
                             </td>
                             <td className="py-4 px-6 text-right">
+                              <Can perm="MANAGE_DEVICE_VERIFICATION">
                               <button
                                 onClick={() => handleReset(p.id, true)}
                                 className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded-lg text-xs font-bold transition-all ml-auto"
                               >
                                 <RefreshCw size={12} /> Reset Device
                               </button>
+                              </Can>
                             </td>
                           </tr>
                         ))}

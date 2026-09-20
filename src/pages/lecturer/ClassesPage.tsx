@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
+import { useCan } from '../../hooks/useCan';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -16,12 +17,14 @@ import { CourseDrilldown, CourseDrilldownBackLink } from '../../components/share
 export function ClassesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
+  // Mirrors the server's MANAGE_COURSES gate on class writes; a lecturer with no CustomRole keeps every button they have today.
+  const canManage = useCan('MANAGE_COURSES');
   const { data: classes, refetch, setData: setClasses } = useApi<ClassSession[]>('/classes');
   const courseQuery =
     user?.role === 'SUB_ADMIN' && user?.schoolId
       ? `/courses?schoolId=${user.schoolId}`
-      : user?.role === 'SUPER_ADMIN'
-        ? '/courses'
+      : user?.role !== 'LECTURER'
+        ? '/courses' // SUPER_ADMIN, and every other non-lecturer role: the server scopes the list to their school/unit
         : `/courses?lecturerId=${user?.id}`;
   const { data: courses } = useApi<Course[]>(courseQuery);
   const { mutate: create } = useMutation<ClassSession>('post');
@@ -162,7 +165,7 @@ export function ClassesPage() {
             {selectedCourseId ? `${sessionsForSelectedCourse.length} sessions` : `${courseGroups.length} courses, ${myClasses.length} classes`}
           </p>
         </div>
-        <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Class</Button>
+        {canManage && <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Class</Button>}
       </div>
 
       {!selectedCourseId ? (
@@ -220,7 +223,7 @@ export function ClassesPage() {
                     <button onClick={() => navigate(`/attendance/${cls.id}`)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer" title="View Attendance">
                       <Eye size={15} className="text-slate-600" />
                     </button>
-                    {user?.role !== 'LECTURER' && (
+                    {user?.role !== 'LECTURER' && canManage && (
                       <button onClick={() => deleteClass(cls.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer" title="Delete">
                         <Trash2 size={15} className="text-red-400" />
                       </button>

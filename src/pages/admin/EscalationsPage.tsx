@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
+import { Can } from '../../components/shared/Can';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { LifeBuoy, Clock, CheckCircle2, AlertTriangle, GraduationCap, BookOpen, Search, Camera, Fingerprint } from 'lucide-react';
@@ -228,28 +229,34 @@ export function EscalationsPage() {
               {selected.status === 'OPEN' ? (
                 <div className="space-y-2">
                   {selected.reason.includes(BASELINE_NOT_CAPTURED_REASON) && (
-                    <Button
-                      onClick={() => handleRequestBaselineRetake(selected.id)}
-                      disabled={requestingRetake}
-                      variant="secondary"
-                      className="w-full"
-                    >
-                      <Camera size={16} className="mr-1.5" /> Request Baseline Photo
-                    </Button>
+                    <Can perm="MANAGE_ESCALATIONS">
+                      <Button
+                        onClick={() => handleRequestBaselineRetake(selected.id)}
+                        disabled={requestingRetake}
+                        variant="secondary"
+                        className="w-full"
+                      >
+                        <Camera size={16} className="mr-1.5" /> Request Baseline Photo
+                      </Button>
+                    </Can>
                   )}
                   {!!selected.student?.biometricLockInvalidatedAt && (
-                    <Button
-                      onClick={() => handleResetBiometricLock(selected.id)}
-                      disabled={resettingBiometric}
-                      variant="secondary"
-                      className="w-full"
-                    >
-                      <Fingerprint size={16} className="mr-1.5" /> Reset Biometric Lock
-                    </Button>
+                    <Can perm={['MANAGE_ESCALATIONS', 'MANAGE_DEVICE_VERIFICATION']}>
+                      <Button
+                        onClick={() => handleResetBiometricLock(selected.id)}
+                        disabled={resettingBiometric}
+                        variant="secondary"
+                        className="w-full"
+                      >
+                        <Fingerprint size={16} className="mr-1.5" /> Reset Biometric Lock
+                      </Button>
+                    </Can>
                   )}
-                  <Button onClick={() => handleResolve(selected.id)} disabled={resolving} className="w-full">
-                    <CheckCircle2 size={16} className="mr-1.5" /> Mark Resolved
-                  </Button>
+                  <Can perm="MANAGE_ESCALATIONS">
+                    <Button onClick={() => handleResolve(selected.id)} disabled={resolving} className="w-full">
+                      <CheckCircle2 size={16} className="mr-1.5" /> Mark Resolved
+                    </Button>
+                  </Can>
                 </div>
               ) : (
                 <div className="rounded-xl bg-emerald-50/60 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20 p-4 flex items-center gap-2">

@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Sidebar } from './Sidebar';
 import { GlobalSearchBar } from './GlobalSearchBar';
+import { PermissionNotice } from '../shared/PermissionNotice';
 
 export function DashboardLayout() {
   const { user, loading } = useAuth();
@@ -71,6 +72,7 @@ export function DashboardLayout() {
         <Menu size={20} />
       </button>
       <GlobalSearchBar open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <PermissionNotice />
       <main className={`${contentMargin} flex flex-col p-4 pt-16 sm:p-6 sm:pt-16 lg:pt-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
         <div className="flex-1">
           <Outlet />

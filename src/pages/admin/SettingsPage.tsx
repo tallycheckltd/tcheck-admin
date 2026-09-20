@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Can } from '../../components/shared/Can';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../../components/ui/GlassCard';
@@ -284,9 +285,11 @@ export function SettingsPage() {
               </div>
             </GlassCard>
 
-            <Button onClick={handleSave} size="lg" disabled={loading}>
-              {saved ? 'Saved!' : loading ? 'Saving…' : 'Save Settings'}
-            </Button>
+            <Can perm="MANAGE_SCHOOL_SETTINGS" newForLecturer>
+              <Button onClick={handleSave} size="lg" disabled={loading}>
+                {saved ? 'Saved!' : loading ? 'Saving…' : 'Save Settings'}
+              </Button>
+            </Can>
           </>
         )}
 

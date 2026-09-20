@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Can } from '../../components/shared/Can';
 import { useNavigate } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Badge } from '../../components/ui/Badge';
@@ -121,7 +122,7 @@ export function AllLecturersPage() {
                 <td className="text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-1">
                     {u.status === 'PENDING' && (
-                      <>
+                      <Can perm="MANAGE_USERS">
                         <button
                           onClick={() => approve(u.id)}
                           className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-500/10 transition-colors cursor-pointer"
@@ -136,7 +137,7 @@ export function AllLecturersPage() {
                         >
                           <XCircle size={15} className="text-red-500" />
                         </button>
-                      </>
+                      </Can>
                     )}
                     <button
                       onClick={() => deleteUser(u.id)}
