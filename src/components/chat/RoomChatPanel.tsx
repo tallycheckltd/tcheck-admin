@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../ui/GlassCard';
-import { Input } from '../ui/Input';
-import { Button } from '../ui/Button';
 import { api } from '../../lib/api';
-import { Send, MessageSquare, Building2, Users } from 'lucide-react';
+import { MessageSquare, Building2, Users, Reply, Bell, BellOff } from 'lucide-react';
+import { ChatComposer } from './ChatComposer';
 import type { RoomTargets, RoomMessagesResponse, RoomMessage } from '../../types';
 
 type SelectedRoom = { kind: 'course'; id: string; title: string } | { kind: 'school'; id: string; title: string };
@@ -22,6 +21,8 @@ export function RoomChatPanel() {
   const [isAnonymousEnabled, setIsAnonymousEnabled] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [text, setText] = useState('');
+  const [roomConversationId, setRoomConversationId] = useState<string | null>(null);
+  const [roomMuted, setRoomMuted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -36,6 +37,18 @@ export function RoomChatPanel() {
     const response = await api.get<RoomMessagesResponse>(path);
     setMessages(response.messages);
     setIsAnonymousEnabled(response.isAnonymousEnabled);
+    setRoomConversationId(response.conversationId);
+    setRoomMuted(response.isMuted);
+  };
+
+  const toggleRoomMute = async () => {
+    if (!roomConversationId) return;
+    if (roomMuted) {
+      await api.delete(`/messages/conversations/${roomConversationId}/mute`);
+    } else {
+      await api.post(`/messages/conversations/${roomConversationId}/mute`, {});
+    }
+    setRoomMuted(!roomMuted);
   };
 
   // Light polling while a room is open — matches the mobile app's room-refresh cadence rather than
@@ -52,14 +65,18 @@ export function RoomChatPanel() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const [replyingTo, setReplyingTo] = useState<RoomMessage | null>(null);
+
   const send = async () => {
     if (!text.trim() || !selected) return;
+    const replyToId = replyingTo?.id;
     const body =
       selected.kind === 'course'
-        ? { courseId: selected.id, content: text, isAnonymous }
-        : { schoolId: selected.id, content: text, isAnonymous };
+        ? { courseId: selected.id, content: text, isAnonymous, replyToId }
+        : { schoolId: selected.id, content: text, isAnonymous, replyToId };
     await api.post('/messages/send', body);
     setText('');
+    setReplyingTo(null);
     await loadRoom(selected);
   };
 
@@ -100,14 +117,32 @@ export function RoomChatPanel() {
       <GlassCard className="flex-1 flex flex-col overflow-hidden">
         {selected ? (
           <>
-            <div className="pb-3 mb-3 border-b border-gray-200 dark:border-white/10">
+            <div className="pb-3 mb-3 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
               <p className="text-sm font-semibold text-slate-950 dark:text-white">{selected.title}</p>
+              <button
+                onClick={toggleRoomMute}
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                title={roomMuted ? 'Unmute this room' : 'Mute this room — stop notifications for new messages'}
+              >
+                {roomMuted ? <><BellOff size={14} /> Muted</> : <><Bell size={14} /> Mute</>}
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-3">
               {messages.map((m) => (
-                <div key={m.id} className={`flex ${m.isMine ? 'justify-end' : 'justify-start'}`}>
+                <div key={m.id} className={`flex group ${m.isMine ? 'justify-end' : 'justify-start'}`}>
+                  {!m.isMine && (
+                    <button
+                      onClick={() => setReplyingTo(m)}
+                      className="self-center mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-500 cursor-pointer"
+                      title="Reply"
+                    >
+                      <Reply size={14} />
+                    </button>
+                  )}
                   <div className="max-w-xs">
-                    <p className={`text-xs mb-1 ${m.isMine ? 'text-right' : 'text-left'} text-slate-600 dark:text-slate-400`}>
+                    {/* Bold, higher-contrast sender name — a thin gray caption was hard to tell apart
+                        from the next person's in a room with several senders posting one after another. */}
+                    <p className={`text-xs mb-1 font-bold ${m.isMine ? 'text-right' : 'text-left'} text-slate-800 dark:text-slate-200`}>
                       {m.isMine ? 'You' : m.sender ? `${m.sender.firstName} ${m.sender.lastName}` : 'Anonymous'}
                     </p>
                     <div className={`px-4 py-2 rounded-2xl text-sm ${
@@ -115,9 +150,26 @@ export function RoomChatPanel() {
                         ? 'bg-blue-500 text-white rounded-br-md'
                         : 'bg-gray-100 dark:bg-white/10 text-slate-950 dark:text-white rounded-bl-md'
                     }`}>
+                      {m.replyTo && (
+                        <div className={`mb-1.5 rounded-lg border-l-2 px-2 py-1 text-xs ${
+                          m.isMine ? 'border-blue-200 bg-white/10 text-blue-100' : 'border-blue-500 bg-black/5 dark:bg-white/5 text-slate-600 dark:text-slate-400'
+                        }`}>
+                          <p className="font-bold">{m.replyTo.senderName}</p>
+                          <p className="truncate">{m.replyTo.content}</p>
+                        </div>
+                      )}
                       {m.content}
                     </div>
                   </div>
+                  {m.isMine && (
+                    <button
+                      onClick={() => setReplyingTo(m)}
+                      className="self-center ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-500 cursor-pointer"
+                      title="Reply"
+                    >
+                      <Reply size={14} />
+                    </button>
+                  )}
                 </div>
               ))}
               {messages.length === 0 && (
@@ -127,23 +179,22 @@ export function RoomChatPanel() {
               )}
               <div ref={bottomRef} />
             </div>
-            <div className="pt-3 border-t border-gray-200 dark:border-white/10 space-y-2">
-              {isAnonymousEnabled && (
-                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 px-1 cursor-pointer">
-                  <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} className="rounded border-gray-300 dark:border-white/20" />
-                  Post anonymously
-                </label>
-              )}
-              <div className="flex gap-2">
-                <Input
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1"
-                  onKeyDown={(e) => e.key === 'Enter' && send()}
-                />
-                <Button onClick={send}><Send size={16} /></Button>
-              </div>
+            <div className="pt-3 border-t border-gray-200 dark:border-white/10">
+              <ChatComposer
+                value={text}
+                onChange={setText}
+                onSend={send}
+                replyingTo={replyingTo ? { id: replyingTo.id, senderName: replyingTo.isMine ? 'yourself' : (replyingTo.sender ? `${replyingTo.sender.firstName} ${replyingTo.sender.lastName}` : 'Anonymous'), content: replyingTo.content } : null}
+                onCancelReply={() => setReplyingTo(null)}
+                extra={
+                  isAnonymousEnabled ? (
+                    <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 px-1 cursor-pointer">
+                      <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} className="rounded border-gray-300 dark:border-white/20" />
+                      Post anonymously
+                    </label>
+                  ) : undefined
+                }
+              />
             </div>
           </>
         ) : (
