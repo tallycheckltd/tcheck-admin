@@ -709,6 +709,13 @@ export interface Conversation {
   lastMessage?: Message;
   unreadCount: number;
   updatedAt: string;
+  isMuted: boolean;
+}
+
+export interface MessageReplyPreview {
+  id: string;
+  content: string;
+  senderName: string;
 }
 
 export interface Message {
@@ -719,6 +726,7 @@ export interface Message {
   content: string;
   read: boolean;
   createdAt: string;
+  replyTo?: MessageReplyPreview | null;
 }
 
 export interface AnalyticsStat {
@@ -743,11 +751,14 @@ export interface RoomMessage {
   isAnonymous: boolean | null;
   isMine: boolean;
   createdAt: string;
+  replyTo?: MessageReplyPreview | null;
 }
 
 export interface RoomMessagesResponse {
   messages: RoomMessage[];
   isAnonymousEnabled: boolean;
+  conversationId: string;
+  isMuted: boolean;
 }
 
 export interface ContactGroup {

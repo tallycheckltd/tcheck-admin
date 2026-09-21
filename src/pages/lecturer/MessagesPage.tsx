@@ -5,12 +5,12 @@ import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
-import { Send, MessageSquare, Search, Flag, User as UserIcon, MessagesSquare, Users2 } from 'lucide-react';
+import { MessageSquare, Search, Flag, Reply, User as UserIcon, MessagesSquare, Users2, Bell, BellOff } from 'lucide-react';
 import { api } from '../../lib/api';
 import { RoomChatPanel } from '../../components/chat/RoomChatPanel';
+import { ChatComposer } from '../../components/chat/ChatComposer';
 import type { Conversation, Message, ContactGroup } from '../../types';
 
 type PageMode = 'direct' | 'rooms';
@@ -35,6 +35,7 @@ export function MessagesPage() {
   const [flagging, setFlagging] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [showContacts, setShowContacts] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   const isLecturer = user?.role === 'LECTURER';
   const isCxm = user?.role === 'CLIENT_EXPERIENCE_MANAGER';
@@ -135,6 +136,15 @@ export function MessagesPage() {
     }))
     .filter((g) => g.contacts.length > 0);
 
+  const toggleMute = async (conversationId: string, currentlyMuted: boolean) => {
+    if (currentlyMuted) {
+      await api.delete(`/messages/conversations/${conversationId}/mute`);
+    } else {
+      await api.post(`/messages/conversations/${conversationId}/mute`, {});
+    }
+    refetchConvos();
+  };
+
   const handleFlag = async () => {
     if (!flagReason.trim() || !selected) return;
     setFlagging(true);
@@ -179,21 +189,25 @@ export function MessagesPage() {
 
   const send = async () => {
     if (!text.trim()) return;
+    const replyToId = replyingTo?.id;
 
     if (pendingRecipient) {
       // Start new conversation
       const result = await api.post<Message & { conversationId: string }>('/messages/send', {
         recipientId: pendingRecipient.id,
         content: text,
+        replyToId,
       });
       setText('');
+      setReplyingTo(null);
       setPendingRecipient(null);
       setSelected(result.conversationId);
       refetchConvos();
       loadMessages(result.conversationId);
     } else if (selected) {
-      await api.post('/messages/send', { conversationId: selected, content: text });
+      await api.post('/messages/send', { conversationId: selected, content: text, replyToId });
       setText('');
+      setReplyingTo(null);
       // Message will arrive via socket, but also load immediately for sender
       const msgs = await api.get<Message[]>(`/messages/conversations/${selected}`);
       setMessages(msgs);
@@ -279,8 +293,9 @@ export function MessagesPage() {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-950 dark:text-white">
+                  <p className="text-sm font-medium text-slate-950 dark:text-white flex items-center gap-1.5">
                     {c.otherUser.firstName} {c.otherUser.lastName}
+                    {c.isMuted && <BellOff size={12} className="text-slate-400 flex-shrink-0" />}
                   </p>
                   {c.unreadCount > 0 && <Badge color="blue">{c.unreadCount}</Badge>}
                 </div>
@@ -353,32 +368,76 @@ export function MessagesPage() {
                     <p className="text-xs text-blue-500 mt-0.5 animate-pulse">Typing...</p>
                   )}
                 </div>
-                {isLecturer && selected && !pendingRecipient && (
-                  <button
-                    onClick={() => setFlagModal(true)}
-                    className="flex items-center gap-1.5 text-xs font-medium text-orange-500 hover:text-orange-600 px-3 py-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-colors cursor-pointer"
-                    title="Report this conversation to admin"
-                  >
-                    <Flag size={14} /> Escalate
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {selected && !pendingRecipient && (() => {
+                    const conv = conversations?.find((c) => c.id === selected);
+                    if (!conv) return null;
+                    return (
+                      <button
+                        onClick={() => toggleMute(selected, conv.isMuted)}
+                        className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                        title={conv.isMuted ? 'Unmute this chat' : 'Mute this chat — stop notifications for new messages'}
+                      >
+                        {conv.isMuted ? <><BellOff size={14} /> Muted</> : <><Bell size={14} /> Mute</>}
+                      </button>
+                    );
+                  })()}
+                  {isLecturer && selected && !pendingRecipient && (
+                    <button
+                      onClick={() => setFlagModal(true)}
+                      className="flex items-center gap-1.5 text-xs font-medium text-orange-500 hover:text-orange-600 px-3 py-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-colors cursor-pointer"
+                      title="Report this conversation to admin"
+                    >
+                      <Flag size={14} /> Escalate
+                    </button>
+                  )}
+                </div>
               </div>
             )}
             <div className="flex-1 overflow-y-auto p-2 space-y-3">
-              {messages.map((m) => (
-                <div key={m.id} className={`flex ${m.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-xs px-4 py-2 rounded-2xl text-sm ${
-                    m.senderId === user?.id
-                      ? 'bg-blue-500 text-white rounded-br-md'
-                      : 'bg-gray-100 dark:bg-white/10 text-slate-950 dark:text-white rounded-bl-md'
-                  }`}>
-                    {m.content}
-                    <p className={`text-xs mt-1 ${m.senderId === user?.id ? 'text-blue-200' : 'text-slate-600 dark:text-slate-400'}`}>
-                      {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+              {messages.map((m) => {
+                const isMine = m.senderId === user?.id;
+                return (
+                  <div key={m.id} className={`flex group ${isMine ? 'justify-end' : 'justify-start'}`}>
+                    {!isMine && (
+                      <button
+                        onClick={() => setReplyingTo(m)}
+                        className="self-center mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-500 cursor-pointer"
+                        title="Reply"
+                      >
+                        <Reply size={14} />
+                      </button>
+                    )}
+                    <div className={`max-w-xs px-4 py-2 rounded-2xl text-sm ${
+                      isMine
+                        ? 'bg-blue-500 text-white rounded-br-md'
+                        : 'bg-gray-100 dark:bg-white/10 text-slate-950 dark:text-white rounded-bl-md'
+                    }`}>
+                      {m.replyTo && (
+                        <div className={`mb-1.5 rounded-lg border-l-2 px-2 py-1 text-xs ${
+                          isMine ? 'border-blue-200 bg-white/10 text-blue-100' : 'border-blue-500 bg-black/5 dark:bg-white/5 text-slate-600 dark:text-slate-400'
+                        }`}>
+                          <p className="font-bold">{m.replyTo.senderName}</p>
+                          <p className="truncate">{m.replyTo.content}</p>
+                        </div>
+                      )}
+                      {m.content}
+                      <p className={`text-xs mt-1 ${isMine ? 'text-blue-200' : 'text-slate-600 dark:text-slate-400'}`}>
+                        {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    {isMine && (
+                      <button
+                        onClick={() => setReplyingTo(m)}
+                        className="self-center ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-500 cursor-pointer"
+                        title="Reply"
+                      >
+                        <Reply size={14} />
+                      </button>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {pendingRecipient && messages.length === 0 && (
                 <div className="flex-1 flex items-center justify-center py-12">
                   <p className="text-sm text-slate-600 dark:text-slate-400">Send a message to start the conversation</p>
@@ -386,18 +445,15 @@ export function MessagesPage() {
               )}
               <div ref={bottomRef} />
             </div>
-            <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-white/10">
-              <Input
+            <div className="pt-3 border-t border-gray-200 dark:border-white/10">
+              <ChatComposer
                 value={text}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  handleTyping();
-                }}
-                placeholder="Type a message..."
-                className="flex-1"
-                onKeyDown={(e) => e.key === 'Enter' && send()}
+                onChange={setText}
+                onSend={send}
+                onTyping={handleTyping}
+                replyingTo={replyingTo ? { id: replyingTo.id, senderName: replyingTo.senderId === user?.id ? 'yourself' : chatTitle, content: replyingTo.content } : null}
+                onCancelReply={() => setReplyingTo(null)}
               />
-              <Button onClick={send}><Send size={16} /></Button>
             </div>
           </>
         ) : (
