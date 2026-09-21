@@ -94,8 +94,6 @@ function DashboardFooter() {
     <footer className="mt-auto pt-6 pb-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[0.75rem] text-slate-500 dark:text-slate-500">
       <span>&copy; {year} Tallycheck Ltd. All rights reserved.</span>
       <span className="text-slate-300 dark:text-slate-700">|</span>
-      <span>TCheck Enterprise v1.2 (Moi Pilot)</span>
-      <span className="text-slate-300 dark:text-slate-700">|</span>
       <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
         Privacy Policy &#8599;
       </a>
