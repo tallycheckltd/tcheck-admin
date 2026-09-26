@@ -11,6 +11,7 @@ import {
   GraduationCap, BookOpenCheck, Cloud, ArrowRight, Sparkles, Link2,
 } from 'lucide-react';
 import type { IntegrationConnection, IntegrationProvider, Course } from '../../types';
+import { MoodleCentre } from '../../components/integrations/MoodleCentre';
 
 /** Real-ish brand colors per provider — Canvas's red/orange, Moodle's orange, Salesforce's blue —
  * purely cosmetic, makes each card instantly recognizable rather than three identical gray boxes. */
@@ -30,7 +31,7 @@ const PROVIDER_META: Record<IntegrationProvider, {
   },
   MOODLE: {
     label: 'Moodle',
-    tagline: 'Pull courses & rosters, write attendance to mod_attendance.',
+    tagline: 'Add Moodle enrolments to TCheck; optionally write attendance to mod_attendance.',
     icon: BookOpenCheck,
     gradient: 'from-[#F98012] to-[#D96A0A]',
     isRosterSource: true,
@@ -198,14 +199,17 @@ export function IntegrationsPage() {
                           <Button variant="secondary" size="sm" disabled={isBusy} onClick={() => void runAction(provider, connection.id, 'test', 'Test')}>
                             {isBusy ? 'Working…' : 'Test'}
                           </Button>
-                          {meta.isRosterSource && (
+                          {/* SBS Phase 7: Moodle syncs run from the Moodle integration centre below. */}
+                          {meta.isRosterSource && provider !== 'MOODLE' && (
                             <Button variant="secondary" size="sm" disabled={isBusy} onClick={() => void runAction(provider, connection.id, 'sync-roster', 'Sync')}>
                               <RefreshCw size={13} className="mr-1" /> Sync Roster
                             </Button>
                           )}
-                          <Button variant="secondary" size="sm" disabled={isBusy} onClick={() => void runAction(provider, connection.id, 'export-attendance', 'Export')}>
-                            <UploadCloud size={13} className="mr-1" /> Export Attendance
-                          </Button>
+                          {provider !== 'MOODLE' && (
+                            <Button variant="secondary" size="sm" disabled={isBusy} onClick={() => void runAction(provider, connection.id, 'export-attendance', 'Export')}>
+                              <UploadCloud size={13} className="mr-1" /> Export Attendance
+                            </Button>
+                          )}
                           <Button variant="danger" size="sm" onClick={() => void handleDisconnect(provider, connection.id)}>
                             <Unplug size={13} className="mr-1" /> Disconnect
                           </Button>
@@ -221,7 +225,10 @@ export function IntegrationsPage() {
           {/* Unmatched courses — the manual-mapping fallback for whichever roster-source
               connection's last sync found a course whose LMS code doesn't already match a
               TCheck Course.code. */}
-          {(['CANVAS', 'MOODLE'] as IntegrationProvider[]).map((provider) => {
+          {/* SBS Phase 7 — Moodle integration centre (status, syncs, review, write-back, history). */}
+          {byProvider('MOODLE') && <MoodleCentre connectionId={byProvider('MOODLE')!.id} courses={courses ?? []} />}
+
+          {(['CANVAS'] as IntegrationProvider[]).map((provider) => {
             const connection = byProvider(provider);
             const unmatched = connection?.lastSyncSummary?.coursesUnmatched ?? [];
             if (!connection || unmatched.length === 0) return null;
@@ -349,9 +356,10 @@ function ConnectModal({
           { clientId: fields.clientId, clientSecret: fields.clientSecret, refreshToken: fields.refreshToken },
         );
       } else if (provider === 'MOODLE') {
+        // SBS Phase 7: a pre-issued web-service token (no username/password); https address only.
         await onSubmit(
-          { domain: fields.domain, serviceShortname: fields.serviceShortname, hasAttendancePlugin: fields.hasAttendancePlugin === 'yes' },
-          { username: fields.username, password: fields.password },
+          { baseUrl: (fields.baseUrl ?? '').trim() },
+          { token: (fields.token ?? '').trim() },
         );
       } else {
         await onSubmit(
@@ -383,21 +391,13 @@ function ConnectModal({
 
         {provider === 'MOODLE' && (
           <>
-            <Input label="Moodle Domain" placeholder="school.moodle.com" value={fields.domain ?? ''} onChange={set('domain')} />
-            <Input label="Web Service Shortname" value={fields.serviceShortname ?? ''} onChange={set('serviceShortname')} />
-            <Input label="Web Service Username" value={fields.username ?? ''} onChange={set('username')} />
-            <Input label="Web Service Password" type="password" value={fields.password ?? ''} onChange={set('password')} />
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Is mod_attendance installed?</label>
-              <select
-                value={fields.hasAttendancePlugin ?? ''}
-                onChange={(e) => setFields((f) => ({ ...f, hasAttendancePlugin: e.target.value }))}
-                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
-              >
-                <option value="">Not sure yet</option>
-                <option value="yes">Yes — write-back can use it directly</option>
-                <option value="no">No — roster pull only, for now</option>
-              </select>
+            <Input label="Moodle address" placeholder="https://moodle.school.ac.ke" value={fields.baseUrl ?? ''} onChange={set('baseUrl')} />
+            <Input label="Web-service token" type="password" autoComplete="off" value={fields.token ?? ''} onChange={set('token')} />
+            <div className="text-xs text-slate-600 dark:text-slate-400 space-y-1.5 rounded-xl bg-gray-50 dark:bg-white/5 p-3">
+              <p>In Moodle: Site administration → Server → Web services. Create an external service for TCheck, add a token for a dedicated service account, and enable these functions:</p>
+              <p className="font-mono text-[11px] leading-relaxed">core_webservice_get_site_info, core_course_get_courses, core_enrol_get_enrolled_users</p>
+              <p>For attendance write-back (optional, needs mod_attendance): <span className="font-mono text-[11px]">mod_attendance_get_sessions, mod_attendance_get_session, mod_attendance_update_user_status</span></p>
+              <p>The token is encrypted in TCheck and never shown again. Use "Test" afterwards to confirm every function is available.</p>
             </div>
           </>
         )}

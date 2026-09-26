@@ -3,6 +3,8 @@ import { useApi } from '../../hooks/useApi';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
 import { FacilitiesQueue } from '../facilities/FacilitiesQueue';
+import { punctualityColor, punctualityLabel } from '../../utils/attendanceLabels';
+import type { CheckOutState, Punctuality } from '../../types';
 import {
   Users, GraduationCap, Wrench, PieChart, Mail, BookOpen, ClipboardCheck, ChevronDown, LogIn, LogOut,
 } from 'lucide-react';
@@ -34,6 +36,8 @@ interface ProgramCheckIn {
   courseName: string; courseCode: string; classTitle: string;
   checkInAt: string; checkOutAt: string | null;
   checkInType: string; status: string;
+  // SBS Phase 4 — derived server-side; status stays PRESENT for a late arrival.
+  punctuality?: Punctuality; checkOutState?: CheckOutState | null;
 }
 interface ProgramDetail {
   id: string; name: string; year: number; schoolId: string;
@@ -174,6 +178,7 @@ export function ProgramDetailView({ cohortId }: { cohortId: string }) {
                   <th className="text-left py-2 px-3"><LogOut size={12} className="inline mr-1" />Check-out</th>
                   <th className="text-left py-2 px-3">Type</th>
                   <th className="text-left py-2 px-3">Status</th>
+                  <th className="text-left py-2 px-3">Punctuality</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
@@ -187,10 +192,15 @@ export function ProgramDetailView({ cohortId }: { cohortId: string }) {
                       {c.courseCode} — {c.classTitle}
                     </td>
                     <td className="py-2 px-3 text-gray-600 dark:text-gray-300">{dateTime(c.checkInAt)}</td>
-                    <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{c.checkOutAt ? dateTime(c.checkOutAt) : '—'}</td>
+                    <td className="py-2 px-3 text-gray-500 dark:text-gray-400">
+                      {c.checkOutAt ? dateTime(c.checkOutAt) : c.checkOutState === 'MISSING' ? <Badge color="yellow">Missing</Badge> : '—'}
+                    </td>
                     <td className="py-2 px-3"><Badge color="blue">{c.checkInType}</Badge></td>
                     <td className="py-2 px-3">
-                      <Badge color={c.status === 'PRESENT' ? 'green' : c.status === 'LATE' ? 'yellow' : 'red'}>{c.status}</Badge>
+                      <Badge color={c.status === 'PRESENT' ? 'green' : 'red'}>{c.status}</Badge>
+                    </td>
+                    <td className="py-2 px-3">
+                      {c.status === 'PRESENT' && c.punctuality ? <Badge color={punctualityColor(c.punctuality)}>{punctualityLabel(c.punctuality)}</Badge> : '—'}
                     </td>
                   </tr>
                 ))}

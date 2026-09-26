@@ -17,6 +17,8 @@ import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { CourseAttendanceDetailPage } from './pages/admin/CourseAttendanceDetailPage';
 import { AttendanceAnalyticsPage } from './pages/admin/AttendanceAnalyticsPage';
 import { NpsAnalyticsPage } from './pages/admin/NpsAnalyticsPage';
+import { FeedbackIntelligencePage } from './pages/shared/FeedbackIntelligencePage';
+import { ReportsIntelligencePage } from './pages/shared/ReportsIntelligencePage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
 import { AllLecturersPage } from './pages/admin/AllLecturersPage';
 import { BLEBeaconPage } from './pages/admin/BLEBeaconPage';
@@ -52,6 +54,8 @@ import { CourseDetailPage } from './pages/admin/CourseDetailPage';
 import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
 import { RequestFeedbackPage } from './pages/admin/RequestFeedbackPage';
 import { FeedbackRedirectPage } from './pages/public/FeedbackRedirectPage';
+import { EmailPreferencesPage } from './pages/public/EmailPreferencesPage';
+import { EmailActivityPage } from './pages/admin/EmailActivityPage';
 import { SupportPage } from './pages/admin/SupportPage';
 import { EscalationsPage } from './pages/admin/EscalationsPage';
 import { FacilitiesQueuePage } from './pages/admin/FacilitiesQueuePage';
@@ -77,6 +81,8 @@ export default function App() {
                 aren't dashboard users; this page's only job is bouncing into the mobile app's
                 tcheck://feedback deep link (see FeedbackRedirectPage.tsx). */}
             <Route path="/feedback/:requestId" element={<FeedbackRedirectPage />} />
+            {/* SBS Phase 9 — the link in optional emails; the token in the URL is the only credential. */}
+            <Route path="/email-preferences" element={<EmailPreferencesPage />} />
             <Route element={<DashboardLayout />}>
               {/* Admin routes (SUPER_ADMIN + SUB_ADMIN) */}
               <Route path="/admin" element={<OverviewPage />} />
@@ -86,6 +92,10 @@ export default function App() {
               <Route path="/admin/users/:id/courses/:courseId" element={<CourseAttendanceDetailPage />} />
               <Route path="/admin/attendance-analytics" element={<AttendanceAnalyticsPage />} />
               <Route path="/admin/nps-analytics" element={<NpsAnalyticsPage />} />
+              {/* SBS Phase 5 — role-scoped server-side; not under /feedback/* (that's the public deep-link redirect). */}
+              <Route path="/insights/feedback" element={<FeedbackIntelligencePage />} />
+              {/* SBS Phase 6 — Reports & Executive Intelligence (role-scoped server-side). */}
+              <Route path="/insights/reports" element={<ReportsIntelligencePage />} />
               <Route path="/admin/students" element={<AllStudentsPage />} />
               <Route path="/admin/lecturers" element={<AllLecturersPage />} />
               <Route path="/admin/lecturer-presence" element={<LecturerPresencePage />} />
@@ -125,6 +135,7 @@ export default function App() {
               <Route path="/admin/courses/:courseId" element={<CourseDetailPage />} />
               {/* SUPER_ADMIN + SCHOOL_ADMIN (integration.routes.ts enforces this; a school admin is scoped to their own school) */}
               <Route path="/admin/integrations" element={<IntegrationsPage />} />
+              <Route path="/admin/email-activity" element={<EmailActivityPage />} />
 
               {/* SUPER_ADMIN-only routes */}
               <Route element={<RequireSuperAdmin />}>

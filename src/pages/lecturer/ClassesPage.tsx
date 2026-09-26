@@ -15,6 +15,20 @@ import { formatClassCalendarDate, formatClassTimeLocal, localCalendarYmd } from 
 import { CourseDrilldown, CourseDrilldownBackLink } from '../../components/shared/CourseDrilldown';
 import { seesUnfilteredBySchoolOrUnit } from '../../lib/rbac';
 
+/** YYYY-MM-DD `n` calendar days after `ymd` — pure calendar arithmetic, no timezone involved. */
+function addDaysYmd(ymd: string, n: number): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+function isWeekendYmd(ymd: string): boolean {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return dow === 0 || dow === 6;
+}
+
+const MAX_QUICK_CREATE_DAYS = 14;
+
 export function ClassesPage() {
   const { user } = useAuth();
   // QA plan B1: SCHOOL_ADMIN and every hierarchy role were previously filtered down to "courses I
@@ -33,14 +47,20 @@ export function ClassesPage() {
   const { mutate: create } = useMutation<ClassSession>('post');
   const { mutate: del } = useMutation('delete');
   const navigate = useNavigate();
+  // SBS Phase 4 — check-out window + multi-day quick create are Exec-Ed-only in the UI (user
+  // decision); every other school's form is unchanged.
+  const isExecEd = !!user?.school?.features?.execEdSuite;
+  const [creating, setCreating] = useState(false);
 
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({
     courseId: '', title: '', date: localCalendarYmd(new Date()),
     startTime: '', endTime: '', room: '',
     checkInStart: '', checkInEnd: '',
+    checkOutStart: '', checkOutEnd: '',
     lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
     isOnline: false,
+    days: '1', skipWeekends: true,
   });
 
   const myClasses = isAdmin
@@ -96,8 +116,10 @@ export function ClassesPage() {
     setForm((prev) => ({ ...prev, endTime, checkInEnd: endTime }));
   };
 
-  const getTimezoneOffset = () => {
-    const offset = new Date().getTimezoneOffset();
+  // Offset for the class's own date (not "today"), so a class on the far side of a DST change
+  // still gets the offset that will actually apply on that day.
+  const getTimezoneOffset = (ymd?: string) => {
+    const offset = (ymd ? new Date(`${ymd}T12:00:00`) : new Date()).getTimezoneOffset();
     const sign = offset <= 0 ? '+' : '-';
     const abs = Math.abs(offset);
     return `${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
@@ -108,40 +130,76 @@ export function ClassesPage() {
       alert('Please set both start and end time.');
       return;
     }
-    const dateStr = form.date;
-    const tz = getTimezoneOffset();
-    const startMs = new Date(`${dateStr}T${form.startTime}:00${tz}`).getTime();
-    const endMs = new Date(`${dateStr}T${form.endTime}:00${tz}`).getTime();
-    if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
-      alert('Invalid start or end time.');
-      return;
-    }
-    if (endMs <= startMs) {
+    // Same-day HH:MM strings compare correctly as text, so ordering checks need no parsing.
+    if (form.endTime <= form.startTime) {
       alert('End time must be after start time.');
       return;
     }
-    const created = await create('/classes', {
-      courseId: form.courseId,
-      title: form.title,
-      date: dateStr,
-      startTime: `${dateStr}T${form.startTime}:00${tz}`,
-      endTime: `${dateStr}T${form.endTime}:00${tz}`,
-      room: form.room || undefined,
-      checkInStart: form.checkInStart ? `${dateStr}T${form.checkInStart}:00${tz}` : undefined,
-      checkInEnd: form.checkInEnd ? `${dateStr}T${form.checkInEnd}:00${tz}` : undefined,
-      lateThresholdMinutes: form.lateThresholdMinutes ? parseInt(form.lateThresholdMinutes) : undefined,
-      extremelyLateThresholdMinutes: form.extremelyLateThresholdMinutes ? parseInt(form.extremelyLateThresholdMinutes) : undefined,
-      isOnline: form.isOnline,
-    });
+    if (isExecEd && (form.checkOutStart || form.checkOutEnd)) {
+      const checkInOpens = form.checkInStart || '';
+      const outEnd = form.checkOutEnd || form.endTime;
+      if (form.checkOutStart && outEnd <= form.checkOutStart) {
+        alert('Check-out must close after it opens.');
+        return;
+      }
+      if (form.checkOutStart && checkInOpens && form.checkOutStart < checkInOpens) {
+        alert('Check-out cannot open before check-in opens.');
+        return;
+      }
+    }
+
+    const dayCount = isExecEd ? Math.min(Math.max(parseInt(form.days) || 1, 1), MAX_QUICK_CREATE_DAYS) : 1;
+    const dates: string[] = [];
+    for (let offset = 0; dates.length < dayCount && offset < dayCount * 3; offset++) {
+      const ymd = addDaysYmd(form.date, offset);
+      if (dayCount > 1 && form.skipWeekends && isWeekendYmd(ymd)) continue;
+      dates.push(ymd);
+    }
+
+    // Multi-day quick create is just N ordinary POST /classes calls — each day is a normal Class
+    // with its own windows, authorized exactly like a single create.
+    setCreating(true);
+    const failures: string[] = [];
+    let created: ClassSession | undefined;
+    for (const [i, dateStr] of dates.entries()) {
+      const tz = getTimezoneOffset(dateStr);
+      const at = (hhmm: string) => (hhmm ? `${dateStr}T${hhmm}:00${tz}` : undefined);
+      try {
+        created = await create('/classes', {
+          courseId: form.courseId,
+          title: dates.length > 1 ? `${form.title} — Day ${i + 1}` : form.title,
+          date: dateStr,
+          startTime: at(form.startTime),
+          endTime: at(form.endTime),
+          room: form.room || undefined,
+          checkInStart: at(form.checkInStart),
+          checkInEnd: at(form.checkInEnd),
+          checkOutStart: isExecEd ? at(form.checkOutStart) : undefined,
+          checkOutEnd: isExecEd ? at(form.checkOutEnd) : undefined,
+          lateThresholdMinutes: form.lateThresholdMinutes ? parseInt(form.lateThresholdMinutes) : undefined,
+          extremelyLateThresholdMinutes: form.extremelyLateThresholdMinutes ? parseInt(form.extremelyLateThresholdMinutes) : undefined,
+          isOnline: form.isOnline,
+        });
+      } catch (e) {
+        if (dates.length === 1) { setCreating(false); throw e; }
+        failures.push(`${dateStr}: ${e instanceof Error ? e.message : 'failed'}`);
+      }
+    }
+    setCreating(false);
+    if (failures.length > 0) {
+      alert(`Created ${dates.length - failures.length} of ${dates.length} days. Not created:\n${failures.join('\n')}`);
+    }
     setModal(false);
     setForm({
       courseId: '', title: '', date: localCalendarYmd(new Date()),
       startTime: '', endTime: '', room: '',
       checkInStart: '', checkInEnd: '',
+      checkOutStart: '', checkOutEnd: '',
       lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
       isOnline: false,
+      days: '1', skipWeekends: true,
     });
-    if (created) {
+    if (created && dates.length === 1) {
       setClasses((prev) => {
         const rest = (prev ?? []).filter((c) => c.id !== created.id);
         return [created, ...rest];
@@ -263,6 +321,42 @@ export function ClassesPage() {
             <Input label="Check-in Opens" type="time" value={form.checkInStart} onChange={(e) => setForm({ ...form, checkInStart: e.target.value })} />
             <Input label="Check-in Closes" type="time" value={form.checkInEnd} onChange={(e) => setForm({ ...form, checkInEnd: e.target.value })} />
           </div>
+          {isExecEd && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Check-out Opens" type="time" value={form.checkOutStart} onChange={(e) => setForm({ ...form, checkOutStart: e.target.value })} />
+                <Input label="Check-out Closes" type="time" value={form.checkOutEnd} onChange={(e) => setForm({ ...form, checkOutEnd: e.target.value })} />
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 -mt-2">
+                Leave check-out blank for the standard rule: delegates can check out any time until the class ends.
+                All times are in your browser's time zone (UTC{getTimezoneOffset(form.date)}).
+              </p>
+              <div className="grid grid-cols-2 gap-4 items-end">
+                <Input
+                  label="Number of days"
+                  type="number"
+                  min={1}
+                  max={MAX_QUICK_CREATE_DAYS}
+                  value={form.days}
+                  onChange={(e) => setForm({ ...form, days: e.target.value })}
+                />
+                <label className="flex items-center gap-2 pb-3 text-sm text-slate-800 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={form.skipWeekends}
+                    onChange={(e) => setForm({ ...form, skipWeekends: e.target.checked })}
+                    className="rounded border-gray-300 dark:border-white/20"
+                  />
+                  Skip Saturdays &amp; Sundays
+                </label>
+              </div>
+              {parseInt(form.days) > 1 && (
+                <p className="text-xs text-slate-600 dark:text-slate-400 -mt-2">
+                  Creates one class per day from the date above, each with these same times, titled "{form.title || 'Title'} — Day 1", "— Day 2", …
+                </p>
+              )}
+            </>
+          )}
           <Input label="Room" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} />
           <div className="flex items-center gap-2">
             <input
@@ -331,7 +425,9 @@ export function ClassesPage() {
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400">Auto-assigned from the course's beacons — edit the course to change this.</p>
           </div>
-          <Button onClick={handleCreate} className="w-full">Create Class</Button>
+          <Button onClick={handleCreate} className="w-full" disabled={creating}>
+            {creating ? 'Creating…' : isExecEd && parseInt(form.days) > 1 ? `Create ${Math.min(parseInt(form.days), MAX_QUICK_CREATE_DAYS)} Classes` : 'Create Class'}
+          </Button>
         </div>
       </Modal>
     </div>

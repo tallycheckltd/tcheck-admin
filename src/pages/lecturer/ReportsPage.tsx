@@ -25,6 +25,7 @@ import { exportCourseRecordsPdf, exportHodRosterPdf, exportLecturerSessionDetail
 import { downloadCsv } from '../../lib/csv';
 import { clsx } from 'clsx';
 import { formatClassCalendarDate, safeFormat } from '../../utils/classDateDisplay';
+import { checkOutStateLabel, punctualityColor, punctualityLabel } from '../../utils/attendanceLabels';
 
 /* ---- HOD / admin exports (CSV) ---- */
 interface RosterRow {
@@ -216,10 +217,10 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
         }
         downloadCsv(
           `tcheck-course-${selectedCourse}-${dateTo}.csv`,
-          ['Student ID', 'First Name', 'Last Name', 'Class', 'Class Date', 'Room', 'Check-In', 'Check-Out', 'Method', 'Punctuality'],
+          ['Student ID', 'First Name', 'Last Name', 'Class', 'Class Date', 'Room', 'Check-In', 'Check-Out', 'Method', 'Punctuality', 'Check-Out Status'],
           rows.map((r) => [
             r.studentId, r.firstName, r.lastName, r.classTitle, r.classDate, r.room ?? '',
-            r.checkInAt, r.checkOutAt ?? '', r.checkInType, r.punctuality,
+            r.checkInAt, r.checkOutAt ?? '', r.checkInType, r.punctuality, checkOutStateLabel(r.checkOutState),
           ]),
         );
       }
@@ -653,6 +654,7 @@ function LecturerReportsView() {
                       <th>Student ID</th>
                       <th>Name</th>
                       <th>Check-in</th>
+                      <th>Check-out</th>
                       <th>Method</th>
                       <th>Status</th>
                       <th>Punctuality</th>
@@ -666,6 +668,13 @@ function LecturerReportsView() {
                           {r.user?.firstName} {r.user?.lastName}
                         </td>
                         <td className="text-xs whitespace-nowrap">{safeFormat(r.checkInAt, 'MMM d HH:mm')}</td>
+                        <td className="text-xs whitespace-nowrap">
+                          {r.checkOutAt
+                            ? safeFormat(r.checkOutAt, 'MMM d HH:mm')
+                            : r.checkOutState === 'MISSING'
+                              ? <Badge color="yellow">Missing</Badge>
+                              : '—'}
+                        </td>
                         <td>
                           <Badge color={r.checkInType === 'QR' ? 'yellow' : r.checkInType === 'MANUAL' ? 'gray' : 'purple'}>
                             {r.checkInType}
@@ -674,13 +683,7 @@ function LecturerReportsView() {
                         <td>{r.status}</td>
                         <td>
                           {r.punctuality ? (
-                            <Badge
-                              color={
-                                r.punctuality === 'ON_TIME' ? 'green' : r.punctuality === 'LATE' ? 'yellow' : 'red'
-                              }
-                            >
-                              {r.punctuality.replace(/_/g, ' ')}
-                            </Badge>
+                            <Badge color={punctualityColor(r.punctuality)}>{punctualityLabel(r.punctuality)}</Badge>
                           ) : (
                             '—'
                           )}

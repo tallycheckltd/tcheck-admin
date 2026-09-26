@@ -4,7 +4,7 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2, Smartphone, ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText, ScanEye, Globe2, Briefcase, Building2, Cake, IdCard, ShieldCheck, KeyRound, Network, Link2, AlertTriangle, FileCheck, Camera } from 'lucide-react';
+import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2, Smartphone, ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText, ScanEye, Globe2, Briefcase, Building2, Cake, IdCard, ShieldCheck, KeyRound, Network, Link2, AlertTriangle, FileCheck, Camera, MessageSquare, Users } from 'lucide-react';
 import type { UserDetail, DeviceChangeReason } from '../../types';
 import { formatCheckInType } from '../../utils/checkInTypeLabel';
 import { exportStudentReportPdf } from '../../lib/adminPdfExport';
@@ -281,8 +281,16 @@ export function UserDetailPage() {
             <ProfileDetailItem
               icon={Cake}
               label="Date of Birth"
-              value={user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' }) : null}
+              value={formatDateOfBirth(user.dateOfBirth, user.dobYearOmitted)}
             />
+            {/* SBS Phase 1 — the delegate's own chatroom/networking choice, read-only here (only the
+                delegate can change it, from the mobile app). Executive Ed schools only. */}
+            {user.school?.features?.execEdSuite && (
+              <>
+                <ProfileDetailItem icon={MessageSquare} label="Programme Chatroom" value={consentLabel(user.chatroomConsent)} />
+                <ProfileDetailItem icon={Users} label="Networking Directory" value={consentLabel(user.networkingConsent)} />
+              </>
+            )}
           </div>
         </div>
       )}
@@ -825,6 +833,23 @@ function SecurityDetailItem({
       </div>
     </div>
   );
+}
+
+/** Full date as before; a year-omitted birthday (SBS Phase 1) shows day and month only — its stored
+ * year is a placeholder, never the delegate's real one. Formatted in UTC so the day can't shift. */
+function formatDateOfBirth(dateOfBirth?: string | null, yearOmitted?: boolean): string | null {
+  if (!dateOfBirth) return null;
+  if (yearOmitted) {
+    return `${new Date(dateOfBirth).toLocaleDateString('en', { month: 'long', day: 'numeric', timeZone: 'UTC' })} (year not shared)`;
+  }
+  return new Date(dateOfBirth).toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+/** null = the delegate hasn't been asked yet — shown as that, never as "No". */
+function consentLabel(consent?: boolean | null): string {
+  if (consent === true) return 'Opted in';
+  if (consent === false) return 'Opted out';
+  return 'Not asked yet';
 }
 
 /** True when `dateOfBirth`'s month/day falls within the next 7 days (year-agnostic) — mirrors the

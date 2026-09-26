@@ -30,7 +30,16 @@ const emptyForm = {
   allowManualLecturerOverride: true,
   attendanceMode: 'CALENDAR_BASED' as AttendanceMode,
   features: defaultFeatures,
+  /** SBS Phase 9 — '' = the default (Africa/Nairobi). */
+  timezone: '',
 };
+
+/** Every IANA zone the browser knows, with the common ones for this deployment first. */
+const TIMEZONES: string[] = (() => {
+  const common = ['Africa/Nairobi', 'Africa/Kampala', 'Africa/Dar_es_Salaam', 'Africa/Kigali', 'Africa/Lagos', 'Africa/Johannesburg', 'Europe/London', 'UTC'];
+  const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? [];
+  return [...common, ...all.filter((z) => !common.includes(z))];
+})();
 
 function FeatureToggle({
   icon: Icon, title, description, checked, onChange,
@@ -84,13 +93,14 @@ export function SettingsPage() {
         allowManualLecturerOverride: school.allowManualLecturerOverride ?? true,
         attendanceMode: school.attendanceMode ?? 'CALENDAR_BASED',
         features: { ...defaultFeatures, ...school.features },
+        timezone: school.timezone ?? '',
       });
     }
   }, [school]);
 
   const handleSave = async () => {
     if (!schoolId) return;
-    await update(`/schools/${schoolId}`, form);
+    await update(`/schools/${schoolId}`, { ...form, timezone: form.timezone || null });
     refetch();
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -201,6 +211,22 @@ export function SettingsPage() {
                 >
                   Stage-Based
                 </button>
+              </div>
+            </GlassCard>
+
+            <GlassCard>
+              <div className="space-y-1">
+                <label htmlFor="school-timezone" className="block text-sm font-medium text-gray-900 dark:text-white">Time zone</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Used for the times shown in emails and for when the weekly CEM digest goes out (Monday 07:00 local).</p>
+                <select
+                  id="school-timezone"
+                  value={form.timezone}
+                  onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                  className="mt-2 w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                >
+                  <option value="">Default (Africa/Nairobi)</option>
+                  {TIMEZONES.map((z) => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
+                </select>
               </div>
             </GlassCard>
 

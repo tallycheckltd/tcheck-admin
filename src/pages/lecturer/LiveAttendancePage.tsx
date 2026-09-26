@@ -265,6 +265,7 @@ export function LiveAttendancePage() {
             checkInAt: a.checkInAt,
             checkOutAt: a.checkOutAt,
             checkInType: a.checkInType,
+            checkOutState: a.checkOutState ?? null,
           };
         }),
         ...classDetail.absentStudents.map((s) => ({
@@ -275,6 +276,7 @@ export function LiveAttendancePage() {
           checkInAt: '',
           checkOutAt: '',
           checkInType: undefined,
+          checkOutState: null,
         })),
       ]
     : [];
@@ -526,7 +528,9 @@ export function LiveAttendancePage() {
                           <td className="py-3 px-4 text-xs text-gray-500">
                             {row.checkOutAt
                               ? new Date(row.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                              : '-'}
+                              : row.checkOutState === 'MISSING'
+                                ? <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">Missing check-out</span>
+                                : '-'}
                           </td>
                         </tr>
                       ))}
@@ -551,6 +555,7 @@ export function LiveAttendancePage() {
                             ? `In ${new Date(row.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                             : 'Not checked in'}
                           {row.checkOutAt && ` · Out ${new Date(row.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                          {!row.checkOutAt && row.checkOutState === 'MISSING' && ' · Missing check-out'}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">

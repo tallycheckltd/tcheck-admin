@@ -8,7 +8,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { FacilitiesQueue } from '../../components/facilities/FacilitiesQueue';
-import type { Permission, FeedbackRequest, FeedbackRequestResults, FacilityTicket } from '../../types';
+import type { Permission, FeedbackRequest, FacilityTicket } from '../../types';
+import { CampaignComposer, CampaignHistory } from '../../components/feedback/FeedbackCampaigns';
 
 interface StaffBirthday {
   id: string; firstName: string; lastName: string; avatarUrl?: string | null;
@@ -646,103 +647,35 @@ interface StaffCohort { id: string; name: string; year: number }
 function CohortFeedbackRequestForm({ defaultCohortId }: { defaultCohortId?: string }) {
   const { data: cohorts } = useApi<StaffCohort[]>('/staff/cohorts');
   const { data: sent, refetch: refetchSent } = useApi<FeedbackRequest[]>('/feedback-requests');
-  const { mutate: send, loading } = useMutation<FeedbackRequest & { recipientCount: number }>('post');
   const [cohortId, setCohortId] = useState(defaultCohortId ?? '');
-  const [title, setTitle] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [status, setStatus] = useState('');
-  const [openResultsId, setOpenResultsId] = useState<string | null>(null);
 
-  const submit = async () => {
-    if (!cohortId || !title.trim() || !prompt.trim()) return;
-    try {
-      const result = await send('/feedback-requests', { cohortId, title: title.trim(), prompt: prompt.trim() });
-      setStatus(`Sent to ${result?.recipientCount ?? 0} student(s) — push, in-app and email.`);
-      setTitle('');
-      setPrompt('');
-      setCohortId('');
-      refetchSent();
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : 'Failed to send.');
-    }
-  };
-
+  // SBS Phase 5 — same composer/history/anonymous results as the admin Request Feedback page
+  // (components/feedback/FeedbackCampaigns.tsx); only the cohort list differs (staff-scoped).
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {!cohorts?.length ? (
         <p className="text-xs text-gray-400">No cohorts reachable through your assigned courses yet.</p>
       ) : (
-        <>
-          <select value={cohortId} onChange={(e) => setCohortId(e.target.value)} className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white">
-            <option value="">Select a cohort…</option>
-            {cohorts.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.year})</option>)}
-          </select>
-          <Input placeholder="Title (e.g. Mid-program pulse check)" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <textarea
-            placeholder="What would you like to ask them?"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={3}
-            className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
-          />
-          <Button onClick={() => void submit()} disabled={loading || !cohortId || !title.trim() || !prompt.trim()} size="sm" className="w-full">
-            <Send size={14} className="mr-1.5" /> Send to Cohort
-          </Button>
-          {status && <p className="text-xs text-gray-500 dark:text-gray-400">{status}</p>}
-        </>
+        <CampaignComposer
+          cohortId={cohortId}
+          onSent={() => { setCohortId(defaultCohortId ?? ''); refetchSent({ silent: true }); }}
+          audience={(
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1" htmlFor="staff-campaign-cohort">Cohort</label>
+              <select id="staff-campaign-cohort" value={cohortId} onChange={(e) => setCohortId(e.target.value)} className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white">
+                <option value="">Select a cohort…</option>
+                {cohorts.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.year})</option>)}
+              </select>
+            </div>
+          )}
+        />
       )}
 
       {!!sent?.length && (
         <div className="pt-2 border-t border-gray-100 dark:border-white/10">
-          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Sent requests</p>
-          {/* Switching between requests here — each tied to its own cohort — is the "get that
-              particular [cohort's] data" view: clicking one loads only that request's results. */}
-          <ul className="space-y-1.5 max-h-56 overflow-y-auto">
-            {sent.map((r) => (
-              <li key={r.id}>
-                <button
-                  onClick={() => setOpenResultsId(openResultsId === r.id ? null : r.id)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5 text-left cursor-pointer"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{r.title}</span>
-                    <span className="block text-xs text-gray-400">{r.cohort.name} ({r.cohort.year}) · {r.responseCount}/{r.recipientCount} responded</span>
-                  </span>
-                  <ChevronDown size={14} className={`text-gray-400 shrink-0 transition-transform ${openResultsId === r.id ? 'rotate-180' : ''}`} />
-                </button>
-                {openResultsId === r.id && <CohortFeedbackResults requestId={r.id} />}
-              </li>
-            ))}
-          </ul>
+          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Your campaigns</p>
+          <CampaignHistory requests={sent} onChanged={() => refetchSent({ silent: true })} compact />
         </div>
-      )}
-    </div>
-  );
-}
-
-function CohortFeedbackResults({ requestId }: { requestId: string }) {
-  const { data: results } = useApi<FeedbackRequestResults>(`/feedback-requests/${requestId}/results`);
-  if (!results) return <p className="px-3 py-2 text-xs text-gray-400">Loading…</p>;
-  return (
-    <div className="mt-1.5 px-3 py-2 rounded-xl bg-blue-50/50 dark:bg-blue-500/5 space-y-2">
-      <div className="flex items-center gap-3 text-xs">
-        <span className="font-semibold text-gray-700 dark:text-gray-200">
-          Avg score: {results.avgScore == null ? '—' : results.avgScore.toFixed(1)}
-        </span>
-        <span className="text-gray-400">{results.responses.length} response(s)</span>
-      </div>
-      {results.responses.length === 0 ? (
-        <p className="text-xs text-gray-400">No responses yet.</p>
-      ) : (
-        <ul className="space-y-1.5 max-h-40 overflow-y-auto">
-          {results.responses.map((resp) => (
-            <li key={resp.id} className="text-xs">
-              <span className="font-medium text-gray-700 dark:text-gray-300">{resp.studentName}</span>
-              <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded bg-white dark:bg-white/10 font-semibold text-gray-700 dark:text-gray-200">{resp.npsScore}/10</span>
-              {resp.comment && <p className="text-gray-500 dark:text-gray-400 mt-0.5">{resp.comment}</p>}
-            </li>
-          ))}
-        </ul>
       )}
     </div>
   );

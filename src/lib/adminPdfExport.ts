@@ -35,7 +35,7 @@ export type HodRosterPdfRow = {
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
-function afterTableY(doc: jsPDF, fallback: number) {
+export function afterTableY(doc: jsPDF, fallback: number) {
   const d = doc as JsPdfWithAutoTable;
   return d.lastAutoTable?.finalY ?? fallback;
 }
@@ -78,7 +78,7 @@ export async function loadTcheckLogoPngDataUrl(width = 160, height = 160): Promi
   }
 }
 
-function addTcheckHeader(doc: jsPDF, title: string, subtitle?: string) {
+export function addTcheckHeader(doc: jsPDF, title: string, subtitle?: string) {
   const margin = 40;
   return loadTcheckLogoPngDataUrl(112, 112).then((logo) => {
     let yTitle = 52;
@@ -263,7 +263,7 @@ export async function exportCourseRecordsPdf(
       r.studentId ?? '',
       `${r.firstName} ${r.lastName}`.trim(),
       format(parseISO(r.checkInAt), 'yyyy-MM-dd HH:mm'),
-      r.checkOutAt ? format(parseISO(r.checkOutAt), 'yyyy-MM-dd HH:mm') : '',
+      r.checkOutAt ? format(parseISO(r.checkOutAt), 'yyyy-MM-dd HH:mm') : r.checkOutState === 'MISSING' ? 'Missing' : '',
       String(r.checkInType),
       r.punctuality,
     ]),
@@ -299,7 +299,7 @@ export async function exportLecturerSessionDetailPdf(detail: ClassAttendanceDeta
       r.user?.studentId ?? '—',
       `${r.user?.firstName ?? ''} ${r.user?.lastName ?? ''}`.trim(),
       format(parseISO(r.checkInAt), 'MMM d HH:mm'),
-      r.checkOutAt ? format(parseISO(r.checkOutAt), 'MMM d HH:mm') : '—',
+      r.checkOutAt ? format(parseISO(r.checkOutAt), 'MMM d HH:mm') : r.checkOutState === 'MISSING' ? 'Missing' : '—',
       String(r.checkInType),
       r.status,
       r.punctuality ?? '—',
