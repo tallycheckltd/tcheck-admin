@@ -546,3 +546,71 @@ export async function exportTrendAnalysisPdf(campus: CampusAnalytics, fileBase =
 
   doc.save(`${fileBase}.pdf`);
 }
+
+/** One row from GET /cem/report — a CEM's own cohort summary, extended with the fields the report
+ * adds on top of what /cem/dashboard already returns for a CEM's own view of themselves. */
+export interface CemReportCohortPdfRow {
+  id: string; name: string; studentCount: number; startDate: string | null; endDate: string | null;
+  attendanceRate: number; openTickets: number; resolvedTickets: number;
+  students: { firstName: string; lastName: string; email: string; studentId: string | null; jobTitle: string | null; company: string | null }[];
+}
+export interface CemReportCemPdfRow {
+  id: string; firstName: string; lastName: string; email: string; totalStudents: number;
+  cohorts: CemReportCohortPdfRow[];
+}
+
+/** Dean/School Admin cross-CEM oversight report (GET /cem/report) — one section per CEM: a
+ * programmes summary table, then a full student roster table. Branded with the TCheck logo the
+ * same way every other admin PDF export here is, per explicit request ("it needs to have our logo
+ * if it's in PDF"). */
+export async function exportCemReportPdf(cems: CemReportCemPdfRow[], fileBase = 'tcheck-cem-report') {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  let y = await addTcheckHeader(doc, 'TCheck — CEM & Programmes Report', `Generated ${format(new Date(), 'PPpp')}`);
+
+  cems.forEach((cem, i) => {
+    if (i > 0) {
+      doc.addPage();
+      y = 48;
+    }
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${cem.firstName} ${cem.lastName}`, 40, y);
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${cem.email} · ${cem.totalStudents} student${cem.totalStudents === 1 ? '' : 's'} across ${cem.cohorts.length} programme${cem.cohorts.length === 1 ? '' : 's'}`, 40, y + 14);
+
+    autoTable(doc, {
+      startY: y + 28,
+      head: [['Programme', 'Dates', 'Students', 'Attendance', 'Open tickets', 'Resolved']],
+      body: cem.cohorts.map((c) => [
+        c.name,
+        c.startDate && c.endDate ? `${format(parseISO(c.startDate), 'MMM d, yyyy')} – ${format(parseISO(c.endDate), 'MMM d, yyyy')}` : 'Not scheduled',
+        String(c.studentCount),
+        `${c.attendanceRate}%`,
+        String(c.openTickets),
+        String(c.resolvedTickets),
+      ]),
+      styles: { fontSize: 9, cellPadding: 5 },
+      headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 40, right: 40 },
+    });
+
+    const studentRows = cem.cohorts.flatMap((c) =>
+      c.students.map((s) => [`${s.firstName} ${s.lastName}`, c.name, s.jobTitle ? `${s.jobTitle}${s.company ? ` · ${s.company}` : ''}` : '—', s.email, s.studentId ?? '—']),
+    );
+    if (studentRows.length) {
+      autoTable(doc, {
+        startY: afterTableY(doc, y + 28) + 20,
+        head: [['Student', 'Programme', 'Role / Company', 'Email', 'ID']],
+        body: studentRows,
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [71, 85, 105], textColor: 255 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 40, right: 40 },
+      });
+    }
+  });
+
+  doc.save(`${fileBase}.pdf`);
+}

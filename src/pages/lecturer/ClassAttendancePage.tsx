@@ -14,11 +14,15 @@ import { useAuth } from '../../context/AuthContext';
 import { csvField } from '../../lib/csv';
 import { formatClassCalendarDate, formatClassTimeLocal } from '../../utils/classDateDisplay';
 import { formatCheckInType } from '../../utils/checkInTypeLabel';
+import { seesUnfilteredBySchoolOrUnit } from '../../lib/rbac';
 
 export function ClassAttendancePage() {
   const { classId, courseId } = useParams<{ classId: string; courseId: string }>();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
+  // QA plan B1: without this, SCHOOL_ADMIN/hierarchy roles got `lecturerId=<their own id>`
+  // appended to /attendance/class-stats — they don't teach, so that always returned nothing.
+  // (This does not change server-side scoping of class-stats — that's B5, deliberately untouched.)
+  const isAdmin = seesUnfilteredBySchoolOrUnit(user?.role);
 
   if (classId) {
     return <ClassDetailView classId={classId} />;
@@ -57,7 +61,7 @@ function CourseAttendanceListView({ lecturerId }: { lecturerId?: string }) {
         onSelect={(courseId) => navigate(`/attendance/course/${courseId}`)}
         countNoun="session"
         countNounPlural="sessions"
-        emptyTitle="No sessions yet"
+        emptyTitle="No sessions yet — none scheduled, or none tagged to your school/department"
       />
     </div>
   );

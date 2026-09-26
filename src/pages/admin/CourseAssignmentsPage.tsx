@@ -1,18 +1,22 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Can } from '../../components/shared/Can';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import {
   Link2, Search, BookOpen, Users, GraduationCap, UserCheck, Edit2, Trash2, Sparkles,
-  School as SchoolIcon, Calendar,
+  School as SchoolIcon, Calendar, Settings, UserCog,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { clsx } from 'clsx';
 import type { Beacon, Course, User } from '../../types';
+import { CourseCemAssignment } from '../../components/admin/CourseCemAssignment';
 
 export function CourseAssignmentsPage() {
+  const navigate = useNavigate();
   const { data: courses, refetch: refetchCourses } = useApi<Course[]>('/courses');
   const { data: lecturers } = useApi<User[]>('/users?role=LECTURER&status=APPROVED');
   const { data: students } = useApi<User[]>('/users?role=STUDENT&status=APPROVED');
@@ -24,6 +28,31 @@ export function CourseAssignmentsPage() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [newLecturerId, setNewLecturerId] = useState('');
   const { mutate: updateCourse, loading: updating } = useMutation('put');
+
+  // Edit course details modal (name/code/room) — the one thing this page couldn't actually edit;
+  // lecturer/beacon/enrollments already had their own actions below.
+  const [editModal, setEditModal] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', code: '', room: '' });
+  const { mutate: saveEdit, loading: savingEdit } = useMutation('put');
+
+  const openEdit = (course: Course) => {
+    setEditingCourse(course);
+    setEditForm({ name: course.name, code: course.code, room: course.room ?? '' });
+    setEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCourse || !editForm.name.trim() || !editForm.code.trim()) return;
+    await saveEdit(`/courses/${editingCourse.id}`, {
+      name: editForm.name.trim(),
+      code: editForm.code.trim(),
+      room: editForm.room.trim() || undefined,
+    });
+    setEditModal(false);
+    setEditingCourse(null);
+    refetchCourses();
+  };
 
   // Enroll student modal
   const [enrollModal, setEnrollModal] = useState(false);
@@ -37,6 +66,16 @@ export function CourseAssignmentsPage() {
   const [beaconCourse, setBeaconCourse] = useState<Course | null>(null);
   const [selectedBeaconId, setSelectedBeaconId] = useState('');
   const [assigningBeacon, setAssigningBeacon] = useState(false);
+
+  // CEM assignment modal — the exec-ed-suite gap (SBS/School of Communication-style departments):
+  // a CEM was previously only reachable via a Cohort, with no way to hand them one specific
+  // course/"programme" outright.
+  const [cemModal, setCemModal] = useState(false);
+  const [cemCourse, setCemCourse] = useState<Course | null>(null);
+  const openCemModal = (course: Course) => {
+    setCemCourse(course);
+    setCemModal(true);
+  };
 
   const openReassign = (course: Course) => {
     setSelectedCourse(course);
@@ -158,7 +197,11 @@ export function CourseAssignmentsPage() {
       {/* Course cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filtered.map((course) => (
-          <div key={course.id} className="glass-card p-6 flex flex-col group hover:border-blue-500/20 transition-all">
+          <div
+            key={course.id}
+            onClick={() => navigate(`/admin/courses/${course.id}`)}
+            className="glass-card p-6 flex flex-col group hover:border-blue-500/20 transition-all cursor-pointer"
+          >
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
@@ -172,7 +215,14 @@ export function CourseAssignmentsPage() {
                 )}
               </div>
               <Can perm="MANAGE_COURSES">
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => openEdit(course)}
+                  className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-amber-50 dark:hover:bg-amber-500/10 text-gray-400 hover:text-amber-600 transition-all border border-transparent hover:border-amber-100"
+                  title="Edit course details"
+                >
+                  <Settings size={16} />
+                </button>
                 <button
                   onClick={() => openBeaconModal(course)}
                   className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-purple-500/10 text-gray-400 hover:text-purple-600 transition-all border border-transparent hover:border-purple-100"
@@ -188,6 +238,13 @@ export function CourseAssignmentsPage() {
                   <Edit2 size={16} />
                 </button>
                 <button
+                  onClick={() => openCemModal(course)}
+                  className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-gray-400 hover:text-indigo-600 transition-all border border-transparent hover:border-indigo-100"
+                  title="Assign Client Experience Manager"
+                >
+                  <UserCog size={16} />
+                </button>
+                <button
                   onClick={() => openEnroll(course)}
                   className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-green-50 dark:hover:bg-green-500/10 text-gray-400 hover:text-green-600 transition-all border border-transparent hover:border-green-100"
                   title="Manage students"
@@ -198,7 +255,7 @@ export function CourseAssignmentsPage() {
               </Can>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
               {/* Lecturer */}
               <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100/50 dark:border-blue-500/10">
                 <div className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
@@ -209,6 +266,36 @@ export function CourseAssignmentsPage() {
                   <p className="text-sm font-bold text-gray-900 dark:text-blue-100 truncate">
                     {course.lecturer?.firstName} {course.lecturer?.lastName}
                   </p>
+                </div>
+              </div>
+
+              {/* Client Experience Manager */}
+              <div className={clsx(
+                'flex items-center gap-3 p-3 rounded-xl border transition-colors',
+                course.staffAssignments && course.staffAssignments.length > 0
+                  ? 'bg-indigo-50/50 dark:bg-indigo-500/5 border-indigo-100/50 dark:border-indigo-500/10'
+                  : 'bg-gray-50/50 dark:bg-white/5 border-gray-100 dark:border-white/10 border-dashed hover:border-indigo-300'
+              )}>
+                <div className={clsx(
+                  'w-8 h-8 rounded-lg flex items-center justify-center shadow-md flex-shrink-0',
+                  course.staffAssignments && course.staffAssignments.length > 0 ? 'bg-indigo-500 text-white shadow-indigo-500/20' : 'bg-gray-200 dark:bg-white/10 text-gray-400 shadow-none'
+                )}>
+                  <UserCog size={16} />
+                </div>
+                <div className="overflow-hidden flex-1">
+                  <p className={clsx(
+                    'text-[10px] uppercase font-bold tracking-wider',
+                    course.staffAssignments && course.staffAssignments.length > 0 ? 'text-indigo-500/70' : 'text-gray-400'
+                  )}>CEM</p>
+                  {course.staffAssignments && course.staffAssignments.length > 0 ? (
+                    <p className="text-sm font-bold text-gray-900 dark:text-indigo-100 truncate">
+                      {course.staffAssignments.map((a) => `${a.user.firstName} ${a.user.lastName}`).join(', ')}
+                    </p>
+                  ) : (
+                    <button onClick={(e) => { e.stopPropagation(); openCemModal(course); }} className="text-sm font-bold text-gray-400 hover:text-indigo-500 transition-colors cursor-pointer">
+                      Unassigned
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -235,7 +322,7 @@ export function CourseAssignmentsPage() {
                       {course.beacon.name}
                     </p>
                   ) : (
-                    <button onClick={() => openBeaconModal(course)} className="text-sm font-bold text-gray-400 hover:text-purple-500 transition-colors">
+                    <button onClick={(e) => { e.stopPropagation(); openBeaconModal(course); }} className="text-sm font-bold text-gray-400 hover:text-purple-500 transition-colors">
                       Unassigned
                     </button>
                   )}
@@ -389,6 +476,41 @@ export function CourseAssignmentsPage() {
               )}
             </div>
           </div>
+        </div>
+      </Modal>
+
+      {/* Assign CEM Modal */}
+      <Modal open={cemModal} onClose={() => setCemModal(false)} title="Assign Client Experience Manager">
+        <div className="space-y-4">
+          {cemCourse && (
+            <>
+              <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-400 mb-1">Course</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {cemCourse.name} ({cemCourse.code})
+                </p>
+              </div>
+              <CourseCemAssignment
+                course={cemCourse}
+                onChanged={(assignments) => {
+                  setCemCourse({ ...cemCourse, staffAssignments: assignments });
+                  refetchCourses();
+                }}
+              />
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Edit Course Details Modal — name/code/room, the one thing this page couldn't edit before */}
+      <Modal open={editModal} onClose={() => setEditModal(false)} title="Edit Course Details">
+        <div className="space-y-4">
+          <Input label="Course name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+          <Input label="Course code" value={editForm.code} onChange={(e) => setEditForm({ ...editForm, code: e.target.value })} />
+          <Input label="Room (optional)" placeholder="e.g. A101" value={editForm.room} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} />
+          <Button onClick={handleSaveEdit} disabled={!editForm.name.trim() || !editForm.code.trim() || savingEdit} className="w-full">
+            {savingEdit ? 'Saving...' : 'Save Changes'}
+          </Button>
         </div>
       </Modal>
 

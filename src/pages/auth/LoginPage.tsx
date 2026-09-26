@@ -5,6 +5,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, MailCheck, RotateCw } from 'lucide-react';
 import { OtpBoxInput } from '../../components/auth/OtpBoxInput';
+import { homeRouteFor } from '../../lib/rbac';
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -41,8 +42,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      const dest = (user.role === 'SUPER_ADMIN' || user.role === 'SUB_ADMIN') ? '/admin' : '/lecturer';
-      navigate(dest, { replace: true });
+      navigate(homeRouteFor(user.role), { replace: true });
     }
   }, [user, navigate]);
 
@@ -66,8 +66,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       const loggedInUser = await verifyOtp(email, submittedCode);
-      const dest = (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'SUB_ADMIN') ? '/admin' : '/lecturer';
-      navigate(dest);
+      navigate(homeRouteFor(loggedInUser.role));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Invalid code');
       setCode('');

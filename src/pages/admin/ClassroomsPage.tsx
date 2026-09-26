@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
+import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -9,10 +10,19 @@ import type { Beacon, Classroom, School } from '../../types';
 
 /** Admin management of physical rooms ("Auditorium A", "Room 204") — a Beacon can be assigned to
  * one from BLEBeaconPage.tsx's edit form, replacing/augmenting the old free-text `location` field
- * with something listable and typo-proof. Mirrors LevelsPage.tsx's exact CRUD shape. */
+ * with something listable and typo-proof. Mirrors LevelsPage.tsx's exact CRUD shape.
+ *
+ * School picker: same rule as PeopleOrganizationPage.tsx — GET /schools is the platform-wide,
+ * unauthenticated directory (also what the mobile school picker uses), so it's only fetched/shown
+ * to SUPER_ADMIN, who genuinely operates across schools. Every other role (School Admin, Co-Admin,
+ * …) was being handed that same cross-tenant list and could create a classroom under a school that
+ * wasn't theirs — a real tenant-isolation gap, not just a UI nicety. They're locked to their own
+ * `user.schoolId`, exactly like every other admin page. */
 export function ClassroomsPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const { data: classrooms, refetch } = useApi<Classroom[]>('/academic/classrooms');
-  const { data: schools } = useApi<School[]>('/schools');
+  const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
   const { mutate: create } = useMutation('post');
   const { mutate: update } = useMutation('put');
   const { mutate: remove } = useMutation('delete');
@@ -45,7 +55,7 @@ export function ClassroomsPage() {
     refetch();
   };
 
-  const openCreate = () => { setEditing(null); setForm({ name: '', schoolId: '', description: '' }); setBeaconToAssign(''); setModal(true); };
+  const openCreate = () => { setEditing(null); setForm({ name: '', schoolId: isSuperAdmin ? '' : user?.schoolId ?? '', description: '' }); setBeaconToAssign(''); setModal(true); };
   const openEdit = (c: Classroom) => { setEditing(c); setForm({ name: c.name, schoolId: c.schoolId, description: c.description ?? '' }); setBeaconToAssign(''); setModal(true); };
 
   const handleSubmit = async () => {
@@ -118,7 +128,7 @@ export function ClassroomsPage() {
         <div className="space-y-4">
           <Input label="Name" placeholder="e.g. Auditorium A" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="Description (optional)" placeholder="e.g. Ground floor, 80-seat capacity" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          {!editing && (
+          {!editing && isSuperAdmin && (
             <div>
               <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">School</label>
               <select
@@ -132,6 +142,11 @@ export function ClassroomsPage() {
                 ))}
               </select>
             </div>
+          )}
+          {!editing && !isSuperAdmin && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              School: <span className="font-medium text-slate-800 dark:text-gray-300">{user?.school?.name ?? 'your school'}</span>
+            </p>
           )}
           <Button onClick={handleSubmit} className="w-full" disabled={!form.name.trim() || (!editing && !form.schoolId)}>
             {editing ? 'Update' : 'Create'}

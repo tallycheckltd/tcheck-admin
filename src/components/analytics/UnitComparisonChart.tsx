@@ -44,7 +44,36 @@ export function UnitComparisonChart() {
   const hidden = useMemo(() => (data?.units ?? []).filter((u) => u.insufficientData), [data]);
   const unitWord = level === 'FACULTY' ? 'faculties' : 'departments';
 
-  if (!enabled || error || !data || data.units.length === 0) return null;
+  // Not applicable for this viewer (SUPER_ADMIN with no school picked) or still loading — no
+  // message needed, this isn't a failure state. Nothing else returns null any more: QA plan B6 —
+  // an error, or a school with no units to compare, used to render nothing at all with no way to
+  // tell "broken" from "no data yet" apart. Say which one it is.
+  if (!enabled) return null;
+
+  if (error) {
+    return (
+      <section aria-label={`Attendance by ${unitWord}`} className="rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Attendance by {level === 'FACULTY' ? 'faculty' : 'department'}</h2>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          Couldn't load the comparison right now. Try again shortly.
+        </p>
+      </section>
+    );
+  }
+
+  if (!data) return null; // still loading — not a failure state, nothing to say yet
+
+  if (data.units.length === 0) {
+    return (
+      <section aria-label={`Attendance by ${unitWord}`} className="rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Attendance by {level === 'FACULTY' ? 'faculty' : 'department'}</h2>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          No courses are tagged to a {level === 'FACULTY' ? 'faculty' : 'department'} yet, so there's nothing to
+          compare. Set a course's org unit on the Courses page to have it show up here.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section aria-label={`Attendance by ${unitWord}`} className="rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">

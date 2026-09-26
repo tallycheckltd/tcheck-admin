@@ -3,7 +3,7 @@ import {
   ShieldCheck, Plus, Pencil, Trash2, UserPlus, Users, Mail, Lock, User as UserIcon,
   Cake, MapPin, ClipboardCheck, MessageSquare, Megaphone, Settings2, BookOpen, Sparkles, Star,
   BarChart3, PieChart, Folder, Ticket, CheckSquare, Square, Radio, FileText, Siren, Wrench,
-  ScanEye, Smartphone, ShieldAlert, Search, UserX, Network,
+  ScanEye, Smartphone, ShieldAlert, Search, UserX, Network, ChevronDown,
 } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
@@ -118,8 +118,9 @@ const CREATABLE_ROLES = [...ASSIGNABLE_ROLES, { value: 'DEPUTY_HOD' as Role, lab
 const STAFF_TABLE_ROLE_VALUES = CREATABLE_ROLES.map((r) => r.value);
 /** Account types that can hold a custom role / permissions (everything else is decided by the account type alone). */
 const CAN_HOLD_ROLE: Role[] = ['LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'VC', 'DVC', 'DEAN', 'HOD'];
-/** The Roles card (custom role bundles) is hidden for now — flip this back on to show it again. */
-const SHOW_ROLES_CARD = false;
+/** The Roles card (custom role bundles) — outline decision 18.30: bring it back so accounts that
+ * can hold a role (CAN_HOLD_ROLE above) have somewhere to actually get one assigned. */
+const SHOW_ROLES_CARD = true;
 
 function PermissionChecklist({ value, onChange }: { value: Permission[]; onChange: (next: Permission[]) => void }) {
   const toggle = (perm: Permission) => {
@@ -230,6 +231,9 @@ export function PeopleOrganizationPage() {
   const [editingRole, setEditingRole] = useState<CustomRole | null>(null);
   const [roleForm, setRoleForm] = useState(emptyRoleForm);
   const [roleError, setRoleError] = useState('');
+  // Collapsed by default, same reasoning as OrgUnitsSection's own toggle — day to day, this page
+  // is used for the Staff table below far more often than for editing role bundles.
+  const [rolesCollapsed, setRolesCollapsed] = useState(true);
   // Roles are open-ended and school-defined — a search box is what actually keeps this usable once
   // a school has dozens of them, rather than a wall of cards.
   const [roleSearch, setRoleSearch] = useState('');
@@ -415,12 +419,16 @@ export function PeopleOrganizationPage() {
       {SHOW_ROLES_CARD && (
       <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <Settings2 size={18} /> Roles
-          </h2>
+          <button onClick={() => setRolesCollapsed((c) => !c)} className="flex items-center gap-2 text-left cursor-pointer">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Settings2 size={18} /> Roles
+              <span className="text-xs font-normal text-gray-400">({roles?.length ?? 0})</span>
+            </h2>
+            <ChevronDown size={16} className={`text-gray-400 shrink-0 transition-transform ${rolesCollapsed ? '' : 'rotate-180'}`} />
+          </button>
           <Button onClick={openCreateRole} size="sm"><Plus size={16} className="mr-1.5" /> New Role</Button>
         </div>
-        {!roles?.length ? (
+        {rolesCollapsed ? null : !roles?.length ? (
           <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
             No roles yet — create one (e.g. &quot;Client Experience Manager&quot;) and pick its permissions.
           </p>

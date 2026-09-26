@@ -13,16 +13,21 @@ import type { ClassSession, Course, ClassAttendanceDetail, ClassPing } from '../
 import { api } from '../../lib/api';
 import { localCalendarYmd } from '../../utils/classDateDisplay';
 import { getClassTimeStatus } from '../../utils/classTimeStatus';
+import { seesUnfilteredBySchoolOrUnit } from '../../lib/rbac';
 
 export function LiveAttendancePage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
+  // QA plan B1: SCHOOL_ADMIN and every hierarchy role (Dean/HOD/DVC/etc.) were previously treated
+  // as plain lecturers here, filtered down to "courses I teach" (empty, since they don't teach) —
+  // that's why a School Admin saw "No sessions for this calendar day" for a class that plainly
+  // existed. This flag now also covers them; the server's own scoping decides what they actually see.
+  const isAdmin = seesUnfilteredBySchoolOrUnit(user?.role);
 
   const courseQuery =
-    user?.role === 'SUB_ADMIN' && user?.schoolId
-      ? `/courses?schoolId=${user.schoolId}`
-      : user?.role === 'SUPER_ADMIN'
-        ? '/courses'
+    user?.role === 'SUPER_ADMIN'
+      ? '/courses'
+      : isAdmin && user?.schoolId
+        ? `/courses?schoolId=${user.schoolId}`
         : `/courses?lecturerId=${user?.id}`;
 
   const { data: courses } = useApi<Course[]>(courseQuery);
@@ -77,6 +82,18 @@ export function LiveAttendancePage() {
   const socketRef = useRef<Socket | null>(null);
   const selectedClassRef = useRef(selectedClass);
   selectedClassRef.current = selectedClass;
+
+  // QA plan B1 — the bare "No sessions for this calendar day" could mean three different things
+  // (no classes at all today, classes exist but are hidden by the client-side "courses I teach"
+  // filter, or classes exist but aren't tagged to any org unit — a server-side scoping question,
+  // B5, deliberately not touched here) and gave no way to tell which. Say why.
+  const emptyStateReason: string = classesLoading
+    ? ''
+    : (classes?.length ?? 0) === 0
+      ? isAdmin
+        ? `No classes are scheduled for ${todayYmd} — or they exist but aren't tagged to your school/department yet.`
+        : `No classes are scheduled for ${todayYmd}.`
+      : `${classes!.length} class${classes!.length === 1 ? ' is' : 'es are'} scheduled for ${todayYmd}, but none are tied to your account as a lecturer.`;
 
   const myClasses = useMemo(() => {
     const raw = isAdmin ? classes || [] : classes?.filter((c) => courses?.some((co) => co.id === c.courseId)) || [];
@@ -339,8 +356,7 @@ export function LiveAttendancePage() {
         })}
         {!classesLoading && myClasses.length === 0 && (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            No sessions for this calendar day. Create a class for {todayYmd} or check that your account has the right
-            school/courses — the list also refreshes automatically.
+            {emptyStateReason} The list also refreshes automatically.
           </p>
         )}
       </div>

@@ -10,6 +10,7 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { BookOpen, Users, Calendar, Plus, Trash2, MapPin, Sparkles, Edit2, LayoutGrid, List } from 'lucide-react';
 import type { Course, School, User, Beacon, OrgUnit } from '../../types';
 import { CourseDataGrid } from '../../components/admin/CourseDataGrid';
+import { CourseCemAssignment } from '../../components/admin/CourseCemAssignment';
 
 export function CoursesPage() {
   const { user } = useAuth();
@@ -144,10 +145,19 @@ export function CoursesPage() {
               </div>
             </div>
 
-            {isAdmin && course.lecturer && (
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                Lecturer: {course.lecturer.firstName} {course.lecturer.lastName}
-              </p>
+            {isAdmin && (course.lecturer || (course.staffAssignments && course.staffAssignments.length > 0)) && (
+              <div className="space-y-0.5 mb-3">
+                {course.lecturer && (
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Lecturer: {course.lecturer.firstName} {course.lecturer.lastName}
+                  </p>
+                )}
+                {course.staffAssignments && course.staffAssignments.length > 0 && (
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    CEM: {course.staffAssignments.map((a) => `${a.user.firstName} ${a.user.lastName}`).join(', ')}
+                  </p>
+                )}
+              </div>
             )}
 
             {(() => {
@@ -274,6 +284,15 @@ export function CoursesPage() {
                 {lecturers?.map((l) => <option key={l.id} value={l.id}>{l.firstName} {l.lastName} ({l.email})</option>)}
               </select>
             </div>
+          )}
+          {isAdmin && editingCourse && (
+            <CourseCemAssignment
+              course={editingCourse}
+              onChanged={(assignments) => {
+                setEditingCourse({ ...editingCourse, staffAssignments: assignments });
+                refetch();
+              }}
+            />
           )}
           <Input label="Room" value={editForm.room} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <div className="space-y-1">

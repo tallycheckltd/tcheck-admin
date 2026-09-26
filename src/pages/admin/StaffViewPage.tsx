@@ -1,11 +1,14 @@
-import { useState } from 'react';
-import { Cake, ClipboardCheck, Megaphone, Send, Info, Star, BarChart3, PieChart as PieChartIcon, Table as TableIcon, ChevronDown, Folder } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Cake, ClipboardCheck, Megaphone, Send, Info, Star, BarChart3, PieChart as PieChartIcon, Table as TableIcon, ChevronDown, Folder, Wrench } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import type { Permission, FeedbackRequest, FeedbackRequestResults } from '../../types';
+import { Badge } from '../../components/ui/Badge';
+import { FacilitiesQueue } from '../../components/facilities/FacilitiesQueue';
+import type { Permission, FeedbackRequest, FeedbackRequestResults, FacilityTicket } from '../../types';
 
 interface StaffBirthday {
   id: string; firstName: string; lastName: string; avatarUrl?: string | null;
@@ -24,14 +27,35 @@ interface StaffCourse {
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/** Appends `?cohortId=`/`&cohortId=` when one is given — every /staff/* endpoint accepts it
+ * optionally (staff.controller.ts's cohortIdParam) to narrow to one particular programme. */
+function withCohort(url: string, cohortId?: string): string {
+  if (!cohortId) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}cohortId=${encodeURIComponent(cohortId)}`;
+}
+
 /** Collapsed by default — a Staff/CXM account with several permissions previously saw every
  * panel's full content at once, which read as cluttered. Clicking the header expands just that
  * one panel; the rest stay closed until clicked, so the page opens as a clean list of section
- * headers instead of a wall of cards. */
-function Panel({ title, icon: Icon, children, defaultOpen = false }: { title: string; icon: React.ElementType; children: React.ReactNode; defaultOpen?: boolean }) {
+ * headers instead of a wall of cards. `id` (when given) lets the sidebar's per-programme panel
+ * links (Sidebar.tsx's cohort-context nav) deep-link straight to one panel via `#id` — matching
+ * hash on mount/hashchange auto-expands and scrolls it into view. */
+function Panel({ id, title, icon: Icon, children, defaultOpen = false }: { id?: string; title: string; icon: React.ElementType; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
+  const ref = useRef<HTMLDivElement>(null);
+  // react-router's own `location.hash` (not `window.location.hash`) — it updates on every
+  // client-side navigation, including hash-only ones from the sidebar's per-panel links, which a
+  // raw `window.addEventListener('hashchange', ...)` misses (pushState doesn't fire that event).
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    if (!id || hash !== `#${id}`) return;
+    setOpen(true);
+    setTimeout(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }, [id, hash]);
+
   return (
-    <div className="glass-card overflow-hidden">
+    <div id={id} ref={ref} className="glass-card overflow-hidden scroll-mt-4">
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between gap-2 p-6 text-left cursor-pointer"
@@ -46,16 +70,92 @@ function Panel({ title, icon: Icon, children, defaultOpen = false }: { title: st
   );
 }
 
+/** The actual grid of permission-gated panels — shared between the plain Staff View page (no
+ * `cohortId`, pooled across every one of the caller's in-scope courses) and a CEM's per-programme
+ * page (`cohortId` set, narrowed to just that one cohort's courses — see staffScope.ts's
+ * resolveStaffCourseIds). One implementation, so the two surfaces can never drift apart. */
+export type StaffPanelKey = 'checkins' | 'manual-checkin' | 'broadcast' | 'materials' | 'feedback' | 'facilities' | 'analytics' | 'birthdays';
+
+/** Panel display order — Birthdays deliberately LAST (per explicit request: a CEM's programme
+ * page should lead with the operational panels, not birthdays). Doubles as the CEM per-programme
+ * sidebar's own link order (Sidebar.tsx's buildCxmCohortLinks) and each panel's standalone-page
+ * route order (CemCohortPanelPage.tsx) — keep all three in step. */
+export const STAFF_PANEL_ORDER: StaffPanelKey[] = ['checkins', 'manual-checkin', 'broadcast', 'materials', 'feedback', 'facilities', 'analytics', 'birthdays'];
+export const STAFF_PANEL_LABEL: Record<StaffPanelKey, string> = {
+  checkins: 'Check-Ins', 'manual-checkin': 'Manual Check-in', broadcast: 'Broadcast', materials: 'Materials',
+  feedback: 'Request Feedback', facilities: 'Facilities', analytics: 'Analytics', birthdays: 'Birthdays',
+};
+
+/** `only`, when given, renders just that one panel (still permission-gated) full-width instead of
+ * the whole grid — CemCohortPanelPage.tsx's standalone per-panel pages use this so each panel
+ * genuinely lives on its own page/route rather than a shared accordion, while StaffViewPage and the
+ * plain (non-per-panel) programme overview keep using the full grid. */
+export function StaffPanelsGrid({ cohortId, only }: { cohortId?: string; only?: StaffPanelKey }) {
+  const { user } = useAuth();
+  const perms = new Set(user?.permissions ?? []);
+  const hasAny = perms.size > 0;
+
+  if (!hasAny) {
+    return (
+      <div className="glass-card p-8 text-center">
+        <Info size={28} className="mx-auto text-gray-400 mb-3" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          You don&apos;t have any permissions yet. Once your School Admin assigns you a role, the panels you&apos;re granted will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  const show = (key: StaffPanelKey) => !only || only === key;
+  const granted: Record<StaffPanelKey, boolean> = {
+    birthdays: perms.has('VIEW_BIRTHDAYS'),
+    checkins: perms.has('VIEW_BLE_CHECKINS') || perms.has('VIEW_MANUAL_CHECKINS'),
+    'manual-checkin': perms.has('MANUAL_CHECK_IN'),
+    broadcast: BROADCAST_PERMISSIONS.some((p) => perms.has(p)),
+    materials: perms.has('MANAGE_MATERIALS'),
+    feedback: perms.has('REQUEST_FEEDBACK'),
+    facilities: perms.has('VIEW_FACILITIES'),
+    analytics: perms.has('VIEW_ANALYTICS'),
+  };
+
+  if (only && !granted[only]) {
+    return (
+      <div className="glass-card p-8 text-center">
+        <Info size={28} className="mx-auto text-gray-400 mb-3" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">You don&apos;t have the {STAFF_PANEL_LABEL[only]} permission.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={only ? '' : 'grid gap-6 lg:grid-cols-2'}>
+      {show('checkins') && granted.checkins && (
+        <CombinedCheckInsPanel canManual={perms.has('VIEW_MANUAL_CHECKINS')} canOnSite={perms.has('VIEW_BLE_CHECKINS')} cohortId={cohortId} open={!!only} />
+      )}
+      {show('manual-checkin') && granted['manual-checkin'] && <ManualCheckInPanel cohortId={cohortId} open={!!only} />}
+      {show('broadcast') && granted.broadcast && <BroadcastPanel perms={perms} cohortId={cohortId} open={!!only} />}
+      {show('materials') && granted.materials && <MaterialsPanel cohortId={cohortId} open={!!only} />}
+      {show('feedback') && granted.feedback && <FeedbackRequestPanel cohortId={cohortId} open={!!only} />}
+      {show('facilities') && granted.facilities && (
+        only ? <FacilitiesQueue cohortId={cohortId} /> : <FacilitiesPanel cohortId={cohortId} open={false} />
+      )}
+      {show('analytics') && granted.analytics && (
+        <div className={only ? '' : 'lg:col-span-2'}>
+          <AnalyticsPanel showDemographics={perms.has('VIEW_ANALYTICS_DEMOGRAPHICS')} cohortId={cohortId} />
+        </div>
+      )}
+      {show('birthdays') && granted.birthdays && <BirthdaysPanel cohortId={cohortId} open={!!only} />}
+    </div>
+  );
+}
+
 /** Dashboard mirror of the mobile Staff tab — same `/staff/*` and `/broadcasts` endpoints, so a
  * Lecturer/Client Experience Manager sees identical capabilities whether they're on mobile or
- * here (see the Permission enum's "surface-agnostic" contract). Every panel below independently
+ * here (see the Permission enum's "surface-agnostic" contract). Every panel independently
  * shows/hides based on the logged-in user's own `permissions` — nothing here re-checks anything
  * client-side that the server doesn't also enforce on the actual request. */
 export function StaffViewPage() {
   const { user } = useAuth();
-  const perms = new Set(user?.permissions ?? []);
-
-  const hasAny = perms.size > 0;
 
   return (
     <div className="space-y-6">
@@ -65,39 +165,15 @@ export function StaffViewPage() {
           {user?.customRoleName ? `Role: ${user.customRoleName}` : 'No role assigned yet — ask your School Admin to grant one under Roles & Permissions.'}
         </p>
       </div>
-
-      {!hasAny ? (
-        <div className="glass-card p-8 text-center">
-          <Info size={28} className="mx-auto text-gray-400 mb-3" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            You don&apos;t have any permissions yet. Once your School Admin assigns you a role, the panels you&apos;re granted will appear here.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {perms.has('VIEW_BIRTHDAYS') && <BirthdaysPanel />}
-          {(perms.has('VIEW_BLE_CHECKINS') || perms.has('VIEW_MANUAL_CHECKINS')) && (
-            <CombinedCheckInsPanel canManual={perms.has('VIEW_MANUAL_CHECKINS')} canOnSite={perms.has('VIEW_BLE_CHECKINS')} />
-          )}
-          {perms.has('MANUAL_CHECK_IN') && <ManualCheckInPanel />}
-          {BROADCAST_PERMISSIONS.some((p) => perms.has(p)) && <BroadcastPanel perms={perms} />}
-          {perms.has('MANAGE_MATERIALS') && <MaterialsPanel />}
-          {perms.has('REQUEST_FEEDBACK') && <FeedbackRequestPanel />}
-          {perms.has('VIEW_ANALYTICS') && (
-            <div className="lg:col-span-2">
-              <AnalyticsPanel showDemographics={perms.has('VIEW_ANALYTICS_DEMOGRAPHICS')} />
-            </div>
-          )}
-        </div>
-      )}
+      <StaffPanelsGrid />
     </div>
   );
 }
 
-function BirthdaysPanel() {
-  const { data } = useApi<StaffBirthday[]>('/staff/birthdays');
+function BirthdaysPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
+  const { data } = useApi<StaffBirthday[]>(withCohort('/staff/birthdays', cohortId));
   return (
-    <Panel title="Birthdays" icon={Cake}>
+    <Panel id="panel-birthdays" title="Birthdays" icon={Cake} defaultOpen={open}>
       {!data?.length ? (
         <p className="text-sm text-gray-400 py-4 text-center">No upcoming birthdays in your assigned courses.</p>
       ) : (
@@ -119,11 +195,11 @@ function BirthdaysPanel() {
 /** Consolidated Check-Ins panel — a Manual/Aura toggle instead of two separate always-visible
  * lists (matches the same consolidation already shipped on iOS/Android). "Aura Check-In" is
  * this system's user-facing term for what used to be labeled "BLE" everywhere. */
-function CombinedCheckInsPanel({ canManual, canOnSite }: { canManual: boolean; canOnSite: boolean }) {
+function CombinedCheckInsPanel({ canManual, canOnSite, cohortId, open = false }: { canManual: boolean; canOnSite: boolean; cohortId?: string; open?: boolean }) {
   const [type, setType] = useState<'manual' | 'ble'>(canManual ? 'manual' : 'ble');
-  const { data } = useApi<StaffCheckIn[]>(`/staff/checkins?type=${type}`);
+  const { data } = useApi<StaffCheckIn[]>(withCohort(`/staff/checkins?type=${type}`, cohortId));
   return (
-    <Panel title="Check-Ins" icon={ClipboardCheck}>
+    <Panel id="panel-checkins" title="Check-Ins" icon={ClipboardCheck} defaultOpen={open}>
       {canManual && canOnSite && (
         <div className="flex gap-1 p-1 mb-3 rounded-xl bg-gray-100 dark:bg-white/5 text-sm">
           <button
@@ -163,8 +239,8 @@ interface StaffStudent {
   id: string; firstName: string; lastName: string; studentId?: string | null;
 }
 
-function ManualCheckInPanel() {
-  const { data: courses, refetch } = useApi<StaffCourse[]>('/staff/courses');
+function ManualCheckInPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
+  const { data: courses, refetch } = useApi<StaffCourse[]>(withCohort('/staff/courses', cohortId));
   const { mutate: checkIn, loading } = useMutation('post');
   const [classId, setClassId] = useState('');
   const [search, setSearch] = useState('');
@@ -173,7 +249,7 @@ function ManualCheckInPanel() {
 
   // Only fires once the caller has actually typed something — /staff/students returns [] for an
   // empty search anyway, but this also saves a request per keystroke on an empty box.
-  const { data: results } = useApi<StaffStudent[]>(search.trim().length >= 2 ? `/staff/students?search=${encodeURIComponent(search.trim())}` : null);
+  const { data: results } = useApi<StaffStudent[]>(search.trim().length >= 2 ? withCohort(`/staff/students?search=${encodeURIComponent(search.trim())}`, cohortId) : null);
 
   const allClasses = (courses ?? []).flatMap((c) => c.classes.map((cls) => ({ ...cls, courseName: c.name })));
 
@@ -190,7 +266,7 @@ function ManualCheckInPanel() {
   };
 
   return (
-    <Panel title="Manual Check-in" icon={ClipboardCheck}>
+    <Panel id="panel-manual-checkin" title="Manual Check-in" icon={ClipboardCheck} defaultOpen={open}>
       <div className="space-y-3">
         <select
           value={classId}
@@ -237,7 +313,7 @@ function ManualCheckInPanel() {
 
 type BroadcastTemplate = 'STUDENTS_APPROVED' | 'CLASS_SCHEDULE' | 'PROGRAM_WELCOME' | 'MATERIALS_READY' | 'UPDATE';
 
-const BROADCAST_PERMISSIONS: Permission[] = [
+export const BROADCAST_PERMISSIONS: Permission[] = [
   'BROADCAST_STUDENTS_APPROVED', 'BROADCAST_CLASS_SCHEDULE', 'BROADCAST_PROGRAM_WELCOME', 'BROADCAST_MATERIALS_READY', 'BROADCAST_UPDATE',
 ];
 
@@ -251,8 +327,8 @@ const TEMPLATE_META: Record<BroadcastTemplate, { permission: Permission; label: 
 
 const UPDATE_QUICK_TOPICS = ['Schedule Change', 'Room Change', 'Class Cancelled', 'General Reminder', 'Event Announcement', 'Emergency Notice', 'Assignment Due', 'Holiday Notice'];
 
-function BroadcastPanel({ perms }: { perms: Set<string> }) {
-  const { data: courses } = useApi<StaffCourse[]>('/staff/courses');
+function BroadcastPanel({ perms, cohortId, open = false }: { perms: Set<string>; cohortId?: string; open?: boolean }) {
+  const { data: courses } = useApi<StaffCourse[]>(withCohort('/staff/courses', cohortId));
   const { mutate: send, loading } = useMutation('post');
   const [courseId, setCourseId] = useState('');
   const available = (Object.keys(TEMPLATE_META) as BroadcastTemplate[]).filter((t) => perms.has(TEMPLATE_META[t].permission));
@@ -295,7 +371,7 @@ function BroadcastPanel({ perms }: { perms: Set<string> }) {
   };
 
   return (
-    <Panel title="Broadcast" icon={Megaphone}>
+    <Panel id="panel-broadcast" title="Broadcast" icon={Megaphone} defaultOpen={open}>
       <div className="space-y-3">
         <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white">
           <option value="">Select a course…</option>
@@ -385,9 +461,9 @@ interface StaffMaterial {
   course: { id: string; name: string; code: string } | null;
 }
 
-function MaterialsPanel() {
-  const { data: materials, refetch } = useApi<StaffMaterial[]>('/staff/materials');
-  const { data: courses } = useApi<StaffCourse[]>('/staff/courses');
+function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
+  const { data: materials, refetch } = useApi<StaffMaterial[]>(withCohort('/staff/materials', cohortId));
+  const { data: courses } = useApi<StaffCourse[]>(withCohort('/staff/courses', cohortId));
   const { mutate: create, loading } = useMutation('post');
   const [isAdding, setIsAdding] = useState(false);
   const [courseId, setCourseId] = useState('');
@@ -403,7 +479,7 @@ function MaterialsPanel() {
   };
 
   return (
-    <Panel title="Materials" icon={Folder}>
+    <Panel id="panel-materials" title="Materials" icon={Folder} defaultOpen={open}>
       <div className="space-y-3">
         {!materials?.length ? (
           <p className="text-sm text-gray-400 py-2">No materials yet.</p>
@@ -443,6 +519,41 @@ function MaterialsPanel() {
   );
 }
 
+/** VIEW_FACILITIES panel — the same /facility-tickets list the standalone Facilities Queue page
+ * uses, just narrowed with ?cohortId= when this grid is rendered for one particular programme
+ * (see facilityTicket.service.ts's listFacilityTickets). Read-only here; replying/acknowledging
+ * still happens on the full Facilities Queue page (linked below) — this is "what's open for this
+ * programme at a glance", not a second copy of that page's whole workflow. */
+function FacilitiesPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
+  const { data: tickets } = useApi<FacilityTicket[]>(withCohort('/facility-tickets', cohortId));
+  const openTickets = (tickets ?? []).filter((t) => t.status !== 'RESOLVED');
+
+  return (
+    <Panel id="panel-facilities" title="Facilities" icon={Wrench} defaultOpen={open}>
+      {!tickets?.length ? (
+        <p className="text-sm text-gray-400 py-4 text-center">No facility tickets for this programme yet.</p>
+      ) : (
+        <ul className="space-y-2 max-h-72 overflow-y-auto">
+          {tickets.map((t) => (
+            <li key={t.id} className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{t.class?.title ?? 'a class'}</span>
+                <Badge color={t.status === 'RESOLVED' ? 'green' : t.priority === 'URGENT' ? 'red' : t.status === 'ACKNOWLEDGED' ? 'blue' : 'yellow'}>
+                  {t.status === 'RESOLVED' ? 'Resolved' : t.priority === 'URGENT' ? 'Escalated' : t.status === 'ACKNOWLEDGED' ? 'Being handled' : 'Open'}
+                </Badge>
+              </div>
+              <p className="text-xs text-gray-400">{new Date(t.createdAt).toLocaleDateString()}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {openTickets.length > 0 && (
+        <a href="/admin/facilities" className="block mt-3 text-xs text-blue-500 hover:underline">Open the full Facilities Queue to reply →</a>
+      )}
+    </Panel>
+  );
+}
+
 type FeedbackMode = 'STUDENT' | 'COHORT';
 
 /** One-student mode reuses the original single-attendance flow (POST /staff/request-feedback,
@@ -450,11 +561,11 @@ type FeedbackMode = 'STUDENT' | 'COHORT';
  * one Cohort at once, sent on both push/in-app and email with a deep link into the mobile popup
  * (see server/src/services/feedbackRequest.service.ts). The "Sent requests" list underneath lets
  * the sender switch between cohorts/past requests to pull up that one's particular results. */
-function FeedbackRequestPanel() {
+function FeedbackRequestPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
   const [mode, setMode] = useState<FeedbackMode>('STUDENT');
 
   return (
-    <Panel title="Request Feedback" icon={Star}>
+    <Panel id="panel-feedback" title="Request Feedback" icon={Star} defaultOpen={open}>
       <div className="space-y-3">
         <div className="flex gap-2">
           <button
@@ -472,19 +583,19 @@ function FeedbackRequestPanel() {
             Whole Cohort
           </button>
         </div>
-        {mode === 'STUDENT' ? <StudentFeedbackRequestForm /> : <CohortFeedbackRequestForm />}
+        {mode === 'STUDENT' ? <StudentFeedbackRequestForm cohortId={cohortId} /> : <CohortFeedbackRequestForm defaultCohortId={cohortId} />}
       </div>
     </Panel>
   );
 }
 
-function StudentFeedbackRequestForm() {
+function StudentFeedbackRequestForm({ cohortId }: { cohortId?: string }) {
   const [search, setSearch] = useState('');
   const [studentId, setStudentId] = useState('');
   const [studentLabel, setStudentLabel] = useState('');
   const { mutate: request, loading } = useMutation('post');
   const [status, setStatus] = useState('');
-  const { data: results } = useApi<StaffStudent[]>(search.trim().length >= 2 ? `/staff/students?search=${encodeURIComponent(search.trim())}` : null);
+  const { data: results } = useApi<StaffStudent[]>(search.trim().length >= 2 ? withCohort(`/staff/students?search=${encodeURIComponent(search.trim())}`, cohortId) : null);
 
   const submit = async () => {
     if (!studentId) return;
@@ -532,11 +643,11 @@ function StudentFeedbackRequestForm() {
 
 interface StaffCohort { id: string; name: string; year: number }
 
-function CohortFeedbackRequestForm() {
+function CohortFeedbackRequestForm({ defaultCohortId }: { defaultCohortId?: string }) {
   const { data: cohorts } = useApi<StaffCohort[]>('/staff/cohorts');
   const { data: sent, refetch: refetchSent } = useApi<FeedbackRequest[]>('/feedback-requests');
   const { mutate: send, loading } = useMutation<FeedbackRequest & { recipientCount: number }>('post');
-  const [cohortId, setCohortId] = useState('');
+  const [cohortId, setCohortId] = useState(defaultCohortId ?? '');
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState('');
@@ -735,10 +846,10 @@ function BreakdownChart({ mode, data }: { mode: ChartMode; data: { label: string
   );
 }
 
-function AnalyticsPanel({ showDemographics }: { showDemographics: boolean }) {
+function AnalyticsPanel({ showDemographics, cohortId }: { showDemographics: boolean; cohortId?: string }) {
   const [mode, setMode] = useChartMode();
-  const { data: analytics } = useApi<StaffAnalytics>('/staff/analytics');
-  const { data: demographics } = useApi<StaffDemographics>(showDemographics ? '/staff/analytics/demographics' : null);
+  const { data: analytics } = useApi<StaffAnalytics>(withCohort('/staff/analytics', cohortId));
+  const { data: demographics } = useApi<StaffDemographics>(showDemographics ? withCohort('/staff/analytics/demographics', cohortId) : null);
 
   const byCourseChartData = (analytics?.byCourse ?? []).map((c) => ({ label: c.code, count: c.attendanceRate }));
 

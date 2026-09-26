@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
+import { seesUnfilteredBySchoolOrUnit } from '../../lib/rbac';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import {
@@ -729,31 +730,37 @@ export function ReportsPage() {
   const role = user?.role;
   const isSubAdmin = role === 'SUB_ADMIN';
   const isSuperAdmin = role === 'SUPER_ADMIN';
+  // QA plan B1: SCHOOL_ADMIN and every hierarchy role (Dean/HOD/DVC/etc.) previously fell through
+  // to LecturerReportsView below — "your courses" scoped to a `lecturerId` they don't have, so a
+  // School Admin's own Reports page showed them nothing. They now get the org-wide view instead;
+  // this changes which VIEW renders and which course list it fetches, not the server-side scoping
+  // of what that view's data actually contains (that's B5, deliberately untouched).
+  const seesOrgWide = isSubAdmin || seesUnfilteredBySchoolOrUnit(role);
 
-  /** Course dropdown: Super Admin sees all courses; SUB_ADMIN only their school */
+  /** Course dropdown: Super Admin sees all courses; every other org-wide role sees their own school. */
   let hodCoursesFetchPath: string | null = null;
   if (isSuperAdmin) hodCoursesFetchPath = '/courses';
-  else if (isSubAdmin && user?.schoolId) hodCoursesFetchPath = `/courses?schoolId=${user.schoolId}`;
+  else if (seesOrgWide && user?.schoolId) hodCoursesFetchPath = `/courses?schoolId=${user.schoolId}`;
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight text-[var(--app-text)]">Reports</h1>
         <p className="text-sm text-[var(--app-text-muted)] max-w-2xl">
-          {isSubAdmin || isSuperAdmin
+          {seesOrgWide
             ? 'Download audited PDF reports for rosters or individual courses (TCheck logo on every export).'
             : 'Review attendance per teaching session and download PDF reports for your courses.'}
         </p>
       </header>
 
-      {isSubAdmin && !user?.schoolId && (
+      {seesOrgWide && !isSuperAdmin && !user?.schoolId && (
         <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 flex gap-2">
           <AlertCircle className="shrink-0" size={18} />
           Your administrator account has no school assigned. Course CSV needs a school scope — contact platform support.
         </div>
       )}
 
-      {isSubAdmin || isSuperAdmin ? (
+      {seesOrgWide ? (
         <HodReportsView
           canUseSemesterRoster={isSubAdmin}
           coursesFetchPath={hodCoursesFetchPath}

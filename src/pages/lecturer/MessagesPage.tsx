@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
 import { useApi } from '../../hooks/useApi';
@@ -7,7 +8,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
-import { MessageSquare, Search, Flag, Reply, User as UserIcon, MessagesSquare, Users2, Bell, BellOff } from 'lucide-react';
+import { MessageSquare, Search, Flag, Reply, User as UserIcon, MessagesSquare, Users2, Bell, BellOff, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { RoomChatPanel } from '../../components/chat/RoomChatPanel';
 import { ChatComposer } from '../../components/chat/ChatComposer';
@@ -26,6 +27,12 @@ export function MessagesPage() {
   const socketRef = useRef<Socket | null>(null);
   const selectedRef = useRef<string>('');
 
+  // Reached from the CEM sidebar's per-programme nav (`/messages?cohortId=...`) — narrows the
+  // executives contact list to just that one programme (message.service.ts's getContacts) instead
+  // of pooling across every cohort this CEM is assigned to.
+  const [searchParams] = useSearchParams();
+  const cohortId = searchParams.get('cohortId') || undefined;
+
   // Contacts loaded automatically
   const [contacts, setContacts] = useState<ContactGroup[]>([]);
   const [contactSearch, setContactSearch] = useState('');
@@ -34,7 +41,7 @@ export function MessagesPage() {
   const [flagReason, setFlagReason] = useState('');
   const [flagging, setFlagging] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
-  const [showContacts, setShowContacts] = useState(false);
+  const [showContacts, setShowContacts] = useState(!!cohortId);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   const isLecturer = user?.role === 'LECTURER';
@@ -111,16 +118,16 @@ export function MessagesPage() {
     };
   }, [selected]);
 
-  // Auto-load contacts on mount
+  // Auto-load contacts on mount (and whenever the ?cohortId scope changes)
   useEffect(() => {
     const loadContacts = async () => {
       try {
-        const groups = await api.get<ContactGroup[]>('/messages/contacts');
+        const groups = await api.get<ContactGroup[]>(cohortId ? `/messages/contacts?cohortId=${encodeURIComponent(cohortId)}` : '/messages/contacts');
         setContacts(groups);
       } catch { /* ignore */ }
     };
     loadContacts();
-  }, []);
+  }, [cohortId]);
 
   // Deduplicate contacts and exclude users who already have conversations
   const existingConvoUserIds = new Set(conversations?.map((c) => c.otherUser.id) || []);
@@ -227,8 +234,22 @@ export function MessagesPage() {
       ? `${conversations.find((c) => c.id === selected)!.otherUser.firstName} ${conversations.find((c) => c.id === selected)!.otherUser.lastName}`
       : '';
 
+  // With `cohortId` set, the (single) contacts group getContacts() returns is already named after
+  // that cohort (message.service.ts) — reuse it here rather than a second fetch just for a label.
+  const scopedCohortName = cohortId ? contacts[0]?.courseName : undefined;
+
   return (
     <div className="space-y-4">
+      {cohortId && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-sm">
+          <span className="text-blue-700 dark:text-blue-300 font-medium">
+            Messages for {scopedCohortName ?? 'this programme'}
+          </span>
+          <Link to="/messages" className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline">
+            <X size={14} /> View all programmes
+          </Link>
+        </div>
+      )}
       <div className="flex gap-1 bg-gray-100 dark:bg-white/5 rounded-xl p-1 w-fit">
         <button
           onClick={() => setMode('direct')}

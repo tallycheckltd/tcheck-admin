@@ -13,10 +13,13 @@ import type { ClassSession, Course } from '../../types';
 import { getClassTimeStatus } from '../../utils/classTimeStatus';
 import { formatClassCalendarDate, formatClassTimeLocal, localCalendarYmd } from '../../utils/classDateDisplay';
 import { CourseDrilldown, CourseDrilldownBackLink } from '../../components/shared/CourseDrilldown';
+import { seesUnfilteredBySchoolOrUnit } from '../../lib/rbac';
 
 export function ClassesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
+  // QA plan B1: SCHOOL_ADMIN and every hierarchy role were previously filtered down to "courses I
+  // teach" here too (empty for a non-lecturer) — see LiveAttendancePage.tsx for the full story.
+  const isAdmin = seesUnfilteredBySchoolOrUnit(user?.role);
   // Mirrors the server's MANAGE_COURSES gate on class writes; a lecturer with no CustomRole keeps every button they have today.
   const canManage = useCan('MANAGE_COURSES');
   const { data: classes, refetch, setData: setClasses } = useApi<ClassSession[]>('/classes');
@@ -175,7 +178,7 @@ export function ClassesPage() {
           onSelect={(courseId) => setSelectedCourseId(courseId)}
           countNoun="class"
           countNounPlural="classes"
-          emptyTitle="No classes found"
+          emptyTitle="No classes found — none scheduled yet, or none tagged to your school/department"
         />
       ) : (
       /* Level 2: sessions for the selected course — same table as before, pre-filtered */

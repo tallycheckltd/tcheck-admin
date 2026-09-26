@@ -10,7 +10,7 @@ import type { Permission, User } from '../types';
  *   LECTURER                        no CustomRole -> unchanged legacy access; on a CustomRole -> must hold it.
  *                                   `newForLecturer`: the route was newly opened to lecturers, so a
  *                                   legacy lecturer does NOT get it either — must hold it.
- *   CLIENT_EXPERIENCE_MANAGER       must hold it.
+ *   CLIENT_EXPERIENCE_MANAGER       must hold it — except VIEW_FACILITIES / MANAGE_FACILITY_TICKETS, part of the role.
  *   VC / DVC / DEAN / HOD           MANAGE_COURSES must be held; every other route stays role-only (true here).
  *   everyone else                   true (their page/route access is decided by role, not permission).
  *
@@ -18,6 +18,10 @@ import type { Permission, User } from '../types';
  */
 const MANAGE_GROUP: Permission[] = ['MANAGE_USERS', 'MANAGE_SCHOOL_SETTINGS', 'MANAGE_COURSES', 'MANAGE_ANNOUNCEMENTS', 'MANAGE_TICKETS'];
 const STRICT_HIERARCHY = ['VC', 'DVC', 'DEAN', 'HOD'];
+/** Mirrors the server's ROLE_INHERENT_PERMISSIONS (utils/permissions.ts): facility triage is part of
+ * the CEM account type itself. The server also includes these in `user.permissions`; this keeps the
+ * UI correct even for a session whose user object predates that. */
+const CEM_INHERENT: Permission[] = ['VIEW_FACILITIES', 'MANAGE_FACILITY_TICKETS'];
 
 export function can(
   user: Pick<User, 'role' | 'permissions' | 'customRoleId'> | null | undefined,
@@ -36,7 +40,7 @@ export function can(
     case 'LECTURER':
       return opts.newForLecturer || user.customRoleId ? holds : true;
     case 'CLIENT_EXPERIENCE_MANAGER':
-      return holds;
+      return holds || wanted.some((p) => CEM_INHERENT.includes(p));
     default:
       // MANAGE_COURSES: only VC/DVC/DEAN/HOD (with the permission) are admitted among the remaining roles.
       if (wanted.includes('MANAGE_COURSES')) return STRICT_HIERARCHY.includes(user.role) && holds;

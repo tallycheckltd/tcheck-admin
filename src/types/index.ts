@@ -387,6 +387,10 @@ export interface Course {
   majors?: { major: Major }[];
   cohorts?: { cohort: Cohort }[];
   levels?: { level: Level }[];
+  /// Pre-filtered server-side to CLIENT_EXPERIENCE_MANAGER rows only (StaffCourseAssignment also
+  /// holds a LECTURER's own extra-course grants) — which CEM(s) this course is directly assigned
+  /// to via PUT/DELETE /courses/:id/cem/:userId, independent of any Cohort.assignedCemId.
+  staffAssignments?: { userId: string; user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'> }[];
 }
 
 export interface ClassSession {
@@ -871,7 +875,7 @@ export interface Ticket {
  * not reusing `Ticket` — a distinct model server-side (`FacilityTicket`), different lifecycle
  * (acknowledge/resolve vs the platform-support ticket's IN_PROGRESS/CLOSED), and its own SLA
  * timer (`slaBreachedAt`). */
-export type FacilityTicketPreset = 'AC_TOO_COLD' | 'AV_ISSUE' | 'CATERING' | 'OTHER';
+export type FacilityTicketPreset = 'AC_TOO_COLD' | 'AV_ISSUE' | 'CATERING' | 'WIFI_INTERNET' | 'SAFETY_MEDICAL' | 'OTHER';
 
 export interface FacilityTicketMessage {
   id: string;
