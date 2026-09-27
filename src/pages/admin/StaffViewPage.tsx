@@ -8,8 +8,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { FacilitiesQueue } from '../../components/facilities/FacilitiesQueue';
-import type { Permission, FeedbackRequest, FacilityTicket } from '../../types';
-import { CampaignComposer, CampaignHistory } from '../../components/feedback/FeedbackCampaigns';
+import type { Permission, FacilityTicket } from '../../types';
+import { RequestFeedbackWorkspace } from '../../components/feedback/FeedbackCampaigns';
 
 interface StaffBirthday {
   id: string; firstName: string; lastName: string; avatarUrl?: string | null;
@@ -114,7 +114,8 @@ export function StaffPanelsGrid({ cohortId, only }: { cohortId?: string; only?: 
     'manual-checkin': perms.has('MANUAL_CHECK_IN'),
     broadcast: BROADCAST_PERMISSIONS.some((p) => perms.has(p)),
     materials: perms.has('MANAGE_MATERIALS'),
-    feedback: perms.has('REQUEST_FEEDBACK'),
+    // Teaching staff send campaigns only at Executive Education schools — elsewhere the school's admins do.
+    feedback: perms.has('REQUEST_FEEDBACK') && !!user?.school?.features?.execEdSuite,
     facilities: perms.has('VIEW_FACILITIES'),
     analytics: perms.has('VIEW_ANALYTICS'),
   };
@@ -555,129 +556,15 @@ function FacilitiesPanel({ cohortId, open = false }: { cohortId?: string; open?:
   );
 }
 
-type FeedbackMode = 'STUDENT' | 'COHORT';
-
-/** One-student mode reuses the original single-attendance flow (POST /staff/request-feedback,
- * unchanged). Cohort mode is the new ad hoc survey (POST /feedback-requests) — every student in
- * one Cohort at once, sent on both push/in-app and email with a deep link into the mobile popup
- * (see server/src/services/feedbackRequest.service.ts). The "Sent requests" list underneath lets
- * the sender switch between cohorts/past requests to pull up that one's particular results. */
+/** Request Feedback — the same workspace as the admin tab (components/feedback/FeedbackCampaigns),
+ * scoped to this account's programmes. On a CEM programme's own page (`only`) it fills the page;
+ * in the Staff View grid it sits in a collapsible panel like the others. */
 function FeedbackRequestPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
-  const [mode, setMode] = useState<FeedbackMode>('STUDENT');
-
+  if (open) return <RequestFeedbackWorkspace cohortId={cohortId} showHeader={false} />;
   return (
-    <Panel id="panel-feedback" title="Request Feedback" icon={Star} defaultOpen={open}>
-      <div className="space-y-3">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setMode('STUDENT')}
-            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border cursor-pointer ${mode === 'STUDENT' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10'}`}
-          >
-            One Student
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('COHORT')}
-            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border cursor-pointer ${mode === 'COHORT' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10'}`}
-          >
-            Whole Cohort
-          </button>
-        </div>
-        {mode === 'STUDENT' ? <StudentFeedbackRequestForm cohortId={cohortId} /> : <CohortFeedbackRequestForm defaultCohortId={cohortId} />}
-      </div>
+    <Panel id="panel-feedback" title="Request Feedback" icon={Star}>
+      <RequestFeedbackWorkspace cohortId={cohortId} showHeader={false} />
     </Panel>
-  );
-}
-
-function StudentFeedbackRequestForm({ cohortId }: { cohortId?: string }) {
-  const [search, setSearch] = useState('');
-  const [studentId, setStudentId] = useState('');
-  const [studentLabel, setStudentLabel] = useState('');
-  const { mutate: request, loading } = useMutation('post');
-  const [status, setStatus] = useState('');
-  const { data: results } = useApi<StaffStudent[]>(search.trim().length >= 2 ? withCohort(`/staff/students?search=${encodeURIComponent(search.trim())}`, cohortId) : null);
-
-  const submit = async () => {
-    if (!studentId) return;
-    try {
-      await request('/staff/request-feedback', { studentId });
-      setStatus(`Feedback requested from ${studentLabel}.`);
-      setStudentId('');
-      setStudentLabel('');
-      setSearch('');
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : 'Failed to request feedback.');
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      {studentId ? (
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-sm">
-          <span>{studentLabel}</span>
-          <button onClick={() => { setStudentId(''); setStudentLabel(''); }} className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer">Change</button>
-        </div>
-      ) : (
-        <div className="relative">
-          <Input placeholder="Search by name or student ID…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          {results && results.length > 0 && (
-            <div className="absolute z-10 mt-1 w-full max-h-40 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-lg">
-              {results.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => { setStudentId(r.id); setStudentLabel(`${r.firstName} ${r.lastName}`); setSearch(''); }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer"
-                >
-                  {r.firstName} {r.lastName} {r.studentId ? `(${r.studentId})` : ''}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      <Button onClick={() => void submit()} disabled={loading || !studentId} size="sm" className="w-full">Request Feedback</Button>
-      {status && <p className="text-xs text-gray-500 dark:text-gray-400">{status}</p>}
-    </div>
-  );
-}
-
-interface StaffCohort { id: string; name: string; year: number }
-
-function CohortFeedbackRequestForm({ defaultCohortId }: { defaultCohortId?: string }) {
-  const { data: cohorts } = useApi<StaffCohort[]>('/staff/cohorts');
-  const { data: sent, refetch: refetchSent } = useApi<FeedbackRequest[]>('/feedback-requests');
-  const [cohortId, setCohortId] = useState(defaultCohortId ?? '');
-
-  // SBS Phase 5 — same composer/history/anonymous results as the admin Request Feedback page
-  // (components/feedback/FeedbackCampaigns.tsx); only the cohort list differs (staff-scoped).
-  return (
-    <div className="space-y-4">
-      {!cohorts?.length ? (
-        <p className="text-xs text-gray-400">No cohorts reachable through your assigned courses yet.</p>
-      ) : (
-        <CampaignComposer
-          cohortId={cohortId}
-          onSent={() => { setCohortId(defaultCohortId ?? ''); refetchSent({ silent: true }); }}
-          audience={(
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1" htmlFor="staff-campaign-cohort">Cohort</label>
-              <select id="staff-campaign-cohort" value={cohortId} onChange={(e) => setCohortId(e.target.value)} className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white">
-                <option value="">Select a cohort…</option>
-                {cohorts.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.year})</option>)}
-              </select>
-            </div>
-          )}
-        />
-      )}
-
-      {!!sent?.length && (
-        <div className="pt-2 border-t border-gray-100 dark:border-white/10">
-          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Your campaigns</p>
-          <CampaignHistory requests={sent} onChanged={() => refetchSent({ silent: true })} compact />
-        </div>
-      )}
-    </div>
   );
 }
 

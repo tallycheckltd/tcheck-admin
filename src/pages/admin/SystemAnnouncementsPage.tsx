@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Megaphone, Send, Clock, AlertTriangle, Info, CheckCircle, Link as LinkIcon, Mail, Smartphone, Bell,
-  Save, CalendarClock, Pencil, Ban, History, Users, Eye, X,
+  Save, CalendarClock, Pencil, Ban, History, Users, Eye, X, ChevronDown,
 } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
@@ -13,7 +13,7 @@ type Channel = 'IN_APP' | 'EMAIL';
 type Severity = 'INFO' | 'WARNING' | 'CRITICAL';
 type Action = 'DRAFT' | 'SCHEDULE' | 'PUBLISH';
 
-const severityConfig: Record<Severity, { label: string; icon: React.ReactNode; bg: string; border: string; text: string; chip: string }> = {
+const severityConfig: Record<Severity, { label: string; icon: React.ReactNode; bg: string; border: string; text: string; chip: string; dot: string }> = {
   INFO: {
     label: 'Info',
     icon: <Info size={16} className="text-blue-500" />,
@@ -21,6 +21,7 @@ const severityConfig: Record<Severity, { label: string; icon: React.ReactNode; b
     border: 'border-l-blue-500',
     text: 'text-blue-700 dark:text-blue-400',
     chip: 'bg-blue-500 text-white',
+    dot: 'bg-blue-500',
   },
   WARNING: {
     label: 'Warning',
@@ -29,6 +30,7 @@ const severityConfig: Record<Severity, { label: string; icon: React.ReactNode; b
     border: 'border-l-amber-500',
     text: 'text-amber-700 dark:text-amber-400',
     chip: 'bg-amber-500 text-white',
+    dot: 'bg-amber-500',
   },
   CRITICAL: {
     label: 'Critical',
@@ -37,6 +39,7 @@ const severityConfig: Record<Severity, { label: string; icon: React.ReactNode; b
     border: 'border-l-red-500',
     text: 'text-red-700 dark:text-red-400',
     chip: 'bg-red-500 text-white',
+    dot: 'bg-red-500',
   },
 };
 
@@ -101,6 +104,59 @@ const deliveryLabel = (a: ManagedBroadcast) => {
   }
 };
 
+type Delivery = 'APP' | 'EMAIL' | 'BOTH';
+const DELIVERY_OPTIONS: { key: Delivery; label: string }[] = [
+  { key: 'APP', label: 'App' }, { key: 'EMAIL', label: 'Email' }, { key: 'BOTH', label: 'Both' },
+];
+const channelsFor = (d: Delivery): Channel[] => (d === 'APP' ? ['IN_APP'] : d === 'EMAIL' ? ['EMAIL'] : ['IN_APP', 'EMAIL']);
+const deliveryOf = (channels: string[] | undefined): Delivery => {
+  const app = !channels || channels.includes('IN_APP');
+  const email = !!channels?.includes('EMAIL');
+  return app && email ? 'BOTH' : email ? 'EMAIL' : 'APP';
+};
+const deliveryWords: Record<Delivery, string> = { APP: 'App', EMAIL: 'Email only', BOTH: 'App + email' };
+
+/** The moment a row is filed under, per tab: drafts by last save, scheduled by when they go out,
+ * published by go-live, ended by when they were withdrawn or expired. */
+function dateFor(a: ManagedBroadcast, tab: BroadcastManageTab): string {
+  if (tab === 'DRAFT') return a.updatedAt;
+  if (tab === 'SCHEDULED') return a.scheduledFor ?? a.updatedAt;
+  if (tab === 'PUBLISHED') return a.publishedAt ?? a.updatedAt;
+  return a.withdrawnAt ?? a.expiresAt ?? a.publishedAt ?? a.updatedAt;
+}
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const dayKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function dayLabel(key: string): string {
+  const today = new Date();
+  const shift = (n: number) => { const x = new Date(today); x.setDate(x.getDate() + n); return dayKey(x); };
+  if (key === dayKey(today)) return 'Today';
+  if (key === shift(-1)) return 'Yesterday';
+  if (key === shift(1)) return 'Tomorrow';
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y!, m! - 1, d!).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: y === today.getFullYear() ? undefined : 'numeric' });
+}
+function groupByDay(rows: ManagedBroadcast[], tab: BroadcastManageTab) {
+  const byDay = new Map<string, ManagedBroadcast[]>();
+  for (const a of rows) {
+    const k = dayKey(new Date(dateFor(a, tab)));
+    byDay.set(k, [...(byDay.get(k) ?? []), a]);
+  }
+  const asc = tab === 'SCHEDULED';
+  const t = (a: ManagedBroadcast) => new Date(dateFor(a, tab)).getTime();
+  return [...byDay.entries()]
+    .sort(([x], [y]) => (asc ? x.localeCompare(y) : y.localeCompare(x)))
+    .map(([key, items]) => ({ key, label: dayLabel(key), items: items.sort((p, q) => (asc ? t(p) - t(q) : t(q) - t(p))) }));
+}
+/** What happened, in words, for the compact row. */
+function rowStatus(a: ManagedBroadcast): string {
+  if (a.status === 'DRAFT') return 'Draft saved';
+  if (a.status === 'SCHEDULED') return 'Publishes';
+  if (a.status === 'WITHDRAWN') return 'Withdrawn';
+  if (a.expired) return 'Expired';
+  return a.editedAt ? 'Published · edited' : 'Published';
+}
+
 interface Draft {
   id: string | null;
   status: ManagedBroadcast['status'] | null;
@@ -111,7 +167,8 @@ interface Draft {
   courseId: string;
   majorId: string;
   cohortId: string;
-  email: boolean;
+  /** Where it goes (09-27): the app, email, or both. */
+  delivery: Delivery;
   sendPush: boolean;
   resourceUrl: string;
   resourceLabel: string;
@@ -125,7 +182,7 @@ export function SystemAnnouncementsPage() {
   const empty = (): Draft => ({
     id: null, status: null, title: '', body: '', severity: 'INFO',
     schoolId: isSuperAdmin ? '' : (user?.schoolId ?? ''), courseId: '', majorId: '', cohortId: '',
-    email: false, sendPush: true, resourceUrl: '', resourceLabel: '', scheduledFor: '', expiresAt: '',
+    delivery: 'APP', sendPush: true, resourceUrl: '', resourceLabel: '', scheduledFor: '', expiresAt: '',
   });
 
   const [tab, setTab] = useState<BroadcastManageTab>('PUBLISHED');
@@ -165,8 +222,8 @@ export function SystemAnnouncementsPage() {
     body: d.body.trim(),
     severity: d.severity,
     ...audience(),
-    channels: (d.email ? ['IN_APP', 'EMAIL'] : ['IN_APP']) as Channel[],
-    sendPush: d.sendPush,
+    channels: channelsFor(d.delivery),
+    sendPush: d.delivery !== 'EMAIL' && d.sendPush,
     resourceUrl: d.resourceUrl.trim() || undefined,
     resourceLabel: d.resourceLabel.trim() || undefined,
     expiresAt: d.expiresAt ? fromLocalInput(d.expiresAt) : null,
@@ -223,7 +280,7 @@ export function SystemAnnouncementsPage() {
       id: a.id, status: a.status, title: a.title, body: a.body, severity: a.severity,
       schoolId: a.school?.id ?? (isSuperAdmin ? '' : user?.schoolId ?? ''),
       courseId: a.course?.id ?? '', majorId: a.major?.id ?? '', cohortId: a.cohort?.id ?? '',
-      email: a.channels.includes('EMAIL'), sendPush: a.sendPush,
+      delivery: deliveryOf(a.channels), sendPush: a.sendPush,
       resourceUrl: a.resourceUrl ?? '', resourceLabel: a.resourceLabel ?? '',
       scheduledFor: toLocalInput(a.scheduledFor), expiresAt: toLocalInput(a.expiresAt),
     });
@@ -258,168 +315,8 @@ export function SystemAnnouncementsPage() {
     } finally { setBusy(false); }
   };
 
-  const ready = d.title.trim() && d.body.trim();
-  const scheduleOk = !!d.scheduledFor && new Date(d.scheduledFor).getTime() > Date.now();
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">System Announcements</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-          Write, schedule and publish announcements to a school, programme, faculty or cohort. The audience is fixed when an announcement is published.
-        </p>
-      </div>
-
-      {/* Compose / edit */}
-      <div className="glass-card p-6 space-y-4">
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <div className="flex items-center gap-2">
-            <Megaphone size={18} className="text-blue-500" />
-            <h2 className="text-base font-semibold text-slate-950 dark:text-white">
-              {!d.id ? 'New announcement' : editingPublished ? 'Edit published announcement' : d.status === 'SCHEDULED' ? 'Edit scheduled announcement' : 'Edit draft'}
-            </h2>
-          </div>
-          {d.id && (
-            <button onClick={reset} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer">
-              <X size={14} /> Cancel editing
-            </button>
-          )}
-        </div>
-        {editingPublished && (
-          <p className="text-xs rounded-lg px-3 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
-            You can correct the wording, link and expiry. Recipients will see it marked as edited but won't be notified again. To change who receives it, withdraw it and publish a new one.
-          </p>
-        )}
-
-        <div className="space-y-3">
-          <input type="text" placeholder="Announcement title..." value={d.title} maxLength={200} onChange={(e) => set('title', e.target.value)} className={inputCls} />
-          <textarea placeholder="Write your message here..." value={d.body} onChange={(e) => set('body', e.target.value)} rows={4} className={`${inputCls} resize-none`} />
-
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div>
-              <label className={labelCls}>Target school</label>
-              {isSuperAdmin ? (
-                <select value={d.schoolId} disabled={lockAudience} onChange={(e) => setD((p) => ({ ...p, schoolId: e.target.value, courseId: '', majorId: '', cohortId: '' }))} className={inputCls}>
-                  <option value="">All Schools</option>
-                  {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              ) : (
-                <div className="w-full rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-500 dark:text-slate-400">Your school only</div>
-              )}
-            </div>
-            <div>
-              <label className={labelCls}>Narrow to course (optional)</label>
-              <select value={d.courseId} disabled={lockAudience || !d.schoolId} onChange={(e) => setD((p) => ({ ...p, courseId: e.target.value, ...(e.target.value ? { majorId: '', cohortId: '' } : {}) }))} className={inputCls}>
-                <option value="">Whole school</option>
-                {courses?.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Or by faculty/major (optional)</label>
-              <select value={d.majorId} disabled={lockAudience || !d.schoolId || !!d.courseId} onChange={(e) => setD((p) => ({ ...p, majorId: e.target.value, ...(e.target.value ? { courseId: '', cohortId: '' } : {}) }))} className={inputCls}>
-                <option value="">Whole school</option>
-                {majors?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Or by cohort (optional)</label>
-              <select value={d.cohortId} disabled={lockAudience || !d.schoolId || !!d.courseId || !!d.majorId} onChange={(e) => setD((p) => ({ ...p, cohortId: e.target.value, ...(e.target.value ? { courseId: '', majorId: '' } : {}) }))} className={inputCls}>
-                <option value="">Whole school</option>
-                {cohorts?.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.year})</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="relative">
-              <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="url" placeholder="Resource link (optional) — https://..." value={d.resourceUrl} onChange={(e) => set('resourceUrl', e.target.value)} className={`${inputCls} pl-9`} />
-            </div>
-            <input type="text" placeholder="Link label (e.g. Exam Timetable PDF)" value={d.resourceLabel} onChange={(e) => set('resourceLabel', e.target.value)} className={inputCls} />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Publish later (optional)</label>
-              <input type="datetime-local" value={d.scheduledFor} disabled={editingPublished} onChange={(e) => set('scheduledFor', e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Stop showing after (optional)</label>
-              <input type="datetime-local" value={d.expiresAt} onChange={(e) => set('expiresAt', e.target.value)} className={inputCls} />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Delivery:</span>
-            <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-              <Smartphone size={13} className="text-blue-500" /> In-app
-              <input type="checkbox" checked readOnly disabled className="rounded" />
-            </label>
-            <label className={`flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 ${lockAudience ? 'opacity-50' : 'cursor-pointer'}`}>
-              <Bell size={13} className="text-blue-500" /> Device notification
-              <input type="checkbox" checked={d.sendPush} disabled={lockAudience} onChange={(e) => set('sendPush', e.target.checked)} className="rounded cursor-pointer" />
-            </label>
-            <label className={`flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 ${lockAudience ? 'opacity-50' : 'cursor-pointer'}`}>
-              <Mail size={13} className="text-blue-500" /> Email
-              <input type="checkbox" checked={d.email} disabled={lockAudience} onChange={(e) => set('email', e.target.checked)} className="rounded cursor-pointer" />
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-600">Severity:</span>
-              {(['INFO', 'WARNING', 'CRITICAL'] as Severity[]).map((s) => (
-                <button
-                  key={s}
-                  disabled={lockAudience}
-                  onClick={() => set('severity', s)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer capitalize disabled:opacity-50 ${
-                    d.severity === s ? severityConfig[s].chip : 'bg-gray-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-white/10'
-                  }`}
-                >
-                  {s.toLowerCase()}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {editingPublished ? (
-                <button onClick={() => submit('PUBLISH')} disabled={!ready || busy} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
-                  <Save size={15} /> {busy ? 'Saving…' : 'Save changes'}
-                </button>
-              ) : (
-                <>
-                  <button onClick={() => askConfirm('DRAFT')} disabled={!ready || busy} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
-                    <Save size={15} /> Save draft
-                  </button>
-                  <button onClick={() => askConfirm('SCHEDULE')} disabled={!ready || busy || !scheduleOk} title={!scheduleOk ? 'Pick a future "Publish later" time first' : undefined} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
-                    <CalendarClock size={15} /> Schedule
-                  </button>
-                  <button onClick={() => askConfirm('PUBLISH')} disabled={!ready || busy} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
-                    <Send size={15} /> Publish now
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-          {error && <p className="text-xs text-red-500">{error}</p>}
-          {notice && <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle size={13} /> {notice}</p>}
-        </div>
-      </div>
-
-      {/* Manage */}
-      <div>
-        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-          <div className="flex gap-1 p-1 rounded-xl bg-gray-100 dark:bg-white/5">
-            {TABS.map((t) => (
-              <button key={t.key} onClick={() => setTab(t.key)} className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${tab === t.key ? 'bg-white dark:bg-white/15 text-slate-950 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <input type="search" placeholder="Search announcements" value={search} onChange={(e) => setSearch(e.target.value)} className={`${inputCls} sm:w-64`} />
-        </div>
-        <div className="space-y-3">
-          {rows?.map((a) => {
+  /** The full announcement with its delivery details and actions (opened from the day list). */
+  const card = (a: ManagedBroadcast) => {
             const cfg = severityConfig[a.severity ?? 'INFO'];
             const delivery = deliveryLabel(a);
             const failed = (a.push?.FAILED ?? 0) + (a.push?.INVALID_TOKEN ?? 0);
@@ -480,6 +377,217 @@ export function SystemAnnouncementsPage() {
                 </div>
               </div>
             );
+  };
+
+  // ── Day grouping (09-27): each tab lists its announcements under one heading per day, newest
+  // day first (Scheduled: soonest first). Today (or, for Scheduled, the soonest day) starts open;
+  // other days are folded. A row is just time + title; click it for the full announcement.
+  const [openDays, setOpenDays] = useState<Record<string, boolean>>({});
+  const [openItem, setOpenItem] = useState<string | null>(null);
+  const groups = useMemo(() => groupByDay(rows ?? [], tab), [rows, tab]);
+  const searching = search.trim() !== '';
+  const firstKey = groups[0]?.key;
+  const isDayOpen = (key: string) => openDays[`${tab}:${key}`] ?? (searching || key === dayKey(new Date()) || (tab === 'SCHEDULED' && key === firstKey));
+  const toggleDay = (key: string) => setOpenDays((o) => ({ ...o, [`${tab}:${key}`]: !isDayOpen(key) }));
+
+  const ready = d.title.trim() && d.body.trim();
+  const scheduleOk = !!d.scheduledFor && new Date(d.scheduledFor).getTime() > Date.now();
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">System Announcements</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+          Write, schedule and publish announcements to a school, programme, faculty or cohort. The audience is fixed when an announcement is published.
+        </p>
+      </div>
+
+      {/* Compose / edit */}
+      <div className="glass-card p-6 space-y-4">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="flex items-center gap-2">
+            <Megaphone size={18} className="text-blue-500" />
+            <h2 className="text-base font-semibold text-slate-950 dark:text-white">
+              {!d.id ? 'New announcement' : editingPublished ? 'Edit published announcement' : d.status === 'SCHEDULED' ? 'Edit scheduled announcement' : 'Edit draft'}
+            </h2>
+          </div>
+          {d.id && (
+            <button onClick={reset} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer">
+              <X size={14} /> Cancel editing
+            </button>
+          )}
+        </div>
+        {editingPublished && (
+          <p className="text-xs rounded-lg px-3 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
+            You can correct the wording, link and expiry. Recipients will see it marked as edited but won't be notified again. To change who receives it, withdraw it and publish a new one.
+          </p>
+        )}
+
+        <div className="space-y-3">
+          <input type="text" placeholder="Announcement title..." value={d.title} maxLength={200} onChange={(e) => set('title', e.target.value)} className={inputCls} />
+          <textarea placeholder="Write your message here..." value={d.body} onChange={(e) => set('body', e.target.value)} rows={4} className={`${inputCls} resize-none`} />
+
+          {/* A school admin only ever has their own school, so there's nothing to choose — the picker is SUPER_ADMIN only. */}
+          <div className={`grid grid-cols-1 gap-3 ${isSuperAdmin ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+            {isSuperAdmin && (
+              <div>
+                <label className={labelCls}>Target school</label>
+                <select value={d.schoolId} disabled={lockAudience} onChange={(e) => setD((p) => ({ ...p, schoolId: e.target.value, courseId: '', majorId: '', cohortId: '' }))} className={inputCls}>
+                  <option value="">All Schools</option>
+                  {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className={labelCls}>Narrow to course (optional)</label>
+              <select value={d.courseId} disabled={lockAudience || !d.schoolId} onChange={(e) => setD((p) => ({ ...p, courseId: e.target.value, ...(e.target.value ? { majorId: '', cohortId: '' } : {}) }))} className={inputCls}>
+                <option value="">Whole school</option>
+                {courses?.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Or by faculty/major (optional)</label>
+              <select value={d.majorId} disabled={lockAudience || !d.schoolId || !!d.courseId} onChange={(e) => setD((p) => ({ ...p, majorId: e.target.value, ...(e.target.value ? { courseId: '', cohortId: '' } : {}) }))} className={inputCls}>
+                <option value="">Whole school</option>
+                {majors?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Or by cohort (optional)</label>
+              <select value={d.cohortId} disabled={lockAudience || !d.schoolId || !!d.courseId || !!d.majorId} onChange={(e) => setD((p) => ({ ...p, cohortId: e.target.value, ...(e.target.value ? { courseId: '', majorId: '' } : {}) }))} className={inputCls}>
+                <option value="">Whole school</option>
+                {cohorts?.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.year})</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="relative">
+              <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input type="url" placeholder="Resource link (optional) — https://..." value={d.resourceUrl} onChange={(e) => set('resourceUrl', e.target.value)} className={`${inputCls} pl-9`} />
+            </div>
+            <input type="text" placeholder="Link label (e.g. Exam Timetable PDF)" value={d.resourceLabel} onChange={(e) => set('resourceLabel', e.target.value)} className={inputCls} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Publish later (optional)</label>
+              <input type="datetime-local" value={d.scheduledFor} disabled={editingPublished} onChange={(e) => set('scheduledFor', e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Stop showing after (optional)</label>
+              <input type="datetime-local" value={d.expiresAt} onChange={(e) => set('expiresAt', e.target.value)} className={inputCls} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Send to:</span>
+            <div role="radiogroup" aria-label="Where it goes" className={`inline-flex rounded-xl border border-gray-200 dark:border-white/10 p-1 gap-1 ${lockAudience ? 'opacity-50' : ''}`}>
+              {DELIVERY_OPTIONS.map((o) => (
+                <button key={o.key} type="button" role="radio" aria-checked={d.delivery === o.key} disabled={lockAudience} onClick={() => set('delivery', o.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer disabled:cursor-not-allowed ${d.delivery === o.key ? 'bg-blue-500 text-white' : 'text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}>
+                  {o.key === 'APP' ? <Smartphone size={13} /> : o.key === 'EMAIL' ? <Mail size={13} /> : <><Smartphone size={13} /><Mail size={13} /></>} {o.label}
+                </button>
+              ))}
+            </div>
+            {d.delivery !== 'EMAIL' && (
+              <label className={`flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 ${lockAudience ? 'opacity-50' : 'cursor-pointer'}`}>
+                <Bell size={13} className="text-blue-500" /> Also send a device notification
+                <input type="checkbox" checked={d.sendPush} disabled={lockAudience} onChange={(e) => set('sendPush', e.target.checked)} className="rounded cursor-pointer" />
+              </label>
+            )}
+            {d.delivery === 'EMAIL' && <span className="text-xs text-slate-500 dark:text-slate-400">Won't appear in the app.</span>}
+          </div>
+
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-600">Severity:</span>
+              {(['INFO', 'WARNING', 'CRITICAL'] as Severity[]).map((s) => (
+                <button
+                  key={s}
+                  disabled={lockAudience}
+                  onClick={() => set('severity', s)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer capitalize disabled:opacity-50 ${
+                    d.severity === s ? severityConfig[s].chip : 'bg-gray-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                  }`}
+                >
+                  {s.toLowerCase()}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {editingPublished ? (
+                <button onClick={() => submit('PUBLISH')} disabled={!ready || busy} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                  <Save size={15} /> {busy ? 'Saving…' : 'Save changes'}
+                </button>
+              ) : (
+                <>
+                  <button onClick={() => askConfirm('DRAFT')} disabled={!ready || busy} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                    <Save size={15} /> Save draft
+                  </button>
+                  <button onClick={() => askConfirm('SCHEDULE')} disabled={!ready || busy || !scheduleOk} title={!scheduleOk ? 'Pick a future "Publish later" time first' : undefined} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                    <CalendarClock size={15} /> Schedule
+                  </button>
+                  <button onClick={() => askConfirm('PUBLISH')} disabled={!ready || busy} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                    <Send size={15} /> Publish now
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          {notice && <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle size={13} /> {notice}</p>}
+        </div>
+      </div>
+
+      {/* Manage */}
+      <div>
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <div className="flex gap-1 p-1 rounded-xl bg-gray-100 dark:bg-white/5">
+            {TABS.map((t) => (
+              <button key={t.key} onClick={() => setTab(t.key)} className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${tab === t.key ? 'bg-white dark:bg-white/15 text-slate-950 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <input type="search" placeholder="Search announcements" value={search} onChange={(e) => setSearch(e.target.value)} className={`${inputCls} sm:w-64`} />
+        </div>
+        <div className="space-y-2">
+          {groups.map((g) => {
+            const open = isDayOpen(g.key);
+            return (
+              <section key={g.key} className="glass-card overflow-hidden">
+                <button type="button" onClick={() => toggleDay(g.key)} aria-expanded={open}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03]">
+                  <span className="flex items-center gap-2">
+                    <ChevronDown size={15} className={`text-slate-400 transition-transform ${open ? '' : '-rotate-90'}`} />
+                    <span className="text-sm font-semibold text-slate-950 dark:text-white">{g.label}</span>
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">{g.items.length} announcement{g.items.length === 1 ? '' : 's'}</span>
+                </button>
+                {open && (
+                  <ul className="border-t border-gray-100 dark:border-white/10 divide-y divide-gray-100 dark:divide-white/10">
+                    {g.items.map((a) => {
+                      const expanded = openItem === a.id;
+                      const cfg = severityConfig[a.severity ?? 'INFO'];
+                      return (
+                        <li key={a.id}>
+                          <button type="button" onClick={() => setOpenItem(expanded ? null : a.id)} aria-expanded={expanded}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03]">
+                            <span className="w-12 shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">{timeOf(dateFor(a, tab))}</span>
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} aria-hidden />
+                            <span className="flex-1 min-w-0 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{a.title}</span>
+                            <span className="hidden sm:inline shrink-0 text-xs text-slate-500 dark:text-slate-400">{rowStatus(a)} · {deliveryWords[deliveryOf(a.channels)]}</span>
+                            <ChevronDown size={14} className={`shrink-0 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                          </button>
+                          {expanded && <div className="px-3 pb-3">{card(a)}</div>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+            );
           })}
           {!listLoading && rows?.length === 0 && (
             <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-8">
@@ -504,8 +612,9 @@ export function SystemAnnouncementsPage() {
           </p>
           <ul className="text-xs space-y-1 text-slate-600 dark:text-slate-400">
             <li>• {confirm?.action === 'SCHEDULE' ? `Publishes ${fmt(fromLocalInput(d.scheduledFor))}. The audience is worked out again at that moment.` : 'Publishes immediately. The audience is fixed now — people who join later won\'t see it.'}</li>
-            <li>• In-app{d.sendPush ? ' + device notification' : ' only (no device notification)'}{d.email ? ' + one email each' : ''}.</li>
-            {d.email && <li>• People who unsubscribed from programme emails, or whose address bounced, get it in the app only.</li>}
+            <li>• {d.delivery === 'EMAIL' ? 'One email each — it won\'t appear in the app.' : `In the app${d.sendPush ? ' + device notification' : ' (no device notification)'}${d.delivery === 'BOTH' ? ' + one email each' : ''}.`}</li>
+            {d.delivery === 'BOTH' && <li>• People who unsubscribed from programme emails, or whose address bounced, get it in the app only.</li>}
+            {d.delivery === 'EMAIL' && <li>• People who unsubscribed from programme emails, or whose address bounced, won't receive it.</li>}
             {d.expiresAt && <li>• Stops showing {fmt(fromLocalInput(d.expiresAt))}.</li>}
           </ul>
           <div className="flex justify-end gap-2 pt-2">

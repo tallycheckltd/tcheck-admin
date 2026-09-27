@@ -644,7 +644,17 @@ export interface FeedbackRequest {
   title: string;
   prompt: string;
   createdByName: string;
-  cohort: { id: string; name: string; year: number };
+  /** First targeted programme; null for a whole-school campaign. Prefer `audienceLabel`. */
+  cohort: { id: string; name: string; year: number } | null;
+  /** COHORT = one or more programmes (`cohorts`); SCHOOL = every student at the school. */
+  audience?: 'COHORT' | 'SCHOOL';
+  /** "AMP 2026, SMLP 2026" or "All students at …" — what to show for the audience. */
+  audienceLabel?: string;
+  cohorts?: { id: string; name: string; year: number }[];
+  /** False when the caller can see it (it reached their programme) but didn't send it. */
+  canManage?: boolean;
+  /** CAMPAIGN = sent by a person; COURSE_END = the automatic end-of-course questionnaire. */
+  kind?: 'CAMPAIGN' | 'COURSE_END';
   school: { id: string; name: string };
   createdAt: string;
   closesAt: string | null;
@@ -671,6 +681,17 @@ export interface FeedbackQuestionResult {
 }
 
 /** GET /feedback-requests/:id/results — anonymous to all staff (no respondent identity at all). */
+/** GET /feedback-requests/audiences — what the Request Feedback form may offer this account. */
+export interface CampaignAudiences {
+  canSend: boolean;
+  /** Why the form is unavailable, in words (null when canSend). */
+  reason: string | null;
+  school: { id: string; name: string } | null;
+  canSurveySchool: boolean;
+  canAskOneStudent: boolean;
+  cohorts: { id: string; name: string; year: number }[];
+}
+
 export interface FeedbackRequestResults {
   id: string;
   title: string;
@@ -723,7 +744,13 @@ export interface FeedbackIntelligence {
     relevance: number | null;
   }[];
   comments: { total: number; withheld: boolean; items: string[] };
+  /** 09-27 — the school's own 1–5 session questions; average withheld below minResponses. */
+  customQuestions?: { id: string; prompt: string; responses: number; withheld: boolean; average: number | null; max: number }[];
 }
+
+/** GET /feedback/question-sets — a school's own questions (Executive Education). */
+export interface SchoolQuestion { id?: string; prompt: string }
+export interface FeedbackQuestionSets { session: SchoolQuestion[]; courseEnd: SchoolQuestion[]; updatedAt: string | null }
 
 /** One row from GET /attendance/course-records (CSV export). */
 export interface CourseAttendanceExportRow {

@@ -233,6 +233,24 @@ export function FeedbackIntelligencePage() {
             </section>
           )}
 
+          {!!data!.customQuestions?.length && (
+            <section aria-labelledby="custom-heading">
+              <h2 id="custom-heading" className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Your school's questions</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Rated 1–5 after each session. Averages appear from {data!.minResponses} responses.</p>
+              <ul className="divide-y divide-gray-100 dark:divide-white/10">
+                {data!.customQuestions.map((q) => (
+                  <li key={q.id} className="flex items-baseline justify-between gap-4 py-2.5">
+                    <span className="text-sm text-slate-800 dark:text-slate-200">{q.prompt}</span>
+                    <span className="shrink-0 text-right tabular-nums">
+                      <span className="text-sm font-semibold text-slate-950 dark:text-white">{q.average == null ? 'Withheld' : `${q.average.toFixed(1)} / ${q.max}`}</span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400">{q.responses} response{q.responses === 1 ? '' : 's'}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section aria-labelledby="voice-heading">
             <div className="flex items-baseline justify-between">
               <h2 id="voice-heading" className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">What delegates said</h2>
