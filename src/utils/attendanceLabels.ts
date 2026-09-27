@@ -1,4 +1,4 @@
-import type { CheckOutState, Punctuality } from '../types';
+import type { AttendanceOutcome, CheckOutState, Punctuality } from '../types';
 
 /**
  * SBS Phase 4 — one place for how derived lateness / check-out state read in the dashboard.
@@ -32,5 +32,12 @@ export function checkOutStateLabel(s?: CheckOutState | null): string {
   if (s === 'MISSING') return 'Missing check-out';
   if (s === 'OPEN') return 'Not yet';
   if (s === 'CHECKED_OUT') return 'Checked out';
+  return '';
+}
+
+/** Export/CSV wording for whether the row counts as attended. */
+export function outcomeLabel(o?: AttendanceOutcome | null): string {
+  if (o === 'INCOMPLETE') return 'Incomplete (no check-out)';
+  if (o === 'ATTENDED') return 'Attended';
   return '';
 }

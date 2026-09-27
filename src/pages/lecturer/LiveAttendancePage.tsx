@@ -266,6 +266,7 @@ export function LiveAttendancePage() {
             checkOutAt: a.checkOutAt,
             checkInType: a.checkInType,
             checkOutState: a.checkOutState ?? null,
+            outcome: a.outcome ?? null,
           };
         }),
         ...classDetail.absentStudents.map((s) => ({
@@ -277,6 +278,7 @@ export function LiveAttendancePage() {
           checkOutAt: '',
           checkInType: undefined,
           checkOutState: null,
+          outcome: null,
         })),
       ]
     : [];
@@ -372,7 +374,7 @@ export function LiveAttendancePage() {
             </div>
           ) : classDetail ? (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="glass-card p-4 text-center">
                   <p className="text-sm text-gray-500">Enrolled</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{classDetail.totalEnrolled}</p>
@@ -380,6 +382,10 @@ export function LiveAttendancePage() {
                 <div className="glass-card p-4 text-center">
                   <p className="text-sm text-gray-500">Checked In</p>
                   <p className="text-2xl font-bold text-green-600">{classDetail.totalCheckedIn}</p>
+                </div>
+                <div className="glass-card p-4 text-center" title="Checked in but never checked out — not counted as attended">
+                  <p className="text-sm text-gray-500">Incomplete</p>
+                  <p className="text-2xl font-bold text-amber-600">{classDetail.totalIncomplete ?? 0}</p>
                 </div>
                 <div className="glass-card p-4 text-center">
                   <p className="text-sm text-gray-500">Absent</p>
@@ -389,7 +395,7 @@ export function LiveAttendancePage() {
                   <p className="text-sm text-gray-500">Rate</p>
                   <p className="text-2xl font-bold text-blue-600">
                     {classDetail.totalEnrolled > 0
-                      ? Math.round((classDetail.totalCheckedIn / classDetail.totalEnrolled) * 100)
+                      ? Math.round(((classDetail.totalAttended ?? classDetail.totalCheckedIn) / classDetail.totalEnrolled) * 100)
                       : 0}
                     %
                   </p>
@@ -529,7 +535,7 @@ export function LiveAttendancePage() {
                             {row.checkOutAt
                               ? new Date(row.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                               : row.checkOutState === 'MISSING'
-                                ? <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">Missing check-out</span>
+                                ? <span title={row.outcome === 'INCOMPLETE' ? 'Not counted as attended' : undefined} className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">{row.outcome === 'INCOMPLETE' ? 'Missing check-out · not counted' : 'Missing check-out'}</span>
                                 : '-'}
                           </td>
                         </tr>
@@ -555,7 +561,7 @@ export function LiveAttendancePage() {
                             ? `In ${new Date(row.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                             : 'Not checked in'}
                           {row.checkOutAt && ` · Out ${new Date(row.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-                          {!row.checkOutAt && row.checkOutState === 'MISSING' && ' · Missing check-out'}
+                          {!row.checkOutAt && row.checkOutState === 'MISSING' && (row.outcome === 'INCOMPLETE' ? ' · Missing check-out · not counted' : ' · Missing check-out')}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">

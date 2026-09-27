@@ -454,10 +454,13 @@ export interface AttendanceRecord {
   deltaMinutes?: number;
   /** Derived server-side; missing check-out is a view, never an attendance status. */
   checkOutState?: CheckOutState | null;
+  /** INCOMPLETE = checked in, never checked out, window closed → not attended. */
+  outcome?: AttendanceOutcome | null;
 }
 
 export type Punctuality = 'ON_TIME' | 'LATE' | 'EXTREMELY_LATE' | 'MANUAL';
 export type CheckOutState = 'CHECKED_OUT' | 'OPEN' | 'MISSING';
+export type AttendanceOutcome = 'ATTENDED' | 'INCOMPLETE';
 
 export interface CourseAttendanceSession {
   classId: string;
@@ -516,7 +519,12 @@ export interface ClassAttendanceDetail {
     module?: { id: string; status: ModuleStatus; sequenceOrder: number; studentId: string } | null;
   };
   totalEnrolled: number;
+  /** Every check-in, complete or not. */
   totalCheckedIn: number;
+  /** Check-ins that count as attended (older servers omit it — fall back to totalCheckedIn). */
+  totalAttended?: number;
+  /** Checked in, never checked out, window closed — not attended. */
+  totalIncomplete?: number;
   attendances: AttendanceRecord[];
   absentStudents: (Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'> & { lastFailedAvgRssi?: number | null })[];
 }
@@ -730,6 +738,7 @@ export interface CourseAttendanceExportRow {
   checkInType: CheckInType | string;
   punctuality: string;
   checkOutState?: CheckOutState | null;
+  outcome?: AttendanceOutcome | null;
 }
 
 export interface ClassAttendanceStat {
@@ -747,7 +756,9 @@ export interface ClassAttendanceStat {
   };
   /** SBS Phase 6: for a delivered session, the delegates expected at it; otherwise current enrolment. */
   totalEnrolled: number;
+  /** Complete attendance only (an incomplete check-in is in totalIncomplete). */
   totalCheckedIn: number;
+  totalIncomplete?: number;
   /** Check-in window closed — only delivered sessions count toward rates. */
   delivered?: boolean;
   attendanceRate: number;
@@ -1107,7 +1118,12 @@ export interface IntegrationConnection {
 export interface ReportAttendance {
   sessions: number;
   expected: number;
+  /** Every check-in (complete or not). */
   present: number;
+  /** Complete attendance — the rate's numerator. */
+  attended: number;
+  /** Checked in, never checked out, window closed — not attended. */
+  incomplete: number;
   rejected: number;
   onTime: number;
   late: number;
@@ -1133,7 +1149,22 @@ export interface ReportFeedback {
 
 export interface ReportCampaigns { campaigns: number; recipients: number; responses: number; responseRate: number | null }
 
-export interface ReportTrendWeek { weekStart: string; sessions: number; expected: number; present: number; attendanceRate: number | null }
+export interface ReportTrendWeek { weekStart: string; sessions: number; expected: number; present: number; attended?: number; incomplete?: number; attendanceRate: number | null }
+
+/** One incomplete attendance on Executive Reports — name + student number only. */
+export interface MissingCheckOutRow {
+  attendanceId: string;
+  name: string;
+  studentId: string | null;
+  classId: string;
+  sessionTitle: string;
+  date: string;
+  courseName: string;
+  courseCode: string;
+  checkInAt: string;
+  checkInType: string;
+}
+export interface MissingCheckOuts { total: number; rows: MissingCheckOutRow[] }
 
 export interface ReportSessionRow extends ReportAttendance {
   classId: string;
@@ -1156,6 +1187,7 @@ export interface OverviewReport {
   feedback: ReportFeedback;
   campaigns: ReportCampaigns;
   trend: ReportTrendWeek[];
+  missingCheckOuts?: MissingCheckOuts;
   programmes: ReportProgrammeRow[];
   attention: {
     threshold: number;
@@ -1175,6 +1207,29 @@ export interface ProgrammeReport {
   trend: ReportTrendWeek[];
   courses: (ReportAttendance & { courseId: string; name: string; code: string; facilitatorName: string | null })[];
   sessions: ReportSessionRow[];
+  missingCheckOuts?: MissingCheckOuts;
+}
+
+/** GET /reports/courses/:courseId — one course across its delivered sessions (lecturer course report). */
+export interface CourseReportStudent {
+  userId: string;
+  name: string;
+  studentId: string | null;
+  /** Delivered sessions they were expected at (enrolled by the end, or checked in). */
+  expected: number;
+  attended: number;
+  incomplete: number;
+  late: number;
+  attendanceRate: number | null;
+  belowThreshold: boolean;
+}
+export interface CourseReport {
+  course: { courseId: string; name: string; code: string; facilitatorName: string | null };
+  period: ReportPeriodOut | null;
+  attendanceThreshold: number;
+  attendance: ReportAttendance;
+  sessions: ReportSessionRow[];
+  students: CourseReportStudent[];
 }
 
 export interface SessionReport {

@@ -255,7 +255,7 @@ export async function exportCourseRecordsPdf(
 
   autoTable(doc, {
     startY,
-    head: [['Class', 'Date', 'Room', 'Student ID', 'Name', 'Check-in', 'Check-out', 'Method', 'Punctuality']],
+    head: [['Class', 'Date', 'Room', 'Student ID', 'Name', 'Check-in', 'Check-out', 'Method', 'Punctuality', 'Outcome']],
     body: rows.map((r) => [
       r.classTitle,
       formatExportClassDate(r.classDate),
@@ -266,6 +266,7 @@ export async function exportCourseRecordsPdf(
       r.checkOutAt ? format(parseISO(r.checkOutAt), 'yyyy-MM-dd HH:mm') : r.checkOutState === 'MISSING' ? 'Missing' : '',
       String(r.checkInType),
       r.punctuality,
+      r.outcome === 'INCOMPLETE' ? 'Incomplete' : r.outcome === 'ATTENDED' ? 'Attended' : '',
     ]),
     styles: { fontSize: 7, cellPadding: 3 },
     headStyles: { fillColor: [51, 65, 85], textColor: 255 },
@@ -289,7 +290,7 @@ export async function exportLecturerSessionDetailPdf(detail: ClassAttendanceDeta
   let y = startY;
   doc.setFontSize(10);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Enrolled: ${detail.totalEnrolled} · Present: ${detail.totalCheckedIn} · Absent: ${detail.absentStudents.length}`, 40, y);
+  doc.text(`Enrolled: ${detail.totalEnrolled} · Attended: ${detail.totalAttended ?? detail.totalCheckedIn} · Incomplete (no check-out): ${detail.totalIncomplete ?? 0} · Absent: ${detail.absentStudents.length}`, 40, y);
   y += 28;
 
   autoTable(doc, {
@@ -301,7 +302,7 @@ export async function exportLecturerSessionDetailPdf(detail: ClassAttendanceDeta
       format(parseISO(r.checkInAt), 'MMM d HH:mm'),
       r.checkOutAt ? format(parseISO(r.checkOutAt), 'MMM d HH:mm') : r.checkOutState === 'MISSING' ? 'Missing' : '—',
       String(r.checkInType),
-      r.status,
+      r.outcome === 'INCOMPLETE' ? 'INCOMPLETE' : r.status,
       r.punctuality ?? '—',
     ]),
     styles: { fontSize: 8 },

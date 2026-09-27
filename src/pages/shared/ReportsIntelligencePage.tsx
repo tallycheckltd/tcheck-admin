@@ -4,8 +4,8 @@ import { ChevronLeft, FileDown, Lock, Table2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
-import type { OverviewReport, ProgrammeReport, ReportAttendance, ReportFeedback, ReportCampaigns, School, SessionReport } from '../../types';
-import { dayLabel, overviewCsv, overviewPdf, periodLabel, programmeCsv, programmePdf, rate, score } from '../../lib/reportsExport';
+import type { MissingCheckOuts, OverviewReport, ProgrammeReport, ReportAttendance, ReportFeedback, ReportCampaigns, ReportPeriodOut, School, SessionReport } from '../../types';
+import { dayLabel, missingCheckOutsCsv, overviewCsv, overviewPdf, periodLabel, programmeCsv, programmePdf, rate, score } from '../../lib/reportsExport';
 
 /**
  * SBS Phase 6 — Reports & Executive Intelligence: Overview → Programme → Session, all from
@@ -59,7 +59,7 @@ function Headline({ a, prev, f, c, days }: { a: ReportAttendance; prev?: ReportA
   const fc = f.current;
   return (
     <section aria-label="Headline figures" className="grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 divide-gray-100 dark:divide-white/10">
-      <Figure emphasis label="Attendance" value={rate(a.attendanceRate)} basis={`${a.present} of ${a.expected} expected · ${a.sessions} session${a.sessions === 1 ? '' : 's'}`} delta={deltaText(a.attendanceRate, prev?.attendanceRate, 'pts', days)} />
+      <Figure emphasis label="Attendance" value={rate(a.attendanceRate)} basis={`${a.attended} of ${a.expected} expected${a.incomplete ? ` · ${a.incomplete} incomplete (no check-out)` : ''} · ${a.sessions} session${a.sessions === 1 ? '' : 's'}`} delta={deltaText(a.attendanceRate, prev?.attendanceRate, 'pts', days)} />
       <Figure label="On-time arrival" value={rate(a.onTimeRate)} basis={`${a.onTime} of ${a.onTime + a.late + a.extremelyLate} · ${a.late} late, ${a.extremelyLate} very late`} delta={deltaText(a.onTimeRate, prev?.onTimeRate, 'pts', days)} />
       <Figure label="Check-out completion" value={rate(a.checkOutRate)} basis={`${a.checkedOut} of ${a.checkedOut + a.missingCheckOut} due · ${a.missingCheckOut} missing`} delta={deltaText(a.checkOutRate, prev?.checkOutRate, 'pts', days)} />
       <Figure label="Session feedback"
@@ -78,7 +78,7 @@ function RateCell({ a, threshold }: { a: ReportAttendance; threshold: number }) 
     <td className="py-3 pr-4 text-right tabular-nums">
       <span className={clsx('font-semibold', low ? 'text-amber-700 dark:text-amber-300' : 'text-slate-950 dark:text-white')}>{rate(a.attendanceRate)}</span>
       {low && <span className="block text-[11px] text-amber-700 dark:text-amber-300">Below {threshold}%</span>}
-      <span className="block text-xs text-slate-500 dark:text-slate-400">{a.present} / {a.expected}</span>
+      <span className="block text-xs text-slate-500 dark:text-slate-400">{a.attended} / {a.expected}{a.incomplete ? ` · ${a.incomplete} incomplete` : ''}</span>
     </td>
   );
 }
@@ -115,7 +115,7 @@ function Trend({ weeks }: { weeks: OverviewReport['trend'] }) {
           <li key={w.weekStart}>
             <p className="text-xs text-slate-500 dark:text-slate-400">w/c {dayLabel(w.weekStart)}</p>
             <p className="text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-100">{rate(w.attendanceRate)}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">{w.present} / {w.expected} · {w.sessions} sess.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">{w.attended ?? w.present} / {w.expected} · {w.sessions} sess.</p>
           </li>
         ))}
       </ol>
@@ -133,6 +133,43 @@ function ExportButtons({ onCsv, onPdf }: { onCsv: () => void; onPdf: () => Promi
         <FileDown size={15} /> {busy ? 'Preparing…' : 'PDF briefing'}
       </button>
     </div>
+  );
+}
+
+/**
+ * Checked in, never checked out, window closed — not counted as attended. The CEM's follow-up
+ * list for their own programmes (scope is the server's; this only renders it).
+ */
+function MissingCheckOutList({ m, period, label, onSession }: { m?: MissingCheckOuts; period: ReportPeriodOut; label: string; onSession: (id: string) => void }) {
+  if (!m) return null;
+  return (
+    <section aria-labelledby="missing" className="space-y-3">
+      <Heading right={m.total > 0 ? (
+        <button type="button" onClick={() => missingCheckOutsCsv(m, label, period)} className="flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 cursor-pointer"><Table2 size={13} /> CSV</button>
+      ) : undefined}><span id="missing">Missing check-outs{m.total ? ` · ${m.total}` : ''}</span></Heading>
+      {m.total === 0 ? (
+        <p className="text-sm text-slate-600 dark:text-slate-400">Every delegate who checked in also checked out in this period.</p>
+      ) : (
+        <>
+          <p className="text-sm text-slate-600 dark:text-slate-400">These delegates checked in but never checked out, so the session doesn't count as attended.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
+              <thead><tr className={tableHead}><th className="py-2 pr-4 font-medium">Delegate</th><th className="py-2 pr-4 font-medium">Session</th><th className="py-2 font-medium text-right">Checked in</th></tr></thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-white/10">
+                {m.rows.map((r) => (
+                  <tr key={r.attendanceId}>
+                    <td className="py-2.5 pr-4"><p className="font-medium text-slate-900 dark:text-slate-100">{r.name}</p>{r.studentId && <p className="text-xs text-slate-500 dark:text-slate-400">{r.studentId}</p>}</td>
+                    <td className="py-2.5 pr-4"><button type="button" onClick={() => onSession(r.classId)} className="text-left text-blue-700 dark:text-blue-300 hover:underline cursor-pointer">{r.courseCode} — {r.sessionTitle}</button><span className="block text-xs text-slate-500 dark:text-slate-400">{dayLabel(r.date)}</span></td>
+                    <td className="py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">{new Date(r.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {m.total > m.rows.length && <p className="text-xs text-slate-500 dark:text-slate-400">Showing the latest {m.rows.length} of {m.total}. Narrow the period to see the rest.</p>}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -281,7 +318,7 @@ function OverviewView({ r, scopeLabel, onProgramme, onSession }: { r: OverviewRe
                   <li key={s.classId}>
                     <button type="button" onClick={() => onSession(s.classId)} className="w-full flex items-baseline justify-between gap-4 py-2.5 text-left cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03] rounded-lg px-1">
                       <span><span className="text-sm font-medium text-slate-900 dark:text-slate-100">{s.courseCode} — {s.title}</span><span className="block text-xs text-slate-500 dark:text-slate-400">{dayLabel(s.date)}{s.facilitatorName ? ` · ${s.facilitatorName}` : ''}</span></span>
-                      <span className="text-sm tabular-nums text-amber-700 dark:text-amber-300 shrink-0">{rate(s.attendanceRate)} <span className="text-slate-500 dark:text-slate-400">({s.present} / {s.expected})</span></span>
+                      <span className="text-sm tabular-nums text-amber-700 dark:text-amber-300 shrink-0">{rate(s.attendanceRate)} <span className="text-slate-500 dark:text-slate-400">({s.attended} / {s.expected})</span></span>
                     </button>
                   </li>
                 ))}
@@ -290,6 +327,8 @@ function OverviewView({ r, scopeLabel, onProgramme, onSession }: { r: OverviewRe
           </>
         )}
       </section>
+
+      <MissingCheckOutList m={r.missingCheckOuts} period={r.period} label={scopeLabel} onSession={onSession} />
 
       {r.programmes.length > 0 && (
         <section aria-labelledby="programmes" className="space-y-2">
@@ -316,7 +355,7 @@ function OverviewView({ r, scopeLabel, onProgramme, onSession }: { r: OverviewRe
       <Trend weeks={r.trend} />
       <Voice f={r.feedback} />
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        Sessions are counted by their scheduled day once check-in has closed. Attendance is present ÷ expected (enrolled by the session's end, plus anyone recorded present); rejected check-in attempts never count as attendance. Comparisons are with the previous {r.period.days} days ({periodLabel(r.previousPeriod)}). Campaigns count in the period they were sent.
+        Sessions are counted by their scheduled day once check-in has closed. Attendance is attended ÷ expected (enrolled by the session's end, plus anyone who checked in). A check-in with no check-out after the check-out window closes is incomplete and not counted; manual check-ins need no check-out. Rejected check-in attempts never count as attendance. Comparisons are with the previous {r.period.days} days ({periodLabel(r.previousPeriod)}). Campaigns count in the period they were sent.
       </p>
     </>
   );
@@ -348,6 +387,7 @@ function ProgrammeView({ r, scopeLabel, onSession }: { r: ProgrammeReport; scope
           </div>
         </section>
       )}
+      <MissingCheckOutList m={r.missingCheckOuts} period={r.period} label={r.programme.name} onSession={onSession} />
       <Trend weeks={r.trend} />
       <section aria-labelledby="sessions" className="space-y-2">
         <Heading><span id="sessions">Sessions</span></Heading>
@@ -389,7 +429,7 @@ function SessionView({ r, canSeeRoster }: { r: SessionReport; canSeeRoster: bool
         <p className="text-sm text-slate-600 dark:text-slate-400">This session hasn't been delivered yet — attendance is reported once its check-in window closes.</p>
       ) : (
         <section aria-label="Session figures" className="grid gap-x-10 sm:grid-cols-2 lg:grid-cols-4">
-          <Figure emphasis label="Attendance" value={`${a.present} / ${a.expected}`} basis={`${rate(a.attendanceRate)} of delegates expected${a.attendanceRate != null && a.attendanceRate < r.attendanceThreshold ? ` · below the ${r.attendanceThreshold}% threshold` : ''}`} />
+          <Figure emphasis label="Attendance" value={`${a.attended} / ${a.expected}`} basis={`${rate(a.attendanceRate)} of delegates expected${a.incomplete ? ` · ${a.incomplete} incomplete (no check-out)` : ''}${a.attendanceRate != null && a.attendanceRate < r.attendanceThreshold ? ` · below the ${r.attendanceThreshold}% threshold` : ''}`} />
           <Figure label="Punctuality" value={`${a.onTime} on time`} basis={`${a.late} late · ${a.extremelyLate} very late${a.manual ? ` · ${a.manual} marked manually` : ''}`} />
           <Figure label="Check-out" value={`${a.checkedOut} checked out`} basis={`${a.missingCheckOut} missing${a.checkOutOpen ? ` · ${a.checkOutOpen} still open` : ''}`} />
           <Figure label="Rejected attempts" value={String(a.rejected)} basis="Not counted as attendance" />

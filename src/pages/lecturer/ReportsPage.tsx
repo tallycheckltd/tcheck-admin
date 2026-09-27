@@ -18,14 +18,18 @@ import {
   Table2,
   Building2,
   Sparkles,
+  ChevronDown,
+  ChevronRight,
+  BarChart3,
 } from 'lucide-react';
-import type { Course, ClassSession, ClassAttendanceDetail, CourseAttendanceExportRow } from '../../types';
+import type { Course, ClassSession, ClassAttendanceDetail, CourseAttendanceExportRow, CourseReport } from '../../types';
+import { courseReportCsv, courseReportPdf, dayLabel, rate as fmtRate } from '../../lib/reportsExport';
 import { api } from '../../lib/api';
 import { exportCourseRecordsPdf, exportHodRosterPdf, exportLecturerSessionDetailPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
 import { clsx } from 'clsx';
 import { formatClassCalendarDate, safeFormat } from '../../utils/classDateDisplay';
-import { checkOutStateLabel, punctualityColor, punctualityLabel } from '../../utils/attendanceLabels';
+import { checkOutStateLabel, outcomeLabel, punctualityColor, punctualityLabel } from '../../utils/attendanceLabels';
 
 /* ---- HOD / admin exports (CSV) ---- */
 interface RosterRow {
@@ -217,10 +221,10 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
         }
         downloadCsv(
           `tcheck-course-${selectedCourse}-${dateTo}.csv`,
-          ['Student ID', 'First Name', 'Last Name', 'Class', 'Class Date', 'Room', 'Check-In', 'Check-Out', 'Method', 'Punctuality', 'Check-Out Status'],
+          ['Student ID', 'First Name', 'Last Name', 'Class', 'Class Date', 'Room', 'Check-In', 'Check-Out', 'Method', 'Punctuality', 'Check-Out Status', 'Outcome'],
           rows.map((r) => [
             r.studentId, r.firstName, r.lastName, r.classTitle, r.classDate, r.room ?? '',
-            r.checkInAt, r.checkOutAt ?? '', r.checkInType, r.punctuality, checkOutStateLabel(r.checkOutState),
+            r.checkInAt, r.checkOutAt ?? '', r.checkInType, r.punctuality, checkOutStateLabel(r.checkOutState), outcomeLabel(r.outcome),
           ]),
         );
       }
@@ -467,6 +471,14 @@ function LecturerReportsView() {
   const { data: classes, loading: classesLoading, error: classesError } = useApi<ClassSession[]>('/classes');
 
   const [selectedClassId, setSelectedClassId] = useState<string>('');
+  // Course report (whole course) vs one session — only one is shown at a time.
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleCourse = (id: string) => setExpanded((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const [detail, setDetail] = useState<ClassAttendanceDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
@@ -489,7 +501,26 @@ function LecturerReportsView() {
     return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [classes, courses, sessionSearch]);
 
+  // Sessions grouped under their course (courses A→Z by code, sessions newest first). While
+  // searching, only courses with a matching session are listed, already expanded.
+  const groups = useMemo(() => {
+    const searching = sessionSearch.trim() !== '';
+    return [...(courses ?? [])]
+      .sort((a, b) => (a.code ?? '').localeCompare(b.code ?? '') || a.name.localeCompare(b.name))
+      .map((course) => ({ course, sessions: filteredClasses.filter((c) => c.courseId === course.id) }))
+      .filter((g) => !searching || g.sessions.length > 0);
+  }, [courses, filteredClasses, sessionSearch]);
+
+  const openCourseReport = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setSelectedClassId('');
+    setDetail(null);
+    setDetailError('');
+    setExpanded((prev) => new Set(prev).add(courseId));
+  };
+
   const loadRecords = async (classId: string) => {
+    setSelectedCourseId('');
     setSelectedClassId(classId);
     setDetailLoading(true);
     setDetailError('');
@@ -548,36 +579,70 @@ function LecturerReportsView() {
               Loading…
             </div>
           )}
-          {!coursesLoading && !classesLoading && filteredClasses.length === 0 && (
-            <p className="text-xs text-center text-[var(--app-text-muted)] py-10 px-2">No classes match filters.</p>
+          {!coursesLoading && !classesLoading && groups.length === 0 && (
+            <p className="text-xs text-center text-[var(--app-text-muted)] py-10 px-2">{sessionSearch.trim() ? 'No sessions match your search.' : 'No courses yet.'}</p>
           )}
-          <div className="max-h-[min(520px,55vh)] overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-            {filteredClasses.map((cls) => (
-              <button
-                key={cls.id}
-                type="button"
-                onClick={() => loadRecords(cls.id)}
-                className={clsx(
-                  'w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all border',
-                  selectedClassId === cls.id
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/25'
-                    : 'bg-[var(--app-surface-muted)] dark:bg-white/5 text-[var(--app-text-secondary)] border-[var(--app-border-soft)] hover:bg-[var(--nav-hover-bg)]',
-                )}
-              >
-                <div className="font-semibold truncate text-[var(--app-text)] dark:text-white">
-                  {cls.course?.code && <span className="opacity-90 mr-1">{cls.course.code}</span>}
-                  {cls.title}
+          <div className="max-h-[min(560px,60vh)] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            {groups.map(({ course, sessions }) => {
+              const open = expanded.has(course.id) || sessionSearch.trim() !== '';
+              return (
+                <div key={course.id} className="rounded-xl border border-[var(--app-border-soft)] dark:border-white/10 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleCourse(course.id)}
+                    aria-expanded={open}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left bg-[var(--app-surface-muted)] dark:bg-white/5 hover:bg-[var(--nav-hover-bg)]"
+                  >
+                    {open ? <ChevronDown size={14} className="shrink-0 text-[var(--app-text-muted)]" /> : <ChevronRight size={14} className="shrink-0 text-[var(--app-text-muted)]" />}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-semibold text-[var(--app-text)] truncate">{course.code} · {course.name}</span>
+                      <span className="block text-[10px] text-[var(--app-text-muted)]">{sessions.length} session{sessions.length === 1 ? '' : 's'}</span>
+                    </span>
+                  </button>
+                  {open && (
+                    <div className="p-1.5 space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => openCourseReport(course.id)}
+                        className={clsx(
+                          'w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all border',
+                          selectedCourseId === course.id
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/25'
+                            : 'text-blue-700 dark:text-blue-300 border-transparent hover:bg-[var(--nav-hover-bg)]',
+                        )}
+                      >
+                        <BarChart3 size={13} className="shrink-0" /> Course report
+                      </button>
+                      {sessions.map((cls) => (
+                        <button
+                          key={cls.id}
+                          type="button"
+                          onClick={() => loadRecords(cls.id)}
+                          className={clsx(
+                            'w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all border',
+                            selectedClassId === cls.id
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/25'
+                              : 'text-[var(--app-text-secondary)] border-transparent hover:bg-[var(--nav-hover-bg)]',
+                          )}
+                        >
+                          <div className={clsx('font-semibold truncate', selectedClassId === cls.id ? 'text-white' : 'text-[var(--app-text)] dark:text-white')}>{cls.title}</div>
+                          <div className={clsx('text-[10px] mt-0.5', selectedClassId === cls.id ? 'text-blue-100' : 'opacity-65')}>
+                            {formatClassCalendarDate(cls.date)}
+                          </div>
+                        </button>
+                      ))}
+                      {sessions.length === 0 && <p className="text-[11px] text-[var(--app-text-muted)] px-3 py-2">No sessions yet.</p>}
+                    </div>
+                  )}
                 </div>
-                <div className={clsx('text-[10px] mt-1', selectedClassId === cls.id ? 'text-blue-100' : 'opacity-65')}>
-                  {formatClassCalendarDate(cls.date)}
-                </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       </aside>
 
       <section className="lg:col-span-8 xl:col-span-9 min-w-0">
+        {selectedCourseId && <CourseReportPanel courseId={selectedCourseId} onSession={(id) => void loadRecords(id)} />}
         {detailLoading && (
           <div className={clsx(cardBase, 'flex flex-col items-center justify-center py-24 gap-3')}>
             <Loader2 className="animate-spin text-blue-500" size={32} />
@@ -680,7 +745,7 @@ function LecturerReportsView() {
                             {r.checkInType}
                           </Badge>
                         </td>
-                        <td>{r.status}</td>
+                        <td>{r.outcome === 'INCOMPLETE' ? <Badge color="yellow">Incomplete</Badge> : r.status}</td>
                         <td>
                           {r.punctuality ? (
                             <Badge color={punctualityColor(r.punctuality)}>{punctualityLabel(r.punctuality)}</Badge>
@@ -714,16 +779,140 @@ function LecturerReportsView() {
             )}
           </div>
         )}
-        {!detailLoading && !detailError && !detail && (
+        {!selectedCourseId && !detailLoading && !detailError && !detail && (
           <div className={clsx(cardBase, 'py-24 text-center border-dashed')}>
             <FileText size={44} className="mx-auto text-[var(--app-text-muted)] mb-4 opacity-50" />
-            <p className="text-sm font-medium text-[var(--app-text-secondary)]">Select a session</p>
+            <p className="text-sm font-medium text-[var(--app-text-secondary)]">Select a course or a session</p>
             <p className="text-xs text-[var(--app-text-muted)] mt-2 max-w-sm mx-auto">
-              Browse your upcoming and past sessions, then download a PDF report with the TCheck logo.
+              Open a course for its overall report, or a single session for its attendance sheet. Both download as PDF.
             </p>
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * Lecturer course report — the whole course at a glance: totals, every student's attendance
+ * across its delivered sessions (lowest first, so who needs a nudge is on top) and every session.
+ * Scope and numbers come from GET /reports/courses/:courseId (same definitions as Executive Reports).
+ */
+function CourseReportPanel({ courseId, onSession }: { courseId: string; onSession: (classId: string) => void }) {
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const ranged = from !== '' && to !== '' && from <= to;
+  const { data: r, loading, error } = useApi<CourseReport>(`/reports/courses/${courseId}${ranged ? `?from=${from}&to=${to}` : ''}`);
+
+  if (loading && !r) {
+    return (
+      <div className={clsx(cardBase, 'flex flex-col items-center justify-center py-24 gap-3')}>
+        <Loader2 className="animate-spin text-blue-500" size={32} />
+        <p className="text-sm text-[var(--app-text-muted)]">Loading course report…</p>
+      </div>
+    );
+  }
+  if (error || !r) {
+    return (
+      <div className={clsx(cardBase, 'p-8 text-center')}>
+        <AlertCircle className="mx-auto text-red-500 mb-3" size={36} />
+        <p className="text-sm text-red-700 dark:text-red-300">Could not load this course report. {error}</p>
+      </div>
+    );
+  }
+  const a = r.attendance;
+  const below = r.students.filter((s) => s.belowThreshold).length;
+
+  return (
+    <div className="space-y-5">
+      <div className={clsx(cardBase, 'p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4')}>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--app-text-muted)]">Course report</p>
+          <h2 className="text-lg sm:text-xl font-bold text-[var(--app-text)] mt-1 truncate">{r.course.name}</h2>
+          <p className="text-xs text-[var(--app-text-muted)] mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
+            <Badge color="blue">{r.course.code}</Badge>
+            <span>{r.period ? `${dayLabel(r.period.from)} – ${dayLabel(r.period.to)}` : 'All delivered sessions'}</span>
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0 self-start">
+          <Button variant="secondary" size="sm" className="gap-2" onClick={() => courseReportCsv(r)}><Table2 size={14} /> CSV</Button>
+          <Button variant="secondary" size="sm" className="gap-2" disabled={pdfBusy} onClick={async () => { setPdfBusy(true); try { await courseReportPdf(r); } catch { window.alert('Could not generate PDF. Try Chrome or Edge on desktop.'); } finally { setPdfBusy(false); } }}>
+            <Download size={14} className={pdfBusy ? 'animate-pulse' : ''} /> {pdfBusy ? 'PDF…' : 'Download PDF'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3 text-xs text-[var(--app-text-muted)]">
+        <label>From<input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className={clsx(inputBase, 'block mt-1 text-xs')} /></label>
+        <label>To<input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className={clsx(inputBase, 'block mt-1 text-xs')} /></label>
+        {(from || to) && <Button variant="secondary" size="sm" onClick={() => { setFrom(''); setTo(''); }}>All time</Button>}
+        {(from || to) && !ranged && <span className="pb-2">Pick both dates to filter.</span>}
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: 'Sessions delivered', value: a.sessions, tone: '' },
+          { label: 'Attendance', value: fmtRate(a.attendanceRate), sub: `${a.attended} / ${a.expected}`, tone: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Incomplete', value: a.incomplete, sub: 'no check-out', tone: 'text-amber-600 dark:text-amber-400' },
+          { label: `Below ${r.attendanceThreshold}%`, value: below, sub: `of ${r.students.length} students`, tone: below ? 'text-red-600 dark:text-red-400' : '' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <p className="text-[10px] font-bold uppercase text-[var(--app-text-muted)]">{s.label}</p>
+            <p className={clsx('text-2xl font-bold mt-1 tabular-nums', s.tone || 'text-[var(--app-text)]')}>{s.value}</p>
+            {s.sub && <p className="text-[11px] text-[var(--app-text-muted)] tabular-nums">{s.sub}</p>}
+          </div>
+        ))}
+      </div>
+
+      <div className={clsx(cardBase, 'overflow-hidden')}>
+        <div className="border-b border-[var(--app-border-soft)] dark:border-white/10 px-4 py-3">
+          <h3 className="text-sm font-semibold text-[var(--app-text)]">Students ({r.students.length}) <span className="font-normal text-[var(--app-text-muted)]">· lowest attendance first</span></h3>
+        </div>
+        {r.students.length === 0 ? <p className="text-sm text-[var(--app-text-muted)] p-4">No students enrolled.</p> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm gradient-table min-w-[600px]">
+              <thead><tr><th>Student ID</th><th>Name</th><th>Attended</th><th>Rate</th><th>Incomplete</th><th>Late</th></tr></thead>
+              <tbody>
+                {r.students.map((s) => (
+                  <tr key={s.userId}>
+                    <td className="font-mono text-xs">{s.studentId ?? '—'}</td>
+                    <td className="font-medium">{s.name}</td>
+                    <td className="tabular-nums">{s.attended} / {s.expected}</td>
+                    <td>{s.attendanceRate == null ? '—' : <Badge color={s.belowThreshold ? 'red' : 'green'}>{fmtRate(s.attendanceRate)}</Badge>}</td>
+                    <td className="tabular-nums">{s.incomplete ? <Badge color="yellow">{s.incomplete}</Badge> : 0}</td>
+                    <td className="tabular-nums">{s.late}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className={clsx(cardBase, 'overflow-hidden')}>
+        <div className="border-b border-[var(--app-border-soft)] dark:border-white/10 px-4 py-3">
+          <h3 className="text-sm font-semibold text-[var(--app-text)]">Sessions ({r.sessions.length})</h3>
+        </div>
+        {r.sessions.length === 0 ? <p className="text-sm text-[var(--app-text-muted)] p-4">No delivered sessions{r.period ? ' in this period' : ' yet'}. Sessions count once their check-in window has closed.</p> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm gradient-table min-w-[560px]">
+              <thead><tr><th>Date</th><th>Session</th><th>Attended</th><th>Rate</th><th>Incomplete</th></tr></thead>
+              <tbody>
+                {r.sessions.map((s) => (
+                  <tr key={s.classId}>
+                    <td className="text-xs whitespace-nowrap">{dayLabel(s.date)}</td>
+                    <td><button type="button" onClick={() => onSession(s.classId)} className="text-left font-medium text-blue-700 dark:text-blue-300 hover:underline">{s.title}</button></td>
+                    <td className="tabular-nums">{s.attended} / {s.expected}</td>
+                    <td className="tabular-nums">{fmtRate(s.attendanceRate)}</td>
+                    <td className="tabular-nums">{s.incomplete}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

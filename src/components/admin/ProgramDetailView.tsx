@@ -38,6 +38,8 @@ interface ProgramCheckIn {
   checkInType: string; status: string;
   // SBS Phase 4 — derived server-side; status stays PRESENT for a late arrival.
   punctuality?: Punctuality; checkOutState?: CheckOutState | null;
+  /** INCOMPLETE = checked in, never checked out → not attended. */
+  outcome?: 'ATTENDED' | 'INCOMPLETE' | null;
 }
 interface ProgramDetail {
   id: string; name: string; year: number; schoolId: string;
@@ -197,7 +199,9 @@ export function ProgramDetailView({ cohortId }: { cohortId: string }) {
                     </td>
                     <td className="py-2 px-3"><Badge color="blue">{c.checkInType}</Badge></td>
                     <td className="py-2 px-3">
-                      <Badge color={c.status === 'PRESENT' ? 'green' : 'red'}>{c.status}</Badge>
+                      {c.outcome === 'INCOMPLETE'
+                        ? <Badge color="yellow">INCOMPLETE</Badge>
+                        : <Badge color={c.status === 'PRESENT' ? 'green' : 'red'}>{c.status}</Badge>}
                     </td>
                     <td className="py-2 px-3">
                       {c.status === 'PRESENT' && c.punctuality ? <Badge color={punctualityColor(c.punctuality)}>{punctualityLabel(c.punctuality)}</Badge> : '—'}
