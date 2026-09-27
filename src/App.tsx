@@ -17,8 +17,7 @@ import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { CourseAttendanceDetailPage } from './pages/admin/CourseAttendanceDetailPage';
 import { AttendanceAnalyticsPage } from './pages/admin/AttendanceAnalyticsPage';
 import { NpsAnalyticsPage } from './pages/admin/NpsAnalyticsPage';
-import { FeedbackIntelligencePage } from './pages/shared/FeedbackIntelligencePage';
-import { ReportsIntelligencePage } from './pages/shared/ReportsIntelligencePage';
+import { InsightsPage, LegacyInsightsRedirect } from './pages/shared/InsightsPage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
 import { AllLecturersPage } from './pages/admin/AllLecturersPage';
 import { BLEBeaconPage } from './pages/admin/BLEBeaconPage';
@@ -93,9 +92,10 @@ export default function App() {
               <Route path="/admin/attendance-analytics" element={<AttendanceAnalyticsPage />} />
               <Route path="/admin/nps-analytics" element={<NpsAnalyticsPage />} />
               {/* SBS Phase 5 — role-scoped server-side; not under /feedback/* (that's the public deep-link redirect). */}
-              <Route path="/insights/feedback" element={<FeedbackIntelligencePage />} />
+              <Route path="/insights" element={<InsightsPage />} />
+              <Route path="/insights/feedback" element={<LegacyInsightsRedirect tab="feedback" />} />
               {/* SBS Phase 6 — Reports & Executive Intelligence (role-scoped server-side). */}
-              <Route path="/insights/reports" element={<ReportsIntelligencePage />} />
+              <Route path="/insights/reports" element={<LegacyInsightsRedirect tab="overview" />} />
               <Route path="/admin/students" element={<AllStudentsPage />} />
               <Route path="/admin/lecturers" element={<AllLecturersPage />} />
               <Route path="/admin/lecturer-presence" element={<LecturerPresencePage />} />

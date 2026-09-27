@@ -9,7 +9,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   LayoutDashboard, School, Users, Users2, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
-  BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star, MessageSquareQuote, Presentation,
+  BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star, Presentation,
   ShieldAlert, ChevronDown, ChevronRight, ChevronLeft, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
   User as UserIcon, Plug, Wrench, DoorOpen, FileBarChart, Eye, MailCheck } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -54,8 +54,7 @@ const superAdminGeneral: NavItem[] = [
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   // Executive Ed Phase 9 — visible to SUPER_ADMIN unconditionally (global role, not scoped to one
   // school's execEdSuite flag); the page itself is empty/harmless for a school with no NPS data.
-  { to: '/insights/reports', icon: Presentation, label: 'Executive Reports' },
-  { to: '/insights/feedback', icon: MessageSquareQuote, label: 'Feedback Intelligence' },
+  { to: '/insights', icon: Presentation, label: 'Insights' },
   { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
   { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
   { to: '/admin/classrooms', icon: DoorOpen, label: 'Classrooms' },
@@ -113,8 +112,7 @@ const hodOperations: NavItem[] = [
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   // Executive Ed Phase 9 — hidden entirely unless this school has execEdSuite on, via
   // filterBySchoolConfig/hiddenNavLabels below (same mechanism as the Announcements/Terms toggle).
-  { to: '/insights/reports', icon: Presentation, label: 'Executive Reports' },
-  { to: '/insights/feedback', icon: MessageSquareQuote, label: 'Feedback Intelligence' },
+  { to: '/insights', icon: Presentation, label: 'Insights' },
   { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
 ];
 
@@ -157,8 +155,7 @@ const lecturerLinks: NavItem[] = [
   // into this static nav array. Same page as CLIENT_EXPERIENCE_MANAGER's cxmLinks below.
   { to: '/staff', icon: UserCheck, label: 'Staff View' },
   { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/insights/reports', icon: Presentation, label: 'Executive Reports' },
-  { to: '/insights/feedback', icon: MessageSquareQuote, label: 'Feedback Intelligence' },
+  { to: '/insights', icon: Presentation, label: 'Insights' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/announcements', icon: Megaphone, label: 'Announcements' },
 ];
@@ -177,8 +174,7 @@ const lecturerLinks: NavItem[] = [
 const cxmLinks: NavItem[] = [
   { to: '/cem', icon: Layers, label: 'Programs' },
   { to: '/cem/facilities', icon: Wrench, label: 'Facilities' },
-  { to: '/insights/reports', icon: Presentation, label: 'Executive Reports' },
-  { to: '/insights/feedback', icon: MessageSquareQuote, label: 'Feedback Intelligence' },
+  { to: '/insights', icon: Presentation, label: 'Insights' },
   { to: '/messages', icon: MessageSquare, label: 'Messages' },
 ];
 
@@ -259,8 +255,7 @@ const hierarchyOperations: NavItem[] = [
   { to: '/live', icon: Radio, label: 'Live Attendance' },
   { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
   // Executive Ed Phase 9 — same execEdSuite gating as hodOperations above.
-  { to: '/insights/reports', icon: Presentation, label: 'Executive Reports' },
-  { to: '/insights/feedback', icon: MessageSquareQuote, label: 'Feedback Intelligence' },
+  { to: '/insights', icon: Presentation, label: 'Insights' },
   { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
 ];
 
@@ -285,8 +280,7 @@ const execOperations: NavItem[] = [
   { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
   // Executive Ed Phase 9 — the VC/DVC "Executive Diet" nav is exactly this feature's home
   // audience; gated the same as everywhere else via hiddenNavLabels/filterBySchoolConfig.
-  { to: '/insights/reports', icon: Presentation, label: 'Executive Reports' },
-  { to: '/insights/feedback', icon: MessageSquareQuote, label: 'Feedback Intelligence' },
+  { to: '/insights', icon: Presentation, label: 'Insights' },
   { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
   { to: '/admin/cem-reports', icon: FileBarChart, label: 'CEM & Programmes Report' },
 ];
@@ -719,10 +713,9 @@ export function Sidebar({
     // Executive Ed Phase 9 — NPS Analytics only means anything for a school actually running the
     // NPS engine (Phase 6's sweep is itself execEdSuite-gated), so it's hidden everywhere else.
     if (!user?.school?.features?.execEdSuite) hiddenNavLabels.add('NPS Analytics');
-    // SBS Phase 5 — session feedback is only collected at execEdSuite schools, so same gate.
-    if (!user?.school?.features?.execEdSuite) hiddenNavLabels.add('Feedback Intelligence');
-    // SBS Phase 6 — same audience and gate as Feedback Intelligence.
-    if (!user?.school?.features?.execEdSuite) hiddenNavLabels.add('Executive Reports');
+    // Insights (Executive Reports + Feedback Intelligence, merged 09-27) — session feedback and the
+    // exec-ed reporting model only exist at execEdSuite schools, so it's hidden everywhere else.
+    if (!user?.school?.features?.execEdSuite) hiddenNavLabels.add('Insights');
     // SBS Comms & Concierge plan, Phase 3 — the Facilities queue is empty/unreachable server-side
     // for any school with execEdSuite off (every /facility-tickets route is gated on it), so hide
     // the nav entry rather than link to a page that can only ever show a 403.
