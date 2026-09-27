@@ -182,7 +182,8 @@ export function SystemAnnouncementsPage() {
   const empty = (): Draft => ({
     id: null, status: null, title: '', body: '', severity: 'INFO',
     schoolId: isSuperAdmin ? '' : (user?.schoolId ?? ''), courseId: '', majorId: '', cohortId: '',
-    delivery: 'APP', sendPush: true, resourceUrl: '', resourceLabel: '', scheduledFor: '', expiresAt: '',
+    // Both by default (owner 09-27): most Executive Ed delegates don't have the app yet.
+    delivery: 'BOTH', sendPush: true, resourceUrl: '', resourceLabel: '', scheduledFor: '', expiresAt: '',
   });
 
   const [tab, setTab] = useState<BroadcastManageTab>('PUBLISHED');
