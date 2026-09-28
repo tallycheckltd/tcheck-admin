@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Mail, AlertTriangle, CheckCircle, Clock, Ban, Filter } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Mail, AlertTriangle, CheckCircle, Clock, Ban, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import type { School } from '../../types';
@@ -52,6 +52,69 @@ const ERROR: Record<string, string> = {
 };
 
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '');
+const time = (d: string | null) => (d ? new Date(d).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '');
+const PAGE = 300;
+
+/** Owner 09-27: group by day, and within a day by send (same email type + subject + school), so one
+ * announcement to 49 people is one row — "49 emails · 47 accepted · 2 not sent" — that expands to
+ * its recipients, instead of 49 separate lines. */
+type Outcome = 'ok' | 'waiting' | 'failed' | 'notSent';
+const outcomeOf = (status: string): Outcome =>
+  status === 'SENT' || status === 'DELIVERED' ? 'ok'
+    : status === 'QUEUED' || status === 'PROCESSING' ? 'waiting'
+      : status === 'FAILED' || status === 'BOUNCED' || status === 'COMPLAINED' ? 'failed' : 'notSent';
+const OUTCOME_LABEL: Record<Outcome, string> = { ok: 'accepted', waiting: 'waiting', failed: 'failed', notSent: 'not sent' };
+const OUTCOME_CLS: Record<Outcome, string> = {
+  ok: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+  waiting: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300',
+  failed: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
+  notSent: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+};
+interface Batch { key: string; typeLabel: string; subject: string | null; school: DeliveryRow['school']; rows: DeliveryRow[]; first: string; last: string }
+interface Day { key: string; label: string; rows: DeliveryRow[]; batches: Batch[] }
+
+const dayKey = (iso: string) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+function dayLabel(key: string): string {
+  const today = dayKey(new Date().toISOString());
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const [yy, mm, dd] = key.split('-').map(Number);
+  const nice = new Date(yy, mm - 1, dd).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  if (key === today) return `Today · ${nice}`;
+  if (key === dayKey(y.toISOString())) return `Yesterday · ${nice}`;
+  return nice;
+}
+function groupByDay(rows: DeliveryRow[]): Day[] {
+  const days = new Map<string, Day>();
+  for (const r of rows) {
+    const k = dayKey(r.createdAt);
+    const day = days.get(k) ?? { key: k, label: dayLabel(k), rows: [], batches: [] };
+    day.rows.push(r);
+    days.set(k, day);
+  }
+  for (const day of days.values()) {
+    const batches = new Map<string, Batch>();
+    for (const r of day.rows) {
+      const bk = `${r.type}|${r.subject ?? ''}|${r.school?.id ?? ''}`;
+      const b = batches.get(bk) ?? { key: `${day.key}|${bk}`, typeLabel: r.typeLabel, subject: r.subject, school: r.school, rows: [], first: r.createdAt, last: r.createdAt };
+      b.rows.push(r);
+      if (r.createdAt < b.first) b.first = r.createdAt;
+      if (r.createdAt > b.last) b.last = r.createdAt;
+      batches.set(bk, b);
+    }
+    day.batches = [...batches.values()].sort((a, b) => b.last.localeCompare(a.last));
+  }
+  return [...days.values()].sort((a, b) => b.key.localeCompare(a.key));
+}
+function Breakdown({ rows }: { rows: DeliveryRow[] }) {
+  const counts = rows.reduce<Record<Outcome, number>>((acc, r) => { acc[outcomeOf(r.status)]++; return acc; }, { ok: 0, waiting: 0, failed: 0, notSent: 0 });
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {(Object.keys(counts) as Outcome[]).filter((o) => counts[o] > 0).map((o) => (
+        <span key={o} className={`rounded-lg px-2 py-0.5 text-xs font-medium ${OUTCOME_CLS[o]}`}>{counts[o]} {OUTCOME_LABEL[o]}</span>
+      ))}
+    </span>
+  );
+}
 const select = 'rounded-xl px-3 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white';
 
 export function EmailActivityPage() {
@@ -61,10 +124,14 @@ export function EmailActivityPage() {
   const [category, setCategory] = useState('');
   const [schoolId, setSchoolId] = useState('');
   const [before, setBefore] = useState<string | null>(null);
-  const q = new URLSearchParams({ limit: '50', ...(status ? { status } : {}), ...(category ? { category } : {}), ...(schoolId ? { schoolId } : {}), ...(before ? { before } : {}) });
+  const [openBatches, setOpenBatches] = useState<Set<string>>(new Set());
+  const [closedDays, setClosedDays] = useState<Set<string>>(new Set());
+  const toggle = (set: Set<string>, key: string) => { const n = new Set(set); if (n.has(key)) n.delete(key); else n.add(key); return n; };
+  const q = new URLSearchParams({ limit: String(PAGE), ...(status ? { status } : {}), ...(category ? { category } : {}), ...(schoolId ? { schoolId } : {}), ...(before ? { before } : {}) });
   const { data: rows, loading } = useApi<DeliveryRow[]>(`/email/deliveries?${q}`);
   const { data: summary } = useApi<Summary>(`/email/deliveries/summary?days=7${schoolId ? `&schoolId=${schoolId}` : ''}`);
   const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
+  const days = useMemo(() => groupByDay(rows ?? []), [rows]);
 
   const s = summary?.byStatus ?? {};
   const cards = [
@@ -112,51 +179,78 @@ export function EmailActivityPage() {
         </select>
       </div>
 
-      <div className="glass-card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-slate-500 border-b border-gray-200 dark:border-white/10">
-              <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Recipient</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">When</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows?.map((r) => {
-              const st = STATUS[r.status] ?? STATUS.QUEUED;
-              const detail = [r.statusReason ? REASON[r.statusReason] ?? r.statusReason : null, r.error ? ERROR[r.error] ?? r.error : null].filter(Boolean).join(' · ');
-              return (
-                <tr key={r.id} className="border-b border-gray-100 dark:border-white/5 align-top">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-slate-950 dark:text-white">{r.typeLabel}</p>
-                    {r.subject && <p className="text-xs text-slate-500 break-words max-w-xs">{r.subject}</p>}
-                    {isSuperAdmin && r.school && <p className="text-xs text-slate-400">{r.school.name}</p>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-slate-800 dark:text-slate-200">{r.recipientName ?? '—'}</p>
-                    <p className="text-xs text-slate-500 font-mono">{r.recipient}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block rounded-lg px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
-                    {detail && <p className="mt-1 text-xs text-slate-500">{detail}</p>}
-                    {r.attempts > 1 && <p className="text-xs text-slate-400">{r.attempts} attempts</p>}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
-                    {r.deliveredAt ? `Delivered ${fmt(r.deliveredAt)}` : r.sentAt ? `Accepted ${fmt(r.sentAt)}` : r.failedAt ? `Failed ${fmt(r.failedAt)}` : r.scheduledFor && r.status === 'QUEUED' ? `Due ${fmt(r.scheduledFor)}` : `Queued ${fmt(r.createdAt)}`}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="space-y-5">
+        {days.map((day) => {
+          const dayClosed = closedDays.has(day.key);
+          return (
+            <section key={day.key}>
+              <button type="button" onClick={() => setClosedDays((c) => toggle(c, day.key))}
+                className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-1 pb-2 text-left cursor-pointer">
+                {dayClosed ? <ChevronRight size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                <span className="text-sm font-semibold text-slate-900 dark:text-white">{day.label}</span>
+                <span className="text-xs text-slate-500">{day.rows.length} email{day.rows.length === 1 ? '' : 's'} · {day.batches.length} send{day.batches.length === 1 ? '' : 's'}</span>
+                <Breakdown rows={day.rows} />
+              </button>
+              {!dayClosed && (
+                <div className="glass-card divide-y divide-gray-100 dark:divide-white/5">
+                  {day.batches.map((bt) => {
+                    const open = openBatches.has(bt.key);
+                    const range = time(bt.first) === time(bt.last) ? time(bt.last) : `${time(bt.first)}–${time(bt.last)}`;
+                    return (
+                      <div key={bt.key}>
+                        <button type="button" onClick={() => setOpenBatches((o) => toggle(o, bt.key))}
+                          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer">
+                          {open ? <ChevronDown size={15} className="text-slate-400" /> : <ChevronRight size={15} className="text-slate-400" />}
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-slate-950 dark:text-white">
+                              {bt.typeLabel}{bt.subject ? <span className="font-normal text-slate-600 dark:text-slate-300"> — {bt.subject}</span> : null}
+                            </span>
+                            <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                              <span>{bt.rows.length} email{bt.rows.length === 1 ? '' : 's'}</span>
+                              <Breakdown rows={bt.rows} />
+                              {isSuperAdmin && bt.school && <span className="text-slate-400">{bt.school.name}</span>}
+                            </span>
+                          </span>
+                          <span className="whitespace-nowrap text-xs text-slate-500 tabular-nums">{range}</span>
+                        </button>
+                        {open && (
+                          <ul className="border-t border-gray-100 bg-slate-50/60 dark:border-white/5 dark:bg-white/[0.02]">
+                            {bt.rows.map((r) => {
+                              const st = STATUS[r.status] ?? STATUS.QUEUED;
+                              const detail = [r.statusReason ? REASON[r.statusReason] ?? r.statusReason : null, r.error ? ERROR[r.error] ?? r.error : null, r.attempts > 1 ? `${r.attempts} attempts` : null].filter(Boolean).join(' · ');
+                              return (
+                                <li key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 pl-11 pr-4 text-sm">
+                                  <span className="min-w-0">
+                                    <span className="text-slate-800 dark:text-slate-200">{r.recipientName ?? '—'}</span>
+                                    <span className="ml-2 font-mono text-xs text-slate-500">{r.recipient}</span>
+                                    {detail && <span className="block text-xs text-slate-500">{detail}</span>}
+                                  </span>
+                                  <span className="flex items-center gap-2 whitespace-nowrap">
+                                    <span className={`inline-block rounded-lg px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
+                                    <span className="text-xs text-slate-500" title={fmt(r.deliveredAt ?? r.sentAt ?? r.failedAt ?? r.createdAt)}>
+                                      {time(r.deliveredAt ?? r.sentAt ?? r.failedAt ?? (r.status === 'QUEUED' && r.scheduledFor ? r.scheduledFor : r.createdAt))}
+                                    </span>
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })}
         {!loading && rows?.length === 0 && (
-          <p className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500"><Mail size={16} /> No emails match.</p>
+          <p className="glass-card flex items-center justify-center gap-2 py-10 text-sm text-slate-500"><Mail size={16} /> No emails match.</p>
         )}
       </div>
       <div className="flex justify-end gap-2">
         {before && <button onClick={() => setBefore(null)} className="px-3 py-1.5 rounded-lg text-xs bg-gray-100 dark:bg-white/10 cursor-pointer">Newest</button>}
-        {rows && rows.length === 50 && (
+        {rows && rows.length === PAGE && (
           <button onClick={() => setBefore(rows[rows.length - 1].createdAt)} className="px-3 py-1.5 rounded-lg text-xs bg-gray-100 dark:bg-white/10 cursor-pointer">Older</button>
         )}
       </div>
