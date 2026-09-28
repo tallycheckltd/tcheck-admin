@@ -64,10 +64,10 @@ export function BeaconHealthPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <Radar className="text-blue-500" /> Beacon Health
+          <Radar className="text-blue-500" /> Aura Health
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Live hardware telemetry — battery level and last-sync status for every registered TB beacon.
+          Live hardware telemetry — battery level and last-sync status for every registered Aura sensor.
         </p>
       </div>
 
@@ -78,19 +78,19 @@ export function BeaconHealthPage() {
       </div>
 
       <div className="max-w-md">
-        <SearchInput placeholder="Search by name, room, or UUID..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <SearchInput placeholder="Search by name, room, or ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <div className="glass-card overflow-hidden">
         {rows.length === 0 ? (
-          <EmptyState icon={Radar} title="No beacons match" description="Try a different search." />
+          <EmptyState icon={Radar} title="No sensors match" description="Try a different search." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="text-left py-3 px-6">Room Assignment</th>
-                  <th className="text-left py-3 px-6">Beacon MAC / ID</th>
+                  <th className="text-left py-3 px-6">Sensor ID</th>
                   <th className="text-left py-3 px-6">Battery Level</th>
                   <th className="text-left py-3 px-6">Last Sync</th>
                   <th className="text-left py-3 px-6">Status</th>

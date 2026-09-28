@@ -6,8 +6,8 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { Slider } from '../../components/ui/Slider';
-import { Plus, Pencil, Trash2, Bluetooth } from 'lucide-react';
-import type { Beacon, School } from '../../types';
+import { Plus, Pencil, Trash2, MapPin } from 'lucide-react';
+import type { Beacon, Classroom, School } from '../../types';
 
 const emptyForm = {
   uuid: '',
@@ -19,6 +19,7 @@ const emptyForm = {
   description: '',
   isActive: true,
   schoolId: '',
+  classroomId: '',
 };
 
 export function BLEBeaconPage() {
@@ -26,6 +27,7 @@ export function BLEBeaconPage() {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const { data: beacons, refetch } = useApi<Beacon[]>('/beacons');
   const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
+  const { data: classrooms } = useApi<Classroom[]>('/academic/classrooms');
   const { mutate: create } = useMutation('post');
   const { mutate: update } = useMutation('put');
   const { mutate: del } = useMutation('delete');
@@ -52,15 +54,22 @@ export function BLEBeaconPage() {
       description: b.description || '',
       isActive: b.isActive,
       schoolId: b.schoolId || '',
+      classroomId: b.classroomId || '',
     });
     setModal(true);
   };
+
+  // Classrooms belong to one school — once a beacon moves to a different school, its old
+  // room assignment would point at a room in the wrong school, so drop it rather than send
+  // a stale/invalid classroomId server-side.
+  const classroomsForSelectedSchool = classrooms?.filter((c) => c.schoolId === (isSuperAdmin ? form.schoolId : user?.schoolId));
 
   const handleSubmit = async () => {
     const payload = {
       ...form,
       location: form.location || undefined,
       description: form.description || undefined,
+      classroomId: form.classroomId || null,
       // A SUB_ADMIN's schoolId is forced server-side regardless of what's sent here; only
       // SUPER_ADMIN's choice of school actually takes effect.
       schoolId: isSuperAdmin ? (form.schoolId || undefined) : undefined,
@@ -86,12 +95,12 @@ export function BLEBeaconPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">TB Beacon Manager</h1>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Aura Sensors</h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             {beacons?.length || 0} beacons configured
           </p>
         </div>
-        <Button onClick={openCreate}><Plus size={16} className="mr-1" /> New Beacon</Button>
+        <Button onClick={openCreate}><Plus size={16} className="mr-1" /> New Sensor</Button>
       </div>
 
       <div className="glass-card overflow-hidden">
@@ -115,7 +124,7 @@ export function BLEBeaconPage() {
               <tr key={b.id}>
                 <td className="font-medium text-slate-950 dark:text-white">
                   <span className="flex items-center gap-2">
-                    <Bluetooth size={14} className="text-blue-500" />
+                    <MapPin size={14} className="text-blue-500" />
                     {b.name}
                   </span>
                 </td>
@@ -157,9 +166,9 @@ export function BLEBeaconPage() {
         </table>
       </div>
 
-      <Modal open={modal} onClose={() => { setModal(false); setEditing(null); }} title={editing ? 'Edit Beacon' : 'Create Beacon'}>
+      <Modal open={modal} onClose={() => { setModal(false); setEditing(null); }} title={editing ? 'Edit Sensor' : 'Create Sensor'}>
         <div className="space-y-4">
-          <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Room 101 Beacon" />
+          <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Room 101 Sensor" />
           {isSuperAdmin && (
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
@@ -190,6 +199,21 @@ export function BLEBeaconPage() {
             helpText="The minimum signal strength a student's phone must detect to check in. More negative = works from farther away in the room; less negative = requires standing closer to the beacon. -90 is a good default for a typical classroom."
           />
           <Input label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Building A, Room 101" />
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Classroom (optional)</label>
+            <select
+              value={form.classroomId}
+              onChange={(e) => setForm({ ...form, classroomId: e.target.value })}
+              disabled={isSuperAdmin && !form.schoolId}
+              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white disabled:opacity-50"
+            >
+              <option value="">Unassigned</option>
+              {classroomsForSelectedSchool?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {isSuperAdmin && !form.schoolId && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">Pick a school above first.</p>
+            )}
+          </div>
           <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional notes" />
           <div className="flex items-center gap-2">
             <input
@@ -201,7 +225,7 @@ export function BLEBeaconPage() {
             />
             <label htmlFor="beaconActive" className="text-sm text-slate-800 dark:text-gray-300">Active</label>
           </div>
-          <Button onClick={handleSubmit} className="w-full">{editing ? 'Update Beacon' : 'Create Beacon'}</Button>
+          <Button onClick={handleSubmit} className="w-full">{editing ? 'Update Sensor' : 'Create Sensor'}</Button>
         </div>
       </Modal>
     </div>

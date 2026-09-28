@@ -161,10 +161,10 @@ export function BeaconHeatmapSimulatorPage() {
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-950 dark:text-white">
-          <Radar size={22} className="text-blue-500" /> BLE Heatmap Simulator
+          <Radar size={22} className="text-blue-500" /> Aura Heatmap Simulator
         </h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Model Minew E9 signal propagation across a room and pre-configure the check-in threshold before deploying hardware.
+          Model Aura sensor signal propagation across a room and pre-configure the check-in threshold before deploying hardware.
         </p>
       </div>
 
@@ -183,14 +183,14 @@ export function BeaconHeatmapSimulatorPage() {
           <div>
             <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Device Heights</h2>
             <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-              A beacon on the ceiling and a phone in someone's pocket are farther apart than they look on the floor plan below — this vertical gap counts too.
+              An Aura sensor on the ceiling and a phone in someone's pocket are farther apart than they look on the floor plan below — this vertical gap counts too.
             </p>
             <div className="space-y-3">
               <Slider
-                label="Beacon Mount Height"
+                label="Sensor Mount Height"
                 min={0.5} max={Math.max(ceilingHeightM, 0.5)} step={0.1} unit=" m"
                 value={beaconHeightM} onChange={setBeaconHeightM}
-                helpText="Usually the ceiling height — where the beacon is actually screwed in."
+                helpText="Usually the ceiling height — where the sensor is actually screwed in."
               />
               <Slider
                 label="Student Phone Height"
@@ -202,7 +202,7 @@ export function BeaconHeatmapSimulatorPage() {
           </div>
 
           <div>
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Minew E9 Radio</h2>
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Aura Radio</h2>
             <div className="space-y-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -223,13 +223,13 @@ export function BeaconHeatmapSimulatorPage() {
                 label={<>RSSI @ 1m Reference <Badge color={rssiAt1mBadge(rssiAt1m).color}>{rssiAt1mBadge(rssiAt1m).text}</Badge></>}
                 min={-80} max={-30} step={1} unit=" dBm"
                 value={rssiAt1m} onChange={setRssiAt1m}
-                helpText="How strong the signal is right next to the beacon. Auto-suggested from TX power above — override only if this specific beacon's calibrated measured power differs."
+                helpText="How strong the signal is right next to the sensor. Auto-suggested from TX power above — override only if this specific sensor's calibrated measured power differs."
               />
               <Slider
                 label="Advertising Interval"
                 min={100} max={2000} step={50} unit=" ms"
                 value={advertisingIntervalMs} onChange={setAdvertisingIntervalMs}
-                helpText="How often the beacon broadcasts its signal. Lower = phones detect it faster, but the coin-cell battery drains sooner. 350ms is a good default."
+                helpText="How often the sensor broadcasts its signal. Lower = phones detect it faster, but the coin-cell battery drains sooner. 350ms is a good default."
               />
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Path Loss Exponent</label>
@@ -243,7 +243,7 @@ export function BeaconHeatmapSimulatorPage() {
                   ))}
                 </select>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  How much "stuff" is in the way. More furniture, walls, or bodies between the beacon and the phone means pick a higher setting — the signal has to fight through more to reach the same distance.
+                  How much "stuff" is in the way. More furniture, walls, or bodies between the sensor and the phone means pick a higher setting — the signal has to fight through more to reach the same distance.
                 </p>
               </div>
             </div>
@@ -261,23 +261,23 @@ export function BeaconHeatmapSimulatorPage() {
           </div>
 
           <div>
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Apply to a Real Beacon</h2>
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Apply to a Real Sensor</h2>
             <div className="space-y-2">
               <select
                 value={selectedBeaconId}
                 onChange={(e) => loadBeaconInto(e.target.value)}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
               >
-                <option value="">Select a beacon to tune…</option>
+                <option value="">Select a sensor to tune…</option>
                 {beacons?.map((b) => (
                   <option key={b.id} value={b.id}>{b.name} ({b.rssiThreshold} dBm)</option>
                 ))}
               </select>
               <Button onClick={handleSaveToBeacon} disabled={!selectedBeaconId || saving} className="w-full">
-                <Save size={14} className="mr-1.5" /> {saving ? 'Saving…' : 'Save Full Layout to Beacon'}
+                <Save size={14} className="mr-1.5" /> {saving ? 'Saving…' : 'Save Full Layout to Sensor'}
               </Button>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Saves the room dimensions, beacon position, RF calibration, and threshold together — this is what a class's Room Signal Map reads to render the real heatmap.
+                Saves the room dimensions, sensor position, RF calibration, and threshold together — this is what a class's Room Signal Map reads to render the real heatmap.
               </p>
             </div>
           </div>
@@ -287,7 +287,7 @@ export function BeaconHeatmapSimulatorPage() {
         <GlassCard className="flex flex-col items-center gap-4">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Drag the white beacon marker to reposition it. Click anywhere else to drop a test phone.
+              Drag the white sensor marker to reposition it. Click anywhere else to drop a test phone.
             </p>
             <div className="flex flex-wrap gap-3">
               {LEGEND.map((l) => (

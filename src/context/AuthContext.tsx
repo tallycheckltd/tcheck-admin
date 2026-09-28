@@ -1,13 +1,19 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { api } from '../lib/api';
+import { api, TERMS_REQUIRED_EVENT } from '../lib/api';
 import type { User, AuthResponse } from '../types';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<User>;
+  // Two-step dashboard sign-in: requestOtp() verifies the password and emails a code; verifyOtp()
+  // exchanges that code for the real session. Distinct from the mobile app's single-step login,
+  // which never goes through this context.
+  requestOtp: (email: string, password: string) => Promise<void>;
+  verifyOtp: (email: string, code: string) => Promise<User>;
   logout: () => void;
+  /** Records acceptance of the current terms version (QA plan Phase 21) and clears the gate. */
+  acceptTerms: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>(null!);
@@ -34,8 +40,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = async (email: string, password: string): Promise<User> => {
-    const data = await api.post<AuthResponse>('/auth/login', { email, password });
+  // localStorage is shared across every tab of this origin — if a second tab logs in as a
+  // different user, this tab's `user` state never invalidates on its own (it was only ever set
+  // once, at login/mount). A full reload is the simplest safe fix: it re-runs the effect above
+  // against whatever token is now current, rather than trying to hot-swap identity mid-session.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'accessToken' && e.newValue !== e.oldValue) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // A staff API call answered 403 TERMS_REQUIRED (e.g. the terms version was bumped mid-session):
+  // re-read /auth/me, which now says termsRequired, and the layout swaps to the acceptance screen.
+  useEffect(() => {
+    const onTermsRequired = () => {
+      api.get<User>('/auth/me').then(setUser).catch(() => {});
+    };
+    window.addEventListener(TERMS_REQUIRED_EVENT, onTermsRequired);
+    return () => window.removeEventListener(TERMS_REQUIRED_EVENT, onTermsRequired);
+  }, []);
+
+  const acceptTerms = async (): Promise<void> => {
+    const res = await api.post<{ user: User }>('/auth/accept-terms', { termsVersion: user?.currentTermsVersion });
+    setUser(res.user);
+  };
+
+  const requestOtp = async (email: string, password: string): Promise<void> => {
+    await api.post<{ otpRequired: true }>('/auth/dashboard-login', { email, password });
+  };
+
+  const verifyOtp = async (email: string, code: string): Promise<User> => {
+    const data = await api.post<AuthResponse>('/auth/dashboard-login/verify-otp', { email, code });
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('refreshToken', data.refreshToken);
     setUser(data.user);
@@ -49,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, requestOtp, verifyOtp, logout, acceptTerms }}>
       {children}
     </AuthContext.Provider>
   );

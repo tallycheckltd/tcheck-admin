@@ -1,7 +1,53 @@
 export type Role =
   | 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT' | 'INVIGILATOR'
   // Enterprise hierarchy tiers (additive) — see server/prisma/schema.prisma Role enum comment.
-  | 'VC' | 'DVC' | 'REGISTRAR_ACADEMIC' | 'REGISTRAR_ADMIN' | 'DEAN' | 'HOD' | 'DEPUTY_HOD' | 'ICT_ADMIN';
+  | 'VC' | 'DVC' | 'REGISTRAR_ACADEMIC' | 'REGISTRAR_ADMIN' | 'DEAN' | 'HOD' | 'DEPUTY_HOD' | 'ICT_ADMIN'
+  // Guaranteed first account per School, and the front-of-house mobile/dashboard staff persona —
+  // see server/prisma/schema.prisma's Role enum comment for both.
+  | 'SCHOOL_ADMIN' | 'CLIENT_EXPERIENCE_MANAGER';
+
+/** See server/prisma/schema.prisma's Permission enum comment — a permission means the same thing
+ * regardless of which surface (mobile or dashboard) the holder is on. */
+export type Permission =
+  | 'MOBILE_ACCESS' | 'DASHBOARD_ACCESS'
+  | 'MANAGE_USERS' | 'MANAGE_SCHOOL_SETTINGS' | 'MANAGE_COURSES' | 'MANAGE_ANNOUNCEMENTS' | 'VIEW_ANALYTICS' | 'MANAGE_TICKETS'
+  | 'VIEW_BIRTHDAYS' | 'VIEW_BLE_CHECKINS' | 'VIEW_MANUAL_CHECKINS' | 'MANUAL_CHECK_IN' | 'MESSAGING'
+  | 'BROADCAST_STUDENTS_APPROVED' | 'BROADCAST_CLASS_SCHEDULE'
+  // Executive onboarding journey (School.features.onboardingJourney) — program-start welcome,
+  // materials-ready, free-form updates, and on-demand feedback requests.
+  | 'BROADCAST_PROGRAM_WELCOME' | 'BROADCAST_MATERIALS_READY' | 'BROADCAST_UPDATE' | 'REQUEST_FEEDBACK'
+  | 'VIEW_ANALYTICS_DEMOGRAPHICS'
+  | 'MANAGE_MATERIALS'
+  // Sidebar-scoped view/manage pairs — see server's Permission enum comment for each.
+  | 'VIEW_LIVE_ATTENDANCE' | 'VIEW_REPORTS'
+  | 'VIEW_ESCALATIONS' | 'MANAGE_ESCALATIONS'
+  | 'VIEW_FACILITIES' | 'MANAGE_FACILITY_TICKETS'
+  | 'VIEW_INVIGILATION' | 'MANAGE_INVIGILATION'
+  | 'VIEW_DEVICE_VERIFICATION' | 'MANAGE_DEVICE_VERIFICATION'
+  | 'VIEW_FRAUD_DETECTION';
+
+/** A school-defined named bundle of Permissions — see server's CustomRole model doc comment.
+ * Editing `permissions` here changes what every holder can do immediately. */
+export interface CustomRole {
+  id: string;
+  schoolId: string;
+  name: string;
+  permissions: Permission[];
+  /** UI hint only — which account type this role is meant for (LECTURER or
+   * CLIENT_EXPERIENCE_MANAGER), or null/undefined for "either". Narrows the "New User" form's
+   * custom-role dropdown to roles that actually make sense for the account type just picked. */
+  appliesTo?: 'LECTURER' | 'CLIENT_EXPERIENCE_MANAGER' | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { users: number };
+}
+
+export interface StaffCourseAssignment {
+  id: string;
+  userId: string;
+  courseId: string;
+  course?: Pick<Course, 'id' | 'name' | 'code'>;
+}
 
 export type ScopeLevel = 'UNIVERSITY' | 'DIVISION' | 'SCHOOL' | 'DEPARTMENT' | 'SUB_DEPARTMENT' | 'INDIVIDUAL';
 export type OrgUnitLevel = 'DIVISION' | 'FACULTY' | 'DEPARTMENT' | 'SUB_DEPARTMENT';
@@ -26,6 +72,13 @@ export interface SchoolFeatures {
   broadcasts?: boolean;
   faceIdCheckIn?: boolean;
   dwellTimeTracking?: boolean;
+  messaging?: boolean;
+  execEdSuite?: boolean;
+  onboardingJourney?: boolean;
+  /** Opt-out — the "Tell Us About You" progressive-profiling prompt (gender/DOB/etc.) students
+   * are asked once after baseline capture. Off stops asking students who haven't answered yet;
+   * already-answered students are untouched. */
+  profileCompletionPrompt?: boolean;
 }
 
 export type AttendanceMode = 'CALENDAR_BASED' | 'STAGE_BASED';
@@ -39,7 +92,14 @@ export interface School {
   extremelyLateThresholdMinutes?: number;
   attendanceThreshold?: number;
   allowManualLecturerOverride?: boolean;
+  /** SBS Phase 9 — IANA zone for email times; null = Africa/Nairobi. */
+  timezone?: string | null;
   features?: SchoolFeatures;
+  // Parent institution name (e.g. "Strathmore University" for SBS). Schools sharing this value
+  // are grouped on mobile into a university → tenant-grid picker (SchoolSelectionView), but only
+  // once at least one of them has execEdSuite on — see execEdInstitutions there. Otherwise purely
+  // informational.
+  institutionName?: string | null;
   // Calendar-scheduled (default) vs. stage-based progression (Program/Module pipeline, no
   // calendar at all — see Program/Module below).
   attendanceMode?: AttendanceMode;
@@ -114,6 +174,9 @@ export interface Cohort {
   year: number;
   schoolId: string;
   school?: School;
+  /** execEdSuite-only Client Experience Manager assignment (SBS Comms & Concierge plan). */
+  assignedCemId?: string | null;
+  assignedCem?: User | null;
 }
 
 export interface Level {
@@ -123,9 +186,25 @@ export interface Level {
   school?: School;
 }
 
+/// A physical room a Beacon can be assigned to — see server's Classroom model doc comment.
+export interface Classroom {
+  id: string;
+  name: string;
+  schoolId: string;
+  school?: School;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { beacons: number };
+}
+
 export interface User {
   id: string;
   email: string;
+  /** True until the account has accepted the *current* terms version (QA plan Phase 21). */
+  termsRequired?: boolean;
+  currentTermsVersion?: string;
+  termsAcceptedAt?: string | null;
   firstName: string;
   lastName: string;
   studentId?: string;
@@ -139,10 +218,40 @@ export interface User {
   deactivatedAt?: string | null;
   /** LECTURER only — grants exam-QR-scanner access without a separate INVIGILATOR account. */
   canInvigilate?: boolean;
+  /** Always the *effective* set — a CustomRole, if assigned, wins outright over these (see
+   * server's resolveEffectivePermissions). Empty for every role that predates this feature. */
+  permissions?: Permission[];
+  customRoleId?: string | null;
+  customRoleName?: string | null;
+  /** Executive onboarding journey (School.features.onboardingJourney) — 25/50/75/100, derived
+   * server-side from status/baselineCapturedAt/profileCompletedAt. Only meaningful for STUDENT;
+   * only worth displaying when the school has the feature on. */
+  onboardingProgress?: number;
   /** Enterprise hierarchy tiers only — undefined/default for every legacy role. */
   scopeLevel?: ScopeLevel;
   orgUnitId?: string | null;
   isActingHod?: boolean;
+  /** Executive Ed progressive profiling — captured once via a post-baseline-capture mobile
+   * prompt (STUDENT only), never a signup-time requirement. All optional even for accounts that
+   * have completed the prompt, since every field can be skipped individually. */
+  gender?: string | null;
+  nationality?: string | null;
+  jobTitle?: string | null;
+  company?: string | null;
+  dateOfBirth?: string | null;
+  profileCompletedAt?: string | null;
+  /** SBS Phase 1 — birthday shared without the year: `dateOfBirth`'s year is a placeholder (2000)
+   * and must never be displayed or used as an age. */
+  dobYearOmitted?: boolean;
+  /** SBS Phase 1 consent (execEdSuite schools): null = not asked yet, true = opted in, false = opted out. */
+  chatroomConsent?: boolean | null;
+  chatroomConsentAt?: string | null;
+  networkingConsent?: boolean | null;
+  networkingConsentAt?: string | null;
+  /** True when gender/nationality read null only because the viewer's tier can't see them (see
+   * server's maskDemographics), not because the student never shared them — only ever set on the
+   * /users/:id detail response. */
+  demographicsMasked?: boolean;
   _count?: {
     enrollments: number;
     attendances: number;
@@ -174,6 +283,23 @@ export interface UserDetail extends User {
   pendingDeviceRegisteredAt?: string | null;
   pendingDeviceReason?: DeviceChangeReason | null;
   pendingDeviceNote?: string | null;
+  /** The set that actually governs access — CustomRole wins outright over `permissions` when
+   * assigned (see resolveEffectivePermissions). Only ever populated on this detail response. */
+  effectivePermissions?: Permission[];
+  orgUnit?: { id: string; name: string; level: string } | null;
+  externalIdentifiers?: { provider: 'CANVAS' | 'MOODLE' | 'SALESFORCE'; externalId: string; createdAt: string }[];
+  // Security/compliance fields — every scalar on User comes through this endpoint already;
+  // these are the ones not otherwise surfaced anywhere in the dashboard yet.
+  tamperFlag?: boolean;
+  tamperFlaggedAt?: string | null;
+  termsAccepted?: boolean;
+  termsAcceptedAt?: string | null;
+  termsVersion?: string | null;
+  authMode?: 'UNENROLLED' | 'BIOMETRIC_LOCK' | 'LIVE_SELFIE' | 'DEVICE_BOUND' | string;
+  claimedAt?: string | null;
+  requiresBaselineRetake?: boolean;
+  baselineCapturedAt?: string | null;
+  fcmToken?: string | null;
 }
 
 export type DeviceChangeReason = 'LOST_PHONE' | 'NEW_PHONE' | 'DAMAGED' | 'STOLEN' | 'OTHER';
@@ -231,6 +357,8 @@ export interface Beacon {
   isActive: boolean;
   schoolId?: string | null;
   school?: School | null;
+  classroomId?: string | null;
+  classroom?: Pick<Classroom, 'id' | 'name'> | null;
   batteryLevel?: number | null;
   lastSeenAt?: string | null;
   createdAt: string;
@@ -258,6 +386,9 @@ export interface Course {
   room?: string;
   beaconId?: string;
   beacon?: Pick<Beacon, 'id' | 'uuid' | 'name' | 'major' | 'minor' | 'rssiThreshold'>;
+  /// Full multi-beacon set (large room, weak single-beacon coverage) — independent of the legacy
+  /// single beaconId/beacon above.
+  courseBeacons?: { beacon: Pick<Beacon, 'id' | 'uuid' | 'name' | 'major' | 'minor' | 'rssiThreshold'> }[];
   orgUnitId?: string | null;
   orgUnit?: Pick<OrgUnit, 'id' | 'name' | 'level'> | null;
   _count?: { enrollments: number; classes: number };
@@ -266,6 +397,10 @@ export interface Course {
   majors?: { major: Major }[];
   cohorts?: { cohort: Cohort }[];
   levels?: { level: Level }[];
+  /// Pre-filtered server-side to CLIENT_EXPERIENCE_MANAGER rows only (StaffCourseAssignment also
+  /// holds a LECTURER's own extra-course grants) — which CEM(s) this course is directly assigned
+  /// to via PUT/DELETE /courses/:id/cem/:userId, independent of any Cohort.assignedCemId.
+  staffAssignments?: { userId: string; user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'> }[];
 }
 
 export interface ClassSession {
@@ -283,6 +418,11 @@ export interface ClassSession {
   rssiThreshold: number;
   checkInStart?: string;
   checkInEnd?: string;
+  /** SBS Phase 4 explicit check-out window; null = legacy rule (no earliest time, deadline = end). */
+  checkOutStart?: string | null;
+  checkOutEnd?: string | null;
+  lateThresholdMinutes?: number | null;
+  extremelyLateThresholdMinutes?: number | null;
   isActive: boolean;
   isOnline?: boolean;
   _count?: { attendances: number };
@@ -309,9 +449,18 @@ export interface AttendanceRecord {
   checkInType: CheckInType;
   checkedInBy?: string;
   status: string;
-  punctuality?: 'ON_TIME' | 'LATE' | 'EXTREMELY_LATE';
+  /** Derived server-side; MANUAL = lecturer-marked, no on-time/late verdict (SBS Phase 4). */
+  punctuality?: Punctuality;
   deltaMinutes?: number;
+  /** Derived server-side; missing check-out is a view, never an attendance status. */
+  checkOutState?: CheckOutState | null;
+  /** INCOMPLETE = checked in, never checked out, window closed → not attended. */
+  outcome?: AttendanceOutcome | null;
 }
+
+export type Punctuality = 'ON_TIME' | 'LATE' | 'EXTREMELY_LATE' | 'MANUAL';
+export type CheckOutState = 'CHECKED_OUT' | 'OPEN' | 'MISSING';
+export type AttendanceOutcome = 'ATTENDED' | 'INCOMPLETE';
 
 export interface CourseAttendanceSession {
   classId: string;
@@ -354,6 +503,10 @@ export interface ClassAttendanceDetail {
     courseCode: string;
     allowManualLecturerOverride: boolean;
     isOnline?: boolean;
+    checkInStart?: string | null;
+    checkInEnd?: string | null;
+    checkOutStart?: string | null;
+    checkOutEnd?: string | null;
     // The specific physical Beacon backing this class's check-ins, resolved server-side by
     // matching (uuid, major, minor) — null if no matching Beacon row exists (e.g. an ad-hoc
     // class beacon that was never registered in the Beacon Manager).
@@ -366,7 +519,12 @@ export interface ClassAttendanceDetail {
     module?: { id: string; status: ModuleStatus; sequenceOrder: number; studentId: string } | null;
   };
   totalEnrolled: number;
+  /** Every check-in, complete or not. */
   totalCheckedIn: number;
+  /** Check-ins that count as attended (older servers omit it — fall back to totalCheckedIn). */
+  totalAttended?: number;
+  /** Checked in, never checked out, window closed — not attended. */
+  totalIncomplete?: number;
   attendances: AttendanceRecord[];
   absentStudents: (Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'> & { lastFailedAvgRssi?: number | null })[];
 }
@@ -411,11 +569,188 @@ export interface Broadcast {
   school: { id: string; name: string } | null;
   course: { id: string; name: string; code: string } | null;
   major: { id: string; name: string; code: string } | null;
+  /** Executive Ed Phase 7 — cohort-scoped targeting, alongside course/major. */
+  cohort: { id: string; name: string; year: number } | null;
+  /** Delivery channels this broadcast fanned out to — defaults to ['IN_APP'] server-side. */
+  channels?: ('IN_APP' | 'EMAIL')[];
   resourceUrl: string | null;
   resourceLabel: string | null;
   createdAt: string;
+  /** SBS Phase 8 — when it went live (older rows: createdAt), optional expiry, and last edit. */
+  publishedAt?: string;
+  expiresAt?: string | null;
+  editedAt?: string | null;
   isRead: boolean;
 }
+
+/** SBS Phase 8 — an announcement as its authors/admins manage it (GET /broadcasts/manage). */
+export type BroadcastStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'WITHDRAWN';
+export type BroadcastManageTab = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'ENDED';
+export interface ManagedBroadcast {
+  id: string;
+  title: string;
+  body: string;
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  status: BroadcastStatus;
+  expired: boolean;
+  createdByName: string;
+  school: { id: string; name: string } | null;
+  course: { id: string; name: string; code: string } | null;
+  major: { id: string; name: string; code: string } | null;
+  cohort: { id: string; name: string; year: number } | null;
+  channels: ('IN_APP' | 'EMAIL')[];
+  sendPush: boolean;
+  resourceUrl: string | null;
+  resourceLabel: string | null;
+  createdAt: string;
+  updatedAt: string;
+  scheduledFor: string | null;
+  publishedAt: string | null;
+  expiresAt: string | null;
+  withdrawnAt: string | null;
+  editedAt: string | null;
+  audienceFrozen: boolean;
+  recipientCount: number;
+  readCount: number;
+  deliveryStatus: 'SNAPSHOT' | 'PENDING' | 'DELIVERING' | 'DELIVERED' | 'DELIVERED_WITH_FAILURES' | null;
+  /** Device-notification outcomes by status (SENT, FAILED, NO_DEVICE, ...) — counts only. */
+  push: Record<string, number> | null;
+  /** SBS Phase 9 — email outcomes by delivery status (QUEUED, SENT, DELIVERED, SUPPRESSED, ...). */
+  email?: Record<string, number> | null;
+}
+export interface ManagedBroadcastDetail {
+  announcement: ManagedBroadcast | null;
+  history: { action: string; at: string; by: string | null; detail: Record<string, unknown> }[];
+}
+
+/** "Request Feedback" — a cohort-wide ad hoc survey, distinct from Broadcast (announcement, no
+ * response expected) and from the attendance-scoped NPS engine. See server/src/services/
+ * feedbackRequest.service.ts. */
+export type FeedbackQuestionType = 'SCALE' | 'CHOICE' | 'TEXT';
+
+/** SBS Phase 5 — one campaign/session question (frozen once a campaign is sent). */
+export interface FeedbackQuestion {
+  id: string;
+  type: FeedbackQuestionType;
+  prompt: string;
+  options?: string[];
+  required: boolean;
+}
+
+export type CampaignStatus = 'OPEN' | 'CLOSED';
+
+export interface FeedbackRequest {
+  id: string;
+  title: string;
+  prompt: string;
+  createdByName: string;
+  /** First targeted programme; null for a whole-school campaign. Prefer `audienceLabel`. */
+  cohort: { id: string; name: string; year: number } | null;
+  /** COHORT = one or more programmes (`cohorts`); SCHOOL = every student at the school. */
+  audience?: 'COHORT' | 'SCHOOL';
+  /** "AMP 2026, SMLP 2026" or "All students at …" — what to show for the audience. */
+  audienceLabel?: string;
+  cohorts?: { id: string; name: string; year: number }[];
+  /** False when the caller can see it (it reached their programme) but didn't send it. */
+  canManage?: boolean;
+  /** CAMPAIGN = sent by a person; COURSE_END = the automatic end-of-course questionnaire. */
+  kind?: 'CAMPAIGN' | 'COURSE_END';
+  school: { id: string; name: string };
+  createdAt: string;
+  closesAt: string | null;
+  closedAt: string | null;
+  status: CampaignStatus;
+  questionCount: number;
+  /** Frozen at send — never recomputed from current enrolment. */
+  recipientCount: number;
+  responseCount: number;
+  /** Percentage, or null when there were no recipients. */
+  responseRate: number | null;
+}
+
+/** Per-question anonymous aggregate; every score/distribution/comment is null when suppressed. */
+export interface FeedbackQuestionResult {
+  id: string;
+  type: FeedbackQuestionType;
+  prompt: string;
+  answered: number;
+  average?: number | null;
+  distribution?: number[] | null;
+  options?: string[];
+  comments?: string[] | null;
+}
+
+/** GET /feedback-requests/:id/results — anonymous to all staff (no respondent identity at all). */
+/** GET /feedback-requests/audiences — what the Request Feedback form may offer this account. */
+export interface CampaignAudiences {
+  canSend: boolean;
+  /** Why the form is unavailable, in words (null when canSend). */
+  reason: string | null;
+  school: { id: string; name: string } | null;
+  canSurveySchool: boolean;
+  canAskOneStudent: boolean;
+  cohorts: { id: string; name: string; year: number }[];
+}
+
+export interface FeedbackRequestResults {
+  id: string;
+  title: string;
+  prompt: string;
+  cohort: { id: string; name: string; year: number };
+  createdAt: string;
+  closesAt: string | null;
+  closedAt: string | null;
+  status: CampaignStatus;
+  privacy: 'ANONYMOUS_TO_STAFF';
+  recipientCount: number;
+  responseCount: number;
+  responseRate: number | null;
+  /** True below the minimum group size: counts only, no scores or comments. */
+  suppressed: boolean;
+  avgScore: number | null;
+  questions: FeedbackQuestionResult[];
+}
+
+export interface FeedbackSignal { average: number | null; answered: number }
+
+export interface FeedbackPeriodSummary {
+  from: string;
+  to: string;
+  eligible: number;
+  responses: number;
+  responseRate: number | null;
+  overall: FeedbackSignal;
+  facilitator: FeedbackSignal;
+  relevance: FeedbackSignal;
+}
+
+/** GET /feedback/intelligence — session feedback, anonymous and role-scoped. */
+export interface FeedbackIntelligence {
+  minResponses: number;
+  current: FeedbackPeriodSummary | null;
+  previous: FeedbackPeriodSummary | null;
+  trend: { weekStart: string; responses: number; overall: number | null }[];
+  courses: {
+    courseId: string;
+    name: string;
+    code: string;
+    facilitatorName: string | null;
+    responses: number;
+    eligible: number;
+    responseRate: number | null;
+    withheld: boolean;
+    overall: number | null;
+    facilitator: number | null;
+    relevance: number | null;
+  }[];
+  comments: { total: number; withheld: boolean; items: string[] };
+  /** 09-27 — the school's own 1–5 session questions; average withheld below minResponses. */
+  customQuestions?: { id: string; prompt: string; responses: number; withheld: boolean; average: number | null; max: number }[];
+}
+
+/** GET /feedback/question-sets — a school's own questions (Executive Education). */
+export interface SchoolQuestion { id?: string; prompt: string }
+export interface FeedbackQuestionSets { session: SchoolQuestion[]; courseEnd: SchoolQuestion[]; updatedAt: string | null }
 
 /** One row from GET /attendance/course-records (CSV export). */
 export interface CourseAttendanceExportRow {
@@ -429,6 +764,8 @@ export interface CourseAttendanceExportRow {
   checkOutAt: string | null;
   checkInType: CheckInType | string;
   punctuality: string;
+  checkOutState?: CheckOutState | null;
+  outcome?: AttendanceOutcome | null;
 }
 
 export interface ClassAttendanceStat {
@@ -444,8 +781,13 @@ export interface ClassAttendanceStat {
     code: string;
     lecturer: Pick<User, 'id' | 'firstName' | 'lastName'>;
   };
+  /** SBS Phase 6: for a delivered session, the delegates expected at it; otherwise current enrolment. */
   totalEnrolled: number;
+  /** Complete attendance only (an incomplete check-in is in totalIncomplete). */
   totalCheckedIn: number;
+  totalIncomplete?: number;
+  /** Check-in window closed — only delivered sessions count toward rates. */
+  delivered?: boolean;
   attendanceRate: number;
   checkInBreakdown: {
     BLE: number;
@@ -455,6 +797,36 @@ export interface ClassAttendanceStat {
 }
 
 /** GET /attendance/campus-analytics — admin matte analytics bento bundle */
+/** Row from GET /feedback/analytics/participation-by-gender (Executive Ed Phase 9) — one row per
+ * course x gender, already aggregated server-side (v_module_participation_by_gender view), so no
+ * demographic masking needed on this shape. Raw snake_case column names, matching the SQL view. */
+export interface NpsParticipationByGenderRow {
+  course_id: string;
+  course_name: string;
+  course_code: string;
+  gender: string | null;
+  enrolled_count: number;
+  class_count: number;
+  possible_checkins: number;
+  present_checkins: number;
+  participation_rate_pct: number;
+}
+
+/** Row from GET /feedback/analytics/nps-by-lecturer (Executive Ed Phase 9) — one row per class
+ * session with its average NPS score (v_module_nps_by_lecturer view). */
+export interface NpsByLecturerRow {
+  course_id: string;
+  course_name: string;
+  course_code: string;
+  lecturer_id: string;
+  lecturer_name: string;
+  class_id: string;
+  class_title: string;
+  class_date: string;
+  avg_nps: number | null;
+  response_count: number;
+}
+
 export interface CampusAnalytics {
   fetchedAtIso: string;
   scopedSchoolId: string | null;
@@ -520,6 +892,13 @@ export interface Conversation {
   lastMessage?: Message;
   unreadCount: number;
   updatedAt: string;
+  isMuted: boolean;
+}
+
+export interface MessageReplyPreview {
+  id: string;
+  content: string;
+  senderName: string;
 }
 
 export interface Message {
@@ -530,6 +909,7 @@ export interface Message {
   content: string;
   read: boolean;
   createdAt: string;
+  replyTo?: MessageReplyPreview | null;
 }
 
 export interface AnalyticsStat {
@@ -554,11 +934,14 @@ export interface RoomMessage {
   isAnonymous: boolean | null;
   isMine: boolean;
   createdAt: string;
+  replyTo?: MessageReplyPreview | null;
 }
 
 export interface RoomMessagesResponse {
   messages: RoomMessage[];
   isAnonymousEnabled: boolean;
+  conversationId: string;
+  isMuted: boolean;
 }
 
 export interface ContactGroup {
@@ -633,7 +1016,7 @@ export interface MessageFlag {
 export interface Notification {
   id: string;
   userId: string;
-  type: 'MESSAGE' | 'ATTENDANCE' | 'FLAG' | 'SYSTEM' | 'TICKET';
+  type: 'MESSAGE' | 'ATTENDANCE' | 'FLAG' | 'SYSTEM' | 'TICKET' | 'FACILITY_TICKET' | 'FACILITY_TICKET_ACKNOWLEDGED';
   title: string;
   body: string;
   read: boolean;
@@ -667,10 +1050,46 @@ export interface Ticket {
   updatedAt: string;
 }
 
+/** SBS Comms & Concierge plan, Phase 3 — Facilities Escalation Engine. Deliberately its own type,
+ * not reusing `Ticket` — a distinct model server-side (`FacilityTicket`), different lifecycle
+ * (acknowledge/resolve vs the platform-support ticket's IN_PROGRESS/CLOSED), and its own SLA
+ * timer (`slaBreachedAt`). */
+export type FacilityTicketPreset = 'AC_TOO_COLD' | 'AV_ISSUE' | 'CATERING' | 'WIFI_INTERNET' | 'SAFETY_MEDICAL' | 'OTHER';
+
+export interface FacilityTicketMessage {
+  id: string;
+  content: string;
+  createdAt: string;
+  sender: Pick<User, 'id' | 'firstName' | 'lastName'> & { role?: Role };
+}
+
+export interface FacilityTicket {
+  id: string;
+  schoolId: string;
+  school?: Pick<School, 'id' | 'name' | 'code' | 'color'>;
+  classId?: string | null;
+  class?: { id: string; title: string; room?: string | null } | null;
+  createdById: string;
+  createdBy?: Pick<User, 'id' | 'firstName' | 'lastName'>;
+  presetType: FacilityTicketPreset;
+  detail?: string | null;
+  status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+  priority: 'NORMAL' | 'URGENT';
+  assignedToId?: string | null;
+  assignedTo?: Pick<User, 'id' | 'firstName' | 'lastName'> | null;
+  acknowledgedAt?: string | null;
+  resolvedAt?: string | null;
+  slaBreachedAt?: string | null;
+  messages?: FacilityTicketMessage[];
+  _count?: { messages: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Escalation {
   id: string;
   studentId: string;
-  student?: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'>;
+  student?: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'> & { biometricLockInvalidatedAt?: string | null };
   classId: string;
   class?: {
     id: string;
@@ -692,4 +1111,210 @@ export interface AuthResponse {
   user: User;
   accessToken: string;
   refreshToken: string;
+}
+
+export type IntegrationProvider = 'CANVAS' | 'MOODLE' | 'SALESFORCE';
+
+export interface IntegrationSyncSummary {
+  coursesMatched?: number;
+  coursesUnmatched?: { externalId: string; name: string; code: string }[];
+  enrollmentsCreated?: number;
+  usersUnmatched?: string[];
+  recordsConsidered?: number;
+  pushed?: number;
+  errors?: string[];
+}
+
+export interface IntegrationConnection {
+  id: string;
+  schoolId: string;
+  provider: IntegrationProvider;
+  config: Record<string, unknown>;
+  isActive: boolean;
+  lastSyncedAt: string | null;
+  lastSyncStatus: 'SUCCESS' | 'PARTIAL' | 'FAILED' | null;
+  lastSyncError: string | null;
+  lastSyncSummary: IntegrationSyncSummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── SBS Phase 6 — Reports & Executive Intelligence ─────────────────────────────────────────
+
+/** Shared attendance counts (server reportMetrics.service.ts) — rates always travel with them. */
+export interface ReportAttendance {
+  sessions: number;
+  expected: number;
+  /** Every check-in (complete or not). */
+  present: number;
+  /** Complete attendance — the rate's numerator. */
+  attended: number;
+  /** Checked in, never checked out, window closed — not attended. */
+  incomplete: number;
+  rejected: number;
+  onTime: number;
+  late: number;
+  extremelyLate: number;
+  manual: number;
+  checkedOut: number;
+  missingCheckOut: number;
+  checkOutOpen: number;
+  attendanceRate: number | null;
+  onTimeRate: number | null;
+  checkOutRate: number | null;
+}
+
+export interface ReportPeriodOut { from: string; to: string; days: number }
+
+export interface ReportFeedback {
+  current: FeedbackPeriodSummary | null;
+  previous: FeedbackPeriodSummary | null;
+  trend: { weekStart: string; responses: number; overall: number | null }[];
+  comments: { total: number; withheld: boolean; items: string[] };
+  minResponses: number;
+}
+
+export interface ReportCampaigns { campaigns: number; recipients: number; responses: number; responseRate: number | null }
+
+export interface ReportTrendWeek { weekStart: string; sessions: number; expected: number; present: number; attended?: number; incomplete?: number; attendanceRate: number | null }
+
+/** One incomplete attendance on Executive Reports — name + student number only. */
+export interface MissingCheckOutRow {
+  attendanceId: string;
+  name: string;
+  studentId: string | null;
+  classId: string;
+  sessionTitle: string;
+  date: string;
+  courseName: string;
+  courseCode: string;
+  checkInAt: string;
+  checkInType: string;
+}
+export interface MissingCheckOuts { total: number; rows: MissingCheckOutRow[] }
+
+export interface ReportSessionRow extends ReportAttendance {
+  classId: string;
+  title: string;
+  date: string;
+  courseId: string;
+  courseName: string;
+  courseCode: string;
+  facilitatorName: string | null;
+}
+
+export interface ReportProgrammeRow extends ReportAttendance { cohortId: string; name: string; year: number; courseCount: number }
+
+export interface OverviewReport {
+  period: ReportPeriodOut;
+  previousPeriod: ReportPeriodOut;
+  attendanceThreshold: number;
+  attendance: ReportAttendance;
+  previousAttendance: ReportAttendance;
+  feedback: ReportFeedback;
+  campaigns: ReportCampaigns;
+  trend: ReportTrendWeek[];
+  missingCheckOuts?: MissingCheckOuts;
+  programmes: ReportProgrammeRow[];
+  attention: {
+    threshold: number;
+    sessionsBelowThreshold: ReportSessionRow[];
+    sessionsBelowThresholdCount: number;
+    programmesBelowThreshold: ReportProgrammeRow[];
+  };
+}
+
+export interface ProgrammeReport {
+  period: ReportPeriodOut;
+  programme: { cohortId: string; name: string; year: number };
+  attendanceThreshold: number;
+  attendance: ReportAttendance;
+  feedback: ReportFeedback;
+  campaigns: ReportCampaigns;
+  trend: ReportTrendWeek[];
+  courses: (ReportAttendance & { courseId: string; name: string; code: string; facilitatorName: string | null })[];
+  sessions: ReportSessionRow[];
+  missingCheckOuts?: MissingCheckOuts;
+}
+
+/** GET /reports/courses/:courseId — one course across its delivered sessions (lecturer course report). */
+export interface CourseReportStudent {
+  userId: string;
+  name: string;
+  studentId: string | null;
+  /** Delivered sessions they were expected at (enrolled by the end, or checked in). */
+  expected: number;
+  attended: number;
+  incomplete: number;
+  late: number;
+  attendanceRate: number | null;
+  belowThreshold: boolean;
+}
+export interface CourseReport {
+  course: { courseId: string; name: string; code: string; facilitatorName: string | null };
+  period: ReportPeriodOut | null;
+  attendanceThreshold: number;
+  attendance: ReportAttendance;
+  sessions: ReportSessionRow[];
+  students: CourseReportStudent[];
+}
+
+export interface SessionReport {
+  session: {
+    classId: string; title: string; date: string; startTime: string; endTime: string; room: string | null;
+    courseId: string; courseName: string; courseCode: string; facilitatorName: string | null;
+  };
+  delivered: boolean;
+  attendanceThreshold: number;
+  attendance: ReportAttendance;
+  feedback: {
+    opened: boolean; eligible: number; responses: number; responseRate: number | null; withheld: boolean;
+    overall: number | null; facilitator: number | null; relevance: number | null; comments: string[];
+  };
+}
+
+// ─── SBS Phase 7 — Moodle integration centre ────────────────────────────────────────────────
+
+export type MoodleConnectionState = 'NOT_CONFIGURED' | 'NEVER_SYNCED' | 'SYNCING' | 'CONNECTED' | 'COMPLETED_WITH_ISSUES' | 'AUTH_FAILED' | 'UNAVAILABLE' | 'FAILED';
+
+export interface MoodleSyncIssue {
+  type: string;
+  message: string;
+  moodleCourseId?: number;
+  moodleUserId?: number;
+  moodleSessionId?: number;
+  courseCode?: string;
+  name?: string;
+  email?: string | null;
+  classId?: string;
+  classTitle?: string;
+  date?: string;
+}
+
+export interface MoodleSyncRun {
+  id: string;
+  kind: 'ROSTER' | 'ATTENDANCE_EXPORT';
+  trigger: 'MANUAL' | 'SCHEDULED';
+  status: 'RUNNING' | 'COMPLETED' | 'COMPLETED_WITH_ISSUES' | 'FAILED';
+  startedAt: string;
+  finishedAt: string | null;
+  counts: Record<string, number>;
+  errorCode: string | null;
+  errorMessage: string | null;
+  initiatedBy: string | null;
+}
+
+export interface MoodleOverview {
+  connectionId: string;
+  schoolId: string;
+  isActive: boolean;
+  baseUrl: string;
+  state: MoodleConnectionState;
+  attendanceWriteBack: boolean;
+  attendanceActivities: { courseId: string; code: string; name: string; moodleCourseId: number; attendanceId: number | null }[];
+  totals: { mappedCourses: number; linkedDelegates: number; enrolmentsInMappedCourses: number; attendanceMarksWritten: number };
+  running: MoodleSyncRun | null;
+  roster: { lastAttempted: MoodleSyncRun | null; lastSuccessful: MoodleSyncRun | null; review: { runId: string; finishedAt: string | null; issues: MoodleSyncIssue[]; total: number } | null };
+  attendance: { lastAttempted: MoodleSyncRun | null; lastSuccessful: MoodleSyncRun | null; review: { runId: string; finishedAt: string | null; issues: MoodleSyncIssue[]; total: number } | null };
+  history: MoodleSyncRun[];
 }

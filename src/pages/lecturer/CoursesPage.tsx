@@ -1,17 +1,25 @@
 import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
+import { useCan } from '../../hooks/useCan';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { BookOpen, Users, Calendar, Plus, Trash2, MapPin, Bluetooth, Edit2, LayoutGrid, List } from 'lucide-react';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { BookOpen, Users, Calendar, Plus, Trash2, MapPin, Sparkles, Edit2, LayoutGrid, List } from 'lucide-react';
 import type { Course, School, User, Beacon, OrgUnit } from '../../types';
 import { CourseDataGrid } from '../../components/admin/CourseDataGrid';
+import { CourseCemAssignment } from '../../components/admin/CourseCemAssignment';
 
 export function CoursesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN';
+  // Everyone except a lecturer sees the school's (or, for leadership roles, their unit's) courses — the
+  // server scopes the list — instead of only courses they personally teach. Lecturers are unchanged.
+  const isAdmin = !!user && !['LECTURER', 'STUDENT', 'INVIGILATOR'].includes(user.role);
+  // Mirrors what the server allows for course writes (MANAGE_COURSES), so nobody clicks a button that answers 403.
+  // A lecturer with no CustomRole keeps every button they have today.
+  const canManage = useCan('MANAGE_COURSES');
   const queryParams = isAdmin ? '' : `?lecturerId=${user?.id}`;
   const { data: courses, refetch } = useApi<Course[]>(`/courses${queryParams}`);
   const { data: schools } = useApi<School[]>('/schools');
@@ -28,23 +36,28 @@ export function CoursesPage() {
   const [editModal, setEditModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [enrollModal, setEnrollModal] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '', orgUnitId: '' });
-  const [editForm, setEditForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '', orgUnitId: '' });
+  const [form, setForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '' });
+  const [editForm, setEditForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '' });
   const [enrollForm, setEnrollForm] = useState({ userId: '', courseId: '' });
-  const [viewMode, setViewMode] = useState<'cards' | 'grid'>(isAdmin ? 'grid' : 'cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'grid'>('cards');
 
   const { data: allStudents } = useApi<User[]>(enrollModal ? '/users?role=STUDENT&status=APPROVED' : null);
+  const enrollingCourse = courses?.find((c) => c.id === enrollModal) ?? null;
+  // Hides students already on the roster — picking one again would just 400 on the backend's
+  // unique (userId, courseId) constraint with no useful feedback beyond "try someone else".
+  const alreadyEnrolledIds = new Set(enrollingCourse?.enrollments?.map((e) => e.user.id) ?? []);
+  const enrollableStudents = (allStudents ?? []).filter((s) => !alreadyEnrolledIds.has(s.id));
 
   const handleCreate = async () => {
     await create('/courses', {
       ...form,
       lecturerId: isAdmin ? form.lecturerId : user?.id,
       room: form.room || undefined,
-      beaconId: form.beaconId || undefined,
-      orgUnitId: form.orgUnitId || null,
+      // DVC/Dean/HOD must place a course inside their own unit tree; default to their own unit (the server enforces it).
+      orgUnitId: form.orgUnitId || (['DVC', 'DEAN', 'HOD'].includes(user?.role ?? '') ? user?.orgUnitId : null) || null,
     });
     setModal(false);
-    setForm({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconId: '', orgUnitId: '' });
+    setForm({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [], orgUnitId: '' });
     refetch();
   };
 
@@ -56,7 +69,7 @@ export function CoursesPage() {
       schoolId: course.schoolId,
       lecturerId: course.lecturerId,
       room: course.room || '',
-      beaconId: course.beaconId || '',
+      beaconIds: course.courseBeacons?.map((cb) => cb.beacon.id) ?? (course.beaconId ? [course.beaconId] : []),
       orgUnitId: course.orgUnitId || '',
     });
     setEditModal(true);
@@ -67,7 +80,6 @@ export function CoursesPage() {
     await update(`/courses/${editingCourse.id}`, {
       ...editForm,
       room: editForm.room || undefined,
-      beaconId: editForm.beaconId || null,
       orgUnitId: editForm.orgUnitId || null,
     });
     setEditModal(false);
@@ -109,7 +121,7 @@ export function CoursesPage() {
               </button>
             </div>
           )}
-          <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Course</Button>
+          {canManage && <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Course</Button>}
         </div>
       </div>
 
@@ -133,24 +145,36 @@ export function CoursesPage() {
               </div>
             </div>
 
-            {isAdmin && course.lecturer && (
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                Lecturer: {course.lecturer.firstName} {course.lecturer.lastName}
-              </p>
-            )}
-
-            {(course.room || course.beacon) && (
-              <div className="flex items-center gap-3 mb-3 text-xs text-slate-600 dark:text-slate-400">
-                {course.room && (
-                  <span className="flex items-center gap-1"><MapPin size={12} /> {course.room}</span>
+            {isAdmin && (course.lecturer || (course.staffAssignments && course.staffAssignments.length > 0)) && (
+              <div className="space-y-0.5 mb-3">
+                {course.lecturer && (
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Lecturer: {course.lecturer.firstName} {course.lecturer.lastName}
+                  </p>
                 )}
-                {course.beacon && (
-                  <Badge color="purple">
-                    <span className="flex items-center gap-1"><Bluetooth size={10} /> {course.beacon.name}</span>
-                  </Badge>
+                {course.staffAssignments && course.staffAssignments.length > 0 && (
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    CEM: {course.staffAssignments.map((a) => `${a.user.firstName} ${a.user.lastName}`).join(', ')}
+                  </p>
                 )}
               </div>
             )}
+
+            {(() => {
+              const courseBeacons = course.courseBeacons?.map((cb) => cb.beacon) ?? (course.beacon ? [course.beacon] : []);
+              return (course.room || courseBeacons.length > 0) && (
+                <div className="flex items-center gap-3 mb-3 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
+                  {course.room && (
+                    <span className="flex items-center gap-1"><MapPin size={12} /> {course.room}</span>
+                  )}
+                  {courseBeacons.map((b) => (
+                    <Badge key={b.id} color="purple">
+                      <span className="flex items-center gap-1"><Sparkles size={10} /> {b.name}</span>
+                    </Badge>
+                  ))}
+                </div>
+              );
+            })()}
 
             <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-white/5">
               <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
@@ -158,13 +182,17 @@ export function CoursesPage() {
                 <span className="flex items-center gap-1"><Calendar size={14} /> {course._count?.classes || 0}</span>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => openEdit(course)} className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer" title="Edit course">
-                  <Edit2 size={14} className="text-blue-400" />
-                </button>
-                <button onClick={() => setEnrollModal(course.id)} className="text-xs text-blue-500 hover:text-blue-600 font-medium cursor-pointer px-2 py-1">
-                  Enroll
-                </button>
-                {isAdmin && (
+                {canManage && (
+                  <>
+                    <button onClick={() => openEdit(course)} className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer" title="Edit course">
+                      <Edit2 size={14} className="text-blue-400" />
+                    </button>
+                    <button onClick={() => setEnrollModal(course.id)} className="text-xs text-blue-500 hover:text-blue-600 font-medium cursor-pointer px-2 py-1">
+                      Enroll
+                    </button>
+                  </>
+                )}
+                {isAdmin && canManage && (
                   <button onClick={() => deleteCourse(course.id)} className="p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer">
                     <Trash2 size={14} className="text-red-400" />
                   </button>
@@ -200,14 +228,25 @@ export function CoursesPage() {
           )}
           <Input label="Room" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon</label>
-            <select value={form.beaconId} onChange={(e) => setForm({ ...form, beaconId: e.target.value })}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
-              <option value="">No beacon assigned</option>
-              {beacons?.map((b) => (
-                <option key={b.id} value={b.id}>{b.name} ({b.uuid.substring(0, 8)}...)</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Sensors</label>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Select more than one for a large room a single beacon doesn't cover.</p>
+            <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 divide-y divide-gray-100 dark:divide-white/5">
+              {beacons && beacons.length > 0 ? beacons.map((b) => (
+                <label key={b.id} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-950 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5">
+                  <input
+                    type="checkbox"
+                    checked={form.beaconIds.includes(b.id)}
+                    onChange={(e) => setForm({
+                      ...form,
+                      beaconIds: e.target.checked ? [...form.beaconIds, b.id] : form.beaconIds.filter((id) => id !== b.id),
+                    })}
+                  />
+                  {b.name} ({b.uuid.substring(0, 8)}...)
+                </label>
+              )) : (
+                <p className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">No beacons available</p>
+              )}
+            </div>
           </div>
           {isAdmin && orgUnits && orgUnits.length > 0 && (
             <div className="space-y-1">
@@ -246,16 +285,36 @@ export function CoursesPage() {
               </select>
             </div>
           )}
+          {isAdmin && editingCourse && (
+            <CourseCemAssignment
+              course={editingCourse}
+              onChanged={(assignments) => {
+                setEditingCourse({ ...editingCourse, staffAssignments: assignments });
+                refetch();
+              }}
+            />
+          )}
           <Input label="Room" value={editForm.room} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} placeholder="e.g. Building A, Room 101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Beacon</label>
-            <select value={editForm.beaconId} onChange={(e) => setEditForm({ ...editForm, beaconId: e.target.value })}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
-              <option value="">No beacon assigned</option>
-              {beacons?.map((b) => (
-                <option key={b.id} value={b.id}>{b.name} ({b.uuid.substring(0, 8)}...)</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Sensors</label>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Select more than one for a large room a single beacon doesn't cover.</p>
+            <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 divide-y divide-gray-100 dark:divide-white/5">
+              {beacons && beacons.length > 0 ? beacons.map((b) => (
+                <label key={b.id} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-950 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5">
+                  <input
+                    type="checkbox"
+                    checked={editForm.beaconIds.includes(b.id)}
+                    onChange={(e) => setEditForm({
+                      ...editForm,
+                      beaconIds: e.target.checked ? [...editForm.beaconIds, b.id] : editForm.beaconIds.filter((id) => id !== b.id),
+                    })}
+                  />
+                  {b.name} ({b.uuid.substring(0, 8)}...)
+                </label>
+              )) : (
+                <p className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">No beacons available</p>
+              )}
+            </div>
           </div>
           {isAdmin && orgUnits && orgUnits.length > 0 && (
             <div className="space-y-1">
@@ -272,17 +331,28 @@ export function CoursesPage() {
       </Modal>
 
       {/* Enroll Student Modal */}
-      <Modal open={!!enrollModal} onClose={() => setEnrollModal(null)} title="Enroll Student">
+      <Modal
+        open={!!enrollModal}
+        onClose={() => setEnrollModal(null)}
+        title={enrollingCourse ? `Enroll Student — ${enrollingCourse.code}` : 'Enroll Student'}
+      >
         <div className="space-y-4">
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Select Student</label>
-            <select value={enrollForm.userId} onChange={(e) => setEnrollForm({ ...enrollForm, userId: e.target.value })}
-              className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
-              <option value="">Select student</option>
-              {allStudents?.map((s) => <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.studentId || s.email})</option>)}
-            </select>
-          </div>
-          <Button onClick={handleEnroll} className="w-full">Enroll Student</Button>
+          {enrollingCourse && (
+            <p className="text-sm text-slate-600 dark:text-slate-400">{enrollingCourse.name}</p>
+          )}
+          <SearchableSelect
+            label="Student"
+            placeholder="Search by name, ID, or email…"
+            value={enrollForm.userId}
+            onChange={(userId) => setEnrollForm({ ...enrollForm, userId })}
+            options={enrollableStudents.map((s) => ({
+              value: s.id,
+              label: `${s.firstName} ${s.lastName}`,
+              sublabel: [s.studentId, s.email].filter(Boolean).join(' · '),
+            }))}
+            emptyText={alreadyEnrolledIds.size > 0 ? 'No matches (already-enrolled students are hidden)' : 'No students found'}
+          />
+          <Button onClick={handleEnroll} disabled={!enrollForm.userId} className="w-full">Enroll Student</Button>
         </div>
       </Modal>
     </div>

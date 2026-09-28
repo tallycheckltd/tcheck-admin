@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
+import { Can } from '../../components/shared/Can';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Slider } from '../../components/ui/Slider';
 import {
-  Settings, UserCheck, MessageSquareOff, ShieldCheck, Megaphone, ScanFace, Timer,
-  School as SchoolIcon, CalendarDays, Layers,
+  Settings, UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer,
+  School as SchoolIcon, CalendarDays, Layers, Briefcase, Sparkles, IdCard,
 } from 'lucide-react';
 import type { AttendanceMode, School, SchoolFeatures } from '../../types';
 
@@ -16,6 +17,10 @@ const defaultFeatures: Required<SchoolFeatures> = {
   broadcasts: true,
   faceIdCheckIn: true,
   dwellTimeTracking: true,
+  messaging: true,
+  execEdSuite: false,
+  onboardingJourney: false,
+  profileCompletionPrompt: true,
 };
 
 const emptyForm = {
@@ -25,7 +30,16 @@ const emptyForm = {
   allowManualLecturerOverride: true,
   attendanceMode: 'CALENDAR_BASED' as AttendanceMode,
   features: defaultFeatures,
+  /** SBS Phase 9 — '' = the default (Africa/Nairobi). */
+  timezone: '',
 };
+
+/** Every IANA zone the browser knows, with the common ones for this deployment first. */
+const TIMEZONES: string[] = (() => {
+  const common = ['Africa/Nairobi', 'Africa/Kampala', 'Africa/Dar_es_Salaam', 'Africa/Kigali', 'Africa/Lagos', 'Africa/Johannesburg', 'Europe/London', 'UTC'];
+  const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? [];
+  return [...common, ...all.filter((z) => !common.includes(z))];
+})();
 
 function FeatureToggle({
   icon: Icon, title, description, checked, onChange,
@@ -79,13 +93,14 @@ export function SettingsPage() {
         allowManualLecturerOverride: school.allowManualLecturerOverride ?? true,
         attendanceMode: school.attendanceMode ?? 'CALENDAR_BASED',
         features: { ...defaultFeatures, ...school.features },
+        timezone: school.timezone ?? '',
       });
     }
   }, [school]);
 
   const handleSave = async () => {
     if (!schoolId) return;
-    await update(`/schools/${schoolId}`, form);
+    await update(`/schools/${schoolId}`, { ...form, timezone: form.timezone || null });
     refetch();
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -200,6 +215,22 @@ export function SettingsPage() {
             </GlassCard>
 
             <GlassCard>
+              <div className="space-y-1">
+                <label htmlFor="school-timezone" className="block text-sm font-medium text-gray-900 dark:text-white">Time zone</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Used for the times shown in emails and for when the weekly CEM digest goes out (Monday 07:00 local).</p>
+                <select
+                  id="school-timezone"
+                  value={form.timezone}
+                  onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                  className="mt-2 w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                >
+                  <option value="">Default (Africa/Nairobi)</option>
+                  {TIMEZONES.map((z) => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
+                </select>
+              </div>
+            </GlassCard>
+
+            <GlassCard>
               <div className="space-y-4">
                 <FeatureToggle
                   icon={UserCheck}
@@ -214,6 +245,13 @@ export function SettingsPage() {
             <GlassCard>
               <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-4">Features Configuration</h3>
               <div className="space-y-4">
+                <FeatureToggle
+                  icon={MessageSquare}
+                  title="Messaging"
+                  description="Chat, campus/course rooms, and direct messages. Off hides the Chat tab entirely on mobile — no messaging feature at all for this school, not just muted."
+                  checked={form.features.messaging}
+                  onChange={(v) => setForm({ ...form, features: { ...form.features, messaging: v } })}
+                />
                 <FeatureToggle
                   icon={MessageSquareOff}
                   title="Anonymous Chat"
@@ -245,16 +283,39 @@ export function SettingsPage() {
                 <FeatureToggle
                   icon={Timer}
                   title="Dwell Time Tracking"
-                  description="Requires ~10s of sustained signal presence before a TB check-in is accepted. Off allows an instant tap the moment the signal is detected."
+                  description="Requires ~10s of sustained signal presence before an Aura check-in is accepted. Off allows an instant tap the moment the signal is detected."
                   checked={form.features.dwellTimeTracking}
                   onChange={(v) => setForm({ ...form, features: { ...form.features, dwellTimeTracking: v } })}
+                />
+                <FeatureToggle
+                  icon={Briefcase}
+                  title="Executive Ed Suite"
+                  description="Tools for executive and short-course programs — cohorts and corporate attendees tracked separately from regular class attendance."
+                  checked={form.features.execEdSuite}
+                  onChange={(v) => setForm({ ...form, features: { ...form.features, execEdSuite: v } })}
+                />
+                <FeatureToggle
+                  icon={Sparkles}
+                  title="Onboarding Journey"
+                  description="Premium onboarding: an approval email, a registration-progress percentage on each student's profile, a staff alert when they finish their profile, and program-welcome / materials-ready broadcast templates for Client Experience Managers."
+                  checked={form.features.onboardingJourney}
+                  onChange={(v) => setForm({ ...form, features: { ...form.features, onboardingJourney: v } })}
+                />
+                <FeatureToggle
+                  icon={IdCard}
+                  title={'"Tell Us About You" Profile Prompt'}
+                  description="Asks each student for gender, date of birth, nationality, job title and company once, right after their baseline photo. Off means new students skip this entirely — existing answers are untouched either way."
+                  checked={form.features.profileCompletionPrompt}
+                  onChange={(v) => setForm({ ...form, features: { ...form.features, profileCompletionPrompt: v } })}
                 />
               </div>
             </GlassCard>
 
-            <Button onClick={handleSave} size="lg" disabled={loading}>
-              {saved ? 'Saved!' : loading ? 'Saving…' : 'Save Settings'}
-            </Button>
+            <Can perm="MANAGE_SCHOOL_SETTINGS" newForLecturer>
+              <Button onClick={handleSave} size="lg" disabled={loading}>
+                {saved ? 'Saved!' : loading ? 'Saving…' : 'Save Settings'}
+              </Button>
+            </Can>
           </>
         )}
 

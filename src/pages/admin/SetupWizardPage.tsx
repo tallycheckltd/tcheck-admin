@@ -41,18 +41,48 @@ const STEPS: { key: StepKey; title: string; icon: typeof Building2; requiredColu
     title: 'Student Identity & Roster',
     icon: GraduationCap,
     requiredColumns: ['studentId', 'firstName', 'lastName', 'email'],
-    optionalColumns: [],
-    help: 'Pre-seeds student accounts — no biometric data imported. A student claims their account in the app on first login.',
+    optionalColumns: ['gender (Female/Male)', 'nationality', 'jobTitle', 'company', 'dateOfBirth (YYYY-MM-DD)', 'cohortName'],
+    help: 'Pre-seeds student accounts — no biometric data imported. A student claims their account in the app on first login. The optional columns fill the profile up front and place the student in a cohort (created if new); leave them out and the import is unchanged.',
   },
   {
     key: 'timetable',
     title: 'Timetable & Course Matrix',
     icon: CalendarRange,
     requiredColumns: ['courseCode', 'courseName', 'lecturerEmail', 'date', 'startTime', 'endTime'],
-    optionalColumns: ['room', 'title', 'studentIds (semicolon-separated)'],
-    help: 'Creates courses, links each to its lecturer (must already exist from Step 2), and schedules one class session per row. date is YYYY-MM-DD; startTime/endTime are full ISO datetimes.',
+    optionalColumns: ['room', 'title', 'studentIds (semicolon-separated)', 'department', 'faculty', 'cohortName'],
+    help: 'Creates courses, links each to its lecturer (must already exist from Step 2), and schedules one class session per row. date is YYYY-MM-DD; startTime/endTime are full ISO datetimes. department / faculty must match an org unit you already created (it powers Dean/HOD scoping); cohortName links the course to that cohort and enrolls the students already placed in it.',
   },
 ];
+
+/** One realistic example row per step, keyed by header. Every column the step accepts (required + optional)
+ * appears in the downloaded template, so the file always matches what the importer reads. */
+const TEMPLATE_EXAMPLES: Record<StepKey, Record<string, string>> = {
+  rooms: { building: 'Main Campus', roomName: 'Lecture Hall 1', capacity: '120' },
+  staff: { email: 'jane.doe@school.edu', firstName: 'Jane', lastName: 'Doe' },
+  students: {
+    studentId: 'S001', firstName: 'Ann', lastName: 'Mwangi', email: 'ann@company.com', gender: 'Female', nationality: 'Kenyan',
+    jobTitle: 'Finance Director', company: 'Acme Ltd', dateOfBirth: '1985-04-12', cohortName: 'Executive MBA 2026',
+  },
+  timetable: {
+    courseCode: 'EMBA101', courseName: 'Strategy', lecturerEmail: 'jane.doe@school.edu', date: '2026-10-05',
+    startTime: '2026-10-05T09:00:00+03:00', endTime: '2026-10-05T12:00:00+03:00', room: 'Lecture Hall 1', title: 'Strategy — Session 1',
+    studentIds: 'S001;S002', department: 'School of Business', faculty: '', cohortName: 'Executive MBA 2026',
+  },
+};
+
+const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+
+function downloadTemplate(stepKey: StepKey, columns: string[]) {
+  const headers = columns.map((c) => c.replace(/\s*\(.*\)\s*$/, ''));
+  const example = TEMPLATE_EXAMPLES[stepKey];
+  const csv = `${headers.join(',')}\n${headers.map((h) => csvCell(example[h] ?? '')).join(',')}\n`;
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `setup-wizard-${stepKey}-template.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function SetupWizardPage() {
   const { user } = useAuth();
@@ -177,6 +207,13 @@ export function SetupWizardPage() {
                     <p className="font-mono text-gray-500 dark:text-gray-400">{step.optionalColumns.join(', ')}</p>
                   </>
                 )}
+                <button
+                  type="button"
+                  onClick={() => downloadTemplate(step.key, [...step.requiredColumns, ...step.optionalColumns])}
+                  className="mt-3 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                >
+                  Download CSV template (all columns, with an example row)
+                </button>
               </div>
 
               <div>

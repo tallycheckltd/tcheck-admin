@@ -7,6 +7,8 @@ import type {
   ClassAttendanceStat,
   CourseAttendanceExportRow,
   DashboardStats,
+  NpsByLecturerRow,
+  NpsParticipationByGenderRow,
   UserDetail,
 } from '../types';
 
@@ -33,7 +35,7 @@ export type HodRosterPdfRow = {
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
-function afterTableY(doc: jsPDF, fallback: number) {
+export function afterTableY(doc: jsPDF, fallback: number) {
   const d = doc as JsPdfWithAutoTable;
   return d.lastAutoTable?.finalY ?? fallback;
 }
@@ -76,7 +78,7 @@ export async function loadTcheckLogoPngDataUrl(width = 160, height = 160): Promi
   }
 }
 
-function addTcheckHeader(doc: jsPDF, title: string, subtitle?: string) {
+export function addTcheckHeader(doc: jsPDF, title: string, subtitle?: string) {
   const margin = 40;
   return loadTcheckLogoPngDataUrl(112, 112).then((logo) => {
     let yTitle = 52;
@@ -124,7 +126,7 @@ export async function exportSessionLedgerPdf(rows: ClassAttendanceStat[], fileBa
 
   autoTable(doc, {
     startY,
-    head: [['Session', 'Code', 'Course', 'Date', 'Lecturer', 'Present / enrolled', 'Rate', 'TB / QR / Manual']],
+    head: [['Session', 'Code', 'Course', 'Date', 'Lecturer', 'Present / enrolled', 'Rate', 'Aura / QR / Manual']],
     body,
     styles: { fontSize: 8, cellPadding: 4 },
     headStyles: { fillColor: [51, 65, 85], textColor: 255 },
@@ -148,7 +150,7 @@ export async function exportCampusAnalyticsPdf(campus: CampusAnalytics, sessions
   doc.setTextColor(51, 65, 85);
   const kpiLines = [
     `Overall campus attendance: ${campus.overallAttendancePct}%`,
-    `Automated gate blocks (90d): TB ${campus.blockedGateAttemptsBle} · QR ${campus.blockedGateAttemptsQr}`,
+    `Automated gate blocks (90d): Aura ${campus.blockedGateAttemptsBle} · QR ${campus.blockedGateAttemptsQr}`,
     `Students under ${campus.attendanceThreshold}%: ${campus.atRiskStudentCount}`,
     `Sessions in aggregate: ${campus.sessionCount}`,
   ];
@@ -253,7 +255,7 @@ export async function exportCourseRecordsPdf(
 
   autoTable(doc, {
     startY,
-    head: [['Class', 'Date', 'Room', 'Student ID', 'Name', 'Check-in', 'Check-out', 'Method', 'Punctuality']],
+    head: [['Class', 'Date', 'Room', 'Student ID', 'Name', 'Check-in', 'Check-out', 'Method', 'Punctuality', 'Outcome']],
     body: rows.map((r) => [
       r.classTitle,
       formatExportClassDate(r.classDate),
@@ -261,9 +263,10 @@ export async function exportCourseRecordsPdf(
       r.studentId ?? '',
       `${r.firstName} ${r.lastName}`.trim(),
       format(parseISO(r.checkInAt), 'yyyy-MM-dd HH:mm'),
-      r.checkOutAt ? format(parseISO(r.checkOutAt), 'yyyy-MM-dd HH:mm') : '',
+      r.checkOutAt ? format(parseISO(r.checkOutAt), 'yyyy-MM-dd HH:mm') : r.checkOutState === 'MISSING' ? 'Missing' : '',
       String(r.checkInType),
       r.punctuality,
+      r.outcome === 'INCOMPLETE' ? 'Incomplete' : r.outcome === 'ATTENDED' ? 'Attended' : '',
     ]),
     styles: { fontSize: 7, cellPadding: 3 },
     headStyles: { fillColor: [51, 65, 85], textColor: 255 },
@@ -287,7 +290,7 @@ export async function exportLecturerSessionDetailPdf(detail: ClassAttendanceDeta
   let y = startY;
   doc.setFontSize(10);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Enrolled: ${detail.totalEnrolled} · Present: ${detail.totalCheckedIn} · Absent: ${detail.absentStudents.length}`, 40, y);
+  doc.text(`Enrolled: ${detail.totalEnrolled} · Attended: ${detail.totalAttended ?? detail.totalCheckedIn} · Incomplete (no check-out): ${detail.totalIncomplete ?? 0} · Absent: ${detail.absentStudents.length}`, 40, y);
   y += 28;
 
   autoTable(doc, {
@@ -297,9 +300,9 @@ export async function exportLecturerSessionDetailPdf(detail: ClassAttendanceDeta
       r.user?.studentId ?? '—',
       `${r.user?.firstName ?? ''} ${r.user?.lastName ?? ''}`.trim(),
       format(parseISO(r.checkInAt), 'MMM d HH:mm'),
-      r.checkOutAt ? format(parseISO(r.checkOutAt), 'MMM d HH:mm') : '—',
+      r.checkOutAt ? format(parseISO(r.checkOutAt), 'MMM d HH:mm') : r.checkOutState === 'MISSING' ? 'Missing' : '—',
       String(r.checkInType),
-      r.status,
+      r.outcome === 'INCOMPLETE' ? 'INCOMPLETE' : r.status,
       r.punctuality ?? '—',
     ]),
     styles: { fontSize: 8 },
@@ -460,6 +463,69 @@ export async function exportStudentReportPdf(
   doc.save(`${safe}.pdf`);
 }
 
+/** Executive Ed Phase 9 — NPS engine analytics bundle (session-level averages + gender
+ * participation), same two-table layout exportSessionLedgerPdf/exportHodRosterPdf use. */
+export async function exportNpsAnalyticsPdf(
+  nps: NpsByLecturerRow[],
+  participation: NpsParticipationByGenderRow[],
+  fileBase = 'tcheck-nps-analytics',
+) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  let startY = await addTcheckHeader(doc, 'TCheck — Executive Ed NPS analytics', `Generated ${format(new Date(), 'PPpp')}`);
+
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Session NPS by lecturer', 40, startY);
+  autoTable(doc, {
+    startY: startY + 10,
+    head: [['Course', 'Lecturer', 'Session', 'Date', 'Avg NPS', 'Responses']],
+    body: nps.map((r) => [
+      r.course_code,
+      r.lecturer_name,
+      r.class_title,
+      formatIsoDate(r.class_date),
+      r.avg_nps == null ? '—' : r.avg_nps.toFixed(1),
+      String(r.response_count),
+    ]),
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 40, right: 40 },
+  });
+
+  startY = afterTableY(doc, startY + 10) + 30;
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Participation by gender', 40, startY);
+  autoTable(doc, {
+    startY: startY + 10,
+    head: [['Course', 'Gender', 'Enrolled', 'Present check-ins', 'Possible check-ins', 'Participation %']],
+    body: participation.map((r) => [
+      r.course_code,
+      r.gender ?? 'Not shared',
+      String(r.enrolled_count),
+      String(r.present_checkins),
+      String(r.possible_checkins),
+      `${r.participation_rate_pct}%`,
+    ]),
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 40, right: 40 },
+  });
+
+  doc.save(`${fileBase}.pdf`);
+}
+
+function formatIsoDate(iso: string) {
+  try {
+    const raw = typeof iso === 'string' ? parseISO(iso) : new Date(iso);
+    return format(Number.isNaN(raw.getTime()) ? new Date(iso) : raw, 'MMM d, yyyy');
+  } catch {
+    return String(iso);
+  }
+}
+
 /** Week-over-week attendance trend, isolated from the full campus-analytics bundle. */
 export async function exportTrendAnalysisPdf(campus: CampusAnalytics, fileBase = 'tcheck-trend-analysis') {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
@@ -477,6 +543,74 @@ export async function exportTrendAnalysisPdf(campus: CampusAnalytics, fileBase =
     headStyles: { fillColor: [51, 65, 85], textColor: 255 },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     margin: { left: 40, right: 40 },
+  });
+
+  doc.save(`${fileBase}.pdf`);
+}
+
+/** One row from GET /cem/report — a CEM's own cohort summary, extended with the fields the report
+ * adds on top of what /cem/dashboard already returns for a CEM's own view of themselves. */
+export interface CemReportCohortPdfRow {
+  id: string; name: string; studentCount: number; startDate: string | null; endDate: string | null;
+  attendanceRate: number; openTickets: number; resolvedTickets: number;
+  students: { firstName: string; lastName: string; email: string; studentId: string | null; jobTitle: string | null; company: string | null }[];
+}
+export interface CemReportCemPdfRow {
+  id: string; firstName: string; lastName: string; email: string; totalStudents: number;
+  cohorts: CemReportCohortPdfRow[];
+}
+
+/** Dean/School Admin cross-CEM oversight report (GET /cem/report) — one section per CEM: a
+ * programmes summary table, then a full student roster table. Branded with the TCheck logo the
+ * same way every other admin PDF export here is, per explicit request ("it needs to have our logo
+ * if it's in PDF"). */
+export async function exportCemReportPdf(cems: CemReportCemPdfRow[], fileBase = 'tcheck-cem-report') {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  let y = await addTcheckHeader(doc, 'TCheck — CEM & Programmes Report', `Generated ${format(new Date(), 'PPpp')}`);
+
+  cems.forEach((cem, i) => {
+    if (i > 0) {
+      doc.addPage();
+      y = 48;
+    }
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${cem.firstName} ${cem.lastName}`, 40, y);
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${cem.email} · ${cem.totalStudents} student${cem.totalStudents === 1 ? '' : 's'} across ${cem.cohorts.length} programme${cem.cohorts.length === 1 ? '' : 's'}`, 40, y + 14);
+
+    autoTable(doc, {
+      startY: y + 28,
+      head: [['Programme', 'Dates', 'Students', 'Attendance', 'Open tickets', 'Resolved']],
+      body: cem.cohorts.map((c) => [
+        c.name,
+        c.startDate && c.endDate ? `${format(parseISO(c.startDate), 'MMM d, yyyy')} – ${format(parseISO(c.endDate), 'MMM d, yyyy')}` : 'Not scheduled',
+        String(c.studentCount),
+        `${c.attendanceRate}%`,
+        String(c.openTickets),
+        String(c.resolvedTickets),
+      ]),
+      styles: { fontSize: 9, cellPadding: 5 },
+      headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 40, right: 40 },
+    });
+
+    const studentRows = cem.cohorts.flatMap((c) =>
+      c.students.map((s) => [`${s.firstName} ${s.lastName}`, c.name, s.jobTitle ? `${s.jobTitle}${s.company ? ` · ${s.company}` : ''}` : '—', s.email, s.studentId ?? '—']),
+    );
+    if (studentRows.length) {
+      autoTable(doc, {
+        startY: afterTableY(doc, y + 28) + 20,
+        head: [['Student', 'Programme', 'Role / Company', 'Email', 'ID']],
+        body: studentRows,
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [71, 85, 105], textColor: 255 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 40, right: 40 },
+      });
+    }
   });
 
   doc.save(`${fileBase}.pdf`);

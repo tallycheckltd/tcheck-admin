@@ -1,37 +1,93 @@
-import { useState, useEffect } from 'react';
+import { LEGAL_URLS } from '../../lib/legalUrls';
+import { useState, useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Eye, EyeOff, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, MailCheck, RotateCw } from 'lucide-react';
+import { OtpBoxInput } from '../../components/auth/OtpBoxInput';
+import { homeRouteFor } from '../../lib/rbac';
+
+const RESEND_COOLDOWN_SECONDS = 30;
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [otpStage, setOtpStage] = useState(false);
+  const [otpErrorTick, setOtpErrorTick] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user } = useAuth();
+  const { requestOtp, verifyOtp, user } = useAuth();
   const navigate = useNavigate();
+  const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (cooldownTimer.current) clearInterval(cooldownTimer.current); }, []);
+
+  const startResendCooldown = () => {
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+    cooldownTimer.current = setInterval(() => {
+      setResendCooldown((s) => {
+        if (s <= 1) {
+          if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  };
 
   useEffect(() => {
     if (user) {
-      const dest = (user.role === 'SUPER_ADMIN' || user.role === 'SUB_ADMIN') ? '/admin' : '/lecturer';
-      navigate(dest, { replace: true });
+      navigate(homeRouteFor(user.role), { replace: true });
     }
   }, [user, navigate]);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const loggedInUser = await login(email, password);
-      const dest = (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'SUB_ADMIN') ? '/admin' : '/lecturer';
-      navigate(dest);
+      await requestOtp(email, password);
+      setOtpStage(true);
+      startResendCooldown();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const submitOtp = async (submittedCode: string) => {
+    setError('');
+    setLoading(true);
+    try {
+      const loggedInUser = await verifyOtp(email, submittedCode);
+      navigate(homeRouteFor(loggedInUser.role));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Invalid code');
+      setCode('');
+      setOtpErrorTick((t) => t + 1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0 || resending) return;
+    setError('');
+    setResending(true);
+    try {
+      await requestOtp(email, password);
+      setCode('');
+      startResendCooldown();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not resend code');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -104,12 +160,67 @@ export function LoginPage() {
             <span className="text-xl font-bold text-white tracking-tight">Tcheck</span>
           </div>
 
+          {otpStage ? (
+            <div className="space-y-6">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5">
+                  <MailCheck size={28} className="text-blue-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Verify It's You</h2>
+                <p className="text-slate-400 text-sm">
+                  Enter the 6-digit code we sent to<br />
+                  <span className="text-slate-200 font-medium">{email}</span>
+                </p>
+              </div>
+
+              <OtpBoxInput
+                value={code}
+                onChange={setCode}
+                onComplete={submitOtp}
+                shakeKey={otpErrorTick}
+                disabled={loading}
+              />
+
+              {error && (
+                <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in">
+                  <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+                  <p className="text-sm text-red-400">{error}</p>
+                </div>
+              )}
+
+              {loading && (
+                <div className="flex justify-center">
+                  <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                </div>
+              )}
+
+              <div className="flex flex-col items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendCooldown > 0 || resending}
+                  className="flex items-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  <RotateCw size={14} className={resending ? 'animate-spin' : ''} />
+                  {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOtpStage(false); setCode(''); setError(''); }}
+                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                >
+                  Use a different account
+                </button>
+              </div>
+            </div>
+          ) : (
+          <>
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
             <p className="text-slate-400 text-sm">Sign in to your dashboard</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handlePasswordSubmit} className="space-y-5">
             {/* Email field */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-300">Email</label>
@@ -181,17 +292,19 @@ export function LoginPage() {
               )}
             </button>
           </form>
+          </>
+          )}
 
           <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
             <p className="text-center text-xs text-slate-600">
               Admin & Lecturer access only. Students use the mobile app.
             </p>
             <p className="text-center text-xs text-slate-600">
-              <a href="https://tallycheck.co.ke/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+              <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
                 Privacy Policy
               </a>
               <span className="mx-2">·</span>
-              <a href="https://tallycheck.co.ke/terms" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
                 Terms of Service
               </a>
             </p>

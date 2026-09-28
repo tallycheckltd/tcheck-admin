@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { ElementType } from 'react';
+import type { ElementType, ReactNode } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -7,13 +8,14 @@ import { Modal } from '../../components/ui/Modal';
 import { Slider } from '../../components/ui/Slider';
 import { ColorPickerField } from '../../components/ui/ColorPickerField';
 import {
-  Plus, Pencil, Trash2, School as SchoolIcon, Hash, UserCheck, MessageSquareOff,
+  Plus, Pencil, Trash2, School as SchoolIcon, Hash, UserCheck, MessageSquareOff, MessageSquare,
   ShieldCheck, Megaphone, ScanFace, Timer, Mail, Lock, User as UserIcon, ArrowRight, ArrowLeft,
-  AlertCircle, CheckCircle2, UserPlus, X, CalendarDays, Layers
+  AlertCircle, CheckCircle2, UserPlus, X, CalendarDays, Layers, ChevronDown,
+  ToggleRight, Server, Briefcase, Building2
 } from 'lucide-react';
 import type { AttendanceMode, School, SchoolFeatures, User } from '../../types';
 
-const emptySchoolForm = { name: '', code: '', color: '#3B82F6' };
+const emptySchoolForm = { name: '', code: '', color: '#3B82F6', institutionName: '' };
 const emptyAdminForm = { email: '', password: '', firstName: '', lastName: '' };
 
 const defaultFeatures: Required<SchoolFeatures> = {
@@ -22,6 +24,10 @@ const defaultFeatures: Required<SchoolFeatures> = {
   broadcasts: true,
   faceIdCheckIn: true,
   dwellTimeTracking: true,
+  messaging: true,
+  execEdSuite: false,
+  onboardingJourney: false,
+  profileCompletionPrompt: true,
 };
 
 interface SchoolSettingsValue {
@@ -54,17 +60,21 @@ interface ExtraAdminRow {
 }
 const emptyExtraAdminRow = (): ExtraAdminRow => ({ firstName: '', lastName: '', email: '', password: '', role: 'SUB_ADMIN' });
 
-// Shared toggle-switch row — used by every feature/override toggle in SchoolSettingsFields below.
+// Compact settings-list row (icon + title + switch on one line, description below in muted
+// text) — replaces the old one-per-card layout so 6 feature toggles don't turn into 6 screens of
+// scroll. Rows sit inside an AccordionSection's divide-y list, not individually bordered.
 function ToggleRow({ icon: Icon, title, description, checked, onChange }: {
   icon: ElementType; title: string; description: string; checked: boolean; onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-start justify-between gap-4 cursor-pointer">
-      <span className="flex items-start gap-2">
-        <Icon size={18} className="text-slate-500 dark:text-gray-400 mt-0.5 shrink-0" />
-        <span>
+    <label className="flex items-start justify-between gap-4 py-3 cursor-pointer group">
+      <span className="flex items-start gap-3 min-w-0">
+        <span className="mt-0.5 shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
+          <Icon size={14} />
+        </span>
+        <span className="min-w-0">
           <span className="block text-sm font-medium text-gray-900 dark:text-white">{title}</span>
-          <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</span>
+          <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{description}</span>
         </span>
       </span>
       <span
@@ -79,116 +89,201 @@ function ToggleRow({ icon: Icon, title, description, checked, onChange }: {
   );
 }
 
-/** Shared between the Edit-School modal and the create wizard's Step 3 — one source of truth so
- * the two surfaces can't drift apart. */
-function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue; onChange: (v: SchoolSettingsValue) => void }) {
+/** Collapsible section with a colored icon badge and optional right-aligned summary — the
+ * structural unit the whole settings panel is built from. Cuts the panel's default height
+ * dramatically (rarely-touched sections start closed) without needing a wider modal, and gives
+ * each group a distinct identity instead of five identical gray boxes stacked vertically. */
+function AccordionSection({ icon: Icon, iconColor, title, summary, defaultOpen = true, children }: {
+  icon: ElementType; iconColor: string; title: string; summary?: string; defaultOpen?: boolean; children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="space-y-4">
-      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Attendance Mode</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Stage-based schools drop the calendar entirely — students progress through a fixed Program/Module pipeline instead of scheduled classes.
-        </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => onChange({ ...value, attendanceMode: 'CALENDAR_BASED' })}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-              value.attendanceMode === 'CALENDAR_BASED' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
-            }`}
+    <div className="rounded-2xl border border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-slate-900/50 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 cursor-pointer text-left"
+      >
+        <span className="flex items-center gap-2.5">
+          <span className={`flex items-center justify-center w-8 h-8 rounded-xl ${iconColor}`}>
+            <Icon size={15} />
+          </span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">{title}</span>
+        </span>
+        <span className="flex items-center gap-2 shrink-0">
+          {summary && !open && (
+            <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">{summary}</span>
+          )}
+          <ChevronDown
+            size={16}
+            className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          />
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeInOut' }}
+            className="overflow-hidden"
           >
-            <CalendarDays size={13} /> Calendar-Based
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange({ ...value, attendanceMode: 'STAGE_BASED' })}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-              value.attendanceMode === 'STAGE_BASED' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            <Layers size={13} /> Stage-Based
-          </button>
+            <div className="px-4 pb-4 border-t border-gray-100 dark:border-white/5">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** Shared between the Edit-School modal and the create wizard's Step 3 — one source of truth so
+ * the two surfaces can't drift apart. Three collapsible groups instead of five flat cards:
+ * Attendance (mode + override + thresholds, everything about how check-in behaves day to day —
+ * open by default), Features (the toggle list — open by default, but now a dense divide-y list
+ * instead of six separate boxes), and Advanced (the isolated-backend override — closed by
+ * default, since "leave blank unless..." describes the rare case, not the common one). */
+function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue; onChange: (v: SchoolSettingsValue) => void }) {
+  const enabledFeatureCount = Object.values(value.features).filter(Boolean).length;
+
+  return (
+    <div className="space-y-3">
+      <AccordionSection icon={CalendarDays} iconColor="bg-blue-500/10 text-blue-500" title="Attendance">
+        <div className="pt-4 space-y-4">
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              Stage-based schools drop the calendar entirely — students progress through a fixed Program/Module pipeline instead of scheduled classes.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onChange({ ...value, attendanceMode: 'CALENDAR_BASED' })}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                  value.attendanceMode === 'CALENDAR_BASED' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+                }`}
+              >
+                <CalendarDays size={13} /> Calendar-Based
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange({ ...value, attendanceMode: 'STAGE_BASED' })}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                  value.attendanceMode === 'STAGE_BASED' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+                }`}
+              >
+                <Layers size={13} /> Stage-Based
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 dark:border-white/5">
+            <ToggleRow
+              icon={UserCheck}
+              title="Manual check-in override"
+              description="Lets lecturers mark students present by hand (dead battery, hardware exceptions) from the live session dashboard."
+              checked={value.allowManualLecturerOverride}
+              onChange={(v) => onChange({ ...value, allowManualLecturerOverride: v })}
+            />
+          </div>
+
+          <div className="space-y-4 border-t border-gray-100 dark:border-white/5 pt-4">
+            <Slider
+              label="Late Threshold"
+              min={0} max={60} step={1} unit=" min"
+              value={value.lateThresholdMinutes}
+              onChange={(v) => onChange({ ...value, lateThresholdMinutes: v })}
+            />
+            <Slider
+              label="Extremely Late Threshold"
+              min={0} max={90} step={1} unit=" min"
+              value={value.extremelyLateThresholdMinutes}
+              onChange={(v) => onChange({ ...value, extremelyLateThresholdMinutes: v })}
+            />
+          </div>
         </div>
-      </div>
+      </AccordionSection>
 
-      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Infrastructure</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Leave blank unless this school runs on its own isolated backend (e.g. a pilot with a
-          separate database). If set, the mobile apps redirect to this URL after the school is
-          selected instead of using the default backend.
-        </p>
-        <Input
-          placeholder="https://tcheck-backend-example.up.railway.app/api"
-          value={value.apiBaseUrl}
-          onChange={(e) => onChange({ ...value, apiBaseUrl: e.target.value })}
-        />
-      </div>
+      <AccordionSection
+        icon={ToggleRight}
+        iconColor="bg-violet-500/10 text-violet-500"
+        title="Features"
+        summary={`${enabledFeatureCount}/7 enabled`}
+      >
+        <div className="pt-1 divide-y divide-gray-100 dark:divide-white/5">
+          <ToggleRow
+            icon={MessageSquare}
+            title="Messaging"
+            description="Chat, campus/course rooms, and direct messages. Off hides the Chat tab entirely on mobile — no messaging feature at all for this school, not just muted."
+            checked={value.features.messaging}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, messaging: v } })}
+          />
+          <ToggleRow
+            icon={MessageSquareOff}
+            title="Anonymous Chat"
+            description="Lets students post anonymously in Campus/Session Chat rooms."
+            checked={value.features.anonymousChat}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, anonymousChat: v } })}
+          />
+          <ToggleRow
+            icon={ShieldCheck}
+            title="Biometric Strict Mode"
+            description="Blocks the selfie fallback — students without biometric hardware can't check in."
+            checked={value.features.biometricStrictMode}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, biometricStrictMode: v } })}
+          />
+          <ToggleRow
+            icon={Megaphone}
+            title="Broadcasts"
+            description="Lets admins send announcements to this school's students and lecturers."
+            checked={value.features.broadcasts}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, broadcasts: v } })}
+          />
+          <ToggleRow
+            icon={ScanFace}
+            title="Face ID Check-In"
+            description="Requires identity verification (Face ID, selfie, or device binding) to check in. Off falls back to a plain tap-to-check-in/out."
+            checked={value.features.faceIdCheckIn}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, faceIdCheckIn: v } })}
+          />
+          <ToggleRow
+            icon={Timer}
+            title="Dwell Time Tracking"
+            description="Requires ~10s of sustained signal presence before an Aura check-in is accepted. Off allows an instant tap the moment the signal is detected."
+            checked={value.features.dwellTimeTracking}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, dwellTimeTracking: v } })}
+          />
+          <ToggleRow
+            icon={Briefcase}
+            title="Executive Ed Suite"
+            description="Tools for executive and short-course programs — cohorts and corporate attendees tracked separately from regular class attendance."
+            checked={value.features.execEdSuite}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, execEdSuite: v } })}
+          />
+        </div>
+      </AccordionSection>
 
-      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5">
-        <ToggleRow
-          icon={UserCheck}
-          title="Manual check-in override"
-          description="Lets lecturers mark students present by hand (dead battery, hardware exceptions) from the live session dashboard."
-          checked={value.allowManualLecturerOverride}
-          onChange={(v) => onChange({ ...value, allowManualLecturerOverride: v })}
-        />
-      </div>
-
-      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Attendance Thresholds</h3>
-        <Slider
-          label="Late Threshold"
-          min={0} max={60} step={1} unit=" min"
-          value={value.lateThresholdMinutes}
-          onChange={(v) => onChange({ ...value, lateThresholdMinutes: v })}
-        />
-        <Slider
-          label="Extremely Late Threshold"
-          min={0} max={90} step={1} unit=" min"
-          value={value.extremelyLateThresholdMinutes}
-          onChange={(v) => onChange({ ...value, extremelyLateThresholdMinutes: v })}
-        />
-      </div>
-
-      <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Features Configuration</h3>
-        <ToggleRow
-          icon={MessageSquareOff}
-          title="Anonymous Chat"
-          description="Lets students post anonymously in Campus/Session Chat rooms."
-          checked={value.features.anonymousChat}
-          onChange={(v) => onChange({ ...value, features: { ...value.features, anonymousChat: v } })}
-        />
-        <ToggleRow
-          icon={ShieldCheck}
-          title="Biometric Strict Mode"
-          description="Blocks the selfie fallback — students without biometric hardware can't check in."
-          checked={value.features.biometricStrictMode}
-          onChange={(v) => onChange({ ...value, features: { ...value.features, biometricStrictMode: v } })}
-        />
-        <ToggleRow
-          icon={Megaphone}
-          title="Broadcasts"
-          description="Lets admins send announcements to this school's students and lecturers."
-          checked={value.features.broadcasts}
-          onChange={(v) => onChange({ ...value, features: { ...value.features, broadcasts: v } })}
-        />
-        <ToggleRow
-          icon={ScanFace}
-          title="Face ID Check-In"
-          description="Requires identity verification (Face ID, selfie, or device binding) to check in. Off falls back to a plain tap-to-check-in/out."
-          checked={value.features.faceIdCheckIn}
-          onChange={(v) => onChange({ ...value, features: { ...value.features, faceIdCheckIn: v } })}
-        />
-        <ToggleRow
-          icon={Timer}
-          title="Dwell Time Tracking"
-          description="Requires ~10s of sustained signal presence before a TB check-in is accepted. Off allows an instant tap the moment the signal is detected."
-          checked={value.features.dwellTimeTracking}
-          onChange={(v) => onChange({ ...value, features: { ...value.features, dwellTimeTracking: v } })}
-        />
-      </div>
+      <AccordionSection
+        icon={Server}
+        iconColor="bg-gray-400/10 text-gray-500 dark:text-gray-400"
+        title="Advanced"
+        summary={value.apiBaseUrl ? 'Isolated backend set' : 'Default backend'}
+        defaultOpen={false}
+      >
+        <div className="pt-4 space-y-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Leave blank unless this school runs on its own isolated backend (e.g. a pilot with a
+            separate database). If set, the mobile apps redirect to this URL after the school is
+            selected instead of using the default backend.
+          </p>
+          <Input
+            placeholder="https://tcheck-backend-example.up.railway.app/api"
+            value={value.apiBaseUrl}
+            onChange={(e) => onChange({ ...value, apiBaseUrl: e.target.value })}
+          />
+        </div>
+      </AccordionSection>
     </div>
   );
 }
@@ -203,7 +298,7 @@ export function SchoolsPage() {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
   const [form, setForm] = useState({
-    name: '', code: '', color: '#3B82F6',
+    name: '', code: '', color: '#3B82F6', institutionName: '',
     allowManualLecturerOverride: true,
     features: defaultFeatures,
     lateThresholdMinutes: 10,
@@ -226,6 +321,10 @@ export function SchoolsPage() {
   const [adminCreated, setAdminCreated] = useState(false);
   const [wizardError, setWizardError] = useState('');
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
+  // Set only when the wizard was opened via "Add Branch" on an existing school's row — changes
+  // the modal title and pre-fills institutionName/color from that parent so the new school groups
+  // with it on the mobile picker without the admin having to retype/remember the exact name.
+  const [branchParent, setBranchParent] = useState<School | null>(null);
 
   const openCreate = () => {
     setEditing(null);
@@ -237,7 +336,34 @@ export function SchoolsPage() {
     setCreatedSchoolId(null);
     setAdminCreated(false);
     setWizardError('');
+    setBranchParent(null);
     setModal(true);
+  };
+
+  /** A "branch" is just another School row sharing the same `institutionName` — the mobile picker
+   * already groups any schools with a matching institutionName into one "N buildings" entry, so
+   * creating a branch is the exact same wizard, just pre-seeded with the parent's grouping value
+   * instead of leaving the admin to retype it (and risk a typo that silently splits the group). */
+  const openCreateBranch = async (parent: School) => {
+    setEditing(null);
+    setWizardStep(1);
+    const sharedInstitutionName = parent.institutionName?.trim() || parent.name.trim();
+    setSchoolForm({ ...emptySchoolForm, color: parent.color, institutionName: sharedInstitutionName });
+    setAdminForm(emptyAdminForm);
+    setSettingsForm(defaultSettings);
+    setExtraAdmins([]);
+    setCreatedSchoolId(null);
+    setAdminCreated(false);
+    setWizardError('');
+    setBranchParent(parent);
+    setModal(true);
+    // The parent didn't belong to any group yet — retroactively give it the same institutionName
+    // so it actually joins the group once the branch is created, instead of only the new branch
+    // being grouped while the parent it was branched from stays a lone standalone school.
+    if (!parent.institutionName) {
+      await update(`/schools/${parent.id}`, { institutionName: sharedInstitutionName });
+      refetch();
+    }
   };
   const openEdit = (s: School) => {
     setEditing(s);
@@ -245,6 +371,7 @@ export function SchoolsPage() {
       name: s.name,
       code: s.code,
       color: s.color,
+      institutionName: s.institutionName ?? '',
       allowManualLecturerOverride: s.allowManualLecturerOverride ?? true,
       features: { ...defaultFeatures, ...s.features },
       lateThresholdMinutes: s.lateThresholdMinutes ?? 10,
@@ -256,7 +383,7 @@ export function SchoolsPage() {
   };
 
   const handleSubmit = async () => {
-    await update(`/schools/${editing!.id}`, { ...form, apiBaseUrl: form.apiBaseUrl || null });
+    await update(`/schools/${editing!.id}`, { ...form, apiBaseUrl: form.apiBaseUrl || null, institutionName: form.institutionName || null });
     setModal(false);
     refetch();
   };
@@ -289,13 +416,16 @@ export function SchoolsPage() {
     try {
       let schoolId = createdSchoolId;
       if (!schoolId) {
-        const school = await create('/schools', schoolForm);
+        const school = await create('/schools', { ...schoolForm, institutionName: schoolForm.institutionName || null });
         schoolId = school!.id;
         setCreatedSchoolId(schoolId);
       }
 
       if (!adminCreated) {
-        await createUser('/users/admin', { ...adminForm, schoolId });
+        // SCHOOL_ADMIN, not the older SUB_ADMIN co-admin role below (/users/admin) — every new
+        // school gets exactly one of these, guaranteed, with the full default permission set
+        // (Users & Permissions management, settings, courses, announcements, analytics, tickets).
+        await createUser('/users/school-admin', { ...adminForm, schoolId });
         setAdminCreated(true);
       }
 
@@ -360,7 +490,14 @@ export function SchoolsPage() {
                       <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-gray-500 border border-gray-100 dark:border-white/10">
                         <SchoolIcon size={20} />
                       </div>
-                      <span className="font-bold text-gray-900 dark:text-white">{s.name}</span>
+                      <div>
+                        <span className="font-bold text-gray-900 dark:text-white block">{s.name}</span>
+                        {s.institutionName && (
+                          <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                            <Building2 size={11} /> {s.institutionName}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -375,7 +512,10 @@ export function SchoolsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => void openCreateBranch(s)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-emerald-500 transition-all border border-transparent hover:border-emerald-100" title="Add a branch/campus grouped with this school">
+                        <Layers size={16} />
+                      </button>
                       <button onClick={() => openEdit(s)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-blue-500 transition-all border border-transparent hover:border-blue-100" title="Edit School">
                         <Pencil size={16} />
                       </button>
@@ -402,16 +542,16 @@ export function SchoolsPage() {
       <Modal
         open={modal}
         onClose={() => setModal(false)}
-        title={editing ? 'Edit School' : `Add School — Step ${wizardStep} of 3`}
+        title={editing ? 'Edit School' : `${branchParent ? `Add Branch to ${branchParent.name}` : 'Add School'} — Step ${wizardStep} of 3`}
       >
         {!editing && (
           <div className="flex items-center gap-2 mb-5">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex items-center gap-2 flex-1">
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
                     wizardStep === step
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30 ring-4 ring-blue-500/15'
                       : wizardStep > step
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400'
@@ -430,27 +570,66 @@ export function SchoolsPage() {
 
         {editing ? (
         <div className="space-y-5">
-          <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
-            <Input
-              label="Institution Name"
-              icon={SchoolIcon}
-              placeholder="e.g. Science & Technology Institute"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <div className="grid grid-cols-2 gap-4">
+          <div className="relative rounded-2xl border border-gray-100 dark:border-white/5 bg-white dark:bg-slate-900/50 overflow-hidden shadow-sm">
+            {/* Brand-tinted hero strip — the identity card updates live as name/code/color change,
+                so editing an existing school feels as immediate as creating a new one instead of
+                three disconnected form fields. */}
+            <div
+              className="flex items-center gap-3.5 px-5 py-5 transition-colors"
+              style={{
+                background: `linear-gradient(135deg, ${(/^#[0-9a-fA-F]{6}$/.test(form.color) ? form.color : '#3B82F6')}1A, transparent 70%)`,
+              }}
+            >
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-lg ring-1 ring-black/5 transition-colors"
+                style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(form.color) ? form.color : '#3B82F6' }}
+              >
+                {form.name.trim() ? form.name.trim()[0].toUpperCase() : <SchoolIcon size={22} />}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-lg text-gray-900 dark:text-white truncate leading-tight">
+                  {form.name.trim() || 'Untitled institution'}
+                </p>
+                <p className="text-xs text-gray-400 font-mono tracking-widest mt-0.5">
+                  {form.code.trim() || 'CODE'}
+                </p>
+              </div>
+            </div>
+
+            <div className="px-5 pb-5 pt-1 space-y-4 border-t border-gray-100 dark:border-white/5">
               <Input
-                label="School Code"
-                icon={Hash}
-                placeholder="STI"
-                value={form.code}
-                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                label="Institution Name"
+                icon={SchoolIcon}
+                placeholder="e.g. Science & Technology Institute"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
-              <ColorPickerField
-                label="Brand Color"
-                value={form.color}
-                onChange={(color) => setForm({ ...form, color })}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="School Code"
+                  icon={Hash}
+                  placeholder="STI"
+                  value={form.code}
+                  onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                />
+                <ColorPickerField
+                  label="Brand Color"
+                  value={form.color}
+                  onChange={(color) => setForm({ ...form, color })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Input
+                  label="Parent Institution (optional)"
+                  icon={Building2}
+                  placeholder="e.g. Riverside Group of Schools"
+                  value={form.institutionName}
+                  onChange={(e) => setForm({ ...form, institutionName: e.target.value })}
+                />
+                <p className="text-xs text-gray-400 pl-1">
+                  Groups this school with any others sharing the same parent on the mobile school picker — useful for multiple campuses or programs under one institution.
+                </p>
+              </div>
             </div>
           </div>
           <SchoolSettingsFields value={form} onChange={(v) => setForm({ ...form, ...v })} />
@@ -506,6 +685,18 @@ export function SchoolsPage() {
                 onChange={(color) => setSchoolForm({ ...schoolForm, color })}
               />
             </div>
+            <div className="space-y-1">
+              <Input
+                label="Parent Institution (optional)"
+                icon={Building2}
+                placeholder="e.g. Riverside Group of Schools"
+                value={schoolForm.institutionName}
+                onChange={(e) => setSchoolForm({ ...schoolForm, institutionName: e.target.value })}
+              />
+              <p className="text-xs text-gray-400 pl-1">
+                Groups this school with any others sharing the same parent on the mobile school picker.
+              </p>
+            </div>
           </div>
           {wizardError && (
             <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl px-4 py-2.5">
@@ -515,16 +706,19 @@ export function SchoolsPage() {
           <Button
             onClick={handleWizardNext}
             disabled={!schoolForm.name.trim() || !schoolForm.code.trim()}
-            className="w-full py-4 shadow-lg shadow-blue-500/20 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed"
+            className="w-full py-4 text-[15px] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed group"
           >
-            Next: Assign Admin <ArrowRight size={16} className="ml-2" />
+            Next: Assign Admin
+            <ArrowRight size={16} className="ml-2 inline-block transition-transform duration-150 group-hover:translate-x-1" />
           </Button>
         </div>
         ) : wizardStep === 2 ? (
         <div className="space-y-5">
           <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              This account logs in as this school&apos;s admin — they&apos;ll add lecturers, courses, and approve students from there.
+              This is the School Admin — they&apos;ll add lecturers, courses, and approve students, and can create every other
+              user for this school (Client Experience Managers, custom roles and permissions included) from the Users &amp;
+              Permissions page.
             </p>
             <div className="grid grid-cols-2 gap-4">
               <Input
@@ -560,12 +754,22 @@ export function SchoolsPage() {
               <AlertCircle size={16} className="shrink-0" /> {wizardError}
             </div>
           )}
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setWizardStep(1)} className="gap-2">
-              <ArrowLeft size={16} /> Back
-            </Button>
-            <Button onClick={handleWizardAdminNext} className="flex-1 py-4 shadow-lg shadow-blue-500/20">
-              Next: Settings & Team <ArrowRight size={16} className="ml-2" />
+          <div className="flex items-center gap-3">
+            {/* Back demoted to a quiet circular icon button — a wizard's "previous step" action
+                doesn't need equal visual weight to "next," and a full text+border button here was
+                what made this footer read as two oversized, competing buttons. */}
+            <button
+              type="button"
+              onClick={() => setWizardStep(1)}
+              aria-label="Back to Institution"
+              title="Back to Institution"
+              className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 bg-white dark:bg-white/5 shadow-sm hover:shadow-md hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <Button onClick={handleWizardAdminNext} className="flex-1 group">
+              Next: Settings &amp; Team
+              <ArrowRight size={16} className="ml-2 inline-block transition-transform duration-150 group-hover:translate-x-1" />
             </Button>
           </div>
         </div>
@@ -627,11 +831,18 @@ export function SchoolsPage() {
               <AlertCircle size={16} className="shrink-0" /> {wizardError}
             </div>
           )}
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setWizardStep(2)} disabled={wizardSubmitting} className="gap-2">
-              <ArrowLeft size={16} /> Back
-            </Button>
-            <Button onClick={() => void handleCreateWizard()} disabled={wizardSubmitting} className="flex-1 py-4 shadow-lg shadow-blue-500/20">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setWizardStep(2)}
+              disabled={wizardSubmitting}
+              aria-label="Back to Admin Account"
+              title="Back to Admin Account"
+              className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 bg-white dark:bg-white/5 shadow-sm hover:shadow-md hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <Button onClick={() => void handleCreateWizard()} disabled={wizardSubmitting} className="flex-1">
               {wizardSubmitting ? 'Creating…' : 'Finish & Create School'}
             </Button>
           </div>

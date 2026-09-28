@@ -27,15 +27,20 @@ export function Modal({ open, onClose, title, children }: Props) {
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-            className="relative w-full max-w-lg mx-4 glass-light dark:glass rounded-2xl p-6 shadow-2xl"
+            className="relative w-full max-w-lg mx-4 glass-light dark:glass rounded-2xl shadow-2xl max-h-[85vh] flex flex-col"
           >
-            <div className="flex items-center justify-between mb-4">
+            {/* Header stays put; only the body below scrolls — tall content (e.g. the school
+                settings form) used to just overflow past the viewport with no way to reach the
+                submit button. */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h2>
               <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-500 cursor-pointer">
                 <X size={20} />
               </button>
             </div>
-            {children}
+            <div className="px-6 pb-6 overflow-y-auto min-h-0">
+              {children}
+            </div>
           </motion.div>
         </div>
       )}

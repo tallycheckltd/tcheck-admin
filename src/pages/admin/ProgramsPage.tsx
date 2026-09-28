@@ -26,6 +26,10 @@ const emptyForm = {
 export function ProgramsPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  // program.routes.ts's POST / (create) is SUPER_ADMIN/SUB_ADMIN/SCHOOL_ADMIN only — LECTURER can
+  // GET but not create. Now that LECTURER has a nav entry to this page, "Add Program" must not be
+  // shown to them (it would 403): a UI action must never imply a backend-rejected capability.
+  const canCreate = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN' || user?.role === 'SCHOOL_ADMIN';
   const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
   const [schoolFilter, setSchoolFilter] = useState('');
   const activeSchoolId = isSuperAdmin ? schoolFilter : user?.schoolId || '';
@@ -93,7 +97,7 @@ export function ProgramsPage() {
             Manage degree tracks and student cohort assignments.
           </p>
         </div>
-        <Button onClick={openCreate}><Plus size={16} className="mr-1" /> Add Program</Button>
+        {canCreate && <Button onClick={openCreate}><Plus size={16} className="mr-1" /> Add Program</Button>}
       </div>
 
       {isSuperAdmin && (

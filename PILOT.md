@@ -1,11 +1,11 @@
-# Moi Pilot preview branch — deploys against the isolated `generous-emotion` Railway backend
-# (tcheck-backend-moi-production.up.railway.app) via vercel.json's `/api/*` rewrite. Not for merge.
-#
-# CI (.github/workflows/deploy.yml) deploys this branch as a Vercel PREVIEW build (not
-# production) on every push, under the same tcheck-admin Vercel project as `main` — same
-# VERCEL_PROJECT_ID/VERCEL_ORG_ID secrets, just a different, stable preview URL.
-#
-# If VITE_API_URL is set as a Preview-scoped env var in the Vercel project settings, it takes
-# precedence over the rewrite (see src/lib/api.ts) — not required for correct routing, since the
-# rewrite alone is sufficient, but src/lib/socket.ts's websocket URL also derives from it, so set
-# it too if the Socket.IO connection needs to reach the isolated backend directly.
+# Moi Pilot dashboard — `moi-pilot` branch. Not for merge.
+
+This branch is the admin dashboard for Moi University's isolated backend (Railway project `generous-emotion`,
+https://tcheck-backend-moi-production.up.railway.app). It is the current `main` dashboard plus three changes:
+
+- `src/lib/apiBase.ts` — API_BASE is fixed to Moi's backend; `VITE_API_URL` is ignored on this branch, so it can
+  never talk to shared production even though the Vercel project's env points there.
+- `vercel.json` — `/api/*` rewrite points at Moi's backend (belt and braces).
+- `.github/workflows/deploy.yml` — also runs on pushes to `moi-pilot`, deploying a Vercel PREVIEW (never `--prod`).
+
+Refreshing it: merge `main` into `moi-pilot`, keep these three changes, push. Production is never touched.

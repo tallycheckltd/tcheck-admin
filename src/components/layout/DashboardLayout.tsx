@@ -1,15 +1,33 @@
-import { useState } from 'react';
+import { LEGAL_URLS } from '../../lib/legalUrls';
+import { useState, useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Sidebar } from './Sidebar';
 import { GlobalSearchBar } from './GlobalSearchBar';
+import { PermissionNotice } from '../shared/PermissionNotice';
+import { TermsAcceptancePage } from '../../pages/TermsAcceptancePage';
 
 export function DashboardLayout() {
   const { user, loading } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
+
+  // Backs the "/" hint shown next to Search in the sidebar — ignored while typing in any field
+  // so it doesn't hijack a literal "/" character in, say, a school code or a message draft.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      e.preventDefault();
+      setSearchOpen(true);
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -29,8 +47,14 @@ export function DashboardLayout() {
 
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'STUDENT') return <Navigate to="/login" replace />;
+  // First login of an admin-created account, or the terms changed since it last accepted (QA plan Phase 21):
+  // nothing else in the dashboard is reachable until the current terms are accepted.
+  if (user.termsRequired) return <TermsAcceptancePage />;
 
-  const contentMargin = collapsed ? 'lg:ml-[76px]' : 'lg:ml-64';
+  // Sidebar now floats lg:left-3 with its own width, plus a matching gap before content starts
+  // (12px offset + width + 12px gap) — content margin has to grow by that offset+gap or it would
+  // sit flush against the floating card instead of clearing it.
+  const contentMargin = collapsed ? 'lg:ml-[100px]' : 'lg:ml-[280px]';
 
   return (
     <div className="min-h-screen app-shell transition-[background-color,color] duration-200">
@@ -53,7 +77,8 @@ export function DashboardLayout() {
         <Menu size={20} />
       </button>
       <GlobalSearchBar open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <main className={`${contentMargin} flex flex-col p-4 pt-16 sm:p-6 lg:pt-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
+      <PermissionNotice />
+      <main className={`${contentMargin} flex flex-col p-4 pt-16 sm:p-6 sm:pt-16 lg:pt-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
         <div className="flex-1">
           <Outlet />
         </div>
@@ -69,13 +94,11 @@ function DashboardFooter() {
     <footer className="mt-auto pt-6 pb-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[0.75rem] text-slate-500 dark:text-slate-500">
       <span>&copy; {year} Tallycheck Ltd. All rights reserved.</span>
       <span className="text-slate-300 dark:text-slate-700">|</span>
-      <span>TCheck Enterprise v1.2 (Moi Pilot)</span>
-      <span className="text-slate-300 dark:text-slate-700">|</span>
-      <a href="https://tallycheck.co.ke/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+      <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
         Privacy Policy &#8599;
       </a>
       <span className="text-slate-300 dark:text-slate-700">|</span>
-      <a href="https://tallycheck.co.ke/terms" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+      <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
         Terms of Service &#8599;
       </a>
     </footer>
