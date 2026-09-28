@@ -162,7 +162,7 @@ export function EmailActivityPage() {
         <Filter size={14} className="text-slate-400" />
         {isSuperAdmin && (
           <select value={schoolId} onChange={(e) => { setSchoolId(e.target.value); setBefore(null); }} className={select}>
-            <option value="">All schools</option>
+            <option value="">All institutions</option>
             {schools?.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
           </select>
         )}

@@ -1,6 +1,6 @@
 import { LEGAL_URLS } from '../../lib/legalUrls';
 import { useState, useEffect } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Sidebar } from './Sidebar';
@@ -8,7 +8,11 @@ import { GlobalSearchBar } from './GlobalSearchBar';
 import { PermissionNotice } from '../shared/PermissionNotice';
 import { TermsAcceptancePage } from '../../pages/TermsAcceptancePage';
 
+/** Pages a Super Admin may open (P10). */
+const PLATFORM_PATHS = /^\/(platform|profile|legal|settings\/compliance)(\/|$)/;
+
 export function DashboardLayout() {
+  const location = useLocation();
   const { user, loading } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -47,6 +51,9 @@ export function DashboardLayout() {
 
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'STUDENT') return <Navigate to="/login" replace />;
+  // P10 (A7.1): the platform operator lives in /platform and cannot open tenant pages (the API
+  // refuses them too — server/src/middleware/platformGate.ts).
+  if (user.role === 'SUPER_ADMIN' && !PLATFORM_PATHS.test(location.pathname)) return <Navigate to="/platform" replace />;
   // First login of an admin-created account, or the terms changed since it last accepted (QA plan Phase 21):
   // nothing else in the dashboard is reachable until the current terms are accepted.
   if (user.termsRequired) return <TermsAcceptancePage />;
@@ -99,7 +106,7 @@ function DashboardFooter() {
       </a>
       <span className="text-slate-300 dark:text-slate-700">|</span>
       <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
-        Terms of Service &#8599;
+        Legal agreement &#8599;
       </a>
     </footer>
   );

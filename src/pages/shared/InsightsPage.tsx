@@ -31,8 +31,8 @@ const PRESETS = [
   { key: '90', label: 'Last 90 days', range: () => { const t = new Date(); return [localYmd(addDays(t, -89)), localYmd(t)]; } },
   { key: '365', label: 'Last 12 months', range: () => { const t = new Date(); return [localYmd(addDays(t, -364)), localYmd(t)]; } },
 ] as const;
-const ROSTER_ROLES = ['SUPER_ADMIN', 'SUB_ADMIN', 'SCHOOL_ADMIN', 'LECTURER'];
-const CAMPAIGN_ROLES = ['SUPER_ADMIN', 'SUB_ADMIN', 'SCHOOL_ADMIN', 'LECTURER', 'CLIENT_EXPERIENCE_MANAGER'];
+const ROSTER_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'LECTURER'];
+const CAMPAIGN_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'LECTURER', 'CLIENT_EXPERIENCE_MANAGER'];
 const exportBtn = 'inline-flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-xl text-sm font-medium border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-white/10 disabled:opacity-50 cursor-pointer';
 const selectCls = 'rounded-xl px-3 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-900 dark:text-white';
 
@@ -129,8 +129,8 @@ export function InsightsPage() {
             ))}
           </div>
           {isSuperAdmin && (
-            <select aria-label="School" value={schoolId} onChange={(e) => { set({ school: e.target.value, programme: null, session: null, course: null }); setKnownCourses([]); }} className={selectCls}>
-              <option value="">Select a school…</option>
+            <select aria-label="Institution" value={schoolId} onChange={(e) => { set({ school: e.target.value, programme: null, session: null, course: null }); setKnownCourses([]); }} className={selectCls}>
+              <option value="">Select an institution…</option>
               {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           )}
@@ -170,7 +170,7 @@ export function InsightsPage() {
       )}
 
       {!canQuery ? (
-        <GlassCard><p className="text-sm text-slate-600 dark:text-slate-400">Select a school to see its insights.</p></GlassCard>
+        <GlassCard><p className="text-sm text-slate-600 dark:text-slate-400">Select an institution to see its insights.</p></GlassCard>
       ) : !rangeValid && !sessionId ? (
         <GlassCard><p role="alert" className="text-sm text-amber-700 dark:text-amber-300">The start date must be on or before the end date.</p></GlassCard>
       ) : current.error ? (
@@ -179,7 +179,7 @@ export function InsightsPage() {
         <GlassCard><p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p></GlassCard>
       ) : !onOverview && feedback.data ? (
         <FeedbackView data={feedback.data} days={days} campaigns={scopedCampaigns}
-          canCreateCampaign={['SUPER_ADMIN', 'SUB_ADMIN', 'SCHOOL_ADMIN'].includes(user?.role ?? '')}
+          canCreateCampaign={['SUPER_ADMIN', 'SCHOOL_ADMIN'].includes(user?.role ?? '')}
           onCampaignsChanged={() => campaigns.refetch({ silent: true })} />
       ) : sessionId && session.data ? (
         <SessionView r={session.data} canSeeRoster={ROSTER_ROLES.includes(user?.role ?? '')} />

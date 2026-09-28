@@ -303,7 +303,7 @@ export function MoodleCentre({ connectionId, courses }: { connectionId: string; 
 
       {confirm === 'roster' && (
         <Confirm title="Sync roster from Moodle?" action="Start sync" busy={starting} onCancel={() => setConfirm(null)} onConfirm={() => void start('roster')}
-          body={<><p>TCheck will read this school's Moodle courses and enrolments, link courses whose code matches, and add TCheck enrolments for delegates it can match with certainty.</p><p>Nothing is removed in TCheck or Moodle. Anyone it can't match is listed for review.</p><p className="text-slate-500">Last successful sync: {when(lastRoster?.finishedAt)}</p></>} />
+          body={<><p>TCheck will read this institution's Moodle courses and enrolments, link courses whose code matches, and add TCheck enrolments for delegates it can match with certainty.</p><p>Nothing is removed in TCheck or Moodle. Anyone it can't match is listed for review.</p><p className="text-slate-500">Last successful sync: {when(lastRoster?.finishedAt)}</p></>} />
       )}
       {confirm === 'attendance' && (
         <Confirm title="Write attendance to Moodle?" action="Start" busy={starting} onCancel={() => setConfirm(null)} onConfirm={() => void start('attendance')}

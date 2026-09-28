@@ -9,12 +9,21 @@ import { useApi } from '../../hooks/useApi';
 import {
   LayoutDashboard, School, Users, Users2, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
-  BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star, Presentation,
-  ShieldAlert, ChevronDown, ChevronRight, ChevronLeft, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
-  User as UserIcon, Plug, Wrench, DoorOpen, FileBarChart, Eye, MailCheck } from 'lucide-react';
+  BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star, MessageSquareQuote, Presentation,
+  ShieldAlert, ShieldCheck, ChevronDown, ChevronRight, ChevronLeft, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
+  User as UserIcon, Plug, Wrench, DoorOpen, FileBarChart, Eye, MailCheck, Building2 } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { DashboardStats, Ticket, Escalation, FacilityTicket, Permission, User } from '../../types';
-import { isHierarchyRole, ROLE_LABEL } from '../../lib/rbac';
+import type { DashboardStats, Ticket, Escalation, FacilityTicket, User } from '../../types';
+import { ROLE_LABEL } from '../../lib/rbac';
+import * as NAV from './navConfig';
+import type { IconName, NavLinkDef } from './navConfig';
+import { roleDef, ROLE_TABLE, homeRouteFor, type RoleName } from '../../shared/roles';
+
+// P2: nav items live in navConfig.ts as plain data (icon names); this maps the names to components.
+const ICONS: Record<IconName, React.ComponentType<{ size?: number }>> = { ShieldCheck, BarChart3, Battery, BookOpen, Calendar, ClipboardList, DoorOpen, Eye, FileBarChart, FileText, GraduationCap, Layers, LayoutDashboard, LifeBuoy, Link2, MailCheck, Megaphone, MessageSquare, MessageSquareQuote, Network, Plug, Presentation, Radar, Radio, ScanEye, School, Settings, ShieldAlert, Siren, Smartphone, Sparkles, Star, Tags, UploadCloud, UserCheck, Users, Users2, Wrench };
+function withIcons(links: NavLinkDef[]): NavItem[] {
+  return links.map((l) => ({ ...l, icon: ICONS[l.icon], children: l.children ? withIcons(l.children) : undefined }));
+}
 
 interface NavItem {
   to: string;
@@ -26,139 +35,23 @@ interface NavItem {
 }
 
 /* ---- SUPER_ADMIN (Tallycheck Global) ---- */
-const superAdminOverview: NavItem[] = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Overview' },
-];
+const superAdminOverview = withIcons(NAV.superAdminOverview);
 
-const superAdminAdmin: NavItem[] = [
-  { to: '/admin/schools', icon: School, label: 'Schools' },
-  { to: '/admin/school-admins', icon: Users, label: 'School Admins' },
-  { to: '/admin/people', icon: Network, label: 'People & Organization' },
-  { to: '/admin/integrations', icon: Plug, label: 'Integrations' },
-  { to: '/admin/email-activity', icon: MailCheck, label: 'Email Activity' },
-  { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
-  { to: '/admin/terms', icon: Calendar, label: 'Terms' },
-  { to: '/admin/programs', icon: Layers, label: 'Programs' },
-  // Cohort CRUD existed as a page (CohortsPage.tsx) but had no route/nav entry before the SBS
-  // Comms & Concierge plan (Phase 2) needed cohort->CEM assignment reachable in the UI.
-  { to: '/admin/cohorts', icon: Users2, label: 'Cohorts' },
-  { to: '/admin/levels', icon: GraduationCap, label: 'Levels' },
-  { to: '/admin/majors', icon: Tags, label: 'Majors' },
-  { to: '/admin/course-assignments', icon: Link2, label: 'Course Assignments' },
-  // Cross-CEM oversight report (cem.routes.ts's GET /cem/report) — "detailed data on CEMs,
-  // programmes and students, exportable to PDF" for whoever actually manages CEMs day to day.
-  { to: '/admin/cem-reports', icon: FileBarChart, label: 'CEM & Programmes Report' },
-];
+const superAdminAdmin = withIcons(NAV.superAdminAdmin);
 
-const superAdminGeneral: NavItem[] = [
-  { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  // Executive Ed Phase 9 — visible to SUPER_ADMIN unconditionally (global role, not scoped to one
-  // school's execEdSuite flag); the page itself is empty/harmless for a school with no NPS data.
-  { to: '/insights', icon: Presentation, label: 'Insights' },
-  { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
-  { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
-  { to: '/admin/classrooms', icon: DoorOpen, label: 'Classrooms' },
-  { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
-  { to: '/admin/beacon-health', icon: Battery, label: 'Aura Health' },
-  { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
-  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
-  { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
-  { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
-  { to: '/admin/system-announcements', icon: Megaphone, label: 'System Announcements' },
-  { to: '/admin/request-feedback', icon: Star, label: 'Request Feedback' },
-  { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings' },
-];
+const superAdminGeneral = withIcons(NAV.superAdminGeneral);
 
-/* ---- ADMIN / SUB_ADMIN (University HOD) ---- */
-const hodOverview: NavItem[] = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-];
+/* ---- ADMIN / SCHOOL_ADMIN (University HOD) ---- */
+const hodOverview = withIcons(NAV.hodOverview);
 
-const hodAdmin: NavItem[] = [
-  { to: '/admin/users', icon: Users, label: 'Users' },
-  // The school-scoped "create a user, assign them a role, roles carry permissions" page — see
-  // PeopleOrganizationPage.tsx. Distinct from the plain Users list above (roster/approvals).
-  { to: '/admin/people', icon: Network, label: 'People & Organization' },
-  { to: '/admin/integrations', icon: Plug, label: 'Integrations' },
-  { to: '/admin/email-activity', icon: MailCheck, label: 'Email Activity' },
-  { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
-  { to: '/admin/terms', icon: Calendar, label: 'Terms' },
-  { to: '/admin/programs', icon: Layers, label: 'Programs' },
-  { to: '/admin/levels', icon: GraduationCap, label: 'Levels' },
-  { to: '/admin/majors', icon: Tags, label: 'Majors' },
-  { to: '/admin/course-assignments', icon: Link2, label: 'Course Assignments' },
-  { to: '/admin/cem-reports', icon: FileBarChart, label: 'CEM & Programmes Report' },
-];
+const hodAdmin = withIcons(NAV.hodAdmin);
 
-const hodOperations: NavItem[] = [
-  { to: '/courses', icon: BookOpen, label: 'All Courses' },
-  { to: '/classes', icon: Calendar, label: 'Classes' },
-  {
-    to: '/admin/attendance',
-    icon: ClipboardList,
-    label: 'Attendance',
-    children: [
-      { to: '/admin/attendance-overview', icon: ClipboardList, label: 'Overview' },
-      { to: '/admin/attendance-analytics', icon: BarChart3, label: 'Analytics' },
-      { to: '/attendance', icon: UserCheck, label: 'Sessions' },
-    ],
-  },
-  { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
-  { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
-  { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
-  { to: '/live', icon: Radio, label: 'Live Attendance' },
-  { to: '/admin/lecturer-presence', icon: UserCheck, label: 'Lecturer Presence' },
-  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
-  // Executive Ed Phase 9 — hidden entirely unless this school has execEdSuite on, via
-  // filterBySchoolConfig/hiddenNavLabels below (same mechanism as the Announcements/Terms toggle).
-  { to: '/insights', icon: Presentation, label: 'Insights' },
-  { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
-];
+const hodOperations = withIcons(NAV.hodOperations);
 
-const hodGeneral: NavItem[] = [
-  { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
-  { to: '/admin/classrooms', icon: DoorOpen, label: 'Classrooms' },
-  { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
-  { to: '/admin/beacon-health', icon: Battery, label: 'Aura Health' },
-  { to: '/admin/device-verification', icon: Smartphone, label: 'Verification' },
-  { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  // FIXED: AdminMessagesPage (conversation/flag oversight) was previously reachable by nobody —
-  // guarded SUPER_ADMIN-only in App.tsx while its backend routes require SUB_ADMIN/SCHOOL_ADMIN
-  // and explicitly exclude SUPER_ADMIN, and had no nav link for either. Distinct from "Messages"
-  // above (that's this admin's own personal conversations).
-  { to: '/admin/messages', icon: Eye, label: 'Message Oversight' },
-  { to: '/admin/system-announcements', icon: Megaphone, label: 'Announcements' },
-  { to: '/admin/request-feedback', icon: Star, label: 'Request Feedback' },
-  { to: '/admin/support', icon: LifeBuoy, label: 'Support' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings' },
-];
+const hodGeneral = withIcons(NAV.hodGeneral);
 
 /* ---- LECTURER ---- */
-const lecturerLinks: NavItem[] = [
-  { to: '/lecturer', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/courses', icon: BookOpen, label: 'Courses' },
-  { to: '/classes', icon: Calendar, label: 'Classes' },
-  // FIXED: program.routes.ts's GET /programs already permits LECTURER — this nav entry was
-  // missing, so a lecturer could never reach the page the backend already lets them read.
-  { to: '/admin/programs', icon: Layers, label: 'Programs' },
-  { to: '/attendance', icon: ClipboardList, label: 'Attendance' },
-  { to: '/live', icon: Radio, label: 'Live Attendance' },
-  { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
-  { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
-  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
-  { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
-  // Birthdays/check-ins/manual check-in/broadcasts — only shown when the lecturer actually holds
-  // at least one staff-capability permission; the page itself renders an empty state otherwise
-  // rather than being hidden entirely, since that's cheaper than threading permission fetches
-  // into this static nav array. Same page as CLIENT_EXPERIENCE_MANAGER's cxmLinks below.
-  { to: '/staff', icon: UserCheck, label: 'Staff View' },
-  { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/insights', icon: Presentation, label: 'Insights' },
-  { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/announcements', icon: Megaphone, label: 'Announcements' },
-];
+const lecturerLinks = withIcons(NAV.lecturerLinks);
 
 /* ---- CLIENT_EXPERIENCE_MANAGER — front-of-house, not tied to a taught Course like LECTURER.
    Thin at the top level: Birthdays/Check-Ins/Manual Check-in/Broadcast/Materials/Request Feedback
@@ -166,17 +59,12 @@ const lecturerLinks: NavItem[] = [
    (cxmCohortLinks/buildCxmCohortLinks below). Facilities is the one exception — per explicit
    request, a CEM also gets a top-level Facilities page (CemFacilitiesPage, StaffPanelsGrid's
    `only` mode with no cohortId) pooling every open ticket across every programme they manage, not
-   just one at a time. "Programs" is the post-login landing page (lib/rbac.ts's homeRouteFor),
+   just one at a time. "Programmes" is the post-login landing page (lib/rbac.ts's homeRouteFor),
    leading with aggregate analytics + the "My programmes" card list (CemDashboardPage) — clicking
    into one switches the sidebar itself into the 7-item per-programme panel list below. Messages
    here is pooled across every assigned programme; the per-programme variant lives in
    cxmCohortLinks instead. */
-const cxmLinks: NavItem[] = [
-  { to: '/cem', icon: Layers, label: 'Programs' },
-  { to: '/cem/facilities', icon: Wrench, label: 'Facilities' },
-  { to: '/insights', icon: Presentation, label: 'Insights' },
-  { to: '/messages', icon: MessageSquare, label: 'Messages' },
-];
+const cxmLinks = withIcons(NAV.cxmLinks);
 
 /** Shown instead of `cxmLinks` while viewing one specific programme (`/cem/cohorts/:cohortId`) —
  * built per-render since every `to` is parameterized by the cohort in view. Each panel is its own
@@ -187,7 +75,7 @@ const cxmLinks: NavItem[] = [
 function buildCxmCohortLinks(cohortId: string): NavItem[] {
   const base = `/cem/cohorts/${cohortId}`;
   return [
-    { to: '/cem', icon: ChevronLeft, label: 'Back to Programs' },
+    { to: '/cem', icon: ChevronLeft, label: 'Back to Programmes' },
     { to: base, icon: Users, label: 'Overview & Students' },
     { to: `${base}/checkins`, icon: UserCheck, label: 'Check-Ins' },
     { to: `${base}/manual-checkin`, icon: ClipboardList, label: 'Manual Check-in' },
@@ -200,128 +88,37 @@ function buildCxmCohortLinks(cohortId: string): NavItem[] {
   ];
 }
 
-/** Which Permission(s) gate a LECTURER/CLIENT_EXPERIENCE_MANAGER nav item — an array means "any
- * one of these", matching staff.controller.ts's own granularity for the Staff View tab. A link
- * with no entry here (Dashboard, Courses, Classes, Attendance, Alerts, Announcements) is core to
- * the role itself, never gated — only ever applied when the viewer is actually on a CustomRole
- * (see requiredPermissionFilter below); everyone else keeps seeing the full legacy set unchanged. */
-const requiredPermissionFor: Record<string, Permission | Permission[]> = {
-  '/live': 'VIEW_LIVE_ATTENDANCE',
-  '/reports': 'VIEW_REPORTS',
-  '/admin/escalations': 'VIEW_ESCALATIONS',
-  '/admin/facilities': 'VIEW_FACILITIES',
-  '/cem/facilities': 'VIEW_FACILITIES',
-  '/admin/invigilation': 'VIEW_INVIGILATION',
-  '/admin/device-verification': 'VIEW_DEVICE_VERIFICATION',
-  '/messages': 'MESSAGING',
-  '/staff': ['VIEW_BIRTHDAYS', 'VIEW_BLE_CHECKINS', 'VIEW_MANUAL_CHECKINS', 'MANUAL_CHECK_IN', 'REQUEST_FEEDBACK'],
-};
+// Which Permission(s) gate a nav item: NAV_REQUIRED_PERMISSION in navConfig.ts (plain data, tested server-side).
+const requiredPermissionFor = NAV.NAV_REQUIRED_PERMISSION;
 
 /* ---- Enterprise hierarchy tiers (Phase 5) — VC/DVC/Dean/HOD/Deputy HOD share one broad
    operations-facing nav; Registrars get a records-only nav; ICT Admin gets infra-only. See
    spec §4's Menu Visibility Matrix; DEPUTY_HOD's narrower Terms/Programs access is filtered
    out at render time below, not by a separate array. ---- */
-const hierarchyOverview: NavItem[] = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-];
+const hierarchyOverview = withIcons(NAV.hierarchyOverview);
 
-const hierarchyAdmin: NavItem[] = [
-  { to: '/admin/users', icon: Users, label: 'Users' },
-  { to: '/admin/setup-wizard', icon: UploadCloud, label: 'Setup Wizard' },
-  { to: '/admin/terms', icon: Calendar, label: 'Terms' },
-  { to: '/admin/programs', icon: Layers, label: 'Programs' },
-  // Backend gates this to DEAN/HOD (not DEPUTY_HOD) — matches the Sidebar's own existing
-  // `role === 'DEPUTY_HOD' ? hierarchyAdmin.filter(l => l.label === 'Users') : hierarchyAdmin`
-  // narrowing below, so DEPUTY_HOD never sees this entry either.
-  { to: '/admin/cem-reports', icon: FileBarChart, label: 'CEM & Programmes Report' },
-];
+const hierarchyAdmin = withIcons(NAV.hierarchyAdmin);
 
-const hierarchyOperations: NavItem[] = [
-  { to: '/courses', icon: BookOpen, label: 'All Courses' },
-  { to: '/classes', icon: Calendar, label: 'Classes' },
-  {
-    to: '/admin/attendance',
-    icon: ClipboardList,
-    label: 'Attendance',
-    children: [
-      { to: '/admin/attendance-overview', icon: ClipboardList, label: 'Overview' },
-      { to: '/admin/attendance-analytics', icon: BarChart3, label: 'Analytics' },
-      { to: '/attendance', icon: UserCheck, label: 'Sessions' },
-    ],
-  },
-  { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
-  { to: '/admin/escalations', icon: Siren, label: 'Escalations' },
-  { to: '/admin/facilities', icon: Wrench, label: 'Facilities' },
-  { to: '/live', icon: Radio, label: 'Live Attendance' },
-  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
-  // Executive Ed Phase 9 — same execEdSuite gating as hodOperations above.
-  { to: '/insights', icon: Presentation, label: 'Insights' },
-  { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
-];
+const hierarchyOperations = withIcons(NAV.hierarchyOperations);
 
 /* ---- The "Executive Diet" (§18.3) — VC/DVC need institutional oversight, not granular IT or
    classroom-management tools. A deliberately thin nav: Dashboard, Users (view-only, enforced in
    UsersPage.tsx), Attendance, Fraud Detection, Reports — nothing else. ---- */
-const execAdmin: NavItem[] = [
-  { to: '/admin/users', icon: Users, label: 'Users' },
-];
+const execAdmin = withIcons(NAV.execAdmin);
 
-const execOperations: NavItem[] = [
-  {
-    to: '/admin/attendance',
-    icon: ClipboardList,
-    label: 'Attendance',
-    children: [
-      { to: '/admin/attendance-overview', icon: ClipboardList, label: 'Overview' },
-      { to: '/admin/attendance-analytics', icon: BarChart3, label: 'Analytics' },
-      { to: '/attendance', icon: UserCheck, label: 'Sessions' },
-    ],
-  },
-  { to: '/admin/fraud-detection', icon: ShieldAlert, label: 'Fraud Detection' },
-  // Executive Ed Phase 9 — the VC/DVC "Executive Diet" nav is exactly this feature's home
-  // audience; gated the same as everywhere else via hiddenNavLabels/filterBySchoolConfig.
-  { to: '/insights', icon: Presentation, label: 'Insights' },
-  { to: '/admin/nps-analytics', icon: Star, label: 'NPS Analytics' },
-  { to: '/admin/cem-reports', icon: FileBarChart, label: 'CEM & Programmes Report' },
-];
+const execOperations = withIcons(NAV.execOperations);
 
-const execGeneral: NavItem[] = [
-  { to: '/reports', icon: FileText, label: 'Reports' },
-];
+const execGeneral = withIcons(NAV.execGeneral);
 
-const hierarchyGeneral: NavItem[] = [
-  { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings' },
-];
+const hierarchyGeneral = withIcons(NAV.hierarchyGeneral);
 
 /* ---- Registrar (Academic/Administration) — records-only, no operational modules ---- */
-const registrarAdmin: NavItem[] = [
-  { to: '/admin/users', icon: Users, label: 'Users' },
-  { to: '/admin/terms', icon: Calendar, label: 'Terms' },
-  { to: '/admin/programs', icon: Layers, label: 'Programs' },
-];
+const registrarAdmin = withIcons(NAV.registrarAdmin);
 
-const registrarGeneral: NavItem[] = [
-  { to: '/attendance', icon: ClipboardList, label: 'Attendance Records' },
-  { to: '/admin/invigilation', icon: ScanEye, label: 'Invigilation' },
-  { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings' },
-];
+const registrarGeneral = withIcons(NAV.registrarGeneral);
 
 /* ---- ICT Admin — infrastructure only ---- */
-const ictAdminLinks: NavItem[] = [
-  { to: '/admin', icon: LayoutDashboard, label: 'System Health' },
-  { to: '/admin/beacons', icon: Sparkles, label: 'Aura Sensors' },
-  { to: '/admin/classrooms', icon: DoorOpen, label: 'Classrooms' },
-  { to: '/admin/beacon-heatmap', icon: Radar, label: 'Heatmap Simulator' },
-  { to: '/admin/beacon-health', icon: Battery, label: 'Aura Health' },
-  { to: '/admin/device-verification', icon: Smartphone, label: 'Device Verification' },
-  { to: '/live', icon: Radio, label: 'Live Attendance' },
-  { to: '/messages', icon: MessageSquare, label: 'System Alerts' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings' },
-];
+const ictAdminLinks = withIcons(NAV.ictAdminLinks);
 
 /** Live clock under the brand header — ticks every second so the glow reads as "live" rather
  * than a static timestamp that happens to be right once. */
@@ -505,6 +302,7 @@ function ProfileMenu({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { switchTenant } = useAuth();
 
   useEffect(() => {
     if (!open) return;
@@ -552,6 +350,27 @@ function ProfileMenu({
               <span className={iconBadgeClass}><UserIcon size={16} /></span>
               <span className="flex-1 text-left">My Profile</span>
             </button>
+            {(user?.memberships?.length ?? 0) > 1 && (
+              <div data-testid="tenant-switcher">
+                <p className="px-2.5 pt-1.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-[color:var(--app-text-muted)]">Switch institution</p>
+                {user!.memberships!.map((m) => (
+                  <button
+                    key={m.schoolId}
+                    type="button"
+                    disabled={m.schoolId === user!.schoolId}
+                    onClick={() => { setOpen(false); void switchTenant(m.schoolId).then((u) => { navigate(homeRouteFor(u.role as RoleName)); }); }}
+                    className={`${itemClass} ${m.schoolId === user!.schoolId ? 'opacity-60 cursor-default' : ''}`}
+                  >
+                    <span className={iconBadgeClass}><Building2 size={16} /></span>
+                    <span className="flex-1 text-left min-w-0">
+                      <span className="block truncate">{m.schoolName}</span>
+                      <span className="block text-[11px] text-[color:var(--app-text-muted)]">{ROLE_TABLE[m.role as RoleName]?.label ?? m.role}{m.schoolId === user!.schoolId ? ' · current' : ''}</span>
+                    </span>
+                  </button>
+                ))}
+                <div className="my-1 border-t border-[color:var(--sidebar-edge)]" />
+              </div>
+            )}
             <button onClick={() => { onToggleTheme(); setOpen(false); }} type="button" className={itemClass}>
               <span className={iconBadgeClass}>{dark ? <Sun size={16} /> : <Moon size={16} />}</span>
               <span className="flex-1 text-left">{dark ? 'Light Mode' : 'Dark Mode'}</span>
@@ -617,18 +436,27 @@ export function Sidebar({
   // nav for the 7-panel + Messages list scoped to that cohort (buildCxmCohortLinks above).
   const cxmCohortMatch = location.pathname.match(/^\/cem\/cohorts\/([^/]+)/);
   const cxmCohortId = cxmCohortMatch?.[1];
-  // SCHOOL_ADMIN behaves exactly like SUB_ADMIN in the sidebar — same nav, same "Administration"
+  // SCHOOL_ADMIN behaves exactly like SCHOOL_ADMIN in the sidebar — same nav, same "Administration"
   // section — see server-side SCHOOL_ADMIN_TIER for the equivalent backend-side grouping.
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN' || user?.role === 'SCHOOL_ADMIN';
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isRegistrar = user?.role === 'REGISTRAR_ACADEMIC' || user?.role === 'REGISTRAR_ADMIN';
-  const isIctAdmin = user?.role === 'ICT_ADMIN';
-  const isExecutive = user?.role === 'VC' || user?.role === 'DVC';
-  const isHierarchyOps = isHierarchyRole(user?.role) && !isRegistrar && !isIctAdmin && !isExecutive;
-  const isCxm = user?.role === 'CLIENT_EXPERIENCE_MANAGER';
-  const isLecturer = !isAdmin && !isRegistrar && !isIctAdmin && !isHierarchyOps && !isExecutive && !isCxm;
+  // P2: which nav set a role gets comes from the role table (shared/roles.ts `nav`), not from
+  // booleans kept here. An unknown role falls back to the lecturer set, as before.
+  const navSet = roleDef(user?.role)?.nav ?? 'lecturer';
+  const isSuperAdmin = navSet === 'superAdmin';
+  const isAdmin = navSet === 'superAdmin' || navSet === 'admin';
+  const isRegistrar = navSet === 'registrar';
+  const isIctAdmin = navSet === 'ict';
+  const isExecutive = navSet === 'executive';
+  const isHierarchyOps = navSet === 'hierarchyOps';
+  const isCxm = navSet === 'cem';
+  const isLecturer = navSet === 'lecturer' || navSet === 'invigilator';
+  const lecturerNavLinks = navSet === 'invigilator' ? withIcons(NAV.invigilatorLinks) : lecturerLinks;
+  const isStaff = navSet === 'staff';
+  const staffNavLinks = withIcons(NAV.staffLinks);
+  // P9: CEM Manager — its links are exactly its grants (VIEW_CEM_TEAM / VIEW_FACILITIES), like STAFF.
+  const isCemManager = navSet === 'cemManager';
+  const cemManagerNavLinks = withIcons(NAV.cemManagerLinks);
 
-  // Pending-approvals badge — only SUB_ADMIN gets a Students link in the sidebar today, and
+  // Pending-approvals badge — only SCHOOL_ADMIN gets a Students link in the sidebar today, and
   // dashboard-stats is already scoped to their own school server-side.
   const { data: dashboardStats } = useApi<DashboardStats>(
     isAdmin && !isSuperAdmin ? '/attendance/dashboard-stats' : null,
@@ -643,12 +471,13 @@ export function Sidebar({
   );
   const openTicketsCount = ticketsData?.length || 0;
 
-  // Open-escalations badge — shown for every role that can see the page (SUPER_ADMIN, SUB_ADMIN,
+  // Open-escalations badge — shown for every role that can see the page (SUPER_ADMIN, SCHOOL_ADMIN,
   // LECTURER); the endpoint itself scopes a lecturer down to just their own classes. CEM has no
   // Escalations nav item at all (cxmLinks never runs addEscalationBadge), and the endpoint 403s a
   // CEM outright, so skip the fetch rather than firing it just to eat a console error every load.
   const { data: escalationsData, refetch: refetchEscalations } = useApi<Escalation[]>(
-    isCxm ? null : '/escalations?status=OPEN',
+    // P10: not the platform (refused); P9: a CEM Manager has no escalations queue.
+    isCxm || isSuperAdmin || navSet === 'cemManager' ? null : '/escalations?status=OPEN',
     { refetchIntervalMs: 30_000, refetchWhenVisible: true },
   );
   const openEscalationsCount = escalationsData?.length || 0;
@@ -678,6 +507,7 @@ export function Sidebar({
     s.on('message:new', escalationHandler);
     s.on('facilityTicket:new', facilityTicketHandler);
     s.on('facilityTicket:updated', facilityTicketHandler);
+    s.on('facilityTicket:changed', facilityTicketHandler); // P9: tenant staff room, id only
     return () => { s.disconnect(); };
   }, [refetchTickets, refetchEscalations, refetchFacilityTickets]);
 
@@ -709,7 +539,7 @@ export function Sidebar({
   const hiddenNavLabels = new Set<string>();
   if (!isSuperAdmin) {
     if (!(user?.school?.features?.broadcasts ?? true)) hiddenNavLabels.add('Announcements');
-    hiddenNavLabels.add(attendanceMode === 'STAGE_BASED' ? 'Terms' : 'Programs');
+    hiddenNavLabels.add(attendanceMode === 'STAGE_BASED' ? 'Terms' : 'Training pipelines'); // P13: renamed from "Programs"
     // Executive Ed Phase 9 — NPS Analytics only means anything for a school actually running the
     // NPS engine (Phase 6's sweep is itself execEdSuite-gated), so it's hidden everywhere else.
     if (!user?.school?.features?.execEdSuite) hiddenNavLabels.add('NPS Analytics');
@@ -720,22 +550,28 @@ export function Sidebar({
     // for any school with execEdSuite off (every /facility-tickets route is gated on it), so hide
     // the nav entry rather than link to a page that can only ever show a 403.
     if (!user?.school?.features?.execEdSuite) hiddenNavLabels.add('Facilities');
+    // P9 — the CEM Manager board is Executive Education tooling (its routes are execEdSuite-gated).
+    if (!user?.school?.features?.execEdSuite) hiddenNavLabels.add('CEM Team');
   }
-  const filterBySchoolConfig = (links: NavItem[]) =>
-    hiddenNavLabels.size === 0 ? links : links.filter((l) => !hiddenNavLabels.has(l.label));
+  // P2: links the role table's nav set has but the backend refuses this role (navConfig NAV_HIDE).
+  const roleHidden = new Set(user?.role ? NAV.NAV_HIDE[user.role] ?? [] : []);
+  const filterBySchoolConfig = (links: NavItem[]): NavItem[] =>
+    links
+      .filter((l) => !hiddenNavLabels.has(l.label) && !roleHidden.has(l.to))
+      .map((l) => (l.children ? { ...l, children: l.children.filter((c) => !roleHidden.has(c.to)) } : l));
 
-  // Only a LECTURER/CEM actually placed on a CustomRole gets their nav customized to what that
-  // role was granted — everyone else (the overwhelming default: no CustomRole assigned) keeps
-  // seeing the exact same nav they always have, so this can never silently take away access from
-  // an existing account. `user.permissions` is already the *effective* set (resolveEffectivePermissions
-  // on the server resolves CustomRole vs. direct grant before it ever reaches the client).
+  // Links gated by a permission (NAV_REQUIRED_PERMISSION) show only when the viewer holds it.
+  // `user.permissions` is already the *effective* set (preset ± Adjust-Access differences,
+  // resolved server-side by resolveEffectivePermissions).
   const filterByPermission = (links: NavItem[]) => {
     // cxmLinks (Dashboard, Messages) carries nothing permission-gated any more — Staff
     // View/Facilities moved to CemCohortDetailPage, reachable only per-programme — so CEM no
     // longer needs a special-cased branch here; it falls through to the general rule below like
     // every other role.
-    if (!user?.customRoleId) return links;
-    const granted = user.permissions ?? [];
+    // A STAFF account has no capability of its own, so its nav is always exactly its grants.
+    // P4: applies to everyone — every lecturer is on a preset now ("Lecturer (default)" holds every
+    // permission below, so its nav is unchanged); the no-CustomRole shortcut is gone.
+    const granted = user?.permissions ?? [];
     return links.filter((l) => {
       const required = requiredPermissionFor[l.to];
       if (!required) return true;
@@ -873,7 +709,7 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isLecturer && addFacilitiesBadge(addEscalationBadge(filterByPermission(filterBySchoolConfig(lecturerLinks)))).map((link) => (
+        {isLecturer && addFacilitiesBadge(addEscalationBadge(filterByPermission(filterBySchoolConfig(lecturerNavLinks)))).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -892,6 +728,45 @@ export function Sidebar({
             <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
             {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
             {collapsed && <NavBadge count={link.badge} collapsed />}
+          </NavLink>
+        ))}
+        {isCemManager && addFacilitiesBadge(filterByPermission(filterBySchoolConfig(cemManagerNavLinks))).map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            onClick={onClose}
+            title={collapsed ? link.label : undefined}
+            className={({ isActive }) =>
+              clsx(
+                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
+                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
+                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
+              )
+            }
+          >
+            <NavIcon Icon={link.icon} active={false} />
+            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
+            {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
+            {collapsed && <NavBadge count={link.badge} collapsed />}
+          </NavLink>
+        ))}
+        {isStaff && filterByPermission(filterBySchoolConfig(staffNavLinks)).map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            end={link.to === '/staff'}
+            onClick={onClose}
+            title={collapsed ? link.label : undefined}
+            className={({ isActive }) =>
+              clsx(
+                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
+                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
+                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
+              )
+            }
+          >
+            <NavIcon Icon={link.icon} active={false} />
+            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
           </NavLink>
         ))}
         {isCxm && cxmCohortId && buildCxmCohortLinks(cxmCohortId).map((link) => {
@@ -925,8 +800,8 @@ export function Sidebar({
           );
         })}
         {/* Deliberately skips filterBySchoolConfig — that helper's Terms/Programs mutual-exclusivity
-            rule (keyed on the *label* "Programs") targets the unrelated admin/hierarchy nav item of
-            the same name and would otherwise hide a CEM's own "Programs" link on every
+            rule (keyed on the *label* "Training pipelines") targets the admin/hierarchy pipelines item
+            and must never touch a CEM's own "Programmes" link on any
             CALENDAR_BASED school. */}
         {isCxm && !cxmCohortId && addFacilitiesBadge(filterByPermission(cxmLinks)).map((link) => (
           <NavLink

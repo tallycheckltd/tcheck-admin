@@ -26,10 +26,10 @@ const emptyForm = {
 export function ProgramsPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  // program.routes.ts's POST / (create) is SUPER_ADMIN/SUB_ADMIN/SCHOOL_ADMIN only — LECTURER can
+  // program.routes.ts's POST / (create) is SUPER_ADMIN/SCHOOL_ADMIN only — LECTURER can
   // GET but not create. Now that LECTURER has a nav entry to this page, "Add Program" must not be
   // shown to them (it would 403): a UI action must never imply a backend-rejected capability.
-  const canCreate = user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN' || user?.role === 'SCHOOL_ADMIN';
+  const canCreate = user?.role === 'SUPER_ADMIN' || user?.role === 'SCHOOL_ADMIN';
   const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
   const [schoolFilter, setSchoolFilter] = useState('');
   const activeSchoolId = isSuperAdmin ? schoolFilter : user?.schoolId || '';
@@ -92,24 +92,24 @@ export function ProgramsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Programs</h1>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Training pipelines</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Manage degree tracks and student cohort assignments.
           </p>
         </div>
-        {canCreate && <Button onClick={openCreate}><Plus size={16} className="mr-1" /> Add Program</Button>}
+        {canCreate && <Button onClick={openCreate}><Plus size={16} className="mr-1" /> Add training pipeline</Button>}
       </div>
 
       {isSuperAdmin && (
         <GlassCard>
           <div className="space-y-1 max-w-xs">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Institution</label>
             <select
               value={schoolFilter}
               onChange={(e) => setSchoolFilter(e.target.value)}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
             >
-              <option value="">All schools</option>
+              <option value="">All institutions</option>
               {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
@@ -122,7 +122,7 @@ export function ProgramsPage() {
             <tr className="border-b border-gray-200 dark:border-white/10">
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Template</th>
-              {isSuperAdmin && <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">School</th>}
+              {isSuperAdmin && <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Institution</th>}
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Enrolled</th>
               <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Actions</th>
             </tr>
@@ -156,7 +156,7 @@ export function ProgramsPage() {
             {programs?.length === 0 && (
               <tr>
                 <td colSpan={isSuperAdmin ? 5 : 4} className="py-8 px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                  No programs yet.
+                  No training pipelines yet.
                 </td>
               </tr>
             )}
@@ -164,19 +164,19 @@ export function ProgramsPage() {
         </table>
       </GlassCard>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="Add Program">
+      <Modal open={modal} onClose={() => setModal(false)} title="Add training pipeline">
         <div className="space-y-4">
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
 
           {isSuperAdmin && (
             <div>
-              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">School</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">Institution</label>
               <select
                 value={form.schoolId}
                 onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select a school</option>
+                <option value="">Select an institution</option>
                 {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>

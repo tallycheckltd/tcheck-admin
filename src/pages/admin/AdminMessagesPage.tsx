@@ -133,7 +133,7 @@ export function AdminMessagesPage() {
       case 'LECTURER': return 'blue';
       case 'STUDENT': return 'gray';
       case 'SUPER_ADMIN': return 'purple';
-      case 'SUB_ADMIN': return 'purple';
+      case 'SCHOOL_ADMIN': return 'purple';
       default: return 'gray';
     }
   };
@@ -143,7 +143,7 @@ export function AdminMessagesPage() {
       case 'LECTURER': return 'Lecturer';
       case 'STUDENT': return 'Student';
       case 'SUPER_ADMIN': return 'Admin';
-      case 'SUB_ADMIN': return 'Admin';
+      case 'SCHOOL_ADMIN': return 'Admin';
       default: return role || '';
     }
   };

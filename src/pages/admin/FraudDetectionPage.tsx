@@ -22,6 +22,9 @@ interface BiometricFlag {
   tamperDetected: boolean;
   verificationMethod: string | null;
   checkInAt: string;
+  /** P15 — which identity check failed: the check-in, or the check-out's re-check. */
+  stage?: 'CHECK_IN' | 'CHECK_OUT';
+  checkOutAt?: string | null;
 }
 
 interface FraudSuspiciousPair {
@@ -60,7 +63,7 @@ export function FraudDetectionPage() {
     setReviewFlag(flag);
     setReviewPhoto(undefined);
     try {
-      const res = await api.get<{ selfieImageBase64: string | null }>(`/attendance/biometric-flags/${flag.attendanceId}/photo`);
+      const res = await api.get<{ selfieImageBase64: string | null }>(`/attendance/biometric-flags/${flag.attendanceId}/photo?stage=${flag.stage ?? 'CHECK_IN'}`);
       setReviewPhoto(res.selfieImageBase64);
     } catch {
       setReviewPhoto(null);
@@ -150,7 +153,7 @@ export function FraudDetectionPage() {
                       <button
                         type="button"
                         onClick={() => openReview(f)}
-                        title="Review this check-in"
+                        title={f.stage === 'CHECK_OUT' ? 'Review this check-out' : 'Review this check-in'}
                         className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 transition-colors cursor-pointer"
                       >
                         <ImageOff size={16} />
@@ -165,11 +168,12 @@ export function FraudDetectionPage() {
                       <div className="text-xs text-gray-400 truncate max-w-[150px]">{f.class.title}</div>
                     </td>
                     <td className="px-6 py-4">
+                      {f.stage === 'CHECK_OUT' && <div className="mb-1"><Badge color="purple">Checkout</Badge></div>}
                       <Badge color="red">{f.reason}</Badge>
                       {f.tamperDetected && <div className="mt-1"><Badge color="yellow">Tamper detected</Badge></div>}
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-400">
-                      {format(new Date(f.checkInAt), 'MMM d, HH:mm')}
+                      {format(new Date(f.stage === 'CHECK_OUT' && f.checkOutAt ? f.checkOutAt : f.checkInAt), 'MMM d, HH:mm')}
                     </td>
                   </tr>
                 ))}

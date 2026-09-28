@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import {
-  ShieldCheck, Plus, Pencil, Trash2, UserPlus, Users, Mail, Lock, User as UserIcon,
+  ShieldCheck, Plus, Pencil, Trash2, UserPlus, Users, Mail, User as UserIcon,
   Cake, MapPin, ClipboardCheck, MessageSquare, Megaphone, Settings2, BookOpen, Sparkles, Star,
   BarChart3, PieChart, Folder, Ticket, CheckSquare, Square, Radio, FileText, Siren, Wrench,
-  ScanEye, Smartphone, ShieldAlert, Search, UserX, Network, ChevronDown,
+  ScanEye, Smartphone, ShieldAlert, Search, UserX, Network, ChevronDown, GraduationCap,
 } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
+import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -13,6 +14,8 @@ import { Modal } from '../../components/ui/Modal';
 import type { CustomRole, Permission, Role, User, Course, OrgUnit, School } from '../../types';
 import { ROLE_LABEL } from '../../lib/rbac';
 import { OrgUnitsSection } from '../../components/org/OrgUnitsSection';
+import { CUSTOM_ROLE_HOLDERS, ROLE_TABLE, SWITCHABLE_ROLES } from '../../shared/roles';
+import { InviteSentNotice, InviteStateBadge, type InviteInfo, type InviteState } from '../../components/admin/InviteSent';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
 import { LEVEL_LABEL, ORG_LEVEL_FOR_ROLE, SCOPE_FOR_ROLE, roleHasOrgUnit, roleRequiresOrgUnit } from '../../lib/hierarchyRoles';
@@ -65,7 +68,7 @@ const PERMISSION_GROUPS: { title: string; hint?: string; items: PermItem[] }[] =
   {
     title: 'Onboarding journey',
     items: [
-      { key: 'BROADCAST_PROGRAM_WELCOME', label: 'Send the "program welcome" message', icon: Sparkles },
+      { key: 'BROADCAST_PROGRAM_WELCOME', label: 'Send the "programme welcome" message', icon: Sparkles },
       { key: 'BROADCAST_MATERIALS_READY', label: 'Send the "materials ready" message', icon: Sparkles },
       { key: 'BROADCAST_UPDATE', label: 'Send a free-form update to a course', icon: Megaphone },
       { key: 'REQUEST_FEEDBACK', label: 'Ask a student to fill in the feedback form', icon: Star },
@@ -96,28 +99,40 @@ const PERMISSION_GROUPS: { title: string; hint?: string; items: PermItem[] }[] =
       { key: 'MANAGE_DEVICE_VERIFICATION', label: 'Approve or reset a student device, reset a biometric lock', icon: Smartphone },
     ],
   },
+  {
+    title: 'Executive Education',
+    hint: 'For CEM Managers: a team is the CEMs who report to them.',
+    items: [
+      { key: 'VIEW_CEM_TEAM', label: "See the CEM team board: live tickets, escalations, each CEM's numbers, coverage", icon: Radio },
+      { key: 'MANAGE_CEM_ASSIGNMENTS', label: "Assign or reassign a cohort's CEM (a CEM Manager: only within their own team)", icon: Users },
+    ],
+  },
 ];
 
 const ALL_PERMISSION_KEYS: Permission[] = PERMISSION_GROUPS.flatMap((g) => g.items.map((i) => i.key));
 
-/** Account types a school admin can create and switch staff between (mirrors the server's SWITCHABLE_ROLES). */
-const ASSIGNABLE_ROLES: { value: Role; label: string; blurb: string }[] = [
-  { value: 'LECTURER', label: 'Lecturer', blurb: 'Teaches courses, takes attendance' },
-  { value: 'CLIENT_EXPERIENCE_MANAGER', label: 'Client Experience Manager', blurb: 'Front-of-house — no assigned courses' },
-  { value: 'INVIGILATOR', label: 'Invigilator', blurb: 'Scans exam cards' },
-  { value: 'VC', label: 'Vice Chancellor', blurb: 'Leads the whole school' },
-  { value: 'DVC', label: 'Deputy Vice Chancellor', blurb: 'Leads a division' },
-  { value: 'DEAN', label: 'Dean', blurb: 'Leads a faculty' },
-  { value: 'HOD', label: 'Head of Department', blurb: 'Leads a department' },
-  { value: 'REGISTRAR_ACADEMIC', label: 'Registrar (Academic)', blurb: 'Student records' },
-  { value: 'REGISTRAR_ADMIN', label: 'Registrar (Administration)', blurb: 'Staff and admin records' },
-  { value: 'ICT_ADMIN', label: 'ICT Admin', blurb: 'Devices and infrastructure' },
-];
+/** Account types a school admin can create and switch staff between — the role table's
+ * `switchable` roles (shared/roles.ts); the blurbs are this page's own copy. */
+const ROLE_BLURB: Partial<Record<Role, string>> = {
+  LECTURER: 'Teaches courses, takes attendance',
+  STAFF: 'Staff member — access comes only from their role or permissions',
+  CLIENT_EXPERIENCE_MANAGER: 'Front-of-house — no assigned courses',
+  CEM_MANAGER: 'Leads a team of CEMs (Executive Education)',
+  INVIGILATOR: 'Scans exam cards',
+  VC: 'Leads the whole school',
+  DVC: 'Leads a division',
+  DEAN: 'Leads a faculty',
+  HOD: 'Leads a department',
+  REGISTRAR_ACADEMIC: 'Student records',
+  REGISTRAR_ADMIN: 'Staff and admin records',
+  ICT_ADMIN: 'Devices and infrastructure',
+};
+const ASSIGNABLE_ROLES: { value: Role; label: string; blurb: string }[] = SWITCHABLE_ROLES.map((r) => ({ value: r, label: ROLE_TABLE[r].label, blurb: ROLE_BLURB[r] ?? '' }));
 /** A Deputy HOD can be created here but not switched to/from (the server's account-type switch excludes it). */
 const CREATABLE_ROLES = [...ASSIGNABLE_ROLES, { value: 'DEPUTY_HOD' as Role, label: 'Deputy HOD', blurb: 'Supports a head of department' }];
 const STAFF_TABLE_ROLE_VALUES = CREATABLE_ROLES.map((r) => r.value);
 /** Account types that can hold a custom role / permissions (everything else is decided by the account type alone). */
-const CAN_HOLD_ROLE: Role[] = ['LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'VC', 'DVC', 'DEAN', 'HOD'];
+const CAN_HOLD_ROLE: Role[] = CUSTOM_ROLE_HOLDERS;
 /** The Roles card (custom role bundles) — outline decision 18.30: bring it back so accounts that
  * can hold a role (CAN_HOLD_ROLE above) have somewhere to actually get one assigned. */
 const SHOW_ROLES_CARD = true;
@@ -193,7 +208,7 @@ const emptyRoleForm = { name: '', permissions: [] as Permission[] };
 // `role` (account type) and `customRoleId` (permission bundle) are two independent, always-visible
 // fields now — no more inferring one from the other. Simpler and matches how every other part of
 // this page already treats them: a role is just a bundle of permissions, usable by either account type.
-const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', role: '' as Role | '', customRoleId: '', orgUnitId: '', courseIds: [] as string[] };
+const emptyUserForm = { firstName: '', lastName: '', email: '', role: '' as Role | '', customRoleId: '', orgUnitId: '', courseIds: [] as string[] };
 
 const LEADERSHIP_ROLES: Role[] = ['VC', 'DVC', 'DEAN', 'HOD', 'DEPUTY_HOD'];
 
@@ -203,8 +218,174 @@ const ACCOUNT_TYPE_META: Partial<Record<Role, { label: string; blurb: string }>>
   INVIGILATOR: { label: 'Invigilator', blurb: 'Scans exam cards' },
 };
 
+/** P4 — the preset pre-selected for a new account of this type ('' = the server default). */
+const DEFAULT_PRESET_KEY: Partial<Record<Role, string>> = { LECTURER: 'LECTURER_DEFAULT', CLIENT_EXPERIENCE_MANAGER: 'CEM', CEM_MANAGER: 'CEM_MANAGER' };
+function defaultPresetFor(role: Role, roles: CustomRole[] | null | undefined): string {
+  const key = DEFAULT_PRESET_KEY[role];
+  return (key && roles?.find((r) => r.presetKey === key)?.id) || '';
+}
+
+const PERMISSION_LABEL: Partial<Record<Permission, string>> = Object.fromEntries(PERMISSION_GROUPS.flatMap((g) => g.items.map((i) => [i.key, i.label])));
+
+/** Differences from the preset, shown under the role picker: "+2 added · −1 removed". */
+function AccessDifferences({ user }: { user: User }) {
+  const add = user.permissionAdditions ?? [];
+  const rem = user.permissionRemovals ?? [];
+  if (!add.length && !rem.length) return null;
+  const title = [...add.map((p) => `+ ${PERMISSION_LABEL[p] ?? p}`), ...rem.map((p) => `− ${PERMISSION_LABEL[p] ?? p}`)].join('\n');
+  return (
+    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1" title={title}>
+      Adjusted: {add.length ? `+${add.length} added` : ''}{add.length && rem.length ? ' · ' : ''}{rem.length ? `−${rem.length} removed` : ''}
+    </p>
+  );
+}
+
+/** On "Lecturer (default)" these are the capabilities that were never part of the lecturer job; the
+ * preset holds the permission for the older routes, so they take an explicit extra tick (server:
+ * permissionsForNewLecturerRoute). */
+const LECTURER_EXTRAS: { key: Permission; label: string }[] = [
+  { key: 'MANAGE_USERS', label: 'Also add students and approve / deactivate accounts' },
+  { key: 'MANAGE_COURSES', label: 'Also edit course tags' },
+];
+
+/** P17 (D-20.1) — makes a Staff account a Programme Coordinator: tick the programmes they run. They
+ * then see those programmes' cohorts, courses and students — and nothing of any other programme. */
+function ProgrammesModal({ target, schoolId, onClose }: { target: User | null; schoolId?: string; onClose: () => void }) {
+  const { data: majors } = useApi<{ id: string; name: string; code: string; isActive?: boolean }[]>(target && schoolId ? `/academic/majors?schoolId=${schoolId}` : null);
+  const { data: current } = useApi<{ major: { id: string } }[]>(target ? `/users/${target.id}/programmes` : null);
+  const { mutate: save, loading } = useMutation<unknown>('patch');
+  const [picked, setPicked] = useState<string[] | null>(null);
+  const [error, setError] = useState('');
+  const [openFor, setOpenFor] = useState<string | null>(null);
+  if (target && openFor !== target.id) { setOpenFor(target.id); setPicked(null); setError(''); }
+  const selected = picked ?? (current ?? []).map((c) => c.major.id);
+  const toggle = (id: string) => setPicked(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+  const submit = async () => {
+    if (!target) return;
+    try {
+      await save(`/users/${target.id}/programmes`, { majorIds: selected } as never);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save programmes');
+    }
+  };
+  return (
+    <Modal open={!!target} onClose={onClose} title={target ? `Programmes — ${target.firstName} ${target.lastName}` : 'Programmes'}>
+      <div className="space-y-3" data-testid="programmes-modal">
+        <p className="text-sm text-gray-500 dark:text-gray-400">A Programme Coordinator sees only the programmes ticked here — their cohorts, courses and students. Leave all unticked to go back to course assignments.</p>
+        <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-white/5 border border-gray-100 dark:border-white/10 rounded-lg">
+          {(majors ?? []).filter((m) => m.isActive !== false).map((m) => (
+            <label key={m.id} className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer">
+              <input type="checkbox" checked={selected.includes(m.id)} onChange={() => toggle(m.id)} data-testid={`programme-${m.code}`} />
+              <span className="text-gray-900 dark:text-white">{m.name}</span>
+              <span className="text-xs text-gray-400 font-mono">{m.code}</span>
+            </label>
+          ))}
+          {majors && majors.length === 0 && <p className="px-3 py-4 text-sm text-gray-500">No programmes yet — add them under Academics.</p>}
+        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => void submit()} disabled={loading} data-testid="save-programmes">Save</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AdjustAccessModal({ target, roles, onClose, onSaved }: { target: User | null; roles: CustomRole[]; onClose: () => void; onSaved: () => void }) {
+  const { mutate: save, loading } = useMutation<User>('patch');
+  const [roleId, setRoleId] = useState('');
+  const [ticked, setTicked] = useState<Permission[]>([]);
+  const [extras, setExtras] = useState<Permission[]>([]);
+  const [error, setError] = useState('');
+  const [openFor, setOpenFor] = useState<string | null>(null);
+
+  const role = roles.find((r) => r.id === roleId) ?? (target?.role === 'LECTURER' ? roles.find((r) => r.presetKey === 'LECTURER_DEFAULT') : undefined);
+  const isLecturerDefault = role?.presetKey === 'LECTURER_DEFAULT';
+  const reset = (u: User, nextRoleId: string, keepDiffs: boolean) => {
+    const r = roles.find((x) => x.id === nextRoleId) ?? (u.role === 'LECTURER' ? roles.find((x) => x.presetKey === 'LECTURER_DEFAULT') : undefined);
+    const base = r?.permissions ?? [];
+    const add = keepDiffs ? u.permissionAdditions ?? [] : [];
+    const rem = keepDiffs ? u.permissionRemovals ?? [] : [];
+    setRoleId(r?.id ?? '');
+    setTicked([...new Set([...base, ...add])].filter((p) => !rem.includes(p)));
+    setExtras(r?.presetKey === 'LECTURER_DEFAULT' ? add.filter((p) => base.includes(p)) : []);
+  };
+  if (target && openFor !== target.id) {
+    setOpenFor(target.id);
+    setError('');
+    reset(target, target.customRoleId ?? '', true);
+  }
+  if (!target && openFor) setOpenFor(null);
+
+  const base = role?.permissions ?? [];
+  const additions = [...ticked.filter((p) => !base.includes(p)), ...(isLecturerDefault ? extras : [])];
+  const removals = base.filter((p) => !ticked.includes(p));
+
+  const submit = async () => {
+    if (!target) return;
+    if (!role) { setError('Pick a preset or role first.'); return; }
+    try {
+      await save(`/users/${target.id}/access`, { customRoleId: role.id, additions, removals } as never);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save access');
+    }
+  };
+
+  return (
+    <Modal open={!!target} onClose={onClose} title={target ? `Adjust access — ${target.firstName} ${target.lastName}` : 'Adjust access'}>
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="adjust-access-role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Preset or role</label>
+          <select
+            id="adjust-access-role"
+            value={role?.id ?? ''}
+            onChange={(e) => target && reset(target, e.target.value, false)}
+            className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
+          >
+            {!role && <option value="">— Pick one —</option>}
+            {roles.map((r) => <option key={r.id} value={r.id}>{r.name}{r.isPreset ? ' · preset' : ''}</option>)}
+          </select>
+          {role?.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">{role.description}</p>}
+          <p className="text-xs text-gray-400 mt-1.5">Boxes start as the preset. Tick or untick to make this person different — only the differences are saved, so later edits to the preset still reach them.</p>
+        </div>
+        {(additions.length > 0 || removals.length > 0) && (
+          <div className="text-xs rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 space-y-0.5" data-testid="access-diff">
+            {additions.map((p) => <p key={`a-${p}`} className="text-emerald-700 dark:text-emerald-400">+ {PERMISSION_LABEL[p] ?? p}</p>)}
+            {removals.map((p) => <p key={`r-${p}`} className="text-red-600 dark:text-red-400">− {PERMISSION_LABEL[p] ?? p}</p>)}
+          </div>
+        )}
+        {isLecturerDefault && (
+          <div className="rounded-xl border border-gray-100 dark:border-white/5 p-3 space-y-1.5">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Beyond the lecturer basics</p>
+            {LECTURER_EXTRAS.map((x) => (
+              <label key={x.key} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <input type="checkbox" checked={extras.includes(x.key)} onChange={() => setExtras(extras.includes(x.key) ? extras.filter((p) => p !== x.key) : [...extras, x.key])} />
+                {x.label}
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="max-h-[45vh] overflow-y-auto">
+          <PermissionChecklist value={ticked} onChange={setTicked} />
+        </div>
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => void submit()} disabled={loading}>{loading ? 'Saving…' : 'Save access'}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export function PeopleOrganizationPage() {
   const { user } = useAuth();
+  // P9: CEM Managers exist only in Executive Education tenants (the server refuses otherwise).
+  const execEd = !!user?.school?.features?.execEdSuite || user?.role === 'SUPER_ADMIN';
+  const roleOffered = (r: { value: Role }) => r.value !== 'CEM_MANAGER' || execEd;
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   // SUPER_ADMIN works on one school at a time (the org tree is per school); everyone else is pinned to theirs.
   const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
@@ -242,10 +423,31 @@ export function PeopleOrganizationPage() {
   const [userModal, setUserModal] = useState(false);
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [userError, setUserError] = useState('');
+  const [inviteSent, setInviteSent] = useState<{ email: string; invite?: InviteInfo } | null>(null);
   // Switching a staff member's account type (Lecturer <-> CEM <-> Invigilator <-> leadership ...).
   const [switchError, setSwitchError] = useState('');
   const [switchTarget, setSwitchTarget] = useState<{ user: User; role: Role } | null>(null);
   const [switchUnitId, setSwitchUnitId] = useState('');
+  // P4 Adjust Access drawer.
+  const [accessTarget, setAccessTarget] = useState<User | null>(null);
+  const [programmeTarget, setProgrammeTarget] = useState<User | null>(null);
+  // P8 (A8.4): share a lecturer into a sibling tenant of the same Institution group.
+  const { data: siblings } = useApi<{ id: string; name: string }[]>(schoolId && !isSuperAdmin ? '/institutions/siblings' : null);
+  const [shareTarget, setShareTarget] = useState<User | null>(null);
+  const [shareTo, setShareTo] = useState('');
+  const [shareMsg, setShareMsg] = useState('');
+  const doShare = async () => {
+    setShareMsg('');
+    try {
+      await api.post(`/users/${shareTarget!.id}/share`, { schoolId: shareTo });
+      setShareMsg(`${shareTarget!.firstName} can now switch to ${siblings?.find((x) => x.id === shareTo)?.name} from their profile menu.`);
+    } catch (e) { setShareMsg(e instanceof Error ? e.message : 'Could not share'); }
+  };
+  const removeShared = async (u: User) => {
+    if (!confirm(`Remove ${u.firstName} ${u.lastName} from this institution? Their home account is not affected.`)) return;
+    await api.delete(`/users/${u.id}/memberships/${schoolId}`);
+    refetchUsers();
+  };
 
   // Lecturers, Client Experience Managers and the four leadership roles that can hold MANAGE_COURSES.
   const staffOnly = (staffUsers ?? []).filter((u) => STAFF_TABLE_ROLE_VALUES.includes(u.role));
@@ -302,7 +504,7 @@ export function PeopleOrganizationPage() {
     setUserModal(true);
   };
   const submitUser = async () => {
-    if (!userForm.firstName.trim() || !userForm.lastName.trim() || !userForm.email.trim() || !userForm.password) {
+    if (!userForm.firstName.trim() || !userForm.lastName.trim() || !userForm.email.trim()) {
       setUserError('All fields are required.');
       return;
     }
@@ -314,18 +516,19 @@ export function PeopleOrganizationPage() {
       setUserError('Pick the organisation unit this account belongs to.');
       return;
     }
-    const base = { firstName: userForm.firstName, lastName: userForm.lastName, email: userForm.email, password: userForm.password, schoolId };
+    const base = { firstName: userForm.firstName, lastName: userForm.lastName, email: userForm.email, schoolId };
+    let created: unknown;
     try {
-      if (userForm.role === 'LECTURER' || userForm.role === 'CLIENT_EXPERIENCE_MANAGER') {
-        await createUser(userForm.role === 'LECTURER' ? '/users/lecturer' : '/users/client-experience-manager', {
+      if (userForm.role === 'LECTURER' || userForm.role === 'CLIENT_EXPERIENCE_MANAGER' || userForm.role === 'STAFF' || userForm.role === 'CEM_MANAGER') {
+        created = await createUser(userForm.role === 'LECTURER' ? '/users/lecturer' : userForm.role === 'STAFF' ? '/users/staff' : userForm.role === 'CEM_MANAGER' ? '/users/cem-manager' : '/users/client-experience-manager', {
           ...base,
           customRoleId: userForm.customRoleId || undefined,
           courseIds: userForm.courseIds,
         });
       } else if (userForm.role === 'INVIGILATOR') {
-        await createUser('/users/invigilator', base);
+        created = await createUser('/users/invigilator', base);
       } else {
-        await createUser('/users/hierarchy', {
+        created = await createUser('/users/hierarchy', {
           ...base,
           role: userForm.role,
           scopeLevel: SCOPE_FOR_ROLE[userForm.role],
@@ -334,6 +537,7 @@ export function PeopleOrganizationPage() {
         });
       }
       setUserModal(false);
+      if (created) setInviteSent({ email: userForm.email, invite: (created as { invite?: InviteInfo }).invite });
       refetchUsers();
     } catch (e) {
       setUserError(e instanceof Error ? e.message : 'Failed to create user');
@@ -376,6 +580,10 @@ export function PeopleOrganizationPage() {
     refetchUsers();
     refetchUnits();
   };
+  const handleSetHomeDepartment = async (target: User, orgUnitId: string) => {
+    await assignUnit(`/org-units/users/${target.id}/assign`, { orgUnitId: orgUnitId || null, scopeLevel: 'INDIVIDUAL' });
+    refetchUsers();
+  };
   const handleToggleActing = async (target: User) => {
     await toggleActing(`/org-units/users/${target.id}/acting-hod`, { isActingHod: !target.isActingHod });
     refetchUsers();
@@ -403,14 +611,14 @@ export function PeopleOrganizationPage() {
             onChange={(e) => setSelectedSchoolId(e.target.value)}
             className="mt-3 text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white cursor-pointer min-w-[220px]"
           >
-            <option value="">Select a school…</option>
+            <option value="">Select an institution…</option>
             {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         )}
       </div>
 
       {isSuperAdmin && !schoolId ? (
-        <EmptyState icon={Network} title="Select a school" description="Choose a school above to manage its people and org structure." />
+        <EmptyState icon={Network} title="Select an institution" description="Choose an institution above to manage its people and org structure." />
       ) : (
       <>
       {schoolId && <OrgUnitsSection schoolId={schoolId} units={orgUnits ?? []} onChanged={() => { refetchUnits(); refetchUsers(); }} />}
@@ -451,7 +659,11 @@ export function PeopleOrganizationPage() {
                 {filteredRoles.map((role) => (
                   <div key={role.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{role.name}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate flex items-center gap-2">
+                        {role.name}
+                        {role.isPreset && <Badge color="blue">Preset</Badge>}
+                      </p>
+                      {role.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{role.description}</p>}
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         {role.permissions.length} permission{role.permissions.length === 1 ? '' : 's'} &middot; {role._count?.users ?? 0} user{role._count?.users === 1 ? '' : 's'}
                       </p>
@@ -460,9 +672,11 @@ export function PeopleOrganizationPage() {
                       <button onClick={() => openEditRole(role)} className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-white/10 text-gray-500 cursor-pointer">
                         <Pencil size={14} />
                       </button>
-                      <button onClick={() => void handleDeleteRole(role)} className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-white/10 text-red-500 cursor-pointer">
-                        <Trash2 size={14} />
-                      </button>
+                      {!role.isPreset && (
+                        <button onClick={() => void handleDeleteRole(role)} className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-white/10 text-red-500 cursor-pointer">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -524,6 +738,7 @@ export function PeopleOrganizationPage() {
                   VC, DVC, Dean and HOD accounts can hold <strong>Manage courses</strong> only — it lets them manage the courses inside their own
                   organisation unit (set in the Org Unit column). Other permissions have no effect for them.
                 </p>
+                {inviteSent && <div className="mb-3"><InviteSentNotice email={inviteSent.email} invite={inviteSent.invite} /></div>}
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-white/10">
@@ -537,7 +752,8 @@ export function PeopleOrganizationPage() {
                   <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                     {filteredStaff.map((u) => (
                       <tr key={u.id}>
-                        <td className="py-3 text-sm text-gray-900 dark:text-white">{u.firstName} {u.lastName}<br /><span className="text-xs text-gray-400">{u.email}</span></td>
+                        <td className="py-3 text-sm text-gray-900 dark:text-white">{u.firstName} {u.lastName}<br /><span className="text-xs text-gray-400">{u.email}</span>
+                          <div className="mt-1"><InviteStateBadge userId={u.id} invite={(u as User & { invite?: InviteState }).invite} /></div></td>
                         <td className="py-3">
                           {u.role === 'DEPUTY_HOD' ? (
                             <span className="inline-flex items-center gap-1">
@@ -557,7 +773,7 @@ export function PeopleOrganizationPage() {
                                   : 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20'
                             }`}
                           >
-                            {ASSIGNABLE_ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                            {ASSIGNABLE_ROLES.filter((r) => roleOffered(r) || r.value === u.role).map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                           </select>
                           )}
                         </td>
@@ -574,8 +790,22 @@ export function PeopleOrganizationPage() {
                                 <option key={ou.id} value={ou.id}>{ou.name}</option>
                               ))}
                             </select>
+                          ) : u.role === 'LECTURER' ? (
+                            // P5 (D-10.2): a lecturer's home department — "lecturers in my department".
+                            // Scope stays the lecturer's own courses (the scope resolver ignores it).
+                            <select
+                              value={u.orgUnitId ?? ''}
+                              onChange={(e) => void handleSetHomeDepartment(u, e.target.value)}
+                              aria-label={`Home department for ${u.firstName} ${u.lastName}`}
+                              className="text-xs rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-2 py-1.5 text-gray-900 dark:text-white cursor-pointer"
+                            >
+                              <option value="">— no home department —</option>
+                              {(orgUnits ?? []).filter((ou) => ou.level === 'DEPARTMENT' || ou.level === 'SUB_DEPARTMENT').map((ou) => (
+                                <option key={ou.id} value={ou.id}>{ou.name}</option>
+                              ))}
+                            </select>
                           ) : (
-                            <span className="text-xs text-gray-400">{['LECTURER', 'CLIENT_EXPERIENCE_MANAGER', 'INVIGILATOR'].includes(u.role) ? '—' : 'Whole school'}</span>
+                            <span className="text-xs text-gray-400">{['CLIENT_EXPERIENCE_MANAGER', 'INVIGILATOR'].includes(u.role) ? '—' : 'Whole school'}</span>
                           )}
                         </td>
                         <td className="py-3">
@@ -584,13 +814,44 @@ export function PeopleOrganizationPage() {
                             onChange={(e) => void handleAssignRole(u, e.target.value)}
                             className="text-sm rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-1.5 text-gray-900 dark:text-white"
                           >
-                            <option value="">— No role (no permissions) —</option>
+                            <option value="">{u.role === 'LECTURER' ? '— Lecturer (default) —' : '— No role (no permissions) —'}</option>
                             {(roles ?? []).map((r) => (
-                              <option key={r.id} value={r.id}>{r.name}</option>
+                              <option key={r.id} value={r.id}>{r.name}{r.isPreset ? ' · preset' : ''}</option>
                             ))}
                           </select>}
+                          {CAN_HOLD_ROLE.includes(u.role) && <AccessDifferences user={u} />}
                         </td>
                         <td className="py-3 text-right">
+                          {u.schoolId && schoolId && u.schoolId !== schoolId && (
+                            <>
+                              <Badge color="purple">Shared in</Badge>
+                              <button onClick={() => void removeShared(u)} className="text-xs text-red-500 hover:underline cursor-pointer mx-2">Remove</button>
+                            </>
+                          )}
+                          {u.role === 'LECTURER' && u.schoolId === schoolId && !!siblings?.length && (
+                            <button
+                              onClick={() => { setShareTarget(u); setShareTo(siblings[0]!.id); setShareMsg(''); }}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer mr-2"
+                            >
+                              <Network size={12} /> Share
+                            </button>
+                          )}
+                          {CAN_HOLD_ROLE.includes(u.role) && (
+                            <button
+                              onClick={() => setAccessTarget(u)}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer mr-2"
+                            >
+                              <Settings2 size={12} /> Adjust access
+                            </button>
+                          )}
+                          {u.role === 'STAFF' && (
+                            <button
+                              onClick={() => setProgrammeTarget(u)}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer mr-2"
+                            >
+                              <GraduationCap size={12} /> Programmes
+                            </button>
+                          )}
                           {u.role === 'DEPUTY_HOD' && (
                             <button
                               onClick={() => void handleToggleActing(u)}
@@ -619,6 +880,27 @@ export function PeopleOrganizationPage() {
 
       </>
       )}
+
+      <Modal open={!!shareTarget} onClose={() => setShareTarget(null)} title={shareTarget ? `Share ${shareTarget.firstName} ${shareTarget.lastName}` : 'Share'}>
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600 dark:text-gray-400">The lecturer keeps one account and switches between institutions from their profile menu. In the other institution they only see what they teach there.</p>
+          <label htmlFor="share-to" className="block text-sm font-medium text-slate-800 dark:text-gray-300">Share into</label>
+          <select id="share-to" value={shareTo} onChange={(e) => setShareTo(e.target.value)} className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5">
+            {(siblings ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </select>
+          {shareMsg && <p className="text-sm text-slate-700 dark:text-gray-300" data-testid="share-result">{shareMsg}</p>}
+          <Button onClick={() => void doShare()} disabled={!shareTo}>Share</Button>
+        </div>
+      </Modal>
+
+      <ProgrammesModal target={programmeTarget} schoolId={schoolId} onClose={() => { setProgrammeTarget(null); refetchUsers(); }} />
+
+      <AdjustAccessModal
+        target={accessTarget}
+        roles={roles ?? []}
+        onClose={() => setAccessTarget(null)}
+        onSaved={() => { setAccessTarget(null); refetchUsers(); refetchRoles(); }}
+      />
 
       {/* Switch to DVC / Dean / HOD: which organisation unit? */}
       <Modal open={!!switchTarget} onClose={() => setSwitchTarget(null)} title="Choose organisation unit">
@@ -665,11 +947,11 @@ export function PeopleOrganizationPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Account Type</label>
             <div className="grid grid-cols-2 gap-2">
-              {CREATABLE_ROLES.map((r) => (
+              {CREATABLE_ROLES.filter(roleOffered).map((r) => (
                 <button
                   key={r.value}
                   type="button"
-                  onClick={() => setUserForm({ ...userForm, role: r.value })}
+                  onClick={() => setUserForm({ ...userForm, role: r.value, customRoleId: defaultPresetFor(r.value, roles) })}
                   className={`px-3 py-2.5 rounded-xl text-left border cursor-pointer transition-colors ${
                     userForm.role === r.value
                       ? 'bg-blue-500 text-white border-blue-500'
@@ -689,7 +971,7 @@ export function PeopleOrganizationPage() {
             <Input label="Last Name" icon={UserIcon} value={userForm.lastName} onChange={(e) => setUserForm({ ...userForm, lastName: e.target.value })} />
           </div>
           <Input label="Email" type="email" icon={Mail} value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} />
-          <Input label="Password" type="password" icon={Lock} value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} />
+          <p className="text-xs text-gray-500 dark:text-gray-400">No password here — they'll receive a "Set your password" invite by email (valid 7 days, resend from their row).</p>
           {userForm.role && roleHasOrgUnit(userForm.role) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -708,16 +990,16 @@ export function PeopleOrganizationPage() {
           )}
           {(!userForm.role || CAN_HOLD_ROLE.includes(userForm.role)) && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Custom Role (optional)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Preset or role</label>
             {roles?.length ? (
               <select
                 value={userForm.customRoleId}
                 onChange={(e) => setUserForm({ ...userForm, customRoleId: e.target.value })}
                 className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
               >
-                <option value="">— No custom role (no extra permissions yet) —</option>
+                <option value="">{userForm.role === 'LECTURER' ? '— Lecturer (default) —' : '— None (no extra permissions yet) —'}</option>
                 {roles.map((r) => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
+                  <option key={r.id} value={r.id}>{r.name}{r.isPreset ? ' · preset' : ''}</option>
                 ))}
               </select>
             ) : (
@@ -730,10 +1012,10 @@ export function PeopleOrganizationPage() {
                 )}
               </div>
             )}
-            <p className="text-xs text-gray-400 mt-1.5">Grants extra dashboard/mobile permissions on top of the account type above.</p>
+            <p className="text-xs text-gray-400 mt-1.5">Presets first: pick the one that fits, then fine-tune a person later with “Adjust access” on their row.</p>
           </div>
           )}
-          {(!userForm.role || userForm.role === 'LECTURER' || userForm.role === 'CLIENT_EXPERIENCE_MANAGER') && (
+          {(!userForm.role || userForm.role === 'LECTURER' || userForm.role === 'CLIENT_EXPERIENCE_MANAGER' || userForm.role === 'STAFF') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
               <BookOpen size={14} /> Assigned Courses

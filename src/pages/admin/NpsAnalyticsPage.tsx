@@ -198,9 +198,9 @@ export function NpsAnalyticsPage() {
                 value={selectedSchoolId}
                 onChange={(e) => setSelectedSchoolId(e.target.value)}
                 className="min-w-[200px] rounded-xl border border-slate-200/90 bg-white/90 px-3 py-2.5 text-sm text-slate-900 shadow-sm dark:border-white/15 dark:bg-slate-900/80 dark:text-white"
-                aria-label="Select school"
+                aria-label="Select institution"
               >
-                <option value="">Select a school…</option>
+                <option value="">Select an institution…</option>
                 {execEdSchools.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}

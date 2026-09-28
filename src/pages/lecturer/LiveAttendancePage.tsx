@@ -453,7 +453,7 @@ export function LiveAttendancePage() {
                       </span>
                     </Button>
                   ) : (
-                    <Badge color="gray">Manual override disabled for this school</Badge>
+                    <Badge color="gray">Manual override disabled for this institution</Badge>
                   )}
                 </div>
               )}

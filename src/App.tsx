@@ -4,13 +4,17 @@ import { ThemeProvider } from './context/ThemeContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { RequireSuperAdmin } from './components/guards/RequireSuperAdmin';
 import { RequireRole } from './components/guards/RequireRole';
+import { CemTeamPage } from './pages/cem/CemTeamPage';
+import { PlatformHomePage, PlatformInstitutionsPage, PlatformOnboardingPage, PlatformBillingPage, PlatformGrantsPage, PlatformFleetPage, PlatformAnalyticsPage } from './pages/platform/PlatformPages';
+import { GroupViewPage } from './pages/insights/GroupViewPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { OverviewPage } from './pages/admin/OverviewPage';
 import { SchoolsPage } from './pages/admin/SchoolsPage';
-import { CohortsPage } from './pages/admin/CohortsPage';
+import { AcademicsPage } from './pages/admin/AcademicsPage';
+import { AcademicsRedirect, AdminRedirect } from './components/academics/AcademicsRedirect';
 import { UsersPage } from './pages/admin/UsersPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
 import { UserDetailPage } from './pages/admin/UserDetailPage';
@@ -44,11 +48,9 @@ import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
 import { FraudDetectionPage } from './pages/admin/FraudDetectionPage';
 import { SchoolAdminsPage } from './pages/admin/SchoolAdminsPage';
 import { SetupWizardPage } from './pages/admin/SetupWizardPage';
+import { InstitutionSetupPage } from './pages/admin/InstitutionSetupPage';
 import { TermsPage } from './pages/admin/TermsPage';
 import { ProgramsPage } from './pages/admin/ProgramsPage';
-import { LevelsPage } from './pages/admin/LevelsPage';
-import { MajorsPage } from './pages/admin/MajorsPage';
-import { CourseAssignmentsPage } from './pages/admin/CourseAssignmentsPage';
 import { CourseDetailPage } from './pages/admin/CourseDetailPage';
 import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
 import { RequestFeedbackPage } from './pages/admin/RequestFeedbackPage';
@@ -76,6 +78,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/accept-invite" element={<ResetPasswordPage mode="invite" />} />
             {/* Unauthenticated — the email CTA in sendFeedbackRequestEmail links here. Students
                 aren't dashboard users; this page's only job is bouncing into the mobile app's
                 tcheck://feedback deep link (see FeedbackRedirectPage.tsx). */}
@@ -83,9 +86,21 @@ export default function App() {
             {/* SBS Phase 9 — the link in optional emails; the token in the URL is the only credential. */}
             <Route path="/email-preferences" element={<EmailPreferencesPage />} />
             <Route element={<DashboardLayout />}>
-              {/* Admin routes (SUPER_ADMIN + SUB_ADMIN) */}
+              {/* Admin routes (SUPER_ADMIN + SCHOOL_ADMIN) */}
               <Route path="/admin" element={<OverviewPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              {/* P10 (A7.1/A7.2) — the watchtower; Super Admin only (the API enforces it too). */}
+              <Route element={<RequireSuperAdmin />}>
+                <Route path="/platform" element={<PlatformHomePage />} />
+                <Route path="/platform/institutions" element={<PlatformInstitutionsPage />} />
+                <Route path="/platform/schools" element={<SchoolsPage />} />
+                <Route path="/platform/onboarding" element={<PlatformOnboardingPage />} />
+                <Route path="/platform/billing" element={<PlatformBillingPage />} />
+                <Route path="/platform/support" element={<SupportPage />} />
+                <Route path="/platform/grants" element={<PlatformGrantsPage />} />
+                <Route path="/platform/fleet" element={<PlatformFleetPage />} />
+                <Route path="/platform/analytics" element={<PlatformAnalyticsPage />} />
+              </Route>
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/users/:id" element={<UserDetailPage />} />
               <Route path="/admin/users/:id/courses/:courseId" element={<CourseAttendanceDetailPage />} />
@@ -96,6 +111,8 @@ export default function App() {
               <Route path="/insights/feedback" element={<LegacyInsightsRedirect tab="feedback" />} />
               {/* SBS Phase 6 — Reports & Executive Intelligence (role-scoped server-side). */}
               <Route path="/insights/reports" element={<LegacyInsightsRedirect tab="overview" />} />
+              {/* P11 (A8.5) — the granted, aggregate-only institution-group view (VC / DVC / Dean). */}
+              <Route path="/insights/group" element={<GroupViewPage />} />
               <Route path="/admin/students" element={<AllStudentsPage />} />
               <Route path="/admin/lecturers" element={<AllLecturersPage />} />
               <Route path="/admin/lecturer-presence" element={<LecturerPresencePage />} />
@@ -105,18 +122,18 @@ export default function App() {
               <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               <Route path="/admin/request-feedback" element={<RequestFeedbackPage />} />
               <Route path="/admin/support" element={<SupportPage />} />
-              {/* SUB_ADMIN is scoped to their own school's beacons; SUPER_ADMIN sees/manages all (beacon.service.ts enforces this) */}
+              {/* SCHOOL_ADMIN is scoped to their own school's beacons; SUPER_ADMIN sees/manages all (beacon.service.ts enforces this) */}
               <Route path="/admin/beacons" element={<BLEBeaconPage />} />
               {/* Same school-scoping as beacons above (academic.service.ts's listClassrooms) */}
               <Route path="/admin/classrooms" element={<ClassroomsPage />} />
               {/* Same beacon-scoping rules as above — the simulator loads/saves via the same /beacons endpoints */}
               <Route path="/admin/beacon-heatmap" element={<BeaconHeatmapSimulatorPage />} />
               <Route path="/admin/beacon-health" element={<BeaconHealthPage />} />
-              {/* SUB_ADMIN sees/adds co-admins for their own school only; SUPER_ADMIN sees/manages all (user.controller.ts + user.service.ts enforce this) */}
+              {/* SCHOOL_ADMIN sees/adds additional school admins for their own school only; SUPER_ADMIN sees/manages all (user.controller.ts + user.service.ts enforce this) */}
               <Route path="/admin/school-admins" element={<SchoolAdminsPage />} />
               <Route path="/admin/people" element={<PeopleOrganizationPage />} />
               {/* Cross-CEM oversight — server-side gate (cem.routes.ts) is the source of truth:
-                  SUPER_ADMIN, SUB_ADMIN, SCHOOL_ADMIN, DEAN, VC, DVC, HOD. */}
+                  SUPER_ADMIN, SCHOOL_ADMIN, DEAN, VC, DVC, HOD. */}
               <Route path="/admin/cem-reports" element={<CemReportsPage />} />
               {/* "Click a programme, see everything about it" — same server-side gate as
                   GET /cem/programs/:cohortId (cem.routes.ts). */}
@@ -125,13 +142,18 @@ export default function App() {
               <Route path="/admin/roles-permissions" element={<Navigate to="/admin/people" replace />} />
               <Route path="/staff" element={<StaffViewPage />} />
               <Route path="/admin/org-units" element={<Navigate to="/admin/people" replace />} />
-              <Route path="/admin/setup-wizard" element={<SetupWizardPage />} />
-              <Route path="/admin/terms" element={<TermsPage />} />
-              <Route path="/admin/programs" element={<ProgramsPage />} />
-              {/* Previously built but unrouted (QA plan Phase 15) — same school-admin tier as the backend routes they call. */}
-              <Route path="/admin/levels" element={<LevelsPage />} />
-              <Route path="/admin/majors" element={<MajorsPage />} />
-              <Route path="/admin/course-assignments" element={<CourseAssignmentsPage />} />
+              {/* P6: admins use Institution Setup; leadership roles keep the old wizard until it is retired. */}
+              <Route path="/admin/setup" element={<InstitutionSetupPage />} />
+              <Route path="/admin/setup-wizard" element={<AdminRedirect to="/admin/setup" fallback={<SetupWizardPage />} />} />
+              {/* P5 (A4): the School Admin's Academics area. The old pages redirect into its tabs; Terms and
+                  Training pipelines also serve leadership / lecturer menus, so only admins are redirected. */}
+              <Route path="/admin/academics" element={<AcademicsPage />} />
+              <Route path="/admin/terms" element={<AcademicsRedirect tab="calendar" fallback={<TermsPage />} />} />
+              <Route path="/admin/programs" element={<AcademicsRedirect tab="pipelines" fallback={<ProgramsPage />} />} />
+              <Route path="/admin/levels" element={<Navigate to="/admin/academics?tab=levels" replace />} />
+              <Route path="/admin/majors" element={<Navigate to="/admin/academics?tab=programmes" replace />} />
+              <Route path="/admin/course-assignments" element={<Navigate to="/admin/academics?tab=course-links" replace />} />
+              <Route path="/admin/cohorts" element={<Navigate to="/admin/academics?tab=cohorts" replace />} />
               <Route path="/admin/courses/:courseId" element={<CourseDetailPage />} />
               {/* SUPER_ADMIN + SCHOOL_ADMIN (integration.routes.ts enforces this; a school admin is scoped to their own school) */}
               <Route path="/admin/integrations" element={<IntegrationsPage />} />
@@ -140,17 +162,16 @@ export default function App() {
               {/* SUPER_ADMIN-only routes */}
               <Route element={<RequireSuperAdmin />}>
                 <Route path="/admin/schools" element={<SchoolsPage />} />
-                <Route path="/admin/cohorts" element={<CohortsPage />} />
               </Route>
 
               {/* FIXED: was grouped under RequireSuperAdmin above, but message.routes.ts's
-                  /admin/conversations, /flags etc. use requireRole('SUB_ADMIN', 'SCHOOL_ADMIN') and
+                  /admin/conversations, /flags etc. use requireRole('SCHOOL_ADMIN') and
                   deliberately EXCLUDE SUPER_ADMIN ("the platform must never read tenant message
                   content" — message.routes.ts) — the page was unreachable by anyone: SUPER_ADMIN
-                  could load it but every API call 403'd, and SUB_ADMIN/SCHOOL_ADMIN (who the
+                  could load it but every API call 403'd, and SCHOOL_ADMIN (who the
                   backend allows) were redirected away before reaching it. No sidebar link existed
-                  either (see Sidebar.tsx's new SUB_ADMIN/SCHOOL_ADMIN entry). */}
-              <Route element={<RequireRole roles={['SUB_ADMIN', 'SCHOOL_ADMIN']} />}>
+                  either (see Sidebar.tsx's SCHOOL_ADMIN entry). */}
+              <Route element={<RequireRole roles={['SCHOOL_ADMIN']} />}>
                 <Route path="/admin/messages" element={<AdminMessagesPage />} />
               </Route>
 
@@ -161,6 +182,10 @@ export default function App() {
               <Route path="/cem/facilities" element={<CemFacilitiesPage />} />
               <Route path="/cem/cohorts/:cohortId" element={<CemCohortDetailPage />} />
               <Route path="/cem/cohorts/:cohortId/:panel" element={<CemCohortPanelPage />} />
+              {/* P9 (D-11.8) — CEM Manager board; cemTeam.routes.ts admits exactly these roles */}
+              <Route element={<RequireRole roles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CEM_MANAGER']} />}>
+                <Route path="/cem-team" element={<CemTeamPage />} />
+              </Route>
               <Route path="/announcements" element={<AnnouncementsPage />} />
 
               {/* Shared routes (admin and lecturer) */}
@@ -174,11 +199,11 @@ export default function App() {
               <Route path="/messages" element={<MessagesPage />} />
               {/* SUPER_ADMIN + LECTURER (device.routes.ts enforces this on the backend; a lecturer is scoped to their own students) */}
               <Route path="/admin/device-verification" element={<DeviceVerificationPage />} />
-              {/* SUPER_ADMIN + SUB_ADMIN + LECTURER (attendance.routes.ts enforces this; a lecturer is scoped to their own students) */}
+              {/* SUPER_ADMIN + SCHOOL_ADMIN + LECTURER (attendance.routes.ts enforces this; a lecturer is scoped to their own students) */}
               <Route path="/admin/invigilation" element={<InvigilationPage />} />
-              {/* SUPER_ADMIN + SUB_ADMIN + LECTURER (escalation.routes.ts enforces this; a lecturer is scoped to their own classes) */}
+              {/* SUPER_ADMIN + SCHOOL_ADMIN + LECTURER (escalation.routes.ts enforces this; a lecturer is scoped to their own classes) */}
               <Route path="/admin/escalations" element={<EscalationsPage />} />
-              {/* SUPER_ADMIN + SUB_ADMIN + SCHOOL_ADMIN + LECTURER (facilityTicket.routes.ts enforces
+              {/* SUPER_ADMIN + SCHOOL_ADMIN + LECTURER (facilityTicket.routes.ts enforces
                   this; a lecturer sees their own claim + unclaimed tickets at their school) */}
               <Route path="/admin/facilities" element={<FacilitiesQueuePage />} />
               <Route path="/legal" element={<LegalPage />} />

@@ -512,7 +512,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
               onToggle={toggleLevel}
             />
             <FacetSection
-              title="Major"
+              title="Programme"
               items={facets.majors}
               selected={selectedMajors}
               onToggle={toggleMajor}
@@ -540,7 +540,7 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
               >
                 <option value="">None</option>
                 <option value="level">Level</option>
-                <option value="major">Major</option>
+                <option value="major">Programme</option>
                 <option value="cohort">Cohort</option>
               </select>
             </div>

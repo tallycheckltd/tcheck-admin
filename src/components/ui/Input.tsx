@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useId, useState } from 'react';
 import type { InputHTMLAttributes, ElementType } from 'react';
 import { clsx } from 'clsx';
 import { Eye, EyeOff } from 'lucide-react';
@@ -15,10 +15,14 @@ export const Input = forwardRef<HTMLInputElement, Props>(({ label, error, icon: 
   // passing type="password" through this shared component, no per-call-site plumbing needed.
   const isPassword = type === 'password';
   const [revealed, setRevealed] = useState(false);
+  // The visible label names the field for assistive tech (and label-based lookups) — an explicit
+  // id from the caller wins.
+  const autoId = useId();
+  const inputId = props.id ?? autoId;
 
   return (
     <div className="space-y-1">
-      {label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>}
+      {label && <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>}
       <div className="relative group">
         {Icon && (
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
@@ -27,6 +31,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(({ label, error, icon: 
         )}
         <input
           ref={ref}
+          id={inputId}
           type={isPassword ? (revealed ? 'text' : 'password') : type}
           className={clsx(
             'w-full rounded-xl py-2.5 text-sm bg-white dark:bg-white/5 border transition-all',

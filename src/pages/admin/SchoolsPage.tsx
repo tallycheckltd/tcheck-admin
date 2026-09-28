@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ElementType, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi, useMutation } from '../../hooks/useApi';
+import { api } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -9,14 +10,14 @@ import { Slider } from '../../components/ui/Slider';
 import { ColorPickerField } from '../../components/ui/ColorPickerField';
 import {
   Plus, Pencil, Trash2, School as SchoolIcon, Hash, UserCheck, MessageSquareOff, MessageSquare,
-  ShieldCheck, Megaphone, ScanFace, Timer, Mail, Lock, User as UserIcon, ArrowRight, ArrowLeft,
+  ShieldCheck, Megaphone, ScanFace, Timer, Mail, User as UserIcon, ArrowRight, ArrowLeft,
   AlertCircle, CheckCircle2, UserPlus, X, CalendarDays, Layers, ChevronDown,
   ToggleRight, Server, Briefcase, Building2
 } from 'lucide-react';
 import type { AttendanceMode, School, SchoolFeatures, User } from '../../types';
 
 const emptySchoolForm = { name: '', code: '', color: '#3B82F6', institutionName: '' };
-const emptyAdminForm = { email: '', password: '', firstName: '', lastName: '' };
+const emptyAdminForm = { email: '', firstName: '', lastName: '' };
 
 const defaultFeatures: Required<SchoolFeatures> = {
   anonymousChat: true,
@@ -54,11 +55,10 @@ interface ExtraAdminRow {
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
-  role: 'SUB_ADMIN' | 'LECTURER';
+  role: 'SCHOOL_ADMIN' | 'LECTURER';
   submitted?: boolean;
 }
-const emptyExtraAdminRow = (): ExtraAdminRow => ({ firstName: '', lastName: '', email: '', password: '', role: 'SUB_ADMIN' });
+const emptyExtraAdminRow = (): ExtraAdminRow => ({ firstName: '', lastName: '', email: '', role: 'SCHOOL_ADMIN' });
 
 // Compact settings-list row (icon + title + switch on one line, description below in muted
 // text) — replaces the old one-per-card layout so 6 feature toggles don't turn into 6 screens of
@@ -154,7 +154,7 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
         <div className="pt-4 space-y-4">
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              Stage-based schools drop the calendar entirely — students progress through a fixed Program/Module pipeline instead of scheduled classes.
+              Stage-based institutions drop the calendar entirely — students progress through a fixed training pipeline of modules instead of scheduled classes.
             </p>
             <div className="flex gap-2">
               <button
@@ -215,7 +215,7 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
           <ToggleRow
             icon={MessageSquare}
             title="Messaging"
-            description="Chat, campus/course rooms, and direct messages. Off hides the Chat tab entirely on mobile — no messaging feature at all for this school, not just muted."
+            description="Chat, campus/course rooms, and direct messages. Off hides the Chat tab entirely on mobile — no messaging feature at all for this institution, not just muted."
             checked={value.features.messaging}
             onChange={(v) => onChange({ ...value, features: { ...value.features, messaging: v } })}
           />
@@ -236,7 +236,7 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
           <ToggleRow
             icon={Megaphone}
             title="Broadcasts"
-            description="Lets admins send announcements to this school's students and lecturers."
+            description="Lets admins send announcements to this institution's students and lecturers."
             checked={value.features.broadcasts}
             onChange={(v) => onChange({ ...value, features: { ...value.features, broadcasts: v } })}
           />
@@ -257,7 +257,7 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
           <ToggleRow
             icon={Briefcase}
             title="Executive Ed Suite"
-            description="Tools for executive and short-course programs — cohorts and corporate attendees tracked separately from regular class attendance."
+            description="Tools for executive and short-course programmes — cohorts and corporate attendees tracked separately from regular class attendance."
             checked={value.features.execEdSuite}
             onChange={(v) => onChange({ ...value, features: { ...value.features, execEdSuite: v } })}
           />
@@ -273,8 +273,8 @@ function SchoolSettingsFields({ value, onChange }: { value: SchoolSettingsValue;
       >
         <div className="pt-4 space-y-3">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Leave blank unless this school runs on its own isolated backend (e.g. a pilot with a
-            separate database). If set, the mobile apps redirect to this URL after the school is
+            Leave blank unless this institution runs on its own isolated backend (e.g. a pilot with a
+            separate database). If set, the mobile apps redirect to this URL after the institution is
             selected instead of using the default backend.
           </p>
           <Input
@@ -294,6 +294,20 @@ export function SchoolsPage() {
   const { mutate: createUser } = useMutation<User>('post');
   const { mutate: update } = useMutation('put');
   const { mutate: remove } = useMutation('delete');
+  // P8 (A8.2): Institution groups are real records; the picker name follows the group.
+  const { data: institutions, refetch: refetchInstitutions } = useApi<{ id: string; name: string }[]>('/institutions');
+  const [groupChoice, setGroupChoice] = useState<string>('');
+  const [newGroupName, setNewGroupName] = useState('');
+  /** The parent's group (created from its name if it has none yet), with the parent assigned to it. */
+  const ensureGroupFor = async (parent: School): Promise<string> => {
+    if (parent.institution?.id) return parent.institution.id;
+    const name = parent.institutionName?.trim() || parent.name.trim();
+    let group = (institutions ?? []).find((i) => i.name.toLowerCase() === name.toLowerCase());
+    if (!group) group = await api.post<{ id: string; name: string }>('/institutions', { name });
+    await api.put(`/institutions/schools/${parent.id}`, { institutionId: group.id });
+    refetchInstitutions();
+    return group.id;
+  };
 
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
@@ -357,16 +371,11 @@ export function SchoolsPage() {
     setWizardError('');
     setBranchParent(parent);
     setModal(true);
-    // The parent didn't belong to any group yet — retroactively give it the same institutionName
-    // so it actually joins the group once the branch is created, instead of only the new branch
-    // being grouped while the parent it was branched from stays a lone standalone school.
-    if (!parent.institutionName) {
-      await update(`/schools/${parent.id}`, { institutionName: sharedInstitutionName });
-      refetch();
-    }
   };
   const openEdit = (s: School) => {
     setEditing(s);
+    setGroupChoice('');
+    setNewGroupName('');
     setForm({
       name: s.name,
       code: s.code,
@@ -383,9 +392,15 @@ export function SchoolsPage() {
   };
 
   const handleSubmit = async () => {
-    await update(`/schools/${editing!.id}`, { ...form, apiBaseUrl: form.apiBaseUrl || null, institutionName: form.institutionName || null });
+    // P8: grouping is changed through the Institution group, never by editing the name text.
+    const { institutionName: _name, ...rest } = form;
+    await update(`/schools/${editing!.id}`, { ...rest, apiBaseUrl: form.apiBaseUrl || null });
+    let target: string | null = groupChoice === '__none__' ? null : groupChoice || (editing!.institution?.id ?? null);
+    if (groupChoice === '__new__') target = newGroupName.trim() ? (await api.post<{ id: string }>('/institutions', { name: newGroupName.trim() })).id : (editing!.institution?.id ?? null);
+    if (target !== (editing!.institution?.id ?? null)) await api.put(`/institutions/schools/${editing!.id}`, { institutionId: target });
     setModal(false);
     refetch();
+    refetchInstitutions();
   };
 
   const handleWizardNext = () => {
@@ -398,7 +413,7 @@ export function SchoolsPage() {
   };
 
   const handleWizardAdminNext = () => {
-    if (!adminForm.email.trim() || !adminForm.password || !adminForm.firstName.trim() || !adminForm.lastName.trim()) {
+    if (!adminForm.email.trim() || !adminForm.firstName.trim() || !adminForm.lastName.trim()) {
       setWizardError('All admin fields are required.');
       return;
     }
@@ -416,13 +431,15 @@ export function SchoolsPage() {
     try {
       let schoolId = createdSchoolId;
       if (!schoolId) {
-        const school = await create('/schools', { ...schoolForm, institutionName: schoolForm.institutionName || null });
+        const school = await create('/schools', { ...schoolForm, institutionName: branchParent ? null : schoolForm.institutionName || null });
         schoolId = school!.id;
         setCreatedSchoolId(schoolId);
+        // P8: a branch joins its parent's Institution group (a real relation, not a matching name).
+        if (branchParent) await api.put(`/institutions/schools/${schoolId}`, { institutionId: await ensureGroupFor(branchParent) });
       }
 
       if (!adminCreated) {
-        // SCHOOL_ADMIN, not the older SUB_ADMIN co-admin role below (/users/admin) — every new
+        // The primary SCHOOL_ADMIN (additional School Admins below go through /users/admin) — every new
         // school gets exactly one of these, guaranteed, with the full default permission set
         // (Users & Permissions management, settings, courses, announcements, analytics, tickets).
         await createUser('/users/school-admin', { ...adminForm, schoolId });
@@ -437,10 +454,10 @@ export function SchoolsPage() {
       for (let i = 0; i < extraAdmins.length; i++) {
         const row = extraAdmins[i]!;
         if (row.submitted) continue;
-        const filled = row.firstName.trim() && row.lastName.trim() && row.email.trim() && row.password;
+        const filled = row.firstName.trim() && row.lastName.trim() && row.email.trim();
         if (!filled) continue;
-        const path = row.role === 'SUB_ADMIN' ? '/users/admin' : '/users/lecturer';
-        await createUser(path, { firstName: row.firstName, lastName: row.lastName, email: row.email, password: row.password, schoolId });
+        const path = row.role === 'SCHOOL_ADMIN' ? '/users/admin' : '/users/lecturer';
+        await createUser(path, { firstName: row.firstName, lastName: row.lastName, email: row.email, schoolId });
         setExtraAdmins((prev) => prev.map((r, idx) => (idx === i ? { ...r, submitted: true } : r)));
       }
 
@@ -463,11 +480,11 @@ export function SchoolsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Schools</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Institutions</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage institutional entities across the organization</p>
         </div>
         <Button onClick={openCreate} className="shadow-lg shadow-blue-500/20">
-          <Plus size={18} className="mr-2" /> Add School
+          <Plus size={18} className="mr-2" /> Add Institution
         </Button>
       </div>
 
@@ -513,13 +530,13 @@ export function SchoolsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => void openCreateBranch(s)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-emerald-500 transition-all border border-transparent hover:border-emerald-100" title="Add a branch/campus grouped with this school">
+                      <button onClick={() => void openCreateBranch(s)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-emerald-500 transition-all border border-transparent hover:border-emerald-100" title="Add a branch/campus grouped with this institution">
                         <Layers size={16} />
                       </button>
-                      <button onClick={() => openEdit(s)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-blue-500 transition-all border border-transparent hover:border-blue-100" title="Edit School">
+                      <button onClick={() => openEdit(s)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-blue-500 transition-all border border-transparent hover:border-blue-100" title="Edit Institution">
                         <Pencil size={16} />
                       </button>
-                      <button onClick={() => handleDelete(s.id)} className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-all border border-transparent hover:border-red-100" title="Delete School">
+                      <button onClick={() => handleDelete(s.id)} className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-all border border-transparent hover:border-red-100" title="Delete Institution">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -530,7 +547,7 @@ export function SchoolsPage() {
                 <tr>
                   <td colSpan={4} className="text-center py-16">
                     <SchoolIcon className="mx-auto text-gray-200 dark:text-gray-700 mb-4" size={48} />
-                    <p className="text-gray-500 dark:text-gray-400">No schools registered yet.</p>
+                    <p className="text-gray-500 dark:text-gray-400">No institutions registered yet.</p>
                   </td>
                 </tr>
               )}
@@ -606,7 +623,7 @@ export function SchoolsPage() {
               />
               <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="School Code"
+                  label="Institution Code"
                   icon={Hash}
                   placeholder="STI"
                   value={form.code}
@@ -619,22 +636,27 @@ export function SchoolsPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Input
-                  label="Parent Institution (optional)"
-                  icon={Building2}
-                  placeholder="e.g. Riverside Group of Schools"
-                  value={form.institutionName}
-                  onChange={(e) => setForm({ ...form, institutionName: e.target.value })}
-                />
+                <label htmlFor="school-group" className="block text-sm font-medium text-slate-800 dark:text-gray-300">Institution group</label>
+                <select
+                  id="school-group"
+                  value={groupChoice || (editing?.institution?.id ?? '__none__')}
+                  onChange={(e) => setGroupChoice(e.target.value)}
+                  className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
+                >
+                  <option value="__none__">— Not in a group —</option>
+                  {(institutions ?? []).map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                  <option value="__new__">+ New group…</option>
+                </select>
+                {groupChoice === '__new__' && <Input label="New group name" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder="e.g. Strathmore University" />}
                 <p className="text-xs text-gray-400 pl-1">
-                  Groups this school with any others sharing the same parent on the mobile school picker — useful for multiple campuses or programs under one institution.
+                  Tenants in one group appear together in the mobile picker, can share lecturers, and can be given an aggregate group view. Only the platform sets this.
                 </p>
               </div>
             </div>
           </div>
           <SchoolSettingsFields value={form} onChange={(v) => setForm({ ...form, ...v })} />
           <Button onClick={handleSubmit} className="w-full py-4 shadow-lg shadow-blue-500/20">
-            Update School Profile
+            Update Institution Profile
           </Button>
         </div>
         ) : wizardStep === 1 ? (
@@ -670,7 +692,7 @@ export function SchoolsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Input
-                  label="School Code"
+                  label="Institution Code"
                   icon={Hash}
                   placeholder="STI"
                   value={schoolForm.code}
@@ -689,12 +711,12 @@ export function SchoolsPage() {
               <Input
                 label="Parent Institution (optional)"
                 icon={Building2}
-                placeholder="e.g. Riverside Group of Schools"
+                placeholder="e.g. Riverside Group of Institutions"
                 value={schoolForm.institutionName}
                 onChange={(e) => setSchoolForm({ ...schoolForm, institutionName: e.target.value })}
               />
               <p className="text-xs text-gray-400 pl-1">
-                Groups this school with any others sharing the same parent on the mobile school picker.
+                Groups this institution with any others sharing the same parent on the mobile institution picker.
               </p>
             </div>
           </div>
@@ -717,7 +739,7 @@ export function SchoolsPage() {
           <div className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
             <p className="text-xs text-gray-500 dark:text-gray-400">
               This is the School Admin — they&apos;ll add lecturers, courses, and approve students, and can create every other
-              user for this school (Client Experience Managers, custom roles and permissions included) from the Users &amp;
+              user for this institution (Client Experience Managers, custom roles and permissions included) from the Users &amp;
               Permissions page.
             </p>
             <div className="grid grid-cols-2 gap-4">
@@ -741,13 +763,9 @@ export function SchoolsPage() {
               value={adminForm.email}
               onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
             />
-            <Input
-              label="Password"
-              type="password"
-              icon={Lock}
-              value={adminForm.password}
-              onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
-            />
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              No password here — the School Admin gets a "Set your password" invite by email when the institution is created.
+            </p>
           </div>
           {wizardError && (
             <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl px-4 py-2.5">
@@ -792,12 +810,12 @@ export function SchoolsPage() {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => updateExtraAdmin(i, { role: 'SUB_ADMIN' })}
+                    onClick={() => updateExtraAdmin(i, { role: 'SCHOOL_ADMIN' })}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      row.role === 'SUB_ADMIN' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+                      row.role === 'SCHOOL_ADMIN' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
                     }`}
                   >
-                    Co-Admin
+                    Another School Admin
                   </button>
                   <button
                     type="button"
@@ -814,7 +832,6 @@ export function SchoolsPage() {
                   <Input placeholder="Last Name" value={row.lastName} onChange={(e) => updateExtraAdmin(i, { lastName: e.target.value })} />
                 </div>
                 <Input placeholder="Email" type="email" value={row.email} onChange={(e) => updateExtraAdmin(i, { email: e.target.value })} />
-                <Input placeholder="Password" type="password" value={row.password} onChange={(e) => updateExtraAdmin(i, { password: e.target.value })} />
               </div>
             ))}
             <button

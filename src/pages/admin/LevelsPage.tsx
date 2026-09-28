@@ -49,7 +49,7 @@ export function LevelsPage() {
           <thead>
             <tr className="border-b border-gray-200 dark:border-white/10">
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
-              <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">School</th>
+              <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Institution</th>
               <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Actions</th>
             </tr>
           </thead>
@@ -72,13 +72,13 @@ export function LevelsPage() {
         <div className="space-y-4">
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <div>
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">School</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">Institution</label>
             <select
               value={form.schoolId}
               onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
               className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Select a school</option>
+              <option value="">Select an institution</option>
               {schools?.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}

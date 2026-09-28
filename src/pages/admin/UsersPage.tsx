@@ -68,14 +68,12 @@ export function UsersPage() {
     if (createType === 'admin') {
       await create('/users/admin', {
         email: form.email,
-        password: form.password,
         firstName: form.firstName,
         lastName: form.lastName,
       });
     } else if (createType === 'lecturer') {
       await create('/users/lecturer', {
         email: form.email,
-        password: form.password,
         firstName: form.firstName,
         lastName: form.lastName,
         schoolId: form.schoolId,
@@ -83,7 +81,6 @@ export function UsersPage() {
     } else if (createType === 'invigilator') {
       await create('/users/invigilator', {
         email: form.email,
-        password: form.password,
         firstName: form.firstName,
         lastName: form.lastName,
         schoolId: form.schoolId,
@@ -111,7 +108,7 @@ export function UsersPage() {
 
   const pendingCount = users?.filter((u) => u.status === 'PENDING').length || 0;
 
-  const canDelete = (u: User) => isSuperAdmin && u.role !== 'SUPER_ADMIN' && u.role !== 'SUB_ADMIN';
+  const canDelete = (u: User) => isSuperAdmin && u.role !== 'SUPER_ADMIN';
   // Executive Diet (§18.3) — VC/DVC get institutional oversight, not account-management actions.
   const isReadOnlyUsers = currentUser?.role === 'VC' || currentUser?.role === 'DVC';
 
@@ -265,19 +262,23 @@ export function UsersPage() {
           <Input label="First Name" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
           <Input label="Last Name" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
           <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <Input label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          {createType === 'student' ? (
+            <Input label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          ) : (
+            <p className="text-xs text-gray-500 dark:text-gray-400">No password here — they'll receive a "Set your password" invite by email.</p>
+          )}
           {createType === 'student' && (
             <Input label="Student ID" value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} />
           )}
           {createType !== 'admin' && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Institution</label>
               <select
                 value={form.schoolId}
                 onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
               >
-                <option value="">Select school</option>
+                <option value="">Select institution</option>
                 {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>

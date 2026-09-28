@@ -64,7 +64,7 @@ export function TermsPage() {
               onChange={(e) => setSchoolFilter(e.target.value)}
               className="rounded-xl px-3 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
             >
-              <option value="">All schools</option>
+              <option value="">All institutions</option>
               {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           )}
@@ -77,7 +77,7 @@ export function TermsPage() {
           <thead>
             <tr>
               <th>Name</th>
-              {isSuperAdmin && !schoolFilter && <th>School</th>}
+              {isSuperAdmin && !schoolFilter && <th>Institution</th>}
               <th>Start</th>
               <th>End</th>
               <th>Status</th>
@@ -123,13 +123,13 @@ export function TermsPage() {
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Fall 2026" />
           {isSuperAdmin && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Institution</label>
               <select
                 value={form.schoolId}
                 onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
               >
-                <option value="">Select a school</option>
+                <option value="">Select an institution</option>
                 {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>

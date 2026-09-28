@@ -105,7 +105,7 @@ export function AllStudentsPage() {
               <th>Name</th>
               <th>Email</th>
               <th>Student ID</th>
-              <th>School</th>
+              <th>Institution</th>
               {execEdSuite && <th>Gender</th>}
               {execEdSuite && <th>Nationality</th>}
               {execEdSuite && <th>Job Title</th>}

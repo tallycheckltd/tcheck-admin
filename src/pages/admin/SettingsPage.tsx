@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { CheckoutPolicyCard } from '../../components/attendance/CheckoutPolicyCard';
 import { Can } from '../../components/shared/Can';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
@@ -119,13 +120,13 @@ export function SettingsPage() {
         {isSuperAdmin && (
           <GlassCard>
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Institution</label>
               <select
                 value={selectedSchoolId}
                 onChange={(e) => setSelectedSchoolId(e.target.value)}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
               >
-                <option value="">Select a school…</option>
+                <option value="">Select an institution…</option>
                 {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
@@ -248,7 +249,7 @@ export function SettingsPage() {
                 <FeatureToggle
                   icon={MessageSquare}
                   title="Messaging"
-                  description="Chat, campus/course rooms, and direct messages. Off hides the Chat tab entirely on mobile — no messaging feature at all for this school, not just muted."
+                  description="Chat, campus/course rooms, and direct messages. Off hides the Chat tab entirely on mobile — no messaging feature at all for this institution, not just muted."
                   checked={form.features.messaging}
                   onChange={(v) => setForm({ ...form, features: { ...form.features, messaging: v } })}
                 />
@@ -269,7 +270,7 @@ export function SettingsPage() {
                 <FeatureToggle
                   icon={Megaphone}
                   title="Broadcasts"
-                  description="Lets admins send announcements to this school's students and lecturers."
+                  description="Lets admins send announcements to this institution's students and lecturers."
                   checked={form.features.broadcasts}
                   onChange={(v) => setForm({ ...form, features: { ...form.features, broadcasts: v } })}
                 />
@@ -290,14 +291,14 @@ export function SettingsPage() {
                 <FeatureToggle
                   icon={Briefcase}
                   title="Executive Ed Suite"
-                  description="Tools for executive and short-course programs — cohorts and corporate attendees tracked separately from regular class attendance."
+                  description="Tools for executive and short-course programmes — cohorts and corporate attendees tracked separately from regular class attendance."
                   checked={form.features.execEdSuite}
                   onChange={(v) => setForm({ ...form, features: { ...form.features, execEdSuite: v } })}
                 />
                 <FeatureToggle
                   icon={Sparkles}
                   title="Onboarding Journey"
-                  description="Premium onboarding: an approval email, a registration-progress percentage on each student's profile, a staff alert when they finish their profile, and program-welcome / materials-ready broadcast templates for Client Experience Managers."
+                  description="Premium onboarding: an approval email, a registration-progress percentage on each student's profile, a staff alert when they finish their profile, and programme-welcome / materials-ready broadcast templates for Client Experience Managers."
                   checked={form.features.onboardingJourney}
                   onChange={(v) => setForm({ ...form, features: { ...form.features, onboardingJourney: v } })}
                 />
@@ -311,6 +312,8 @@ export function SettingsPage() {
               </div>
             </GlassCard>
 
+            {user?.role === 'SCHOOL_ADMIN' && school && <CheckoutPolicyCard school={school as never} onSaved={refetch} />}
+
             <Can perm="MANAGE_SCHOOL_SETTINGS" newForLecturer>
               <Button onClick={handleSave} size="lg" disabled={loading}>
                 {saved ? 'Saved!' : loading ? 'Saving…' : 'Save Settings'}
@@ -323,7 +326,7 @@ export function SettingsPage() {
           <GlassCard>
             <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
               <SchoolIcon size={32} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-              Select a school above to configure its settings.
+              Select an institution above to configure its settings.
             </div>
           </GlassCard>
         )}

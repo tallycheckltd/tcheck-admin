@@ -84,7 +84,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     if (res.status === 403 && err.code === 'TERMS_REQUIRED') {
       // Staff who haven't accepted the current terms — AuthContext shows the acceptance screen.
       window.dispatchEvent(new CustomEvent(TERMS_REQUIRED_EVENT));
-      throw new Error(err.error || 'You must accept the Terms & Privacy Policy to continue.');
+      throw new Error(err.error || 'You must accept the Legal agreement & Privacy Policy to continue.');
     }
     if (res.status === 403) {
       // A 403 means "not allowed", never "signed out": no logout, no redirect. The generic server
@@ -102,8 +102,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
+/** A plain-text download (e.g. a CSV report) with the same sign-in handling as request(). */
+async function requestText(path: string): Promise<string> {
+  const send = (t: string | null) => fetch(`${BASE}${path}`, { headers: t ? { Authorization: `Bearer ${t}` } : {}, cache: 'no-store' });
+  let res = await send(localStorage.getItem('accessToken'));
+  if (res.status === 401 && localStorage.getItem('refreshToken')) {
+    const tokens = await refreshAccessTokenSingleton();
+    if (tokens) res = await send(tokens.accessToken);
+  }
+  if (!res.ok) throw new Error((await res.json().catch(() => ({ error: 'Download failed' }))).error || 'Download failed');
+  return res.text();
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
+  getText: (path: string) => requestText(path),
   // `headers` (optional) — e.g. an Idempotency-Key, so a retried submit replays instead of repeating.
   post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body), headers }),

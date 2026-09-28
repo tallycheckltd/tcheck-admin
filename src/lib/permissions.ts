@@ -5,16 +5,18 @@ import type { Permission, User } from '../types';
  * used ONLY to hide or disable actions the server would refuse — the server stays the real gate.
  * Keep in step with it by hand (the dashboard has no shared build with the backend).
  *
- *   SUPER_ADMIN, SUB_ADMIN          always.
+ *   SUPER_ADMIN, SCHOOL_ADMIN          always.
  *   SCHOOL_ADMIN                    every permission except the five MANAGE_* group, which must be held.
- *   LECTURER                        no CustomRole -> unchanged legacy access; on a CustomRole -> must hold it.
- *                                   `newForLecturer`: the route was newly opened to lecturers, so a
- *                                   legacy lecturer does NOT get it either — must hold it.
+ *   LECTURER, STAFF                 must hold it (P4: every lecturer is on a preset — "Lecturer (default)"
+ *                                   holds the old legacy access; the no-role fallback is gone).
+ *                                   `newForLecturer` (route newly opened to lecturers): a lecturer on
+ *                                   "Lecturer (default)" needs the permission as a per-person addition
+ *                                   (server: permissionsForNewLecturerRoute).
  *   CLIENT_EXPERIENCE_MANAGER       must hold it — except VIEW_FACILITIES / MANAGE_FACILITY_TICKETS, part of the role.
  *   VC / DVC / DEAN / HOD           MANAGE_COURSES must be held; every other route stays role-only (true here).
  *   everyone else                   true (their page/route access is decided by role, not permission).
  *
- * `user.permissions` is already the effective set (CustomRole wins over direct grants — resolved server-side).
+ * `user.permissions` is already the effective set (preset ± the person's Adjust-Access differences — resolved server-side).
  */
 const MANAGE_GROUP: Permission[] = ['MANAGE_USERS', 'MANAGE_SCHOOL_SETTINGS', 'MANAGE_COURSES', 'MANAGE_ANNOUNCEMENTS', 'MANAGE_TICKETS'];
 const STRICT_HIERARCHY = ['VC', 'DVC', 'DEAN', 'HOD'];
@@ -24,7 +26,7 @@ const STRICT_HIERARCHY = ['VC', 'DVC', 'DEAN', 'HOD'];
 const CEM_INHERENT: Permission[] = ['VIEW_FACILITIES', 'MANAGE_FACILITY_TICKETS'];
 
 export function can(
-  user: Pick<User, 'role' | 'permissions' | 'customRoleId'> | null | undefined,
+  user: Pick<User, 'role' | 'permissions' | 'customRoleId' | 'customRolePresetKey' | 'permissionAdditions' | 'permissionRemovals'> | null | undefined,
   perm: Permission | Permission[],
   opts: { newForLecturer?: boolean } = {},
 ): boolean {
@@ -33,12 +35,17 @@ export function can(
   const holds = wanted.some((p) => (user.permissions ?? []).includes(p));
   switch (user.role) {
     case 'SUPER_ADMIN':
-    case 'SUB_ADMIN':
       return true;
     case 'SCHOOL_ADMIN':
       return wanted.some((p) => !MANAGE_GROUP.includes(p)) || holds;
     case 'LECTURER':
-      return opts.newForLecturer || user.customRoleId ? holds : true;
+      if (opts.newForLecturer && user.customRolePresetKey === 'LECTURER_DEFAULT') {
+        const extra = (user.permissionAdditions ?? []).filter((p) => !(user.permissionRemovals ?? []).includes(p));
+        return wanted.some((p) => extra.includes(p));
+      }
+      return holds;
+    case 'STAFF':
+      return holds;
     case 'CLIENT_EXPERIENCE_MANAGER':
       return holds || wanted.some((p) => CEM_INHERENT.includes(p));
     default:

@@ -107,7 +107,7 @@ export function OrgUnitsSection({ schoolId, units, onChanged }: { schoolId: stri
 
       <Modal open={unitModal} onClose={() => setUnitModal(false)} title="Add Org Unit">
         <div className="space-y-4">
-          <Input label="Name" value={unitForm.name} onChange={(e) => setUnitForm({ ...unitForm, name: e.target.value })} placeholder="e.g. School of Engineering" />
+          <Input label="Name" value={unitForm.name} onChange={(e) => setUnitForm({ ...unitForm, name: e.target.value })} placeholder="e.g. Institution of Engineering" />
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Level</label>
             <select

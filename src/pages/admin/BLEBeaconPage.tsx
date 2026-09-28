@@ -70,7 +70,7 @@ export function BLEBeaconPage() {
       location: form.location || undefined,
       description: form.description || undefined,
       classroomId: form.classroomId || null,
-      // A SUB_ADMIN's schoolId is forced server-side regardless of what's sent here; only
+      // A SCHOOL_ADMIN's schoolId is forced server-side regardless of what's sent here; only
       // SUPER_ADMIN's choice of school actually takes effect.
       schoolId: isSuperAdmin ? (form.schoolId || undefined) : undefined,
     };
@@ -108,7 +108,7 @@ export function BLEBeaconPage() {
           <thead>
             <tr>
               <th>Name</th>
-              {isSuperAdmin && <th>School</th>}
+              {isSuperAdmin && <th>Institution</th>}
               <th>UUID</th>
               <th>Major</th>
               <th>Minor</th>
@@ -171,7 +171,7 @@ export function BLEBeaconPage() {
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Room 101 Sensor" />
           {isSuperAdmin && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">School</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Institution</label>
               <select
                 value={form.schoolId}
                 onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
@@ -211,7 +211,7 @@ export function BLEBeaconPage() {
               {classroomsForSelectedSchool?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             {isSuperAdmin && !form.schoolId && (
-              <p className="text-xs text-slate-500 dark:text-slate-400">Pick a school above first.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Pick an institution above first.</p>
             )}
           </div>
           <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional notes" />

@@ -99,7 +99,7 @@ export function AllLecturersPage() {
             <tr>
               <th>Name</th>
               <th>Email</th>
-              <th>School</th>
+              <th>Institution</th>
               <th>Status</th>
               <th className="text-right">Actions</th>
             </tr>

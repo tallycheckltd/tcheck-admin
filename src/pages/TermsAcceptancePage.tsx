@@ -34,18 +34,18 @@ export function TermsAcceptancePage() {
       <div className="glass-card w-full max-w-3xl p-6 md:p-8 space-y-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
-            {reprompt ? 'Our terms have been updated' : 'Accept Terms to continue'}
+            {reprompt ? 'Our legal agreement has been updated' : 'Accept the legal agreement to continue'}
           </h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             {reprompt
-              ? `Please review and accept the updated Terms of Service and Privacy Policy (${user?.currentTermsVersion}) to keep using Tcheck.`
-              : `Welcome${user?.firstName ? `, ${user.firstName}` : ''}. Before you continue, please review and accept the Terms of Service and Privacy Policy (${user?.currentTermsVersion}).`}
+              ? `Please review and accept the updated Legal agreement and Privacy Policy (${user?.currentTermsVersion}) to keep using Tcheck.`
+              : `Welcome${user?.firstName ? `, ${user.firstName}` : ''}. Before you continue, please review and accept the Legal agreement and Privacy Policy (${user?.currentTermsVersion}).`}
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           {[
-            { label: 'Read the Terms of Service', href: LEGAL_URLS.terms },
+            { label: 'Read the Legal agreement', href: LEGAL_URLS.terms },
             { label: 'Read the Privacy Policy', href: LEGAL_URLS.privacy },
           ].map((l) => (
             <a
@@ -63,7 +63,7 @@ export function TermsAcceptancePage() {
 
         <label className="flex items-start gap-3 text-sm text-slate-800 dark:text-gray-200 cursor-pointer">
           <input type="checkbox" className="mt-1" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-          <span>I have read and agree to the Terms of Service and Privacy Policy.</span>
+          <span>I have read and agree to the Legal agreement and Privacy Policy.</span>
         </label>
 
         {error && <p className="text-sm text-red-600" role="alert">{error}</p>}

@@ -305,7 +305,7 @@ export function LoginPage() {
               </a>
               <span className="mx-2">·</span>
               <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
-                Terms of Service
+                Legal agreement
               </a>
             </p>
           </div>

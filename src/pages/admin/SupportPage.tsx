@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { PlatformAccessCard } from '../../components/support/PlatformAccessCard';
 import { Can } from '../../components/shared/Can';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
@@ -135,6 +136,8 @@ export function SupportPage() {
         )}
       </div>
 
+      {user?.role === 'SCHOOL_ADMIN' && <PlatformAccessCard />}
+
       <div className="flex gap-6 h-[calc(100vh-16rem)]">
         <div className="w-96 flex flex-col">
           <div className="relative mb-2">
@@ -153,7 +156,7 @@ export function SupportPage() {
               onChange={(e) => setSchoolFilter(e.target.value)}
               className="w-full mb-4 rounded-xl px-3 py-2 text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
             >
-              <option value="">All schools</option>
+              <option value="">All institutions</option>
               {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           )}
@@ -201,9 +204,11 @@ export function SupportPage() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-950 dark:text-white truncate">{detail.subject}</p>
+                    {/* P12: system-raised tickets carry their facts in the body (beacon, room, battery, classes at risk). */}
+                    {detail.body && <pre className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap mt-1 font-sans" data-testid="ticket-body">{detail.body}</pre>}
                     {isSuperAdmin && (
                       <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                        {detail.school?.name} &middot; raised by {detail.createdBy?.firstName} {detail.createdBy?.lastName}
+                        {detail.school?.name} &middot; {detail.createdBy ? `raised by ${detail.createdBy.firstName} ${detail.createdBy.lastName}` : 'raised by the beacon-health sweep'}
                       </p>
                     )}
                   </div>
@@ -230,7 +235,7 @@ export function SupportPage() {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {detail.messages?.map((m) => {
-                  const fromSchool = m.sender?.role === 'SUB_ADMIN';
+                  const fromSchool = m.sender?.role !== 'SUPER_ADMIN'; // the institution's side of the thread
                   return (
                     <div key={m.id} className={`flex ${fromSchool ? 'justify-start' : 'justify-end'}`}>
                       <div className="max-w-sm">

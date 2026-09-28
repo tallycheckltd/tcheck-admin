@@ -455,9 +455,9 @@ export function RequestFeedbackWorkspace({ cohortId, showHeader = true }: { coho
     <div className="space-y-3">
       {isSuperAdmin && (
         <div>
-          <label className={labelClass} htmlFor="rf-school">School</label>
+          <label className={labelClass} htmlFor="rf-school">Institution</label>
           <select id="rf-school" value={schoolId} onChange={(e) => { setSchoolId(e.target.value); setSelected([]); }} className={clsx(fieldClass, 'sm:w-80')}>
-            <option value="">Select a school…</option>
+            <option value="">Select an institution…</option>
             {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
@@ -542,7 +542,7 @@ export function RequestFeedbackWorkspace({ cohortId, showHeader = true }: { coho
         )}
       </section>
 
-      {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUB_ADMIN' || (isSuperAdmin && !!schoolId)) && (
+      {(user?.role === 'SCHOOL_ADMIN' || (isSuperAdmin && !!schoolId)) && (
         <AutomaticQuestionsSection key={schoolId} schoolId={isSuperAdmin ? schoolId : undefined} />
       )}
 

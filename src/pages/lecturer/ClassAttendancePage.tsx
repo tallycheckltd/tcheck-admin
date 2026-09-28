@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CheckoutReview, ShadowLine, CLASS_FLAG_LABEL } from '../../components/attendance/CheckoutReview';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
@@ -72,10 +73,14 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
   const { user } = useAuth();
   const attendanceThreshold = user?.school?.attendanceThreshold ?? 80;
   const queryParams = lecturerId ? `?lecturerId=${lecturerId}` : '';
-  const { data: stats } = useApi<ClassAttendanceStat[]>(`/attendance/class-stats${queryParams}`, {
+  // P14 (D-12A.6): "Show flagged sessions only" — off by default, so the ledger looks as it did.
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const flagQs = flaggedOnly ? `${queryParams ? '&' : '?'}flaggedOnly=1` : '';
+  const { data: stats } = useApi<ClassAttendanceStat[]>(`/attendance/class-stats${queryParams}${flagQs}`, {
     refetchIntervalMs: 30_000,
     refetchWhenVisible: true,
   });
+  const strict = (stats ?? []).some((s) => s.checkoutMode && s.checkoutMode !== 'OFF');
   const [search, setSearch] = useState('');
   const [pdfExporting, setPdfExporting] = useState(false);
 
@@ -163,6 +168,12 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
         </div>
       </div>
 
+      {strict && user?.role !== 'LECTURER' && <ShadowLine />}
+      {(strict || flaggedOnly) && (
+        <label className="flex items-center gap-2 text-sm" data-testid="flagged-only">
+          <input type="checkbox" checked={flaggedOnly} onChange={(e) => setFlaggedOnly(e.target.checked)} /> Show flagged sessions only
+        </label>
+      )}
       <div className="relative max-w-md">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
         <input
@@ -192,6 +203,7 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
               <th className="whitespace-nowrap px-4 py-3 tabular-nums">Enrolled</th>
               <th className="whitespace-nowrap px-4 py-3 tabular-nums text-center">Present</th>
               <th className="px-4 py-3">Rate</th>
+              {strict && <th className="px-4 py-3">Complete</th>}
               <th className="px-4 py-3 text-center">Aura</th>
               <th className="px-4 py-3 text-center">QR</th>
               <th className="px-4 py-3 text-center">Manual</th>
@@ -243,6 +255,12 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
                     </span>
                   </div>
                 </td>
+                {strict && (
+                  <td className="px-4 py-3 align-top text-xs" data-testid="complete-rate">
+                    <span className="font-semibold tabular-nums">{s.completeRate == null ? '—' : `${s.completeRate}%`}</span>
+                    {(s.checkoutClassFlags ?? []).map((f) => <p key={f} className="text-amber-700 dark:text-amber-400">{CLASS_FLAG_LABEL[f] ?? f}</p>)}
+                  </td>
+                )}
                 <td className="px-4 py-3 text-center align-top">
                   <span className="inline-flex items-center justify-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-800 dark:bg-violet-500/15 dark:text-violet-300">
                     <Sparkles size={12} className="shrink-0" aria-hidden />
@@ -386,6 +404,9 @@ function ClassDetailView({ classId }: { classId: string }) {
           <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{manualCount}</p>
         </div>
       </div>
+
+      {/* P14 (D-12A.6) — check-out completeness for this session (SHADOW/ENFORCED institutions only). */}
+      <CheckoutReview classId={classId} />
 
       {/* Checked-in Students */}
       <div className="glass-card overflow-hidden">

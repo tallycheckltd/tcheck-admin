@@ -14,6 +14,8 @@ interface AuthContextType {
   logout: () => void;
   /** Records acceptance of the current terms version (QA plan Phase 21) and clears the gate. */
   acceptTerms: () => Promise<void>;
+  /** P8 (A8.4): act in another tenant this person belongs to (fresh tokens for that membership). */
+  switchTenant: (schoolId: string) => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextType>(null!);
@@ -81,6 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.user;
   };
 
+  const switchTenant = async (schoolId: string): Promise<User> => {
+    const data = await api.post<AuthResponse>('/auth/switch-tenant', { schoolId });
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    setUser(data.user);
+    return data.user;
+  };
+
   const logout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
@@ -88,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, requestOtp, verifyOtp, logout, acceptTerms }}>
+    <AuthContext.Provider value={{ user, loading, requestOtp, verifyOtp, logout, acceptTerms, switchTenant }}>
       {children}
     </AuthContext.Provider>
   );

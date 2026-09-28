@@ -17,6 +17,10 @@ interface IngestSummary {
   updated: number;
   skipped: number;
   errors: { row: number; message: string }[];
+  /** P1: imported, but needs attention (e.g. a class whose room has no beacon yet). */
+  warnings?: { row: number; message: string }[];
+  /** P1: "Set your password" invites sent by the staff step (devLink only outside production). */
+  invites?: { email: string; emailed: boolean; devLink?: string }[];
 }
 
 const STEPS: { key: StepKey; title: string; icon: typeof Building2; requiredColumns: string[]; optionalColumns: string[]; help: string }[] = [
@@ -26,7 +30,7 @@ const STEPS: { key: StepKey; title: string; icon: typeof Building2; requiredColu
     icon: Building2,
     requiredColumns: ['building', 'roomName'],
     optionalColumns: ['capacity'],
-    help: 'Validates room names before Step 4 references them — hardware (beacon) mapping happens later, on-site, via the Heatmap Simulator.',
+    help: 'Creates each room (re-running the same file changes nothing). Pair beacons to rooms on-site in Aura Sensors afterwards — every upcoming class held in a room picks up its beacons automatically.',
   },
   {
     key: 'staff',
@@ -34,7 +38,7 @@ const STEPS: { key: StepKey; title: string; icon: typeof Building2; requiredColu
     icon: Users,
     requiredColumns: ['email', 'firstName', 'lastName'],
     optionalColumns: [],
-    help: 'Creates Lecturer accounts with a temporary password. Existing emails are left untouched, never overwritten.',
+    help: 'Creates Lecturer accounts and emails each a "Set your password" invite (valid 7 days). Existing emails are left untouched and not re-invited.',
   },
   {
     key: 'students',
@@ -148,7 +152,7 @@ export function SetupWizardPage() {
             <UploadCloud className="text-blue-500" /> Enterprise Setup Wizard
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Bulk-onboard a school from CSV exports — rooms, staff, students, then the timetable that ties them together.
+            Bulk-onboard an institution from CSV exports — rooms, staff, students, then the timetable that ties them together.
           </p>
         </div>
         {isSuperAdmin && (
@@ -157,14 +161,14 @@ export function SetupWizardPage() {
             onChange={(e) => setSelectedSchoolId(e.target.value)}
             className="text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white cursor-pointer min-w-[220px]"
           >
-            <option value="">Select a school…</option>
+            <option value="">Select an institution…</option>
             {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         )}
       </div>
 
       {!schoolId ? (
-        <div className="glass-card p-10 text-center text-sm text-gray-500 dark:text-gray-400">Select a school above to begin.</div>
+        <div className="glass-card p-10 text-center text-sm text-gray-500 dark:text-gray-400">Select an institution above to begin.</div>
       ) : (
         <>
           <div className="flex items-center gap-2">
@@ -297,6 +301,22 @@ function StepSummaryRow({ title, summary }: { title: string; summary: IngestSumm
       <p className="text-gray-500 dark:text-gray-400 mt-0.5">
         {summary.totalRows} rows · {summary.created} created · {summary.updated} updated · {summary.skipped} skipped
       </p>
+      {(summary.invites?.length ?? 0) > 0 && (
+        <p className="mt-1.5 text-emerald-600 dark:text-emerald-400">
+          {summary.invites!.length} "Set your password" invite{summary.invites!.length === 1 ? '' : 's'} sent — staff choose their own password (link valid 7 days).
+        </p>
+      )}
+      {(summary.warnings?.length ?? 0) > 0 && (
+        <div className="mt-1.5 flex items-start gap-1.5 text-blue-700 dark:text-blue-300">
+          <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
+          <div className="space-y-0.5">
+            {summary.warnings!.slice(0, 8).map((w, i) => (
+              <p key={i}>Row {w.row}: {w.message}</p>
+            ))}
+            {summary.warnings!.length > 8 && <p>+{summary.warnings!.length - 8} more</p>}
+          </div>
+        </div>
+      )}
       {(summary.errors?.length ?? 0) > 0 && (
         <div className="mt-1.5 flex items-start gap-1.5 text-amber-600 dark:text-amber-400">
           <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />

@@ -9,6 +9,8 @@ import type { UserDetail, DeviceChangeReason } from '../../types';
 import { formatCheckInType } from '../../utils/checkInTypeLabel';
 import { exportStudentReportPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
+import { CareTeamCard } from '../../components/academics/CareTeamCard';
+import { useAuth } from '../../context/AuthContext';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
 
@@ -43,6 +45,7 @@ interface HistoryResponse {
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user: viewer } = useAuth();
   const { data: user, refetch } = useApi<UserDetail>(id ? `/users/${id}` : null);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
@@ -263,6 +266,8 @@ export function UserDetailPage() {
           for every other school/account so this doesn't show up as a permanent empty card on
           tenants that don't use the feature. Individual fields still fall back to "Not shared"
           since the prompt lets a student skip any one of them. */}
+      {/* P9 (D-11.8) — the server admits admins, the student's CEM and that CEM's manager. */}
+      {user.role === 'STUDENT' && viewer && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLIENT_EXPERIENCE_MANAGER', 'CEM_MANAGER'].includes(viewer.role) && <CareTeamCard studentId={user.id} />}
       {user.role === 'STUDENT' && user.profileCompletedAt && (
         <div className="glass-card p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
@@ -470,7 +475,7 @@ export function UserDetailPage() {
           <SecurityDetailItem icon={KeyRound} label="Auth Mode" value={user.authMode?.replace(/_/g, ' ')} />
           <SecurityDetailItem
             icon={FileCheck}
-            label="Terms Accepted"
+            label="Legal agreement accepted"
             value={user.termsAccepted ? `v${user.termsVersion ?? '—'} · ${user.termsAcceptedAt ? new Date(user.termsAcceptedAt).toLocaleDateString('en', { dateStyle: 'medium' }) : ''}` : null}
           />
           <SecurityDetailItem

@@ -14,7 +14,7 @@ import type { Beacon, Classroom, School } from '../../types';
  *
  * School picker: same rule as PeopleOrganizationPage.tsx — GET /schools is the platform-wide,
  * unauthenticated directory (also what the mobile school picker uses), so it's only fetched/shown
- * to SUPER_ADMIN, who genuinely operates across schools. Every other role (School Admin, Co-Admin,
+ * to SUPER_ADMIN, who genuinely operates across schools. Every other role (School Admin, School Admin,
  * …) was being handed that same cross-tenant list and could create a classroom under a school that
  * wasn't theirs — a real tenant-isolation gap, not just a UI nicety. They're locked to their own
  * `user.schoolId`, exactly like every other admin page. */
@@ -93,7 +93,7 @@ export function ClassroomsPage() {
             <tr className="border-b border-gray-200 dark:border-white/10">
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Description</th>
-              <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">School</th>
+              <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Institution</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Beacons</th>
               <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Actions</th>
             </tr>
@@ -130,13 +130,13 @@ export function ClassroomsPage() {
           <Input label="Description (optional)" placeholder="e.g. Ground floor, 80-seat capacity" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           {!editing && isSuperAdmin && (
             <div>
-              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">School</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">Institution</label>
               <select
                 value={form.schoolId}
                 onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select a school</option>
+                <option value="">Select an institution</option>
                 {schools?.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -145,7 +145,7 @@ export function ClassroomsPage() {
           )}
           {!editing && !isSuperAdmin && (
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              School: <span className="font-medium text-slate-800 dark:text-gray-300">{user?.school?.name ?? 'your school'}</span>
+              Institution: <span className="font-medium text-slate-800 dark:text-gray-300">{user?.school?.name ?? 'your school'}</span>
             </p>
           )}
           <Button onClick={handleSubmit} className="w-full" disabled={!form.name.trim() || (!editing && !form.schoolId)}>

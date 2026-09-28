@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Users, GraduationCap, Calendar, BookOpen, Clock, UserCheck, ArrowRight, School, LifeBuoy, Smartphone, Percent, ShieldAlert, Radar, TrendingDown, Activity, Building2, Globe2, Sparkles, Plus } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
+import { SetupChecklistCard } from '../../components/academics/SetupChecklistCard';
+import { BenchmarksCard } from '../../components/analytics/BenchmarksCard';
 import { BarChartCard } from '../../components/charts/BarChartCard';
 import { Badge } from '../../components/ui/Badge';
 import { StatCard } from '../../components/ui/StatCard';
@@ -145,7 +147,7 @@ export function OverviewPage() {
                 {getGreeting()}, {user?.firstName}
               </h1>
               <p className="text-slate-400 mt-1.5 text-sm">
-                You're operating Tallycheck across every school on the platform — not a single institution's own view.
+                You're operating Tallycheck across every institution on the platform — not a single institution's own view.
               </p>
             </div>
             <div className="flex gap-3 sm:gap-4 shrink-0">
@@ -182,15 +184,15 @@ export function OverviewPage() {
           <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
             <Sparkles size={28} className="text-blue-500" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">No schools on the platform yet</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">No institutions on the platform yet</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 max-w-sm mx-auto">
-            Onboard your first customer to see live attendance, staff, and analytics roll up here across every school you run.
+            Onboard your first customer to see live attendance, staff, and analytics roll up here across every institution you run.
           </p>
           <button
             onClick={() => navigate('/admin/schools')}
             className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-b from-blue-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98] transition-all cursor-pointer"
           >
-            <Plus size={16} /> Add Your First School
+            <Plus size={16} /> Add Your First Institution
           </button>
         </div>
       )}
@@ -199,7 +201,7 @@ export function OverviewPage() {
         <div className="glass-card overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <School size={18} className="text-blue-500" /> Schools on the Platform
+              <School size={18} className="text-blue-500" /> Institutions on the Platform
             </h3>
             <Badge color="blue">{schoolStats?.length ?? 0} schools</Badge>
           </div>
@@ -207,7 +209,7 @@ export function OverviewPage() {
             <table className="w-full text-sm gradient-table">
               <thead>
                 <tr>
-                  <th>School</th>
+                  <th>Institution</th>
                   <th>Students</th>
                   <th>Lecturers</th>
                   <th>Courses</th>
@@ -253,7 +255,7 @@ export function OverviewPage() {
                   </tr>
                 ))}
                 {(!schoolStats || schoolStats.length === 0) && (
-                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">No schools yet</td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">No institutions yet</td></tr>
                 )}
               </tbody>
             </table>
@@ -262,6 +264,11 @@ export function OverviewPage() {
       )}
 
       {!isSuperAdmin && <MyPulse />}
+
+      {/* P6 (A10.2): until setup is complete, the School Admin home shows the checklist. */}
+      {user?.role === 'SCHOOL_ADMIN' && <SetupChecklistCard schoolId={user.schoolId} compact />}
+      {/* P11: only for institutions that share T1 (the server refuses otherwise). */}
+      {user?.role === 'SCHOOL_ADMIN' && (user.school as { analyticsTier1?: boolean } | undefined)?.analyticsTier1 && <BenchmarksCard />}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {statCards.map((card) => (

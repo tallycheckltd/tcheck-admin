@@ -6,13 +6,13 @@ import { LEGAL_URLS } from '../lib/legalUrls';
 export function LegalPage() {
   const docs = [
     { label: 'Privacy Policy', detail: 'How Tcheck collects, uses and protects your data.', href: LEGAL_URLS.privacy },
-    { label: 'Terms of Service', detail: 'The terms that govern your use of Tcheck.', href: LEGAL_URLS.terms },
+    { label: 'Legal agreement', detail: 'The agreement that governs your use of Tcheck.', href: LEGAL_URLS.terms },
   ];
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Legal</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Privacy Policy & Terms of Service</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Privacy Policy & Legal agreement</p>
       </div>
       <div className="grid gap-4 max-w-3xl">
         {docs.map((d) => (

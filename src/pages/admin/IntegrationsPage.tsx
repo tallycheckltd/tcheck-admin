@@ -8,8 +8,9 @@ import { Modal } from '../../components/ui/Modal';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import {
   Plug, RefreshCw, UploadCloud, Unplug, CheckCircle2, XCircle, Clock, AlertTriangle,
-  GraduationCap, BookOpenCheck, Cloud, ArrowRight, Sparkles, Link2,
+  GraduationCap, BookOpenCheck, Cloud, ArrowRight, Sparkles, Link2, Network,
 } from 'lucide-react';
+import { ReviewSync } from '../../components/integrations/ReviewSync';
 import type { IntegrationConnection, IntegrationProvider, Course } from '../../types';
 import { MoodleCentre } from '../../components/integrations/MoodleCentre';
 
@@ -43,7 +44,16 @@ const PROVIDER_META: Record<IntegrationProvider, {
     gradient: 'from-[#00A1E0] to-[#0077B5]',
     isRosterSource: false,
   },
+  ONEROSTER: {
+    label: 'OneRoster',
+    tagline: 'Pull orgs, terms, classes and people from any OneRoster 1.1 system into Review sync.',
+    icon: Network,
+    gradient: 'from-[#4F46E5] to-[#3730A3]',
+    isRosterSource: false,
+  },
 };
+/** P7 — providers that can fill the institution through Review sync. */
+const DIRECTORY_PROVIDERS: IntegrationProvider[] = ['MOODLE', 'CANVAS', 'ONEROSTER'];
 
 const STATUS_META: Record<NonNullable<IntegrationConnection['lastSyncStatus']>, { label: string; color: 'green' | 'yellow' | 'red'; icon: React.ComponentType<{ size?: number }> }> = {
   SUCCESS: { label: 'Synced', color: 'green', icon: CheckCircle2 },
@@ -110,7 +120,7 @@ export function IntegrationsPage() {
             <Sparkles size={22} className="text-blue-500" /> Integrations
           </h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Connect TCheck to your school's LMS or CRM — pull rosters automatically, push attendance back where your staff already look.
+            Connect TCheck to your institution's LMS or CRM — pull rosters automatically, push attendance back where your staff already look.
           </p>
         </div>
         {isSuperAdmin && (
@@ -119,7 +129,7 @@ export function IntegrationsPage() {
             onChange={(e) => setSchoolId(e.target.value)}
             className="rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
           >
-            <option value="">Select a school…</option>
+            <option value="">Select an institution…</option>
             {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         )}
@@ -128,7 +138,7 @@ export function IntegrationsPage() {
       {!effectiveSchoolId ? (
         <div className="glass-card p-10 text-center">
           <Plug size={28} className="mx-auto text-slate-400 mb-3" />
-          <p className="text-sm text-slate-600 dark:text-slate-400">Pick a school above to manage its integrations.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Pick an institution above to manage its integrations.</p>
         </div>
       ) : (
         <>
@@ -152,7 +162,10 @@ export function IntegrationsPage() {
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-slate-950 dark:text-white">{meta.label}</h3>
                           {connection ? (
-                            <Badge color="blue">Connected</Badge>
+                            <>
+                              <Badge color="blue">Connected</Badge>
+                              {!!connection.pendingReview && <Badge color="yellow">{connection.pendingReview} to review</Badge>}
+                            </>
                           ) : (
                             <Badge color="gray">Not connected</Badge>
                           )}
@@ -227,6 +240,9 @@ export function IntegrationsPage() {
               TCheck Course.code. */}
           {/* SBS Phase 7 — Moodle integration centre (status, syncs, review, write-back, history). */}
           {byProvider('MOODLE') && <MoodleCentre connectionId={byProvider('MOODLE')!.id} courses={courses ?? []} />}
+
+          {/* P7 (A6.3) — Review sync for every connection that can fill the institution. */}
+          {DIRECTORY_PROVIDERS.map((p) => byProvider(p) && <ReviewSync key={p} connectionId={byProvider(p)!.id} providerLabel={PROVIDER_META[p].label} />)}
 
           {(['CANVAS'] as IntegrationProvider[]).map((provider) => {
             const connection = byProvider(provider);
@@ -361,6 +377,12 @@ function ConnectModal({
           { baseUrl: (fields.baseUrl ?? '').trim() },
           { token: (fields.token ?? '').trim() },
         );
+      } else if (provider === 'ONEROSTER') {
+        // P7: OneRoster v1.1 REST, OAuth2 client credentials.
+        await onSubmit(
+          { baseUrl: (fields.baseUrl ?? '').trim(), ...(fields.tokenUrl?.trim() ? { tokenUrl: fields.tokenUrl.trim() } : {}) },
+          { clientId: (fields.clientId ?? '').trim(), clientSecret: fields.clientSecret ?? '' },
+        );
       } else {
         await onSubmit(
           { orgDomain: fields.orgDomain, apiVersion: fields.apiVersion || 'v66.0', targetObject: fields.targetObject || 'Attendance__c' },
@@ -377,7 +399,7 @@ function ConnectModal({
   return (
     <Modal open onClose={onClose} title={`Connect ${meta.label}`}>
       <div className="space-y-4">
-        {!schoolId && <p className="text-sm text-red-500">Select a school first.</p>}
+        {!schoolId && <p className="text-sm text-red-500">Select an institution first.</p>}
 
         {provider === 'CANVAS' && (
           <>
@@ -399,6 +421,16 @@ function ConnectModal({
               <p>For attendance write-back (optional, needs mod_attendance): <span className="font-mono text-[11px]">mod_attendance_get_sessions, mod_attendance_get_session, mod_attendance_update_user_status</span></p>
               <p>The token is encrypted in TCheck and never shown again. Use "Test" afterwards to confirm every function is available.</p>
             </div>
+          </>
+        )}
+
+        {provider === 'ONEROSTER' && (
+          <>
+            <Input label="OneRoster base address" placeholder="https://sis.school.edu" value={fields.baseUrl ?? ''} onChange={set('baseUrl')} />
+            <Input label="Token address (optional)" placeholder="https://sis.school.edu/oauth/token" value={fields.tokenUrl ?? ''} onChange={set('tokenUrl')} />
+            <Input label="Client ID" value={fields.clientId ?? ''} onChange={set('clientId')} />
+            <Input label="Client secret" type="password" autoComplete="off" value={fields.clientSecret ?? ''} onChange={set('clientSecret')} />
+            <p className="text-xs text-slate-600 dark:text-slate-400">Read-only: TCheck pulls orgs, terms, classes and people into Review sync. The secret is encrypted and never shown again.</p>
           </>
         )}
 

@@ -322,7 +322,7 @@ export const BROADCAST_PERMISSIONS: Permission[] = [
 const TEMPLATE_META: Record<BroadcastTemplate, { permission: Permission; label: string }> = {
   STUDENTS_APPROVED: { permission: 'BROADCAST_STUDENTS_APPROVED', label: 'Students Approved' },
   CLASS_SCHEDULE: { permission: 'BROADCAST_CLASS_SCHEDULE', label: 'Class Starting' },
-  PROGRAM_WELCOME: { permission: 'BROADCAST_PROGRAM_WELCOME', label: 'Program Welcome' },
+  PROGRAM_WELCOME: { permission: 'BROADCAST_PROGRAM_WELCOME', label: 'Programme welcome' },
   MATERIALS_READY: { permission: 'BROADCAST_MATERIALS_READY', label: 'Materials Ready' },
   UPDATE: { permission: 'BROADCAST_UPDATE', label: 'Free-form Update' },
 };
@@ -410,7 +410,7 @@ function BroadcastPanel({ perms, cohortId, open = false }: { perms: Set<string>;
         )}
         {template === 'PROGRAM_WELCOME' && (
           <div className="space-y-2 p-3 rounded-xl bg-gray-50 dark:bg-white/5">
-            <Input placeholder="Program name" value={programName} onChange={(e) => setProgramName(e.target.value)} />
+            <Input placeholder="Programme name" value={programName} onChange={(e) => setProgramName(e.target.value)} />
             <Input placeholder="Venue" value={venue} onChange={(e) => setVenue(e.target.value)} />
             <Input placeholder="Classroom" value={classroom} onChange={(e) => setClassroom(e.target.value)} />
             <Input placeholder="Duration (e.g. 5 days)" value={duration} onChange={(e) => setDuration(e.target.value)} />

@@ -2,6 +2,21 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
+import { navTargetsForRole } from './navConfig';
+
+/**
+ * P13 (A10.3) — pages renamed in the UI stay findable by their old names for a release: typing
+ * "majors", "programs", "co-admin" or "terms" offers the renamed page. Only pages the viewer's own
+ * nav already contains are offered (same list the sidebar uses), so this never opens anything new.
+ */
+const PAGE_ALIASES: { to: string; nav: string; label: string; aliases: string[] }[] = [
+  { to: '/admin/academics?tab=programmes', nav: '/admin/academics', label: 'Programmes (Academics)', aliases: ['major', 'majors', 'programme', 'programmes'] },
+  { to: '/admin/programs', nav: '/admin/programs', label: 'Training pipelines', aliases: ['program', 'programs', 'pipeline', 'training'] },
+  { to: '/admin/school-admins', nav: '/admin/school-admins', label: 'School Admins', aliases: ['co-admin', 'coadmin', 'co admin', 'sub admin', 'school admin'] },
+  { to: '/legal', nav: '/legal', label: 'Legal agreement & Privacy Policy', aliases: ['terms', 'terms of service', 'legal', 'privacy', 'legal agreement'] },
+  { to: '/cem', nav: '/cem', label: 'Programmes', aliases: ['programs', 'my programs', 'programmes'] },
+];
 
 interface SearchResult {
   id: string;
@@ -20,6 +35,10 @@ export function GlobalSearchBar({ open, onClose }: { open: boolean; onClose: () 
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const q = query.trim().toLowerCase();
+  const reachable = new Set(user?.role ? [...navTargetsForRole(user.role), '/legal'] : []);
+  const pages = q.length < 2 ? [] : PAGE_ALIASES.filter((p) => reachable.has(p.nav) && (p.aliases.some((a) => a.startsWith(q) || q.startsWith(a)) || p.label.toLowerCase().includes(q)));
 
   useEffect(() => {
     if (!open) return;
@@ -88,12 +107,19 @@ export function GlobalSearchBar({ open, onClose }: { open: boolean; onClose: () 
           </button>
         </div>
         <div className="max-h-80 overflow-y-auto">
+          {pages.map((p) => (
+            <button key={p.to} type="button" data-testid="page-alias" onClick={() => { onClose(); navigate(p.to); }}
+              className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center justify-between gap-2 cursor-pointer border-b border-gray-50 dark:border-white/5">
+              <span className="text-sm font-medium text-[var(--app-text)]">{p.label}</span>
+              <span className="text-xs text-[var(--app-text-muted)]">Page</span>
+            </button>
+          ))}
           {loading ? (
             <div className="p-6 text-sm text-center text-[var(--app-text-muted)]">Searching…</div>
           ) : query.trim().length < 2 ? (
             <div className="p-6 text-sm text-center text-[var(--app-text-muted)]">Type at least 2 characters to search</div>
           ) : results.length === 0 ? (
-            <div className="p-6 text-sm text-center text-[var(--app-text-muted)]">No students found</div>
+            pages.length ? null : <div className="p-6 text-sm text-center text-[var(--app-text-muted)]">No students found</div>
           ) : (
             results.map((r) => (
               <button

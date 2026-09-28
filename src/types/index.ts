@@ -1,10 +1,6 @@
-export type Role =
-  | 'SUPER_ADMIN' | 'SUB_ADMIN' | 'LECTURER' | 'STUDENT' | 'INVIGILATOR'
-  // Enterprise hierarchy tiers (additive) — see server/prisma/schema.prisma Role enum comment.
-  | 'VC' | 'DVC' | 'REGISTRAR_ACADEMIC' | 'REGISTRAR_ADMIN' | 'DEAN' | 'HOD' | 'DEPUTY_HOD' | 'ICT_ADMIN'
-  // Guaranteed first account per School, and the front-of-house mobile/dashboard staff persona —
-  // see server/prisma/schema.prisma's Role enum comment for both.
-  | 'SCHOOL_ADMIN' | 'CLIENT_EXPERIENCE_MANAGER';
+import type { RoleName, CanonicalScopeLevel } from '../shared/roles';
+/** P2 — every role is defined once, in shared/roles.ts (a byte-identical copy of the server's). */
+export type Role = RoleName;
 
 /** See server/prisma/schema.prisma's Permission enum comment — a permission means the same thing
  * regardless of which surface (mobile or dashboard) the holder is on. */
@@ -24,7 +20,9 @@ export type Permission =
   | 'VIEW_FACILITIES' | 'MANAGE_FACILITY_TICKETS'
   | 'VIEW_INVIGILATION' | 'MANAGE_INVIGILATION'
   | 'VIEW_DEVICE_VERIFICATION' | 'MANAGE_DEVICE_VERIFICATION'
-  | 'VIEW_FRAUD_DETECTION';
+  | 'VIEW_FRAUD_DETECTION'
+  // P9 — CEM Manager board + CEM assignments.
+  | 'VIEW_CEM_TEAM' | 'MANAGE_CEM_ASSIGNMENTS';
 
 /** A school-defined named bundle of Permissions — see server's CustomRole model doc comment.
  * Editing `permissions` here changes what every holder can do immediately. */
@@ -36,7 +34,11 @@ export interface CustomRole {
   /** UI hint only — which account type this role is meant for (LECTURER or
    * CLIENT_EXPERIENCE_MANAGER), or null/undefined for "either". Narrows the "New User" form's
    * custom-role dropdown to roles that actually make sense for the account type just picked. */
-  appliesTo?: 'LECTURER' | 'CLIENT_EXPERIENCE_MANAGER' | null;
+  appliesTo?: 'LECTURER' | 'CLIENT_EXPERIENCE_MANAGER' | 'STAFF' | null;
+  /** P4 — set on the built-in presets every school ships with (LECTURER_DEFAULT, FRONT_DESK, …). */
+  presetKey?: string | null;
+  description?: string | null;
+  isPreset?: boolean;
   createdAt: string;
   updatedAt: string;
   _count?: { users: number };
@@ -49,7 +51,8 @@ export interface StaffCourseAssignment {
   course?: Pick<Course, 'id' | 'name' | 'code'>;
 }
 
-export type ScopeLevel = 'UNIVERSITY' | 'DIVISION' | 'SCHOOL' | 'DEPARTMENT' | 'SUB_DEPARTMENT' | 'INDIVIDUAL';
+/** Stored values: the P2 canonical names plus UNIVERSITY/SCHOOL, still read as aliases of TENANT. */
+export type ScopeLevel = CanonicalScopeLevel | 'UNIVERSITY' | 'SCHOOL';
 export type OrgUnitLevel = 'DIVISION' | 'FACULTY' | 'DEPARTMENT' | 'SUB_DEPARTMENT';
 
 export interface OrgUnit {
@@ -103,6 +106,9 @@ export interface School {
   // Calendar-scheduled (default) vs. stage-based progression (Program/Module pipeline, no
   // calendar at all — see Program/Module below).
   attendanceMode?: AttendanceMode;
+  /** P8 (A8.2) — the Institution group (a real relation). */
+  institution?: { id: string; name: string } | null;
+  institutionId?: string | null;
   // Set only for schools on isolated, separately-provisioned backend infrastructure (e.g. the
   // Moi Pilot). Null/undefined means this school lives on the default shared backend.
   apiBaseUrl?: string | null;
@@ -160,13 +166,49 @@ export interface Term {
   createdAt: string;
 }
 
+export type AwardLevel = 'CERTIFICATE' | 'DIPLOMA' | 'BACHELOR' | 'POSTGRAD_DIPLOMA' | 'MASTERS' | 'PHD' | 'EXECUTIVE' | 'OTHER';
+export type CohortMode = 'FULL_TIME' | 'PART_TIME' | 'EVENING' | 'WEEKEND' | 'DISTANCE' | 'EXECUTIVE';
+export type CohortStatus = 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+export type CohortMemberStatus = 'ACTIVE' | 'DEFERRED' | 'COMPLETED' | 'WITHDRAWN';
+
+/** UI label "Programme" (P5, A4). */
 export interface Major {
   id: string;
   name: string;
   code: string;
   schoolId: string;
   school?: School;
+  orgUnitId?: string | null;
+  orgUnit?: { id: string; name: string; level: string } | null;
+  awardLevel?: AwardLevel | null;
+  durationMonths?: number | null;
+  isActive?: boolean;
+  /** P9 (A8.3) — executive education: pillar, market tier label, delivery format. */
+  offering?: 'OPEN' | 'CUSTOM' | null;
+  tier?: string | null;
+  format?: string | null;
+  _count?: { cohorts: number; courses: number };
 }
+
+export interface Campus { id: string; schoolId: string; name: string; code?: string | null; isActive: boolean; _count?: { cohorts: number } }
+
+export interface CohortMember {
+  cohortId: string;
+  userId: string;
+  status: CohortMemberStatus;
+  joinedAt: string;
+  leftAt?: string | null;
+  yearOfStudy?: number | null;
+  user: { id: string; firstName: string; lastName: string; email: string; studentId?: string | null; status: string };
+}
+
+export interface AuditEvent {
+  id: string; at: string; actorId?: string | null; actorRole: string; actorName?: string | null; action: string;
+  entityType: string; entityId: string; subjectUserId?: string | null; cohortId?: string | null;
+  before?: Record<string, unknown> | null; after?: Record<string, unknown> | null; reason?: string | null;
+}
+
+export interface LastChanged { at: string; action: string; actorName: string | null }
 
 export interface Cohort {
   id: string;
@@ -177,6 +219,17 @@ export interface Cohort {
   /** execEdSuite-only Client Experience Manager assignment (SBS Comms & Concierge plan). */
   assignedCemId?: string | null;
   assignedCem?: User | null;
+  /** P5 (A4) — intake structure. */
+  majorId?: string | null;
+  major?: { id: string; name: string; code: string } | null;
+  campusId?: string | null;
+  campus?: { id: string; name: string } | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  mode?: CohortMode | null;
+  status?: CohortStatus;
+  clientOrganisation?: string | null;
+  _count?: { members: number };
 }
 
 export interface Level {
@@ -223,6 +276,13 @@ export interface User {
   permissions?: Permission[];
   customRoleId?: string | null;
   customRoleName?: string | null;
+  /** P8 (A8.4) — every tenant this person belongs to (home first); the active one is `schoolId`. */
+  memberships?: { schoolId: string; schoolName: string; institution: { id: string; name: string } | null; role: Role; isHome: boolean; membershipId: string | null }[];
+  /** P4 — which built-in preset the role is (LECTURER_DEFAULT, FRONT_DESK, …), null for a school's own role. */
+  customRolePresetKey?: string | null;
+  /** P4 Adjust Access — ticks that differ from the person's preset/role. */
+  permissionAdditions?: Permission[];
+  permissionRemovals?: Permission[];
   /** Executive onboarding journey (School.features.onboardingJourney) — 25/50/75/100, derived
    * server-side from status/baselineCapturedAt/profileCompletedAt. Only meaningful for STUDENT;
    * only worth displaying when the school has the feature on. */
@@ -391,6 +451,8 @@ export interface Course {
   courseBeacons?: { beacon: Pick<Beacon, 'id' | 'uuid' | 'name' | 'major' | 'minor' | 'rssiThreshold'> }[];
   orgUnitId?: string | null;
   orgUnit?: Pick<OrgUnit, 'id' | 'name' | 'level'> | null;
+  /** P9 (A8.3) — executive-education module block label. */
+  moduleBlock?: string | null;
   _count?: { enrollments: number; classes: number };
   enrollments?: { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'studentId'> }[];
   classes?: ClassSession[];
@@ -789,6 +851,10 @@ export interface ClassAttendanceStat {
   /** Check-in window closed — only delivered sessions count toward rates. */
   delivered?: boolean;
   attendanceRate: number;
+  /** P14 (D-12A.6) — Complete % beside checked-in % (null = not scored / institution OFF). */
+  checkoutMode?: 'OFF' | 'SHADOW' | 'ENFORCED';
+  completeRate?: number | null;
+  checkoutClassFlags?: string[];
   checkInBreakdown: {
     BLE: number;
     QR: number;
@@ -1037,9 +1103,13 @@ export interface Ticket {
   id: string;
   schoolId: string;
   school?: Pick<School, 'id' | 'name' | 'code' | 'color'>;
-  createdById: string;
-  createdBy?: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>;
+  createdById: string | null;
+  createdBy?: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'> | null;
   subject: string;
+  /** P12 — GENERAL, or BEACON_HEALTH (system-raised; body carries the facts). */
+  category?: string;
+  body?: string | null;
+  escalatedToPlatformAt?: string | null;
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
   assignedToId?: string | null;
@@ -1113,7 +1183,7 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
-export type IntegrationProvider = 'CANVAS' | 'MOODLE' | 'SALESFORCE';
+export type IntegrationProvider = 'CANVAS' | 'MOODLE' | 'SALESFORCE' | 'ONEROSTER';
 
 export interface IntegrationSyncSummary {
   coursesMatched?: number;
@@ -1129,6 +1199,8 @@ export interface IntegrationConnection {
   id: string;
   schoolId: string;
   provider: IntegrationProvider;
+  /** P7 — rows waiting in Review sync (Integrations badge). */
+  pendingReview?: number;
   config: Record<string, unknown>;
   isActive: boolean;
   lastSyncedAt: string | null;

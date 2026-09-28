@@ -38,9 +38,7 @@ export function ClassesPage() {
   const canManage = useCan('MANAGE_COURSES');
   const { data: classes, refetch, setData: setClasses } = useApi<ClassSession[]>('/classes');
   const courseQuery =
-    user?.role === 'SUB_ADMIN' && user?.schoolId
-      ? `/courses?schoolId=${user.schoolId}`
-      : user?.role !== 'LECTURER'
+    user?.role !== 'LECTURER'
         ? '/courses' // SUPER_ADMIN, and every other non-lecturer role: the server scopes the list to their school/unit
         : `/courses?lecturerId=${user?.id}`;
   const { data: courses } = useApi<Course[]>(courseQuery);
@@ -61,7 +59,13 @@ export function ClassesPage() {
     lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
     isOnline: false,
     days: '1', skipWeekends: true,
+    sessionType: '' as '' | 'PLENARY' | 'BREAKOUT' | 'COACHING', cohortGroupId: '', coacheeId: '', externalLocation: '',
   });
+
+  // P9: syndicates / students a breakout or coaching session of the chosen course can target.
+  const { data: sessionOptions } = useApi<{ groups: { id: string; name: string; cohort: { id: string; name: string }; _count: { members: number } }[]; students: { id: string; firstName: string; lastName: string }[] }>(
+    isExecEd && modal && form.courseId && (form.sessionType === 'BREAKOUT' || form.sessionType === 'COACHING') ? `/classes/session-options?courseId=${form.courseId}` : null,
+  );
 
   const myClasses = isAdmin
     ? (classes || [])
@@ -160,6 +164,7 @@ export function ClassesPage() {
     // with its own windows, authorized exactly like a single create.
     setCreating(true);
     const failures: string[] = [];
+    const beaconWarnings = new Set<string>();
     let created: ClassSession | undefined;
     for (const [i, dateStr] of dates.entries()) {
       const tz = getTimezoneOffset(dateStr);
@@ -179,7 +184,15 @@ export function ClassesPage() {
           lateThresholdMinutes: form.lateThresholdMinutes ? parseInt(form.lateThresholdMinutes) : undefined,
           extremelyLateThresholdMinutes: form.extremelyLateThresholdMinutes ? parseInt(form.extremelyLateThresholdMinutes) : undefined,
           isOnline: form.isOnline,
+          ...(isExecEd ? {
+            sessionType: form.sessionType || undefined,
+            cohortGroupId: form.sessionType === 'BREAKOUT' ? form.cohortGroupId || undefined : undefined,
+            coacheeId: form.sessionType === 'COACHING' ? form.coacheeId || undefined : undefined,
+            externalLocation: form.externalLocation.trim() || undefined,
+          } : {}),
         });
+        // P1: the class takes its room's beacons; the server says when there are none to take.
+        for (const w of (created as (ClassSession & { beaconWarnings?: string[] }) | undefined)?.beaconWarnings ?? []) beaconWarnings.add(w);
       } catch (e) {
         if (dates.length === 1) { setCreating(false); throw e; }
         failures.push(`${dateStr}: ${e instanceof Error ? e.message : 'failed'}`);
@@ -188,6 +201,9 @@ export function ClassesPage() {
     setCreating(false);
     if (failures.length > 0) {
       alert(`Created ${dates.length - failures.length} of ${dates.length} days. Not created:\n${failures.join('\n')}`);
+    }
+    if (beaconWarnings.size > 0) {
+      alert(`Class created — one thing to fix before it starts:\n${[...beaconWarnings].join('\n')}`);
     }
     setModal(false);
     setForm({
@@ -198,6 +214,7 @@ export function ClassesPage() {
       lateThresholdMinutes: '', extremelyLateThresholdMinutes: '',
       isOnline: false,
       days: '1', skipWeekends: true,
+      sessionType: '', cohortGroupId: '', coacheeId: '', externalLocation: '',
     });
     if (created && dates.length === 1) {
       setClasses((prev) => {
@@ -358,6 +375,35 @@ export function ClassesPage() {
             </>
           )}
           <Input label="Room" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} />
+          {isExecEd && (
+            // P9 (A8.3) — syndicate breakouts, 1-on-1 coaching and off-site sessions.
+            <div className="space-y-3 rounded-xl border border-gray-200 dark:border-white/10 p-3">
+              <div>
+                <label htmlFor="class-session-type" className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">Session type</label>
+                <select id="class-session-type" value={form.sessionType} onChange={(e) => setForm({ ...form, sessionType: e.target.value as typeof form.sessionType })}
+                  className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
+                  <option value="">Plenary (everyone)</option>
+                  <option value="BREAKOUT">Syndicate breakout</option>
+                  <option value="COACHING">1-on-1 coaching (attendance optional)</option>
+                </select>
+              </div>
+              {form.sessionType === 'BREAKOUT' && (
+                <select value={form.cohortGroupId} onChange={(e) => setForm({ ...form, cohortGroupId: e.target.value })} aria-label="Syndicate"
+                  className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
+                  <option value="">— Pick a syndicate —</option>
+                  {sessionOptions?.groups.map((g) => <option key={g.id} value={g.id}>{g.name} · {g.cohort.name} ({g._count.members})</option>)}
+                </select>
+              )}
+              {form.sessionType === 'COACHING' && (
+                <select value={form.coacheeId} onChange={(e) => setForm({ ...form, coacheeId: e.target.value })} aria-label="Participant"
+                  className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
+                  <option value="">— Pick the participant —</option>
+                  {sessionOptions?.students.map((s) => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}
+                </select>
+              )}
+              <Input label="Off-site location (optional — no beacon; QR or manual check-in)" value={form.externalLocation} onChange={(e) => setForm({ ...form, externalLocation: e.target.value })} />
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"

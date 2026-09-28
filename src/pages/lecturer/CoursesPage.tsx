@@ -14,6 +14,7 @@ import { CourseCemAssignment } from '../../components/admin/CourseCemAssignment'
 
 export function CoursesPage() {
   const { user } = useAuth();
+  const execEd = !!user?.school?.features?.execEdSuite; // P9: module blocks are an Executive Education label
   // Everyone except a lecturer sees the school's (or, for leadership roles, their unit's) courses — the
   // server scopes the list — instead of only courses they personally teach. Lecturers are unchanged.
   const isAdmin = !!user && !['LECTURER', 'STUDENT', 'INVIGILATOR'].includes(user.role);
@@ -36,8 +37,8 @@ export function CoursesPage() {
   const [editModal, setEditModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [enrollModal, setEnrollModal] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '' });
-  const [editForm, setEditForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '' });
+  const [form, setForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '', moduleBlock: '' });
+  const [editForm, setEditForm] = useState({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [] as string[], orgUnitId: '', moduleBlock: '' });
   const [enrollForm, setEnrollForm] = useState({ userId: '', courseId: '' });
   const [viewMode, setViewMode] = useState<'cards' | 'grid'>('cards');
 
@@ -55,9 +56,10 @@ export function CoursesPage() {
       room: form.room || undefined,
       // DVC/Dean/HOD must place a course inside their own unit tree; default to their own unit (the server enforces it).
       orgUnitId: form.orgUnitId || (['DVC', 'DEAN', 'HOD'].includes(user?.role ?? '') ? user?.orgUnitId : null) || null,
+      moduleBlock: form.moduleBlock.trim() || null,
     });
     setModal(false);
-    setForm({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [], orgUnitId: '' });
+    setForm({ name: '', code: '', schoolId: '', lecturerId: '', room: '', beaconIds: [], orgUnitId: '', moduleBlock: '' });
     refetch();
   };
 
@@ -71,6 +73,7 @@ export function CoursesPage() {
       room: course.room || '',
       beaconIds: course.courseBeacons?.map((cb) => cb.beacon.id) ?? (course.beaconId ? [course.beaconId] : []),
       orgUnitId: course.orgUnitId || '',
+      moduleBlock: course.moduleBlock || '',
     });
     setEditModal(true);
   };
@@ -81,6 +84,7 @@ export function CoursesPage() {
       ...editForm,
       room: editForm.room || undefined,
       orgUnitId: editForm.orgUnitId || null,
+      moduleBlock: editForm.moduleBlock.trim() || null,
     });
     setEditModal(false);
     setEditingCourse(null);
@@ -209,10 +213,10 @@ export function CoursesPage() {
           <Input label="Course Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="Course Code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="e.g. CS101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">School</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Institution</label>
             <select value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
-              <option value="">Select school</option>
+              <option value="">Select institution</option>
               {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
@@ -250,14 +254,18 @@ export function CoursesPage() {
           </div>
           {isAdmin && orgUnits && orgUnits.length > 0 && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Department (optional)</label>
-              <select value={form.orgUnitId} onChange={(e) => setForm({ ...form, orgUnitId: e.target.value })}
+              {/* P5 (D-10.2): prompted, not silently optional — a course with no owning department is
+                  invisible to every Dean and HOD. The server still accepts none for legacy rows. */}
+              <label htmlFor="course-dept" className="block text-sm font-medium text-slate-800 dark:text-gray-300">Owning department</label>
+              <select id="course-dept" value={form.orgUnitId} onChange={(e) => setForm({ ...form, orgUnitId: e.target.value })}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
-                <option value="">Unassigned</option>
+                <option value="">— Pick a department —</option>
                 {orgUnits.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
+              {!form.orgUnitId && <p className="text-xs text-amber-600 dark:text-amber-400">Without a department, Deans and HODs will not see this course.</p>}
             </div>
           )}
+          {execEd && <Input label="Module block (optional)" placeholder="e.g. Module 2 — Strategy" value={form.moduleBlock} onChange={(e) => setForm({ ...form, moduleBlock: e.target.value })} />}
           <Button onClick={handleCreate} className="w-full">Create Course</Button>
         </div>
       </Modal>
@@ -268,10 +276,10 @@ export function CoursesPage() {
           <Input label="Course Name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
           <Input label="Course Code" value={editForm.code} onChange={(e) => setEditForm({ ...editForm, code: e.target.value })} placeholder="e.g. CS101" />
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">School</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Institution</label>
             <select value={editForm.schoolId} onChange={(e) => setEditForm({ ...editForm, schoolId: e.target.value })}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white">
-              <option value="">Select school</option>
+              <option value="">Select institution</option>
               {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
@@ -326,6 +334,7 @@ export function CoursesPage() {
               </select>
             </div>
           )}
+          {execEd && <Input label="Module block (optional)" placeholder="e.g. Module 2 — Strategy" value={editForm.moduleBlock} onChange={(e) => setEditForm({ ...editForm, moduleBlock: e.target.value })} />}
           <Button onClick={handleEdit} className="w-full">Save Changes</Button>
         </div>
       </Modal>

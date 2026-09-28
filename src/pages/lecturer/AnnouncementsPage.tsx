@@ -29,7 +29,7 @@ export function AnnouncementsPage() {
         <Megaphone size={22} className="text-blue-500" />
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Announcements</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Updates from your school and courses.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Updates from your institution and courses.</p>
         </div>
       </div>
 

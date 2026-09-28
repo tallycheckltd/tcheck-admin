@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { BeaconHealthTickets } from '../../components/beacons/BeaconHealthTickets';
 import { useApi } from '../../hooks/useApi';
 import { Radar, Battery, BatteryLow, BatteryWarning, WifiOff, Wifi } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
@@ -70,6 +71,7 @@ export function BeaconHealthPage() {
           Live hardware telemetry — battery level and last-sync status for every registered Aura sensor.
         </p>
       </div>
+      <BeaconHealthTickets />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard title="Healthy" value={healthyCount} icon={<Battery size={24} />} color="green" />

@@ -167,7 +167,7 @@ All accounts use the password: **`password123`**
 | Role | Access |
 |---|---|
 | **SUPER_ADMIN** | Full platform access — schools, users, settings, all courses, all messages |
-| **SUB_ADMIN** | School-level admin — users, courses, beacons, attendance, flagged messages |
+| **SCHOOL_ADMIN** | School-level admin — users, courses, beacons, attendance, flagged messages |
 | **LECTURER** | Own courses — create classes, monitor attendance, generate QR codes, messaging |
 | **STUDENT** | Mobile app — view classes, check in, view attendance analytics, messaging |
 

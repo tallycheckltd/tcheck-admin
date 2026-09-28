@@ -58,7 +58,7 @@ const cardBase =
   'rounded-2xl border border-[var(--app-border-soft)] bg-[var(--app-elevated)] shadow-[var(--app-shadow)] dark:bg-white/[0.04] dark:border-white/10';
 
 interface HodReportsViewProps {
-  /** SUB_ADMIN-only roster export; SUPER_ADMIN uses course CSV only */
+  /** SCHOOL_ADMIN-only roster export; SUPER_ADMIN uses course CSV only */
   canUseSemesterRoster: boolean;
   coursesFetchPath: string | null;
   title: string;
@@ -279,7 +279,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
             </select>
             {!canUseSemesterRoster && (
               <p className="text-[11px] text-[var(--app-text-muted)] leading-snug">
-                Global admins: use <strong>course attendance</strong> per course. School-wide roster CSV is available to school admins.
+                Global admins: use <strong>course attendance</strong> per course. Institution-wide roster CSV is available to school admins.
               </p>
             )}
           </div>
@@ -383,7 +383,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
                 <Sparkles className="text-amber-400 mb-3" size={36} />
                 <p className="text-sm font-medium text-[var(--app-text)]">Export as branded PDF or plain CSV</p>
                 <p className="text-xs text-[var(--app-text-muted)] mt-2 max-w-md leading-relaxed">
-                  Roster and at-risk views pull from your school’s approved students. Course exports include class title, room,
+                  Roster and at-risk views pull from your institution’s approved students. Course exports include class title, room,
                   punctuality, and check-in method for auditing.
                 </p>
               </div>
@@ -920,14 +920,15 @@ function CourseReportPanel({ courseId, onSession }: { courseId: string; onSessio
 export function ReportsPage() {
   const { user } = useAuth();
   const role = user?.role;
-  const isSubAdmin = role === 'SUB_ADMIN';
+  // P3: the semester roster (GET /attendance/roster) is the school admin's — was School Admin-only.
+  const isSchoolAdmin = role === 'SCHOOL_ADMIN';
   const isSuperAdmin = role === 'SUPER_ADMIN';
   // QA plan B1: SCHOOL_ADMIN and every hierarchy role (Dean/HOD/DVC/etc.) previously fell through
   // to LecturerReportsView below — "your courses" scoped to a `lecturerId` they don't have, so a
   // School Admin's own Reports page showed them nothing. They now get the org-wide view instead;
   // this changes which VIEW renders and which course list it fetches, not the server-side scoping
   // of what that view's data actually contains (that's B5, deliberately untouched).
-  const seesOrgWide = isSubAdmin || seesUnfilteredBySchoolOrUnit(role);
+  const seesOrgWide = seesUnfilteredBySchoolOrUnit(role);
 
   /** Course dropdown: Super Admin sees all courses; every other org-wide role sees their own school. */
   let hodCoursesFetchPath: string | null = null;
@@ -948,13 +949,13 @@ export function ReportsPage() {
       {seesOrgWide && !isSuperAdmin && !user?.schoolId && (
         <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 flex gap-2">
           <AlertCircle className="shrink-0" size={18} />
-          Your administrator account has no school assigned. Course CSV needs a school scope — contact platform support.
+          Your administrator account has no institution assigned. Course CSV needs an institution scope — contact platform support.
         </div>
       )}
 
       {seesOrgWide ? (
         <HodReportsView
-          canUseSemesterRoster={isSubAdmin}
+          canUseSemesterRoster={isSchoolAdmin}
           coursesFetchPath={hodCoursesFetchPath}
           title={isSuperAdmin ? 'Organization exports' : 'School exports'}
           subtitle={
