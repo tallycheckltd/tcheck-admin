@@ -9,7 +9,10 @@ export function resolveApiBase(raw: string | undefined): string {
   return /^https?:\/\//i.test(v) || v.startsWith('/') ? v.replace(/\/+$/, '') : '/api';
 }
 
-export const API_BASE = resolveApiBase(import.meta.env.VITE_API_URL);
+// moi-pilot branch ONLY: this dashboard is Moi's, so it always talks to Moi's isolated backend (Railway
+// generous-emotion). VITE_API_URL is deliberately ignored here — the Vercel project's env points at shared
+// production, and a Moi dashboard silently reading/writing shared production must be impossible. Not for merge.
+export const API_BASE = resolveApiBase('https://tcheck-backend-moi-production.up.railway.app/api');
 
 /** Socket.IO can't ride the Vercel rewrite, so it needs the backend origin itself; undefined = same origin. */
 export const SOCKET_ORIGIN: string | undefined = /^https?:\/\//i.test(API_BASE) ? API_BASE.replace(/\/api$/, '') : undefined;
