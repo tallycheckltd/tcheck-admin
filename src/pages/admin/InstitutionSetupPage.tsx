@@ -1,3 +1,4 @@
+import { useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { UploadCloud, CalendarDays, FileDown, CheckCircle2, AlertTriangle, XCircle, Play, Trash2, ListChecks } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
@@ -34,7 +35,9 @@ export function InstitutionSetupPage() {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
   const { data: own } = useApi<School>(!isSuperAdmin && user?.schoolId ? `/schools/${user.schoolId}` : null);
-  const [pickedId, setPickedId] = useState('');
+  // UAT §5: /platform/setup/:schoolId (Onboarding → Open setup) arrives with the tenant picked.
+  const { schoolId: routeSchoolId } = useParams<{ schoolId?: string }>();
+  const [pickedId, setPickedId] = useState(routeSchoolId ?? '');
   const school = isSuperAdmin ? schools?.find((s) => s.id === pickedId) ?? null : own ?? null;
   const q = school && isSuperAdmin ? `?schoolId=${school.id}` : '';
   const { data: templates } = useApi<Template[]>('/setup/templates');

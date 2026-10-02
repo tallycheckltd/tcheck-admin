@@ -65,10 +65,22 @@ export function LiveAttendancePage() {
   const [socketConnected, setSocketConnected] = useState(false);
   const [lastRosterAt, setLastRosterAt] = useState<Date | null>(null);
 
-  // Phase 1: lecturer "Ping Class" spot check
-  const { mutate: sendPing, loading: pingSending } = useMutation<ClassPing>('post');
-  const [activePing, setActivePing] = useState<ClassPing | null>(null);
-  const [pingResponseCount, setPingResponseCount] = useState(0);
+  // Phase 1: lecturer "Ping Class" spot check. 09-29: each ping goes to up to 5 random checked-in
+  // students; the lecturer sees who it went to and who confirmed, newest first, after it closes too.
+  const { mutate: sendPing, loading: pingSending, error: pingError } = useMutation<ClassPing>('post');
+  const [pings, setPings] = useState<ClassPing[]>([]);
+  const [pingTick, setPingTick] = useState(0);
+  const loadPings = (classId: string) => api.get<ClassPing[]>(`/attendance/class/${classId}/pings`).then(setPings).catch(() => {});
+  const latestPing = pings[0] ?? null;
+  const pingLive = !!latestPing && !latestPing.expired && new Date(latestPing.expiresAt) > new Date();
+  // While a ping is open: refresh who confirmed every 5 s, and once more when the minute ends.
+  useEffect(() => {
+    if (!selectedClass || !latestPing || !pingLive) return undefined;
+    const every = setInterval(() => void loadPings(selectedClass), 5000);
+    const atEnd = setTimeout(() => { void loadPings(selectedClass); setPingTick((t) => t + 1); }, Math.max(0, new Date(latestPing.expiresAt).getTime() - Date.now()) + 1500);
+    return () => { clearInterval(every); clearTimeout(atEnd); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClass, latestPing?.id, pingLive, pingTick]);
 
   // Phase 1: manual check-in override, surfaced here (backend already gates on School.allowManualLecturerOverride)
   const { mutate: manualCheck, loading: manualChecking } = useMutation('post');
@@ -158,11 +170,11 @@ export function LiveAttendancePage() {
       return undefined;
     }
 
-    setActivePing(null);
-    setPingResponseCount(0);
+    setPings([]);
 
     const joinAndLoad = () => {
       socket.emit('join:class', selectedClass);
+      void loadPings(selectedClass);
       setDetailLoading(true);
       api
         .get<ClassAttendanceDetail>(`/attendance/class/${selectedClass}`)
@@ -184,15 +196,10 @@ export function LiveAttendancePage() {
     };
     socket.on('attendance:update', onAttendanceUpdate);
 
-    const onClassPing = (data: { pingId: string; expiresAt: string }) => {
-      setActivePing({ id: data.pingId, classId: selectedClass, initiatedById: '', createdAt: new Date().toISOString(), expiresAt: data.expiresAt });
-      setPingResponseCount(0);
-    };
+    const onClassPing = () => { void loadPings(selectedClass); };
     socket.on('class:ping', onClassPing);
 
-    const onPingUpdate = (data: { pingId: string; responseCount: number }) => {
-      setPingResponseCount((prev) => (data.responseCount >= prev ? data.responseCount : prev));
-    };
+    const onPingUpdate = () => { void loadPings(selectedClass); };
     socket.on('ping:update', onPingUpdate);
 
     return () => {
@@ -428,21 +435,18 @@ export function LiveAttendancePage() {
                     disabled={pingSending}
                     onClick={async () => {
                       const ping = await sendPing(`/attendance/class/${selectedClass}/ping`);
-                      if (ping) {
-                        setActivePing(ping);
-                        setPingResponseCount(0);
-                      }
+                      if (ping) void loadPings(selectedClass);
                     }}
                   >
                     <span className="inline-flex items-center gap-1.5">
-                      <Send size={14} /> Ping Class
+                      <Send size={14} /> Ping 5 students
                     </span>
                   </Button>
-                  {activePing && new Date(activePing.expiresAt) > new Date() && (
+                  {pingLive && latestPing && (
                     <Badge color="blue">
                       <span className="inline-flex items-center gap-1">
                         <Radio size={10} className="animate-pulse" />
-                        {pingResponseCount}/{classDetail.totalCheckedIn} responded
+                        {(latestPing.targets ?? []).filter((t) => t.responded).length}/{(latestPing.targets ?? []).length} confirmed
                       </span>
                     </Badge>
                   )}
@@ -456,6 +460,9 @@ export function LiveAttendancePage() {
                     <Badge color="gray">Manual override disabled for this institution</Badge>
                   )}
                 </div>
+              )}
+              {!classDetail.classInfo.isOnline && (pingError || pings.length > 0) && (
+                <PingResults pings={pings} error={pingError} />
               )}
 
               <div className="glass-card p-5">
@@ -659,6 +666,58 @@ export function LiveAttendancePage() {
       </Modal>
 
       <ForensicDetailModal attendanceId={selectedAttendanceId} onClose={() => setSelectedAttendanceId(null)} />
+    </div>
+  );
+}
+
+/** 09-29: who each spot check went to and who confirmed — the latest in full, earlier ones as one line. */
+function PingResults({ pings, error }: { pings: ClassPing[]; error: string | null }) {
+  const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const [latest, ...earlier] = pings;
+  const open = !!latest && !latest.expired && new Date(latest.expiresAt) > new Date();
+  const name = (t: NonNullable<ClassPing['targets']>[number]) => `${t.firstName} ${t.lastName}`.trim() || 'Student';
+  return (
+    <div className="mt-3 rounded-xl border border-gray-200 dark:border-white/10 p-3 text-sm">
+      {error && <p className="text-red-600 dark:text-red-400 mb-2">{error}</p>}
+      {latest && (
+        <>
+          <p className="font-medium text-gray-900 dark:text-white mb-2">
+            Spot check at {time(latest.createdAt)} · {(latest.targets ?? []).filter((t) => t.responded).length} of {(latest.targets ?? []).length} confirmed
+            {open ? ' · open' : ' · closed'}
+          </p>
+          {(latest.targets ?? []).length === 0 ? (
+            <p className="text-gray-500">Sent to everyone (older spot check) — {latest.responses?.length ?? 0} responded.</p>
+          ) : (
+            <ul className="space-y-1">
+              {(latest.targets ?? []).map((t) => (
+                <li key={t.userId} className="flex items-center justify-between gap-3">
+                  <span className="text-gray-800 dark:text-gray-200">{name(t)}{t.studentId ? <span className="text-gray-500"> · {t.studentId}</span> : null}</span>
+                  {t.responded ? (
+                    <Badge color="green">Confirmed{t.respondedAt ? ` ${time(t.respondedAt)}` : ''}</Badge>
+                  ) : open ? (
+                    <Badge color="gray">Waiting…</Badge>
+                  ) : (
+                    <Badge color="red">No response</Badge>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {earlier.length > 0 && (
+        <div className="mt-3 pt-2 border-t border-gray-100 dark:border-white/5 space-y-1 text-gray-600 dark:text-gray-400">
+          {earlier.map((p) => {
+            const missed = (p.targets ?? []).filter((t) => !t.responded);
+            return (
+              <p key={p.id}>
+                {time(p.createdAt)} — {(p.targets ?? []).length - missed.length} of {(p.targets ?? []).length} confirmed
+                {missed.length > 0 && <> · no response: {missed.map(name).join(', ')}</>}
+              </p>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

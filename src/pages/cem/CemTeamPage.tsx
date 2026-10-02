@@ -5,6 +5,7 @@ import { createSocket } from '../../lib/socket';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { FacilitiesHistory } from '../../components/facilities/FacilitiesHistory';
 import { Radio, Siren, Users2, ShieldCheck, Settings2, Download, History } from 'lucide-react';
 
 /**
@@ -24,6 +25,8 @@ interface BoardTicket {
   responsibleCem: Person; currentCem: Person; acknowledgedBy: Person; reassigned: boolean; ageSeconds: number;
   sla: 'RUNNING' | 'ACK_BREACHED' | 'RESOLVE_BREACHED' | 'MET';
   escalations?: { at: string; level: string }[];
+  /** UAT F21 — which CEM it was escalated from; who held it when each 5-minute target was missed. */
+  escalatedFrom?: Person; ackBreachedBy?: Person; resolveBreachedBy?: Person;
 }
 interface Timing { medianSeconds: number | null; p90Seconds: number | null }
 interface TeamRow {
@@ -63,7 +66,7 @@ const stateText = (t: BoardTicket) =>
     : t.status === 'ACKNOWLEDGED' ? `Acknowledged by ${name(t.acknowledgedBy)}${t.acknowledgedAt ? ` · ${new Date(t.acknowledgedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`
       : 'Open — not acknowledged';
 
-type Tab = 'board' | 'escalated' | 'team' | 'coverage' | 'setup';
+type Tab = 'board' | 'escalated' | 'history' | 'team' | 'coverage' | 'setup';
 
 export function CemTeamPage() {
   const { user } = useAuth();
@@ -75,7 +78,8 @@ export function CemTeamPage() {
   const rangeQs = `from=${from}&to=${to}T23:59:59`;
 
   const board = useApi<{ tickets: BoardTicket[] }>('/cem-team/board', { refetchIntervalMs: 60_000, refetchWhenVisible: true });
-  const escalated = useApi<{ tickets: BoardTicket[] }>(`/cem-team/escalated?${rangeQs}`, { refetchIntervalMs: 60_000, refetchWhenVisible: true });
+  // UAT F21: the Escalated tab is today's (the server's default); earlier days live in History.
+  const escalated = useApi<{ tickets: BoardTicket[] }>('/cem-team/escalated', { refetchIntervalMs: 60_000, refetchWhenVisible: true });
   const team = useApi<{ team: TeamRow[]; minTickets: number }>(tab === 'team' ? `/cem-team/metrics?${rangeQs}` : null);
   const coverage = useApi<Coverage>(tab === 'coverage' || tab === 'setup' ? '/cem-team/coverage' : null);
   const roster = useApi<Roster>(tab === 'setup' || tab === 'coverage' || tab === 'board' ? '/cem-team/roster' : null);
@@ -95,7 +99,9 @@ export function CemTeamPage() {
 
   const tabs: { key: Tab; label: string; icon: typeof Radio; count?: number }[] = [
     { key: 'board', label: 'Live board', icon: Radio, count: board.data?.tickets.length },
-    { key: 'escalated', label: 'Escalated', icon: Siren, count: escalated.data?.tickets.filter((t) => t.status !== 'RESOLVED').length },
+    { key: 'escalated', label: 'Escalated today', icon: Siren, count: escalated.data?.tickets.filter((t) => t.status !== 'RESOLVED').length },
+    // UAT F21 — every earlier day, folded by day this month and by month before that.
+    { key: 'history', label: 'History', icon: History },
     { key: 'team', label: 'Team', icon: Users2 },
     { key: 'coverage', label: 'Coverage', icon: ShieldCheck },
     { key: 'setup', label: 'Team setup', icon: Settings2 },
@@ -119,7 +125,7 @@ export function CemTeamPage() {
         ))}
       </div>
 
-      {(tab === 'escalated' || tab === 'team') && (
+      {tab === 'team' && (
         <div className="flex items-center gap-2 text-sm flex-wrap">
           <label className="text-gray-500">From <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="ml-1 rounded-lg border px-2 py-1 dark:bg-white/5" /></label>
           <label className="text-gray-500">To <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="ml-1 rounded-lg border px-2 py-1 dark:bg-white/5" /></label>
@@ -127,7 +133,8 @@ export function CemTeamPage() {
       )}
 
       {tab === 'board' && <TicketTable data-testid="live-board" rows={board.data?.tickets} loading={board.loading} empty="No open tickets under this team right now." roster={roster.data} canManage={canManage} onChanged={() => refetchBoard({ silent: true })} />}
-      {tab === 'escalated' && <TicketTable rows={escalated.data?.tickets} loading={escalated.loading} empty="Nothing escalated in this period." escalated />}
+      {tab === 'escalated' && <TicketTable rows={escalated.data?.tickets} loading={escalated.loading} empty="Nothing escalated today." escalated />}
+      {tab === 'history' && <FacilitiesHistory showOwners />}
       {tab === 'team' && <TeamTable data={team.data} loading={team.loading} from={from} to={to} />}
       {tab === 'coverage' && <CoverageView data={coverage.data} roster={roster.data} canManage={canManage} onChanged={() => { coverage.refetch(); roster.refetch(); }} />}
       {tab === 'setup' && <SetupView roster={roster.data} isManager={isManager} meId={user?.id} canManage={canManage} onChanged={() => { roster.refetch(); coverage.refetch(); }} />}
@@ -146,6 +153,7 @@ function TicketTable({ rows, loading, empty, escalated, roster, canManage, onCha
           <tr>
             <th className="p-3">Ticket</th><th className="p-3">Student</th><th className="p-3">Programme / cohort</th><th className="p-3">Class</th>
             <th className="p-3">CEM</th><th className="p-3">State</th><th className="p-3">Age</th><th className="p-3">SLA</th>
+            <th className="p-3">From CEM</th><th className="p-3">Breached by</th>
             {escalated && <th className="p-3">Escalations</th>}
             {!escalated && canManage && <th className="p-3" />}
           </tr>
@@ -161,6 +169,12 @@ function TicketTable({ rows, loading, empty, escalated, roster, canManage, onCha
               <td className="p-3">{stateText(t)}{t.assignedTo && t.status !== 'OPEN' ? <div className="text-xs text-gray-500">Handled by {name(t.assignedTo)}</div> : null}</td>
               <td className="p-3">{dur(t.ageSeconds)}</td>
               <td className="p-3">{slaBadge(t)}</td>
+              <td className="p-3">{t.escalatedFrom ? name(t.escalatedFrom) : '—'}</td>
+              <td className="p-3">
+                {t.ackBreachedBy && <div>{name(t.ackBreachedBy)} <span className="text-xs text-gray-500">(acknowledge)</span></div>}
+                {t.resolveBreachedBy && <div>{name(t.resolveBreachedBy)} <span className="text-xs text-gray-500">(resolve)</span></div>}
+                {!t.ackBreachedBy && !t.resolveBreachedBy && '—'}
+              </td>
               {escalated && <td className="p-3 text-xs">{(t.escalations ?? []).map((e, i) => <div key={i}>{new Date(e.at).toLocaleString()} · {e.level.replace(/_/g, ' ').toLowerCase()}</div>)}</td>}
               {!escalated && canManage && <td className="p-3"><Button size="sm" variant="secondary" onClick={() => setReassign(t)}>Reassign</Button></td>}
             </tr>
@@ -279,6 +293,36 @@ function AssignCohortModal({ cohort, currentCemId, roster, onClose, onDone }: { 
   );
 }
 
+/** UAT F23 — the school's CEM load limit; the School Admin can change it here. */
+function LoadLimit({ limits, onChanged }: { limits: { maxProgrammes: number; maxStudents: number }; onChanged: () => void }) {
+  const { user } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [p, setP] = useState(String(limits.maxProgrammes));
+  const [st, setSt] = useState(String(limits.maxStudents));
+  const { mutate, loading, error } = useMutation<unknown, { cemMaxProgrammes: number; cemMaxStudents: number }>('put');
+  const canEdit = user?.role === 'SCHOOL_ADMIN' && !!user.schoolId;
+  if (!editing) {
+    return (
+      <p className="text-xs text-gray-500 mb-2">
+        More than {limits.maxProgrammes} programmes or {limits.maxStudents} students.
+        {canEdit && <button onClick={() => { setP(String(limits.maxProgrammes)); setSt(String(limits.maxStudents)); setEditing(true); }} className="ml-1.5 text-blue-500 hover:underline cursor-pointer">Change</button>}
+      </p>
+    );
+  }
+  const valid = Number(p) >= 1 && Number(st) >= 1;
+  return (
+    <div className="mb-2 space-y-1.5 text-xs">
+      <label className="flex items-center gap-2">Programmes <input type="number" min={1} value={p} onChange={(e) => setP(e.target.value)} className="w-20 rounded-lg border px-2 py-1 dark:bg-white/5" /></label>
+      <label className="flex items-center gap-2">Students <input type="number" min={1} value={st} onChange={(e) => setSt(e.target.value)} className="w-20 rounded-lg border px-2 py-1 dark:bg-white/5" /></label>
+      {error && <p className="text-rose-600">{error}</p>}
+      <div className="flex gap-2">
+        <Button size="sm" disabled={!valid || loading} onClick={async () => { if (await mutate(`/schools/${user!.schoolId}`, { cemMaxProgrammes: Number(p), cemMaxStudents: Number(st) })) { setEditing(false); onChanged(); } }}>Save</Button>
+        <Button size="sm" variant="secondary" onClick={() => setEditing(false)}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
 function CoverageView({ data, roster, canManage, onChanged }: { data: Coverage | null; roster?: Roster | null; canManage: boolean; onChanged: () => void }) {
   const [assign, setAssign] = useState<{ id: string; name: string } | null>(null);
   if (!data) return <p className="text-sm text-gray-500">Loading…</p>;
@@ -299,7 +343,7 @@ function CoverageView({ data, roster, canManage, onChanged }: { data: Coverage |
       </section>
       <section className="glass-card p-4">
         <h3 className="font-semibold mb-2">Over the load limit</h3>
-        <p className="text-xs text-gray-500 mb-2">More than {data.limits.maxProgrammes} programmes or {data.limits.maxStudents} students.</p>
+        <LoadLimit limits={data.limits} onChanged={onChanged} />
         {data.overloaded.length === 0 ? <p className="text-sm text-gray-500">Nobody.</p> : data.overloaded.map((o) => <p key={o.cem.id} className="text-sm">{o.cem.firstName} {o.cem.lastName} — {o.programmes} programmes, {o.students} students</p>)}
       </section>
       <section className="glass-card p-4">

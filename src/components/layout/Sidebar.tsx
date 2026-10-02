@@ -70,8 +70,8 @@ const cxmLinks = withIcons(NAV.cxmLinks);
  * built per-render since every `to` is parameterized by the cohort in view. Each panel is its own
  * real page/route (CemCohortPanelPage.tsx), not a hash-anchored section of one shared page, per
  * explicit request — order matches STAFF_PANEL_ORDER (StaffViewPage.tsx), Birthdays deliberately
- * last. Messages carries `?cohortId=` so its contact list narrows to just this programme's
- * executives (message.service.ts's getContacts). */
+ * last. UAT F15/F20 — no Facilities or Messages here: the CEM's top-level Facilities and Messages
+ * tabs already cover every programme. */
 function buildCxmCohortLinks(cohortId: string): NavItem[] {
   const base = `/cem/cohorts/${cohortId}`;
   return [
@@ -79,12 +79,11 @@ function buildCxmCohortLinks(cohortId: string): NavItem[] {
     { to: base, icon: Users, label: 'Overview & Students' },
     { to: `${base}/checkins`, icon: UserCheck, label: 'Check-Ins' },
     { to: `${base}/manual-checkin`, icon: ClipboardList, label: 'Manual Check-in' },
-    { to: `${base}/broadcast`, icon: Megaphone, label: 'Broadcast' },
+    // UAT F17 — Broadcast replaced by the one Announcements page, this programme pre-picked.
+    { to: `/announcements?cohortId=${cohortId}`, icon: Megaphone, label: 'Announcements' },
     { to: `${base}/materials`, icon: FileText, label: 'Materials' },
     { to: `${base}/feedback`, icon: Star, label: 'Request Feedback' },
-    { to: `${base}/facilities`, icon: Wrench, label: 'Facilities' },
     { to: `${base}/birthdays`, icon: Sparkles, label: 'Birthdays' },
-    { to: `/messages?cohortId=${cohortId}`, icon: MessageSquare, label: 'Messages' },
   ];
 }
 
@@ -104,7 +103,6 @@ const hierarchyOperations = withIcons(NAV.hierarchyOperations);
 /* ---- The "Executive Diet" (§18.3) — VC/DVC need institutional oversight, not granular IT or
    classroom-management tools. A deliberately thin nav: Dashboard, Users (view-only, enforced in
    UsersPage.tsx), Attendance, Fraud Detection, Reports — nothing else. ---- */
-const execAdmin = withIcons(NAV.execAdmin);
 
 const execOperations = withIcons(NAV.execOperations);
 
@@ -235,7 +233,7 @@ function NavSection({
             ) : (
               <NavLink
                 to={hasChildren ? collapsedParentTarget : link.to}
-                end={link.to === '/admin' || link.to === '/lecturer'}
+                end={link.to === '/admin' || link.to === '/lecturer' || link.to === '/platform'}
                 onClick={onNavigate}
                 title={collapsed ? link.label : undefined}
                 className={({ isActive }) =>
@@ -432,8 +430,8 @@ export function Sidebar({
   const { dark, toggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  // Context-sensitive CEM nav: viewing one specific programme swaps the flat [Programs, Messages]
-  // nav for the 7-panel + Messages list scoped to that cohort (buildCxmCohortLinks above).
+  // Context-sensitive CEM nav: viewing one specific programme swaps the flat top-level nav for the
+  // per-programme panel list scoped to that cohort (buildCxmCohortLinks above).
   const cxmCohortMatch = location.pathname.match(/^\/cem\/cohorts\/([^/]+)/);
   const cxmCohortId = cxmCohortMatch?.[1];
   // SCHOOL_ADMIN behaves exactly like SCHOOL_ADMIN in the sidebar — same nav, same "Administration"
@@ -652,7 +650,6 @@ export function Sidebar({
         {isExecutive && (
           <>
             <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Administration" links={execAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Operations" links={filterBySchoolConfig(execOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="General" links={execGeneral} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>

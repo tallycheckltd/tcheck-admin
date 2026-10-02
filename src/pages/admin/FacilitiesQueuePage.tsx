@@ -11,7 +11,8 @@ export function FacilitiesQueuePage() {
           </p>
         </div>
       </div>
-      <FacilitiesQueue />
+      {/* Admin oversight: the history shows which CEM each ticket came from and who missed a target. */}
+      <FacilitiesQueue showOwners />
     </div>
   );
 }

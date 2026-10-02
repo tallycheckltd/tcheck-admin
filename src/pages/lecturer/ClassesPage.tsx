@@ -34,8 +34,8 @@ export function ClassesPage() {
   // QA plan B1: SCHOOL_ADMIN and every hierarchy role were previously filtered down to "courses I
   // teach" here too (empty for a non-lecturer) — see LiveAttendancePage.tsx for the full story.
   const isAdmin = seesUnfilteredBySchoolOrUnit(user?.role);
-  // Mirrors the server's MANAGE_COURSES gate on class writes; a lecturer with no CustomRole keeps every button they have today.
-  const canManage = useCan('MANAGE_COURSES');
+  // Mirrors the server's MANAGE_COURSES gate on class writes; lecturers are read-only (UAT 09-29).
+  const canManage = useCan('MANAGE_COURSES') && user?.role !== 'LECTURER';
   const { data: classes, refetch, setData: setClasses } = useApi<ClassSession[]>('/classes');
   const courseQuery =
     user?.role !== 'LECTURER'
@@ -301,7 +301,7 @@ export function ClassesPage() {
                     <button onClick={() => navigate(`/attendance/${cls.id}`)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer" title="View Attendance">
                       <Eye size={15} className="text-slate-600" />
                     </button>
-                    {user?.role !== 'LECTURER' && canManage && (
+                    {canManage && (
                       <button onClick={() => deleteClass(cls.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer" title="Delete">
                         <Trash2 size={15} className="text-red-400" />
                       </button>

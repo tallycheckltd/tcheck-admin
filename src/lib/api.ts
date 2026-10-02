@@ -1,4 +1,5 @@
 import { API_BASE as BASE } from './apiBase';
+import { getSupportSession } from './supportSession';
 
 type RefreshTokens = { accessToken: string; refreshToken: string };
 
@@ -35,8 +36,11 @@ function refreshAccessTokenSingleton(): Promise<RefreshTokens | null> {
 }
 
 function mergeHeaders(extra?: HeadersInit): Record<string, string> {
+  // UAT F6: inside a platform support session, every call names the grant it runs under.
+  const grant = getSupportSession()?.grantId;
   return {
     'Content-Type': 'application/json',
+    ...(grant ? { 'X-Support-Grant': grant } : {}),
     ...(typeof extra === 'object' && extra !== null && !(extra instanceof Headers)
       ? (extra as Record<string, string>)
       : {}),

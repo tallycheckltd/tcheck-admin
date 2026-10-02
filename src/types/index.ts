@@ -359,7 +359,6 @@ export interface UserDetail extends User {
   claimedAt?: string | null;
   requiresBaselineRetake?: boolean;
   baselineCapturedAt?: string | null;
-  fcmToken?: string | null;
 }
 
 export type DeviceChangeReason = 'LOST_PHONE' | 'NEW_PHONE' | 'DAMAGED' | 'STOLEN' | 'OTHER';
@@ -620,6 +619,9 @@ export interface ClassPing {
   createdAt: string;
   expiresAt: string;
   responses?: ClassPingResponse[];
+  /** 09-29: the (up to 5) students this spot check went to, and whether each confirmed. Staff only. */
+  targets?: { userId: string; firstName: string; lastName: string; studentId: string | null; responded: boolean; respondedAt: string | null }[];
+  expired?: boolean;
 }
 
 export interface Broadcast {
@@ -633,6 +635,8 @@ export interface Broadcast {
   major: { id: string; name: string; code: string } | null;
   /** Executive Ed Phase 7 — cohort-scoped targeting, alongside course/major. */
   cohort: { id: string; name: string; year: number } | null;
+  /** UAT F17 — department-wide. */
+  orgUnit?: { id: string; name: string } | null;
   /** Delivery channels this broadcast fanned out to — defaults to ['IN_APP'] server-side. */
   channels?: ('IN_APP' | 'EMAIL')[];
   resourceUrl: string | null;
@@ -660,6 +664,8 @@ export interface ManagedBroadcast {
   course: { id: string; name: string; code: string } | null;
   major: { id: string; name: string; code: string } | null;
   cohort: { id: string; name: string; year: number } | null;
+  /** UAT F17 — a department-wide announcement (HOD / Dean / DVC / School Admin). */
+  orgUnit?: { id: string; name: string } | null;
   channels: ('IN_APP' | 'EMAIL')[];
   sendPush: boolean;
   resourceUrl: string | null;
@@ -1118,6 +1124,11 @@ export interface Ticket {
   _count?: { messages: number };
   createdAt: string;
   updatedAt: string;
+  /** UAT F7 — when the platform acknowledged / resolved it, how, and the record (audit rows). */
+  acknowledgedAt?: string | null;
+  resolvedAt?: string | null;
+  resolutionNote?: string | null;
+  timeline?: { action: string; at: string; actor: { id: string; firstName: string; lastName: string } | null; before: unknown; after: unknown; reason: string | null }[];
 }
 
 /** SBS Comms & Concierge plan, Phase 3 — Facilities Escalation Engine. Deliberately its own type,
@@ -1143,7 +1154,8 @@ export interface FacilityTicket {
   createdBy?: Pick<User, 'id' | 'firstName' | 'lastName'>;
   presetType: FacilityTicketPreset;
   detail?: string | null;
-  status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+  /** UAT F21 — EXPIRED: still open at midnight, closed as not handled (kept in the history). */
+  status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | 'EXPIRED';
   priority: 'NORMAL' | 'URGENT';
   assignedToId?: string | null;
   assignedTo?: Pick<User, 'id' | 'firstName' | 'lastName'> | null;
@@ -1152,6 +1164,9 @@ export interface FacilityTicket {
   slaBreachedAt?: string | null;
   messages?: FacilityTicketMessage[];
   _count?: { messages: number };
+  expiredAt?: string | null;
+  /** UAT F21 — the ticket's record, staff only (detail endpoint). */
+  timeline?: { action: string; at: string; actor: { id: string; firstName: string; lastName: string } | null; actorRole: string; level: string | null; to: { id: string; firstName: string; lastName: string } | null; reason: string | null }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -1389,4 +1404,15 @@ export interface MoodleOverview {
   roster: { lastAttempted: MoodleSyncRun | null; lastSuccessful: MoodleSyncRun | null; review: { runId: string; finishedAt: string | null; issues: MoodleSyncIssue[]; total: number } | null };
   attendance: { lastAttempted: MoodleSyncRun | null; lastSuccessful: MoodleSyncRun | null; review: { runId: string; finishedAt: string | null; issues: MoodleSyncIssue[]; total: number } | null };
   history: MoodleSyncRun[];
+}
+
+/** UAT F17 — what the Announcements page may offer the signed-in person (GET /broadcasts/audiences). */
+export interface ComposeAudiences {
+  canCompose: boolean;
+  platform: boolean;
+  wholeSchool: boolean;
+  courses: { id: string; name: string; code: string }[];
+  majors: { id: string; name: string }[];
+  cohorts: { id: string; name: string; year: number }[];
+  orgUnits: { id: string; name: string }[];
 }

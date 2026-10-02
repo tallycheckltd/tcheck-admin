@@ -65,7 +65,8 @@ function urgency(t: FacilityTicket): { label: string; color: 'red' | 'yellow' | 
 export function CemDashboardPage() {
   const { user } = useAuth();
   const { data: dashboard, loading: cohortsLoading } = useApi<{ cohorts: CemCohort[] }>('/cem/dashboard');
-  const { data: tickets, loading: ticketsLoading } = useApi<FacilityTicket[]>('/facility-tickets');
+  // UAT F21 — To do and My tickets are today's; anything left at midnight expires into Facilities → History.
+  const { data: tickets, loading: ticketsLoading } = useApi<FacilityTicket[]>('/facility-tickets?range=today');
   const [range, setRange] = useState<AnalyticsRange>('month');
   // No `cohortId` — pooled across every cohort this CEM is assigned to (staffScope.ts's
   // resolveStaffCourseIds derives the course set from every Cohort.assignedCemId match), same

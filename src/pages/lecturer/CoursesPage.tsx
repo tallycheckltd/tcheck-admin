@@ -20,7 +20,8 @@ export function CoursesPage() {
   const isAdmin = !!user && !['LECTURER', 'STUDENT', 'INVIGILATOR'].includes(user.role);
   // Mirrors what the server allows for course writes (MANAGE_COURSES), so nobody clicks a button that answers 403.
   // A lecturer with no CustomRole keeps every button they have today.
-  const canManage = useCan('MANAGE_COURSES');
+  // UAT F10: a lecturer's courses are read-only whatever their role holds (the API refuses them).
+  const canManage = useCan('MANAGE_COURSES') && user?.role !== 'LECTURER';
   const queryParams = isAdmin ? '' : `?lecturerId=${user?.id}`;
   const { data: courses, refetch } = useApi<Course[]>(`/courses${queryParams}`);
   const { data: schools } = useApi<School[]>('/schools');

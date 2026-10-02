@@ -9,6 +9,13 @@ import {
   ThermometerSnowflake, Tv, Coffee, Wifi, ShieldAlert, HelpCircle, MapPin,
 } from 'lucide-react';
 import type { FacilityTicket, FacilityTicketMessage, FacilityTicketPreset } from '../../types';
+import { FacilitiesHistory } from './FacilitiesHistory';
+
+const TIMELINE_LABEL: Record<string, string> = {
+  'ticket.acknowledged': 'Acknowledged', 'ticket.assigned': 'Assigned', 'ticket.reassigned': 'Reassigned',
+  'ticket.escalated': 'Escalated', 'ticket.managerInformedTwice': 'Manager informed again', 'ticket.resolved': 'Resolved',
+  'ticket.expired': 'Expired at midnight — not handled',
+};
 
 const PRESET_META: Record<FacilityTicketPreset, { label: string; icon: typeof Wrench }> = {
   AC_TOO_COLD: { label: 'Room temperature', icon: ThermometerSnowflake },
@@ -70,7 +77,7 @@ function withCohort(url: string, cohortId?: string): string {
  * escalate/resolve) already work identically for a CEM holding that permission, no new gating
  * needed here.
  */
-export function FacilitiesQueue({ cohortId }: { cohortId?: string }) {
+export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = false }: { cohortId?: string; showHistory?: boolean; showOwners?: boolean }) {
   const [statusFilter, setStatusFilter] = useState<'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | 'ALL'>('OPEN');
   const [search, setSearch] = useState('');
   // URL-driven, not local state — selecting a ticket now visibly changes the address bar
@@ -82,13 +89,14 @@ export function FacilitiesQueue({ cohortId }: { cohortId?: string }) {
   const [replyText, setReplyText] = useState('');
 
   const { data: tickets, refetch } = useApi<FacilityTicket[]>(
-    withCohort(statusFilter === 'ALL' ? '/facility-tickets' : `/facility-tickets?status=${statusFilter}`, cohortId),
+    // UAT F21 — the live queue is today's; anything left at midnight expires into the History below.
+    withCohort(statusFilter === 'ALL' ? '/facility-tickets?range=today&v=2' : `/facility-tickets?range=today&v=2&status=${statusFilter}`, cohortId),
     { refetchIntervalMs: 20_000, refetchWhenVisible: true },
   );
   // Full detail (including the reply thread, which the list endpoint only summarizes via
   // `_count`) is fetched separately, same reasoning as the mobile clients' own detail calls.
   const { data: selected, error: detailError, refetch: refetchDetail, setData } = useApi<FacilityTicket>(
-    selectedId ? `/facility-tickets/${selectedId}` : null,
+    selectedId ? `/facility-tickets/${selectedId}?v=2` : null,
   );
   const { mutate: acknowledge, loading: acknowledging } = useMutation<FacilityTicket>('post');
   const { mutate: resolve, loading: resolving } = useMutation<FacilityTicket>('post');
@@ -159,7 +167,7 @@ export function FacilitiesQueue({ cohortId }: { cohortId?: string }) {
           </div>
           <div>
             <p className="text-2xl font-bold text-slate-950 dark:text-white">{openCount}</p>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Open right now</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Open today</p>
           </div>
         </div>
         <div className="glass-card p-4 flex items-center gap-3">
@@ -168,7 +176,7 @@ export function FacilitiesQueue({ cohortId }: { cohortId?: string }) {
           </div>
           <div>
             <p className="text-2xl font-bold text-slate-950 dark:text-white">{breachedCount}</p>
-            <p className="text-xs text-slate-600 dark:text-slate-400">SLA breached (5m+)</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Missed the 5-minute target today</p>
           </div>
         </div>
         <div className="glass-card p-4 flex items-center gap-3">
@@ -177,7 +185,7 @@ export function FacilitiesQueue({ cohortId }: { cohortId?: string }) {
           </div>
           <div>
             <p className="text-2xl font-bold text-slate-950 dark:text-white">{resolvedCount}</p>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Resolved (this view)</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Resolved today</p>
           </div>
         </div>
       </div>
@@ -310,6 +318,25 @@ export function FacilitiesQueue({ cohortId }: { cohortId?: string }) {
                   </p>
                 )}
 
+                {selected.timeline && selected.timeline.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Record</p>
+                    <ol className="border-l border-gray-200 dark:border-white/10 pl-3 space-y-1.5">
+                      <li className="text-xs text-slate-600 dark:text-slate-300"><span className="font-medium">Raised</span> by {selected.createdBy?.firstName} {selected.createdBy?.lastName} · {new Date(selected.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</li>
+                      {selected.timeline.map((e, i) => (
+                        <li key={i} className="text-xs text-slate-600 dark:text-slate-300">
+                          <span className="font-medium">{TIMELINE_LABEL[e.action] ?? e.action}</span>
+                          {e.level ? ` (${e.level === 'MANUAL' ? 'by hand' : e.level === 'SLA_UNACKNOWLEDGED' ? 'not acknowledged in 5 min' : 'not resolved in 5 min'})` : ''}
+                          {e.to ? ` → ${e.to.firstName} ${e.to.lastName}` : ''}
+                          {e.actor ? ` · ${e.actor.firstName} ${e.actor.lastName}` : ' · automatic'}
+                          {' · '}{new Date(e.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                          {e.reason ? ` — ${e.reason}` : ''}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
                 {selected.messages && selected.messages.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Thread</p>
@@ -342,7 +369,12 @@ export function FacilitiesQueue({ cohortId }: { cohortId?: string }) {
                   </Button>
                 </div>
                 </Can>
-                {selected.status !== 'RESOLVED' && (
+                {selected.status === 'EXPIRED' && (
+                  <div className="rounded-xl bg-rose-50/60 dark:bg-rose-500/10 border border-rose-200/60 dark:border-rose-500/20 p-3">
+                    <p className="text-sm text-slate-950 dark:text-white">Expired at midnight — not handled. It stays in the history below.</p>
+                  </div>
+                )}
+                {selected.status !== 'RESOLVED' && selected.status !== 'EXPIRED' && (
                   <Can perm="MANAGE_FACILITY_TICKETS">
                   <div className="flex gap-2">
                     {selected.status === 'OPEN' && (
@@ -381,6 +413,8 @@ export function FacilitiesQueue({ cohortId }: { cohortId?: string }) {
           )}
         </div>
       </div>
+
+      {showHistory && <FacilitiesHistory cohortId={cohortId} showOwners={showOwners} />}
     </div>
   );
 }

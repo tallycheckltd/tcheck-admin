@@ -5,14 +5,13 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { RequireSuperAdmin } from './components/guards/RequireSuperAdmin';
 import { RequireRole } from './components/guards/RequireRole';
 import { CemTeamPage } from './pages/cem/CemTeamPage';
-import { PlatformHomePage, PlatformInstitutionsPage, PlatformOnboardingPage, PlatformBillingPage, PlatformGrantsPage, PlatformFleetPage, PlatformAnalyticsPage } from './pages/platform/PlatformPages';
+import { PlatformHomePage, PlatformInstitutionsPage, PlatformTenantPage, PlatformOnboardingPage, PlatformBillingPage, PlatformGrantsPage, PlatformSupportSessionPage, PlatformFleetPage, PlatformAnalyticsPage } from './pages/platform/PlatformPages';
 import { GroupViewPage } from './pages/insights/GroupViewPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { OverviewPage } from './pages/admin/OverviewPage';
-import { SchoolsPage } from './pages/admin/SchoolsPage';
 import { AcademicsPage } from './pages/admin/AcademicsPage';
 import { AcademicsRedirect, AdminRedirect } from './components/academics/AcademicsRedirect';
 import { UsersPage } from './pages/admin/UsersPage';
@@ -93,11 +92,17 @@ export default function App() {
               <Route element={<RequireSuperAdmin />}>
                 <Route path="/platform" element={<PlatformHomePage />} />
                 <Route path="/platform/institutions" element={<PlatformInstitutionsPage />} />
-                <Route path="/platform/schools" element={<SchoolsPage />} />
+                {/* UAT §2 — the Schools editor merged into Institutions (tenant page → Settings). */}
+                <Route path="/platform/schools" element={<Navigate to="/platform/institutions" replace />} />
+                <Route path="/platform/institutions/:id" element={<PlatformTenantPage />} />
                 <Route path="/platform/onboarding" element={<PlatformOnboardingPage />} />
+                {/* UAT §5 — Onboarding → Open setup: the tenant's Institution Setup during its onboarding window. */}
+                <Route path="/platform/setup/:schoolId" element={<InstitutionSetupPage />} />
                 <Route path="/platform/billing" element={<PlatformBillingPage />} />
                 <Route path="/platform/support" element={<SupportPage />} />
                 <Route path="/platform/grants" element={<PlatformGrantsPage />} />
+                {/* UAT F6 — the account a support session opens. */}
+                <Route path="/platform/support-session" element={<PlatformSupportSessionPage />} />
                 <Route path="/platform/fleet" element={<PlatformFleetPage />} />
                 <Route path="/platform/analytics" element={<PlatformAnalyticsPage />} />
               </Route>
@@ -118,7 +123,10 @@ export default function App() {
               <Route path="/admin/lecturer-presence" element={<LecturerPresencePage />} />
               <Route path="/admin/attendance-overview" element={<AttendanceOverviewPage />} />
               <Route path="/admin/fraud-detection" element={<FraudDetectionPage />} />
-              <Route path="/admin/settings" element={<SettingsPage />} />
+              {/* UAT (09-29): school-wide rules are the School Admin's alone (PUT /schools/:id refuses others). */}
+              <Route element={<RequireRole roles={['SCHOOL_ADMIN']} />}>
+                <Route path="/admin/settings" element={<SettingsPage />} />
+              </Route>
               <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               <Route path="/admin/request-feedback" element={<RequestFeedbackPage />} />
               <Route path="/admin/support" element={<SupportPage />} />
@@ -161,7 +169,7 @@ export default function App() {
 
               {/* SUPER_ADMIN-only routes */}
               <Route element={<RequireSuperAdmin />}>
-                <Route path="/admin/schools" element={<SchoolsPage />} />
+                <Route path="/admin/schools" element={<Navigate to="/platform/institutions" replace />} />
               </Route>
 
               {/* FIXED: was grouped under RequireSuperAdmin above, but message.routes.ts's
@@ -171,7 +179,8 @@ export default function App() {
                   could load it but every API call 403'd, and SCHOOL_ADMIN (who the
                   backend allows) were redirected away before reaching it. No sidebar link existed
                   either (see Sidebar.tsx's SCHOOL_ADMIN entry). */}
-              <Route element={<RequireRole roles={['SCHOOL_ADMIN']} />}>
+              {/* UAT F24 — the CEM Manager oversees their own CEMs' direct chats (server-scoped). */}
+              <Route element={<RequireRole roles={['SCHOOL_ADMIN', 'CEM_MANAGER']} />}>
                 <Route path="/admin/messages" element={<AdminMessagesPage />} />
               </Route>
 

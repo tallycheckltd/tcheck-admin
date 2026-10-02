@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Can } from '../../components/shared/Can';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { LifeBuoy, Clock, CheckCircle2, AlertTriangle, GraduationCap, BookOpen, Search, Camera, Fingerprint } from 'lucide-react';
+import { LifeBuoy, Clock, CheckCircle2, AlertTriangle, GraduationCap, BookOpen, Search, Camera, Fingerprint, UserCheck } from 'lucide-react';
 import type { Escalation } from '../../types';
 
 // Matches attendance.service.ts's exact rejection string verbatim — the only reliable way to
@@ -47,6 +47,7 @@ export function EscalationsPage() {
   const { mutate: resolve, loading: resolving } = useMutation<Escalation>('patch');
   const { mutate: requestBaselineRetake, loading: requestingRetake } = useMutation<Escalation>('patch');
   const { mutate: resetBiometricLock, loading: resettingBiometric } = useMutation<Escalation>('patch');
+  const { mutate: checkIn, loading: checkingIn } = useMutation<Escalation>('patch');
 
   const filtered = useMemo(() => {
     const list = escalations || [];
@@ -64,6 +65,12 @@ export function EscalationsPage() {
 
   const handleResolve = async (id: string) => {
     await resolve(`/escalations/${id}/resolve`);
+    refetch();
+  };
+
+  // UAT F11 — marks the student present for that class (manual check-in) and closes the escalation.
+  const handleCheckIn = async (id: string) => {
+    await checkIn(`/escalations/${id}/check-in`);
     refetch();
   };
 
@@ -228,7 +235,14 @@ export function EscalationsPage() {
 
               {selected.status === 'OPEN' ? (
                 <div className="space-y-2">
-                  {selected.reason.includes(BASELINE_NOT_CAPTURED_REASON) && (
+                  <Can perm="MANAGE_ESCALATIONS">
+                    <Button onClick={() => handleCheckIn(selected.id)} disabled={checkingIn} className="w-full">
+                      <UserCheck size={16} className="mr-1.5" /> Check in manually
+                    </Button>
+                  </Can>
+                  {/* UAT F11 — a lecturer's only action is the manual check-in above; the rest belong
+                      to the CEM, School Admin and HOD-and-above (the API refuses lecturers). */}
+                  {!isLecturer && selected.reason.includes(BASELINE_NOT_CAPTURED_REASON) && (
                     <Can perm="MANAGE_ESCALATIONS">
                       <Button
                         onClick={() => handleRequestBaselineRetake(selected.id)}
@@ -240,7 +254,7 @@ export function EscalationsPage() {
                       </Button>
                     </Can>
                   )}
-                  {!!selected.student?.biometricLockInvalidatedAt && (
+                  {!isLecturer && !!selected.student?.biometricLockInvalidatedAt && (
                     <Can perm={['MANAGE_ESCALATIONS', 'MANAGE_DEVICE_VERIFICATION']}>
                       <Button
                         onClick={() => handleResetBiometricLock(selected.id)}
@@ -252,11 +266,13 @@ export function EscalationsPage() {
                       </Button>
                     </Can>
                   )}
-                  <Can perm="MANAGE_ESCALATIONS">
-                    <Button onClick={() => handleResolve(selected.id)} disabled={resolving} className="w-full">
-                      <CheckCircle2 size={16} className="mr-1.5" /> Mark Resolved
-                    </Button>
-                  </Can>
+                  {!isLecturer && (
+                    <Can perm="MANAGE_ESCALATIONS">
+                      <Button onClick={() => handleResolve(selected.id)} disabled={resolving} variant="secondary" className="w-full">
+                        <CheckCircle2 size={16} className="mr-1.5" /> Resolve without check-in
+                      </Button>
+                    </Can>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-xl bg-emerald-50/60 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20 p-4 flex items-center gap-2">

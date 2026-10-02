@@ -102,7 +102,9 @@ function Collapsible({ title, icon: Icon, count, defaultOpen = false, children }
  * escalate/resolve, via the shared FacilitiesQueue component) are the whole reason to be here for
  * some visitors, not background detail to tuck away.
  */
-export function ProgramDetailView({ cohortId }: { cohortId: string }) {
+/** `showFacilities` — false on the CEM's programme overview (UAT F15): the CEM has a top-level
+ * Facilities page, so the overview is stats, courses and students only. */
+export function ProgramDetailView({ cohortId, showFacilities = true }: { cohortId: string; showFacilities?: boolean }) {
   const { data: program, loading } = useApi<ProgramDetail>(`/cem/programs/${cohortId}`);
 
   if (loading) return <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>;
@@ -161,9 +163,11 @@ export function ProgramDetailView({ cohortId }: { cohortId: string }) {
 
       {/* Facilities — open by default; real ticket actions via the same component the admin
           Facilities Queue and CEM Facilities page already use. */}
-      <Collapsible title="Facilities" icon={Wrench} defaultOpen>
-        <FacilitiesQueue cohortId={cohortId} />
-      </Collapsible>
+      {showFacilities && (
+        <Collapsible title="Facilities" icon={Wrench} defaultOpen>
+          <FacilitiesQueue cohortId={cohortId} />
+        </Collapsible>
+      )}
 
       {/* Check-Ins — explicit request: see who actually checked in/out, not just a percentage. */}
       <Collapsible title="Check-Ins" icon={ClipboardCheck} count={program.checkIns.length}>

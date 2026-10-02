@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
 import { useApi, useMutation } from '../../hooks/useApi';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -17,11 +18,14 @@ type Tab = 'conversations' | 'flags';
 
 export function AdminMessagesPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  // UAT F24 — a CEM Manager sees only their own CEMs' direct chats (the server scopes it), read-only.
+  const isCemManager = user?.role === 'CEM_MANAGER';
   const [tab, setTab] = useState<Tab>('conversations');
   const [search, setSearch] = useState('');
   const { data: conversations, refetch: refetchConvos } = useApi<AdminConversation[]>('/messages/admin/conversations');
   const { data: flags, refetch: refetchFlags } = useApi<MessageFlag[]>('/messages/flags');
-  const { data: broadcasts } = useApi<Broadcast[]>('/broadcasts');
+  const { data: broadcasts } = useApi<Broadcast[]>(isCemManager ? null : '/broadcasts');
   const socketRef = useRef<Socket | null>(null);
 
   // Conversation detail
@@ -184,7 +188,9 @@ export function AdminMessagesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Message Oversight</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Monitor conversations and resolve escalations</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            {isCemManager ? 'Your CEMs’ direct conversations — read-only. Opening a conversation is recorded.' : 'Monitor conversations and resolve escalations. Opening a conversation is recorded.'}
+          </p>
         </div>
         {pendingFlags.length > 0 && (
           <button
@@ -298,7 +304,7 @@ export function AdminMessagesPage() {
                             {c.room?.title || c.room?.name || 'Room'}
                           </p>
                           <Badge color="purple">{roomKindLabel(c.kind)}</Badge>
-                          {(c.kind === 'COURSE' || c.kind === 'SCHOOL') && (
+                          {!isCemManager && (c.kind === 'COURSE' || c.kind === 'SCHOOL') && (
                             <button
                               onClick={(e) => handleToggleAnon(e, c)}
                               title="Toggle anonymous posting for this room"

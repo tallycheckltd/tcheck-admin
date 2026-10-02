@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { PlatformAccessCard } from '../../components/support/PlatformAccessCard';
+import { SupportHistory } from '../../components/support/SupportHistory';
 import { Can } from '../../components/shared/Can';
 import { Socket } from 'socket.io-client';
 import { createSocket } from '../../lib/socket';
@@ -39,6 +40,30 @@ const timeAgo = (dateStr: string) => {
   return `${days}d ago`;
 };
 
+const TIMELINE_LABEL: Record<string, string> = {
+  'supportTicket.acknowledged': 'Acknowledged', 'supportTicket.resolved': 'Resolved', 'supportTicket.closed': 'Closed',
+  'supportTicket.reopened': 'Reopened', 'supportTicket.updated': 'Updated',
+};
+// UAT F7 — response-time targets for platform support.
+const ACK_TARGET_H = 24;
+const RESOLVE_TARGET_H = 5 * 24;
+const dur = (ms: number) => { const h = ms / 3_600_000; return h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} days`; };
+
+/** Time to acknowledge and to resolve against the targets — red when over. */
+function ResponseTimes({ t }: { t: Ticket }) {
+  const [now] = useState(() => Date.now());
+  const created = new Date(t.createdAt).getTime();
+  const ackMs = (t.acknowledgedAt ? new Date(t.acknowledgedAt).getTime() : now) - created;
+  const resMs = (t.resolvedAt ? new Date(t.resolvedAt).getTime() : now) - created;
+  const cls = (over: boolean) => (over ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-600 dark:text-slate-400');
+  return (
+    <p className="text-xs flex flex-wrap gap-x-4">
+      <span className={cls(ackMs > ACK_TARGET_H * 3_600_000)}>{t.acknowledgedAt ? `Acknowledged in ${dur(ackMs)}` : `Waiting ${dur(ackMs)} for acknowledgement`} (target {ACK_TARGET_H} h)</span>
+      <span className={cls(resMs > RESOLVE_TARGET_H * 3_600_000)}>{t.resolvedAt ? `Resolved in ${dur(resMs)}` : `Open ${dur(resMs)}`} (target {RESOLVE_TARGET_H / 24} days)</span>
+    </p>
+  );
+}
+
 export function SupportPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -53,6 +78,13 @@ export function SupportPage() {
   const socketRef = useRef<Socket | null>(null);
 
   const [search, setSearch] = useState('');
+  // UAT F7 — classification filters (status, category, priority) beside the school filter.
+  const [statusF, setStatusF] = useState<'ACTIVE' | Ticket['status'] | 'ALL'>('ACTIVE');
+  const [categoryF, setCategoryF] = useState<'ALL' | 'GENERAL' | 'BEACON_HEALTH'>('ALL');
+  const [priorityF, setPriorityF] = useState<'ALL' | Ticket['priority']>('ALL');
+  const [resolving, setResolving] = useState(false);
+  const [resolveNote, setResolveNote] = useState('');
+  const [actionError, setActionError] = useState('');
   const [selectedId, setSelectedId] = useState('');
   const [detail, setDetail] = useState<Ticket | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -107,14 +139,29 @@ export function SupportPage() {
     refetch();
   };
 
-  const handleStatusChange = async (status: Ticket['status']) => {
+  const handlePriority = async (priority: Ticket['priority']) => {
     if (!selectedId) return;
-    await patchTicket(`/tickets/${selectedId}`, { status });
+    await patchTicket(`/tickets/${selectedId}`, { priority });
     loadDetail(selectedId);
     refetch();
   };
 
+  /** UAT F7 — Acknowledge / Resolve (note required) / Close / Reopen; each is recorded. */
+  const act = async (action: 'acknowledge' | 'resolve' | 'close' | 'reopen') => {
+    if (!selectedId) return;
+    setActionError('');
+    try {
+      await api.post(`/tickets/${selectedId}/${action}`, action === 'resolve' ? { note: resolveNote.trim() } : {});
+      setResolving(false); setResolveNote('');
+      loadDetail(selectedId);
+      refetch();
+    } catch (e) { setActionError(e instanceof Error ? e.message : 'Could not update the ticket'); }
+  };
+
   const filtered = (tickets || []).filter((t) => {
+    if (statusF === 'ACTIVE' ? t.status === 'RESOLVED' || t.status === 'CLOSED' : statusF !== 'ALL' && t.status !== statusF) return false;
+    if (categoryF !== 'ALL' && (t.category ?? 'GENERAL') !== categoryF) return false;
+    if (priorityF !== 'ALL' && t.priority !== priorityF) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return t.subject.toLowerCase().includes(q) || (t.school?.name || '').toLowerCase().includes(q);
@@ -160,6 +207,17 @@ export function SupportPage() {
               {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           )}
+          <div className="flex flex-wrap gap-1.5 mb-3 text-xs">
+            {([['ACTIVE', 'Open & in progress'], ['ALL', 'All'], ['RESOLVED', 'Resolved'], ['CLOSED', 'Closed']] as const).map(([k, l]) => (
+              <button key={k} onClick={() => setStatusF(k)} className={`px-2.5 py-1 rounded-full border cursor-pointer ${statusF === k ? 'bg-blue-500 text-white border-blue-500' : 'border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-300'}`}>{l}</button>
+            ))}
+            <select value={categoryF} onChange={(e) => setCategoryF(e.target.value as typeof categoryF)} aria-label="Category" className="rounded-full px-2 py-1 border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
+              <option value="ALL">Every category</option><option value="GENERAL">General</option><option value="BEACON_HEALTH">Beacon health</option>
+            </select>
+            <select value={priorityF} onChange={(e) => setPriorityF(e.target.value as typeof priorityF)} aria-label="Priority" className="rounded-full px-2 py-1 border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
+              <option value="ALL">Any priority</option>{(['URGENT', 'HIGH', 'NORMAL', 'LOW'] as const).map((p) => <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>)}
+            </select>
+          </div>
 
           <div className="glass-card flex-1 overflow-y-auto p-2 space-y-1">
             {filtered.map((t) => (
@@ -217,19 +275,39 @@ export function SupportPage() {
                     <Badge color={PRIORITY_COLOR[detail.priority]}>{detail.priority}</Badge>
                   </div>
                 </div>
+                <ResponseTimes t={detail} />
                 {isSuperAdmin && (
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-600 dark:text-slate-400">Status</label>
-                    <select
-                      value={detail.status}
-                      onChange={(e) => handleStatusChange(e.target.value as Ticket['status'])}
-                      className="rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
-                    >
-                      {(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const).map((s) => (
-                        <option key={s} value={s}>{s.replace('_', ' ')}</option>
-                      ))}
-                    </select>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {detail.status === 'OPEN' && <Button size="sm" onClick={() => void act('acknowledge')}>Acknowledge</Button>}
+                      {(detail.status === 'OPEN' || detail.status === 'IN_PROGRESS') && <Button size="sm" variant="secondary" onClick={() => setResolving((v) => !v)}>Resolve…</Button>}
+                      {detail.status !== 'CLOSED' && <Button size="sm" variant="secondary" onClick={() => void act('close')}>Close</Button>}
+                      {(detail.status === 'RESOLVED' || detail.status === 'CLOSED') && <Button size="sm" variant="secondary" onClick={() => void act('reopen')}>Reopen</Button>}
+                      <select value={detail.priority} onChange={(e) => void handlePriority(e.target.value as Ticket['priority'])} aria-label="Priority"
+                        className="ml-auto rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
+                        {(['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const).map((p) => <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()} priority</option>)}
+                      </select>
+                    </div>
+                    {resolving && (
+                      <div className="flex gap-2">
+                        <input value={resolveNote} onChange={(e) => setResolveNote(e.target.value)} placeholder="How was it resolved?" className="flex-1 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10" />
+                        <Button size="sm" disabled={!resolveNote.trim()} onClick={() => void act('resolve')}>Mark resolved</Button>
+                      </div>
+                    )}
+                    {actionError && <p className="text-xs text-rose-600">{actionError}</p>}
                   </div>
+                )}
+                {detail.resolutionNote && <p className="text-xs text-emerald-700 dark:text-emerald-400">Resolution: {detail.resolutionNote}</p>}
+                {!!detail.timeline?.length && (
+                  <ol className="border-l border-gray-200 dark:border-white/10 pl-3 space-y-1 max-h-32 overflow-y-auto">
+                    {detail.timeline.map((e, i) => (
+                      <li key={i} className="text-xs text-slate-600 dark:text-slate-300">
+                        <span className="font-medium">{TIMELINE_LABEL[e.action] ?? e.action}</span>
+                        {e.actor ? ` · ${e.actor.firstName} ${e.actor.lastName}` : ''} · {new Date(e.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                        {e.reason ? ` — ${e.reason}` : ''}
+                      </li>
+                    ))}
+                  </ol>
                 )}
               </div>
 
@@ -288,6 +366,9 @@ export function SupportPage() {
           )}
         </div>
       </div>
+
+      {/* UAT F7 — history by institution → school → term. */}
+      <SupportHistory />
 
       <Modal open={modal} onClose={() => setModal(false)} title="Raise a Support Ticket">
         <div className="space-y-4">

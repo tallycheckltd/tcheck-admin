@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, History } from 'lucide-react';
+import { GrantActivityModal } from './PlatformGrants';
 
 interface Grant {
   id: string; scope: 'ACCOUNT' | 'SETUP'; reason: string; hours: number; state: string; createdAt: string; expiresAt: string | null;
@@ -13,6 +15,7 @@ interface Grant {
  * time-boxed, ends on its own, and every action taken under it is recorded in your audit trail. */
 export function PlatformAccessCard() {
   const { data, refetch } = useApi<Grant[]>('/support-grants', { refetchIntervalMs: 60_000, refetchWhenVisible: true });
+  const [activityFor, setActivityFor] = useState<Grant | null>(null);
   if (!data?.length) return null;
   const act = async (id: string, what: 'approve' | 'reject' | 'revoke') => { await api.post(`/support-grants/${id}/${what}`, {}); refetch(); };
   return (
@@ -26,13 +29,16 @@ export function PlatformAccessCard() {
               <p className="text-xs text-gray-500">{g.reason}{g.expiresAt && g.state === 'ACTIVE' ? ` · ends ${new Date(g.expiresAt).toLocaleString()}` : ''}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Badge color={g.state === 'ACTIVE' ? 'green' : g.state === 'PENDING' ? 'blue' : 'gray'}>{g.state.toLowerCase()}</Badge>
+              <Badge color={g.state === 'ACTIVE' ? 'green' : g.state === 'PENDING' ? 'blue' : 'gray'}>{g.state === 'LAPSED' ? 'lapsed' : g.state.toLowerCase()}</Badge>
               {g.state === 'PENDING' && <><Button size="sm" onClick={() => act(g.id, 'approve')} data-testid="approve-access">Approve</Button><Button size="sm" variant="secondary" onClick={() => act(g.id, 'reject')}>Decline</Button></>}
               {g.state === 'ACTIVE' && <Button size="sm" variant="secondary" onClick={() => act(g.id, 'revoke')}>End now</Button>}
+              {/* UAT F6 — access transparency: everything the platform did under this grant. */}
+              {g.state !== 'PENDING' && <Button size="sm" variant="secondary" onClick={() => setActivityFor(g)}><History size={12} className="mr-1" />Activity</Button>}
             </div>
           </li>
         ))}
       </ul>
+      {activityFor && <GrantActivityModal path={`/support-grants/${activityFor.id}/activity`} title="What the platform did" onClose={() => setActivityFor(null)} />}
     </section>
   );
 }

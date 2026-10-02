@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Cake, ClipboardCheck, Megaphone, Folder, Star, Wrench, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Cake, ClipboardCheck, Folder, Star, Wrench, BarChart3 } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { StaffPanelsGrid, STAFF_PANEL_LABEL, type StaffPanelKey } from '../admin/StaffViewPage';
 
@@ -9,7 +9,7 @@ interface CemCohort {
 }
 
 const PANEL_ICON: Record<StaffPanelKey, React.ElementType> = {
-  checkins: ClipboardCheck, 'manual-checkin': ClipboardCheck, broadcast: Megaphone, materials: Folder,
+  checkins: ClipboardCheck, 'manual-checkin': ClipboardCheck, materials: Folder,
   feedback: Star, facilities: Wrench, analytics: BarChart3, birthdays: Cake,
 };
 
@@ -30,6 +30,11 @@ export function CemCohortPanelPage() {
   const label = STAFF_PANEL_LABEL[key];
   const Icon = PANEL_ICON[key];
 
+  // UAT F17 — the old programme Broadcast page now opens Announcements with this programme picked.
+  if (panel === 'broadcast') {
+    navigate(`/announcements?cohortId=${cohortId}`, { replace: true });
+    return null;
+  }
   if (!label) {
     navigate(`/cem/cohorts/${cohortId}`, { replace: true });
     return null;

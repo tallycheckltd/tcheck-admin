@@ -7,7 +7,7 @@ import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { Modal } from '../../components/ui/Modal';
-import type { School, Course, Major, Cohort, ManagedBroadcast, ManagedBroadcastDetail, BroadcastManageTab } from '../../types';
+import type { School, Course, Major, Cohort, ManagedBroadcast, ManagedBroadcastDetail, BroadcastManageTab, ComposeAudiences } from '../../types';
 
 type Channel = 'IN_APP' | 'EMAIL';
 type Severity = 'INFO' | 'WARNING' | 'CRITICAL';
@@ -166,6 +166,7 @@ interface Draft {
   schoolId: string;
   courseId: string;
   majorId: string;
+  orgUnitId: string;
   cohortId: string;
   /** Where it goes (09-27): the app, email, or both. */
   delivery: Delivery;
@@ -176,12 +177,19 @@ interface Draft {
   expiresAt: string; // datetime-local
 }
 
-export function SystemAnnouncementsPage() {
+/**
+ * UAT F17 (2026-09-29) — the one Announcements page for every author. What each person may reach
+ * comes from GET /broadcasts/audiences (the same rules the server enforces): School Admin / VC the
+ * whole school; DVC / Dean / HOD / Deputy HOD their department; CEM their courses and programmes;
+ * a lecturer their courses (only with a broadcast permission). `embedded` renders it inside the
+ * Announcements page (no page title); `presetCohortId` pre-picks a programme (CEM programme menu).
+ */
+export function SystemAnnouncementsPage({ embedded = false, presetCohortId = '' }: { embedded?: boolean; presetCohortId?: string } = {}) {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const empty = (): Draft => ({
     id: null, status: null, title: '', body: '', severity: 'INFO',
-    schoolId: isSuperAdmin ? '' : (user?.schoolId ?? ''), courseId: '', majorId: '', cohortId: '',
+    schoolId: isSuperAdmin ? '' : (user?.schoolId ?? ''), courseId: '', majorId: '', cohortId: presetCohortId, orgUnitId: '',
     // Both by default (owner 09-27): most Executive Ed delegates don't have the app yet.
     delivery: 'BOTH', sendPush: true, resourceUrl: '', resourceLabel: '', scheduledFor: '', expiresAt: '',
   });
@@ -201,9 +209,19 @@ export function SystemAnnouncementsPage() {
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const { data: history } = useApi<ManagedBroadcastDetail>(historyFor ? `/broadcasts/${historyFor}/manage` : null);
 
-  const { data: courses } = useApi<Course[]>(d.schoolId ? `/courses?schoolId=${d.schoolId}` : null);
-  const { data: majors } = useApi<Major[]>(d.schoolId ? `/academic/majors?schoolId=${d.schoolId}` : null);
-  const { data: cohorts } = useApi<Cohort[]>(d.schoolId ? `/academic/cohorts?schoolId=${d.schoolId}` : null);
+  // Super Admin picks a school and lists that school's audiences; everyone else gets exactly what
+  // their role may reach.
+  const { data: aud } = useApi<ComposeAudiences>(isSuperAdmin ? null : '/broadcasts/audiences');
+  const { data: saCourses } = useApi<Course[]>(isSuperAdmin && d.schoolId ? `/courses?schoolId=${d.schoolId}` : null);
+  const { data: saMajors } = useApi<Major[]>(isSuperAdmin && d.schoolId ? `/academic/majors?schoolId=${d.schoolId}` : null);
+  const { data: saCohorts } = useApi<Cohort[]>(isSuperAdmin && d.schoolId ? `/academic/cohorts?schoolId=${d.schoolId}` : null);
+  const courses = isSuperAdmin ? saCourses : aud?.courses;
+  const majors = isSuperAdmin ? saMajors : aud?.majors;
+  const cohorts = isSuperAdmin ? saCohorts : aud?.cohorts;
+  const orgUnits = isSuperAdmin ? [] : aud?.orgUnits ?? [];
+  const wholeSchool = isSuperAdmin || !!aud?.wholeSchool;
+  const anyLabel = wholeSchool ? 'Whole school' : '—';
+  const noTarget = !d.courseId && !d.majorId && !d.cohortId && !d.orgUnitId;
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((p) => ({ ...p, [k]: v }));
   const editingPublished = d.status === 'PUBLISHED';
@@ -212,11 +230,24 @@ export function SystemAnnouncementsPage() {
   const reset = () => { setD(empty()); setComposeKey(newKey()); setError(''); };
 
   const audience = () => ({
-    schoolId: d.schoolId || undefined,
+    schoolId: isSuperAdmin || wholeSchool ? d.schoolId || undefined : undefined,
     courseId: d.courseId || undefined,
     majorId: !d.courseId ? d.majorId || undefined : undefined,
     cohortId: !d.courseId && !d.majorId ? d.cohortId || undefined : undefined,
+    orgUnitId: !d.courseId && !d.majorId && !d.cohortId ? d.orgUnitId || undefined : undefined,
   });
+
+  /** UAT F17 — the CEM's "Programme welcome" kept as a ready-made start; the author fills the blanks. */
+  const applyTemplate = (key: string) => {
+    if (key !== 'PROGRAM_WELCOME') return;
+    const who = user ? `${user.firstName} ${user.lastName}` : 'your Client Experience Manager';
+    const programme = cohorts?.find((c) => c.id === d.cohortId)?.name ?? '[programme]';
+    setD((p) => ({
+      ...p,
+      title: `Welcome to ${programme}`,
+      body: `You're all set for ${programme}. Venue: [venue]. Classroom: [classroom]. Duration: [duration]. Your Client Experience Manager is ${who} — reach out anytime with questions.`,
+    }));
+  };
 
   const payload = (action: Action) => ({
     title: d.title.trim(),
@@ -235,6 +266,7 @@ export function SystemAnnouncementsPage() {
   /** Publish and schedule go through a confirmation that shows exactly how many people it reaches. */
   const askConfirm = async (action: Action) => {
     setError('');
+    if (action !== 'DRAFT' && !wholeSchool && noTarget) { setError('Pick who this announcement goes to.'); return; }
     if (action === 'DRAFT') { void submit('DRAFT'); return; }
     setConfirm({ action, count: null });
     try {
@@ -280,7 +312,7 @@ export function SystemAnnouncementsPage() {
     setD({
       id: a.id, status: a.status, title: a.title, body: a.body, severity: a.severity,
       schoolId: a.school?.id ?? (isSuperAdmin ? '' : user?.schoolId ?? ''),
-      courseId: a.course?.id ?? '', majorId: a.major?.id ?? '', cohortId: a.cohort?.id ?? '',
+      courseId: a.course?.id ?? '', majorId: a.major?.id ?? '', cohortId: a.cohort?.id ?? '', orgUnitId: a.orgUnit?.id ?? '',
       delivery: deliveryOf(a.channels), sendPush: a.sendPush,
       resourceUrl: a.resourceUrl ?? '', resourceLabel: a.resourceLabel ?? '',
       scheduledFor: toLocalInput(a.scheduledFor), expiresAt: toLocalInput(a.expiresAt),
@@ -396,12 +428,14 @@ export function SystemAnnouncementsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">System Announcements</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-          Write, schedule and publish announcements to a school, programme, faculty or cohort. The audience is fixed when an announcement is published.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Announcements</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            Write, schedule and publish announcements to a school, department, programme, faculty or cohort. The audience is fixed when an announcement is published.
+          </p>
+        </div>
+      )}
 
       {/* Compose / edit */}
       <div className="glass-card p-6 space-y-4">
@@ -428,35 +462,62 @@ export function SystemAnnouncementsPage() {
           <input type="text" placeholder="Announcement title..." value={d.title} maxLength={200} onChange={(e) => set('title', e.target.value)} className={inputCls} />
           <textarea placeholder="Write your message here..." value={d.body} onChange={(e) => set('body', e.target.value)} rows={4} className={`${inputCls} resize-none`} />
 
-          {/* A school admin only ever has their own school, so there's nothing to choose — the picker is SUPER_ADMIN only. */}
-          <div className={`grid grid-cols-1 gap-3 ${isSuperAdmin ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+          {!d.id && !isSuperAdmin && (cohorts?.length ?? 0) > 0 && (
+            <div className="flex items-center gap-2">
+              <label className={labelCls}>Start from a template</label>
+              <select value="" onChange={(e) => applyTemplate(e.target.value)} className={`${inputCls} max-w-xs`}>
+                <option value="">None — write it yourself</option>
+                <option value="PROGRAM_WELCOME">Programme welcome</option>
+              </select>
+            </div>
+          )}
+
+          {/* UAT F17 — the lists hold only what this person may reach (GET /broadcasts/audiences); the
+              school picker is the Super Admin's. The narrowest choice wins. */}
+          {!wholeSchool && noTarget && (
+            <p className="text-xs rounded-lg px-3 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">
+              Pick who this goes to — {orgUnits.length ? 'your department, or ' : ''}one of your {orgUnits.length ? 'programmes, cohorts or courses' : 'programmes or courses'}.
+            </p>
+          )}
+          <div className={`grid grid-cols-1 gap-3 ${isSuperAdmin || orgUnits.length ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
             {isSuperAdmin && (
               <div>
                 <label className={labelCls}>Target school</label>
-                <select value={d.schoolId} disabled={lockAudience} onChange={(e) => setD((p) => ({ ...p, schoolId: e.target.value, courseId: '', majorId: '', cohortId: '' }))} className={inputCls}>
+                <select value={d.schoolId} disabled={lockAudience} onChange={(e) => setD((p) => ({ ...p, schoolId: e.target.value, courseId: '', majorId: '', cohortId: '', orgUnitId: '' }))} className={inputCls}>
                   <option value="">All Schools</option>
                   {schools?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
             )}
+            {orgUnits.length > 0 && (
+              <div>
+                <label className={labelCls}>Department</label>
+                <select value={d.orgUnitId} disabled={lockAudience} onChange={(e) => setD((p) => ({ ...p, orgUnitId: e.target.value, ...(e.target.value ? { courseId: '', majorId: '', cohortId: '' } : {}) }))} className={inputCls}>
+                  <option value="">{anyLabel}</option>
+                  {orgUnits.map((u) => <option key={u.id} value={u.id}>{u.name} — everyone</option>)}
+                </select>
+              </div>
+            )}
             <div>
-              <label className={labelCls}>Narrow to course (optional)</label>
-              <select value={d.courseId} disabled={lockAudience || !d.schoolId} onChange={(e) => setD((p) => ({ ...p, courseId: e.target.value, ...(e.target.value ? { majorId: '', cohortId: '' } : {}) }))} className={inputCls}>
-                <option value="">Whole school</option>
+              <label className={labelCls}>Course</label>
+              <select value={d.courseId} disabled={lockAudience || (isSuperAdmin && !d.schoolId) || !courses?.length} onChange={(e) => setD((p) => ({ ...p, courseId: e.target.value, ...(e.target.value ? { majorId: '', cohortId: '', orgUnitId: '' } : {}) }))} className={inputCls}>
+                <option value="">{anyLabel}</option>
                 {courses?.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
               </select>
             </div>
+            {(isSuperAdmin || (majors?.length ?? 0) > 0) && (
+              <div>
+                <label className={labelCls}>Or faculty / major</label>
+                <select value={d.majorId} disabled={lockAudience || (isSuperAdmin && !d.schoolId) || !!d.courseId} onChange={(e) => setD((p) => ({ ...p, majorId: e.target.value, ...(e.target.value ? { courseId: '', cohortId: '', orgUnitId: '' } : {}) }))} className={inputCls}>
+                  <option value="">{anyLabel}</option>
+                  {majors?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+            )}
             <div>
-              <label className={labelCls}>Or by faculty/major (optional)</label>
-              <select value={d.majorId} disabled={lockAudience || !d.schoolId || !!d.courseId} onChange={(e) => setD((p) => ({ ...p, majorId: e.target.value, ...(e.target.value ? { courseId: '', cohortId: '' } : {}) }))} className={inputCls}>
-                <option value="">Whole school</option>
-                {majors?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Or by cohort (optional)</label>
-              <select value={d.cohortId} disabled={lockAudience || !d.schoolId || !!d.courseId || !!d.majorId} onChange={(e) => setD((p) => ({ ...p, cohortId: e.target.value, ...(e.target.value ? { courseId: '', majorId: '' } : {}) }))} className={inputCls}>
-                <option value="">Whole school</option>
+              <label className={labelCls}>Or programme / cohort</label>
+              <select value={d.cohortId} disabled={lockAudience || (isSuperAdmin && !d.schoolId) || !!d.courseId || !!d.majorId || !cohorts?.length} onChange={(e) => setD((p) => ({ ...p, cohortId: e.target.value, ...(e.target.value ? { courseId: '', majorId: '', orgUnitId: '' } : {}) }))} className={inputCls}>
+                <option value="">{anyLabel}</option>
                 {cohorts?.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.year})</option>)}
               </select>
             </div>

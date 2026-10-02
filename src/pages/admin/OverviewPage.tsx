@@ -189,7 +189,7 @@ export function OverviewPage() {
             Onboard your first customer to see live attendance, staff, and analytics roll up here across every institution you run.
           </p>
           <button
-            onClick={() => navigate('/admin/schools')}
+            onClick={() => navigate('/platform/institutions')}
             className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-b from-blue-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98] transition-all cursor-pointer"
           >
             <Plus size={16} /> Add Your First Institution

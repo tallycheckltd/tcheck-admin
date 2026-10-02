@@ -6,31 +6,14 @@ import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Slider } from '../../components/ui/Slider';
-import {
-  Settings, UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer,
-  School as SchoolIcon, CalendarDays, Layers, Briefcase, Sparkles, IdCard,
-} from 'lucide-react';
-import type { AttendanceMode, School, SchoolFeatures } from '../../types';
-
-const defaultFeatures: Required<SchoolFeatures> = {
-  anonymousChat: true,
-  biometricStrictMode: false,
-  broadcasts: true,
-  faceIdCheckIn: true,
-  dwellTimeTracking: true,
-  messaging: true,
-  execEdSuite: false,
-  onboardingJourney: false,
-  profileCompletionPrompt: true,
-};
+import { Settings, UserCheck, School as SchoolIcon } from 'lucide-react';
+import type { School } from '../../types';
 
 const emptyForm = {
   lateThresholdMinutes: 10,
   extremelyLateThresholdMinutes: 20,
   attendanceThreshold: 80,
   allowManualLecturerOverride: true,
-  attendanceMode: 'CALENDAR_BASED' as AttendanceMode,
-  features: defaultFeatures,
   /** SBS Phase 9 — '' = the default (Africa/Nairobi). */
   timezone: '',
 };
@@ -92,8 +75,6 @@ export function SettingsPage() {
         extremelyLateThresholdMinutes: school.extremelyLateThresholdMinutes ?? 20,
         attendanceThreshold: school.attendanceThreshold ?? 80,
         allowManualLecturerOverride: school.allowManualLecturerOverride ?? true,
-        attendanceMode: school.attendanceMode ?? 'CALENDAR_BASED',
-        features: { ...defaultFeatures, ...school.features },
         timezone: school.timezone ?? '',
       });
     }
@@ -177,45 +158,6 @@ export function SettingsPage() {
             </GlassCard>
 
             <GlassCard>
-              <div className="flex items-center gap-3 mb-4">
-                {form.attendanceMode === 'STAGE_BASED' ? (
-                  <Layers size={20} className="text-blue-500" />
-                ) : (
-                  <CalendarDays size={20} className="text-blue-500" />
-                )}
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Attendance Mode</h2>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                Calendar-Based runs on a weekly class schedule. Stage-Based progresses students through
-                a fixed sequence of modules (e.g. Theory → Practical) as instructors promote them, with no calendar involved.
-              </p>
-              <div className="inline-flex rounded-xl bg-gray-100 dark:bg-white/10 p-1">
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, attendanceMode: 'CALENDAR_BASED' })}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    form.attendanceMode === 'CALENDAR_BASED'
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-600 dark:text-gray-300'
-                  }`}
-                >
-                  Calendar-Based
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, attendanceMode: 'STAGE_BASED' })}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    form.attendanceMode === 'STAGE_BASED'
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-600 dark:text-gray-300'
-                  }`}
-                >
-                  Stage-Based
-                </button>
-              </div>
-            </GlassCard>
-
-            <GlassCard>
               <div className="space-y-1">
                 <label htmlFor="school-timezone" className="block text-sm font-medium text-gray-900 dark:text-white">Time zone</label>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Used for the times shown in emails and for when the weekly CEM digest goes out (Monday 07:00 local).</p>
@@ -239,75 +181,6 @@ export function SettingsPage() {
                   description="Lets lecturers mark students present by hand (dead battery, hardware exceptions) from the live session dashboard."
                   checked={form.allowManualLecturerOverride}
                   onChange={(v) => setForm({ ...form, allowManualLecturerOverride: v })}
-                />
-              </div>
-            </GlassCard>
-
-            <GlassCard>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-4">Features Configuration</h3>
-              <div className="space-y-4">
-                <FeatureToggle
-                  icon={MessageSquare}
-                  title="Messaging"
-                  description="Chat, campus/course rooms, and direct messages. Off hides the Chat tab entirely on mobile — no messaging feature at all for this institution, not just muted."
-                  checked={form.features.messaging}
-                  onChange={(v) => setForm({ ...form, features: { ...form.features, messaging: v } })}
-                />
-                <FeatureToggle
-                  icon={MessageSquareOff}
-                  title="Anonymous Chat"
-                  description="Lets students post anonymously in Campus/Session Chat rooms."
-                  checked={form.features.anonymousChat}
-                  onChange={(v) => setForm({ ...form, features: { ...form.features, anonymousChat: v } })}
-                />
-                <FeatureToggle
-                  icon={ShieldCheck}
-                  title="Biometric Strict Mode"
-                  description="Blocks the selfie fallback — students without biometric hardware can't check in."
-                  checked={form.features.biometricStrictMode}
-                  onChange={(v) => setForm({ ...form, features: { ...form.features, biometricStrictMode: v } })}
-                />
-                <FeatureToggle
-                  icon={Megaphone}
-                  title="Broadcasts"
-                  description="Lets admins send announcements to this institution's students and lecturers."
-                  checked={form.features.broadcasts}
-                  onChange={(v) => setForm({ ...form, features: { ...form.features, broadcasts: v } })}
-                />
-                <FeatureToggle
-                  icon={ScanFace}
-                  title="Face ID Check-In"
-                  description="Requires identity verification (Face ID, selfie, or device binding) to check in. Off falls back to a plain tap-to-check-in/out."
-                  checked={form.features.faceIdCheckIn}
-                  onChange={(v) => setForm({ ...form, features: { ...form.features, faceIdCheckIn: v } })}
-                />
-                <FeatureToggle
-                  icon={Timer}
-                  title="Dwell Time Tracking"
-                  description="Requires ~10s of sustained signal presence before an Aura check-in is accepted. Off allows an instant tap the moment the signal is detected."
-                  checked={form.features.dwellTimeTracking}
-                  onChange={(v) => setForm({ ...form, features: { ...form.features, dwellTimeTracking: v } })}
-                />
-                <FeatureToggle
-                  icon={Briefcase}
-                  title="Executive Ed Suite"
-                  description="Tools for executive and short-course programmes — cohorts and corporate attendees tracked separately from regular class attendance."
-                  checked={form.features.execEdSuite}
-                  onChange={(v) => setForm({ ...form, features: { ...form.features, execEdSuite: v } })}
-                />
-                <FeatureToggle
-                  icon={Sparkles}
-                  title="Onboarding Journey"
-                  description="Premium onboarding: an approval email, a registration-progress percentage on each student's profile, a staff alert when they finish their profile, and programme-welcome / materials-ready broadcast templates for Client Experience Managers."
-                  checked={form.features.onboardingJourney}
-                  onChange={(v) => setForm({ ...form, features: { ...form.features, onboardingJourney: v } })}
-                />
-                <FeatureToggle
-                  icon={IdCard}
-                  title={'"Tell Us About You" Profile Prompt'}
-                  description="Asks each student for gender, date of birth, nationality, job title and company once, right after their baseline photo. Off means new students skip this entirely — existing answers are untouched either way."
-                  checked={form.features.profileCompletionPrompt}
-                  onChange={(v) => setForm({ ...form, features: { ...form.features, profileCompletionPrompt: v } })}
                 />
               </div>
             </GlassCard>

@@ -114,16 +114,11 @@ export const lecturerLinks: NavLinkDef[] = [
   { to: '/attendance', icon: 'ClipboardList', label: 'Attendance' },
   { to: '/live', icon: 'Radio', label: 'Live Attendance' },
   { to: '/admin/escalations', icon: 'Siren', label: 'Escalations' },
-  { to: '/admin/facilities', icon: 'Wrench', label: 'Facilities' },
+  // UAT F9 — every lecturer gets the same set, Executive Education school or not: no Facilities,
+  // Insights, Device Verification or Staff View (manual check-in stays on Live Attendance and on
+  // an escalation).
   { to: '/admin/invigilation', icon: 'ScanEye', label: 'Invigilation' },
-  { to: '/admin/device-verification', icon: 'Smartphone', label: 'Device Verification' },
-  // Birthdays/check-ins/manual check-in/broadcasts — only shown when the lecturer actually holds
-  // at least one staff-capability permission; the page itself renders an empty state otherwise
-  // rather than being hidden entirely, since that's cheaper than threading permission fetches
-  // into this static nav array. Same page as CLIENT_EXPERIENCE_MANAGER's cxmLinks below.
-  { to: '/staff', icon: 'UserCheck', label: 'Staff View' },
   { to: '/reports', icon: 'FileText', label: 'Reports' },
-  { to: '/insights', icon: 'Presentation', label: 'Insights' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
   { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
 ];
@@ -133,12 +128,16 @@ export const cxmLinks: NavLinkDef[] = [
   { to: '/cem/facilities', icon: 'Wrench', label: 'Facilities' },
   { to: '/insights', icon: 'Presentation', label: 'Insights' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
+  // UAT F17 — the one Announcements page (send to own courses / programmes).
+  { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
 ];
 
 /* ---- CEM_MANAGER (P9, A8.6) — the team board first; the facilities queue is the team's tickets. ---- */
 export const cemManagerLinks: NavLinkDef[] = [
   { to: '/cem-team', icon: 'Users2', label: 'CEM Team' },
   { to: '/admin/facilities', icon: 'Wrench', label: 'Facilities' },
+  // UAT F24 — read-only oversight of the manager's own CEMs' direct chats.
+  { to: '/admin/messages', icon: 'Eye', label: 'Message Oversight' },
 ];
 
 export const hierarchyOverview: NavLinkDef[] = [
@@ -147,13 +146,9 @@ export const hierarchyOverview: NavLinkDef[] = [
 
 export const hierarchyAdmin: NavLinkDef[] = [
   { to: '/admin/users', icon: 'Users', label: 'Users' },
-  { to: '/admin/setup-wizard', icon: 'UploadCloud', label: 'Setup Wizard' },
-  { to: '/admin/terms', icon: 'Calendar', label: 'Terms' },
+  // UAT F26 — Setup Wizard, Terms and CEM & Programmes Report removed for Dean / HOD / Deputy HOD:
+  // setting the institution up is the School Admin's job.
   { to: '/admin/programs', icon: 'Layers', label: 'Training pipelines' },
-  // Backend gates this to DEAN/HOD (not DEPUTY_HOD) — matches the Sidebar's own existing
-  // `role === 'DEPUTY_HOD' ? hierarchyAdmin.filter(l => l.label === 'Users') : hierarchyAdmin`
-  // narrowing below, so DEPUTY_HOD never sees this entry either.
-  { to: '/admin/cem-reports', icon: 'FileBarChart', label: 'CEM & Programmes Report' },
 ];
 
 export const hierarchyOperations: NavLinkDef[] = [
@@ -181,10 +176,8 @@ export const hierarchyOperations: NavLinkDef[] = [
   { to: '/admin/nps-analytics', icon: 'Star', label: 'NPS Analytics' },
 ];
 
-export const execAdmin: NavLinkDef[] = [
-  { to: '/admin/users', icon: 'Users', label: 'Users' },
-];
-
+// UAT (09-29) — VC / DVC see how the institution is doing and announce; no actionable tabs
+// (no Users, Fraud Detection, Device Verification, CEM report).
 export const execOperations: NavLinkDef[] = [
   {
     to: '/admin/attendance',
@@ -193,27 +186,28 @@ export const execOperations: NavLinkDef[] = [
     children: [
       { to: '/admin/attendance-overview', icon: 'ClipboardList', label: 'Overview' },
       { to: '/admin/attendance-analytics', icon: 'BarChart3', label: 'Analytics' },
-      { to: '/attendance', icon: 'UserCheck', label: 'Sessions' },
     ],
   },
-  { to: '/admin/fraud-detection', icon: 'ShieldAlert', label: 'Fraud Detection' },
-  // Executive Ed Phase 9 — the VC/DVC "Executive Diet" nav is exactly this feature's home
-  // audience; gated the same as everywhere else via hiddenNavLabels/filterBySchoolConfig.
+  // Executive Ed Phase 9 — gated the same as everywhere else via hiddenNavLabels/filterBySchoolConfig.
   { to: '/insights', icon: 'Presentation', label: 'Insights' },
   { to: '/admin/nps-analytics', icon: 'Star', label: 'NPS Analytics' },
-  { to: '/admin/cem-reports', icon: 'FileBarChart', label: 'CEM & Programmes Report' },
   // P11 (A8.5) — the aggregate-only view across the institution group (only if granted).
   { to: '/insights/group', icon: 'Network', label: 'Institution group' },
 ];
 
 export const execGeneral: NavLinkDef[] = [
   { to: '/reports', icon: 'FileText', label: 'Reports' },
+  { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
 ];
 
+// UAT (09-29): no Settings — school-wide rules are the School Admin's alone. Device Verification is
+// HOD and higher (Deputy HOD hidden via NAV_HIDE), scoped to the unit's students on the server.
 export const hierarchyGeneral: NavLinkDef[] = [
+  { to: '/admin/device-verification', icon: 'Smartphone', label: 'Verification' },
   { to: '/reports', icon: 'FileText', label: 'Reports' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
-  { to: '/admin/settings', icon: 'Settings', label: 'Settings' },
+  // UAT F17 — Dean / HOD / Deputy HOD announce to their own department.
+  { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
 ];
 
 export const registrarAdmin: NavLinkDef[] = [
@@ -227,7 +221,6 @@ export const registrarGeneral: NavLinkDef[] = [
   { to: '/admin/invigilation', icon: 'ScanEye', label: 'Invigilation' },
   { to: '/reports', icon: 'FileText', label: 'Reports' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
-  { to: '/admin/settings', icon: 'Settings', label: 'Settings' },
 ];
 
 export const ictAdminLinks: NavLinkDef[] = [
@@ -239,7 +232,6 @@ export const ictAdminLinks: NavLinkDef[] = [
   { to: '/admin/device-verification', icon: 'Smartphone', label: 'Device Verification' },
   { to: '/live', icon: 'Radio', label: 'Live Attendance' },
   { to: '/messages', icon: 'MessageSquare', label: 'System Alerts' },
-  { to: '/admin/settings', icon: 'Settings', label: 'Settings' },
 ];
 
 /* ---- STAFF (P2) — a plain staff account: everything it sees comes from its granted permissions
@@ -269,14 +261,14 @@ export const NAV_HIDE: Partial<Record<RoleName, string[]>> = {
   REGISTRAR_ADMIN: ['/admin/programs'],
   DEAN: ['/admin/programs'],
   HOD: ['/admin/programs', '/insights/group'],
-  DEPUTY_HOD: ['/admin/programs', '/admin/fraud-detection', '/admin/escalations', '/admin/facilities', '/insights/group'],
+  DEPUTY_HOD: ['/admin/programs', '/admin/fraud-detection', '/admin/escalations', '/admin/facilities', '/insights/group', '/admin/device-verification'],
 };
 
 /** The sections each nav set renders, in order (titles as shown). */
 export const NAV_SECTIONS: Record<NavSet, { title?: string; links: NavLinkDef[] }[]> = {
   superAdmin: [{ title: 'Overview', links: superAdminOverview }, { title: 'Administration', links: superAdminAdmin }, { title: 'General', links: superAdminGeneral }],
   admin: [{ title: 'Overview', links: hodOverview }, { title: 'Administration', links: hodAdmin }, { title: 'Operations', links: hodOperations }, { title: 'General', links: hodGeneral }],
-  executive: [{ title: 'Overview', links: hierarchyOverview }, { title: 'Administration', links: execAdmin }, { title: 'Operations', links: execOperations }, { title: 'General', links: execGeneral }],
+  executive: [{ title: 'Overview', links: hierarchyOverview }, { title: 'Operations', links: execOperations }, { title: 'General', links: execGeneral }],
   hierarchyOps: [{ title: 'Overview', links: hierarchyOverview }, { title: 'Administration', links: hierarchyAdmin }, { title: 'Operations', links: hierarchyOperations }, { title: 'General', links: hierarchyGeneral }],
   registrar: [{ title: 'Overview', links: hierarchyOverview }, { title: 'Administration', links: registrarAdmin }, { title: 'General', links: registrarGeneral }],
   ict: [{ links: ictAdminLinks }],
