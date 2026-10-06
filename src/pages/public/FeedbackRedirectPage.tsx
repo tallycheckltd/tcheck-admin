@@ -39,7 +39,7 @@ export function FeedbackRedirectPage() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10">
           <Star size={28} className="text-blue-500" />
         </div>
-        <h1 className="text-lg font-bold text-slate-950 dark:text-white">Opening the TCheck app…</h1>
+        <h1 className="text-lg font-bold text-slate-950 dark:text-white">Opening the Tcheck app…</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           We're taking you to your feedback form.
         </p>
@@ -47,13 +47,13 @@ export function FeedbackRedirectPage() {
         {attempted && (
           <div className="mt-6 space-y-3">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Didn't open automatically? Make sure the TCheck app is installed, then tap below.
+              Didn't open automatically? Make sure the Tcheck app is installed, then tap below.
             </p>
             <a
               href={deepLink}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white transition-colors"
             >
-              <Smartphone size={16} /> Open TCheck App
+              <Smartphone size={16} /> Open Tcheck App
             </a>
           </div>
         )}

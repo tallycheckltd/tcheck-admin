@@ -182,9 +182,9 @@ export function SchoolSettingsFields({ value, onChange }: { value: SchoolSetting
           <ToggleRow
             icon={ShieldCheck}
             title="Biometric Strict Mode"
-            description="Blocks the selfie fallback — students without biometric hardware can't check in."
+            description="Blocks the selfie fallback — students without biometric hardware can't check in. Only applies while Face ID & Baseline Photo is on (turning this on turns that on too)."
             checked={value.features.biometricStrictMode}
-            onChange={(v) => onChange({ ...value, features: { ...value.features, biometricStrictMode: v } })}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, biometricStrictMode: v, ...(v ? { faceIdCheckIn: true } : {}) } })}
           />
           <ToggleRow
             icon={Megaphone}
@@ -195,10 +195,10 @@ export function SchoolSettingsFields({ value, onChange }: { value: SchoolSetting
           />
           <ToggleRow
             icon={ScanFace}
-            title="Face ID Check-In"
-            description="Requires identity verification (Face ID, selfie, or device binding) to check in. Off falls back to a plain tap-to-check-in/out."
+            title="Face ID & Baseline Photo"
+            description="One switch for identity. On: each student takes a one-time baseline photo and proves it's them at every check-in (Face ID / fingerprint, or a selfie on phones without biometrics). Off: no baseline photo and no identity check — students check in with the classroom beacon only, so someone carrying a student's phone could check in for them. Turning it back on asks anyone without a photo for one the next time they open the app."
             checked={value.features.faceIdCheckIn}
-            onChange={(v) => onChange({ ...value, features: { ...value.features, faceIdCheckIn: v } })}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, faceIdCheckIn: v, ...(v ? {} : { biometricStrictMode: false }) } })}
           />
           <ToggleRow
             icon={Timer}
@@ -224,7 +224,7 @@ export function SchoolSettingsFields({ value, onChange }: { value: SchoolSetting
           <ToggleRow
             icon={IdCard}
             title={'"Tell Us About You" Profile Prompt'}
-            description="Asks each student for gender, date of birth, nationality, job title and company once, right after their baseline photo. Off means new students skip this entirely — existing answers are untouched either way."
+            description="Asks each student for gender, date of birth, nationality, job title and company once, right after sign-in (after the baseline photo where Face ID & Baseline Photo is on). Off means new students skip this entirely — existing answers are untouched either way."
             checked={value.features.profileCompletionPrompt}
             onChange={(v) => onChange({ ...value, features: { ...value.features, profileCompletionPrompt: v } })}
           />

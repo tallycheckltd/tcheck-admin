@@ -1416,3 +1416,25 @@ export interface ComposeAudiences {
   cohorts: { id: string; name: string; year: number }[];
   orgUnits: { id: string; name: string }[];
 }
+
+/** GET /reports/follow-ups — Insights → Follow-ups (owner 09-28): who to reach out to. */
+export type FollowUpReason = 'MISSED' | 'NO_CHECK_OUT';
+export interface FollowUpDelegate {
+  userId: string;
+  name: string;
+  firstName: string;
+  email: string;
+  studentId: string | null;
+  missed: number;
+  noCheckOut: number;
+  /** PATTERN_THRESHOLD or more MISSED sessions of one programme. */
+  pattern: boolean;
+  programmes: { id: string; name: string; missed: number; noCheckOut: number }[];
+  sessions: { classId: string; courseName: string; title: string; date: string; startTime: string; reason: FollowUpReason; programmeId: string }[];
+}
+export interface FollowUpsReport {
+  period: { from: string; to: string };
+  threshold: number;
+  totals: { delegates: number; missed: number; noCheckOut: number; patterns: number };
+  delegates: FollowUpDelegate[];
+}

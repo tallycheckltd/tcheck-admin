@@ -111,7 +111,7 @@ function formatSessionDate(d: ClassAttendanceStat) {
 /** PDF of session rows (admin / lecturer attendance list). */
 export async function exportSessionLedgerPdf(rows: ClassAttendanceStat[], fileBase = 'tcheck-sessions') {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-  const startY = await addTcheckHeader(doc, 'TCheck — Session attendance', `Generated ${format(new Date(), 'PPpp')}`);
+  const startY = await addTcheckHeader(doc, 'Tcheck — Session attendance', `Generated ${format(new Date(), 'PPpp')}`);
 
   const body = rows.map((s) => [
     s.title,
@@ -142,7 +142,7 @@ export async function exportCampusAnalyticsPdf(campus: CampusAnalytics, sessions
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   let y = await addTcheckHeader(
     doc,
-    'TCheck — Campus analytics',
+    'Tcheck — Campus analytics',
     `Scope · ${campus.scopedSchoolId == null ? 'all schools' : campus.scopedSchoolId} · ${format(parseISO(campus.fetchedAtIso), 'PPpp')}`,
   );
 
@@ -203,7 +203,7 @@ export async function exportHodRosterPdf(
   const label = variant === 'at-risk' ? `At-risk roster (< ${attendanceThreshold}%)` : 'Semester roster';
   const startY = await addTcheckHeader(
     doc,
-    `TCheck — ${label}`,
+    `Tcheck — ${label}`,
     `Date range ${dateFrom} → ${dateTo} · Generated ${format(new Date(), 'PPpp')}`,
   );
 
@@ -249,7 +249,7 @@ export async function exportCourseRecordsPdf(
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
   const startY = await addTcheckHeader(
     doc,
-    'TCheck — Course attendance records',
+    'Tcheck — Course attendance records',
     `${courseLabel} · ${dateFrom} → ${dateTo} · Generated ${format(new Date(), 'PPpp')}`,
   );
 
@@ -283,7 +283,7 @@ export async function exportLecturerSessionDetailPdf(detail: ClassAttendanceDeta
   const dateStr = format(parseISO(`${detail.classInfo.date}T12:00:00`), 'MMM d, yyyy');
   const startY = await addTcheckHeader(
     doc,
-    'TCheck — Session attendance report',
+    'Tcheck — Session attendance report',
     `${detail.classInfo.title} · ${detail.classInfo.courseCode} · ${dateStr}`,
   );
 
@@ -336,7 +336,7 @@ export async function exportLecturerSessionDetailPdf(detail: ClassAttendanceDeta
 /** Overview dashboard snapshot PDF. */
 export async function exportAttendanceOverviewPdf(stats: DashboardStats, classStats: ClassAttendanceStat[], fileBase = 'tcheck-overview') {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-  const startY = await addTcheckHeader(doc, 'TCheck — Attendance overview', `Generated ${format(new Date(), 'PPpp')}`);
+  const startY = await addTcheckHeader(doc, 'Tcheck — Attendance overview', `Generated ${format(new Date(), 'PPpp')}`);
 
   const summaryBody = [
     ['Total students', String(stats.totalStudents)],
@@ -384,7 +384,7 @@ export async function exportStudentReportPdf(
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const startY = await addTcheckHeader(
     doc,
-    'TCheck — Student attendance report',
+    'Tcheck — Student attendance report',
     `${student.firstName} ${student.lastName}${student.studentId ? ` · ${student.studentId}` : ''} · Generated ${format(new Date(), 'PPpp')}`,
   );
 
@@ -471,7 +471,7 @@ export async function exportNpsAnalyticsPdf(
   fileBase = 'tcheck-nps-analytics',
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-  let startY = await addTcheckHeader(doc, 'TCheck — Executive Ed NPS analytics', `Generated ${format(new Date(), 'PPpp')}`);
+  let startY = await addTcheckHeader(doc, 'Tcheck — Executive Ed NPS analytics', `Generated ${format(new Date(), 'PPpp')}`);
 
   doc.setFontSize(12);
   doc.setTextColor(15, 23, 42);
@@ -531,7 +531,7 @@ export async function exportTrendAnalysisPdf(campus: CampusAnalytics, fileBase =
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const startY = await addTcheckHeader(
     doc,
-    'TCheck — Attendance trend analysis',
+    'Tcheck — Attendance trend analysis',
     `Scope · ${campus.scopedSchoolId == null ? 'all schools' : campus.scopedSchoolId} · Generated ${format(new Date(), 'PPpp')}`,
   );
 
@@ -566,7 +566,7 @@ export interface CemReportCemPdfRow {
  * if it's in PDF"). */
 export async function exportCemReportPdf(cems: CemReportCemPdfRow[], fileBase = 'tcheck-cem-report') {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-  let y = await addTcheckHeader(doc, 'TCheck — CEM & Programmes Report', `Generated ${format(new Date(), 'PPpp')}`);
+  let y = await addTcheckHeader(doc, 'Tcheck — CEM & Programmes Report', `Generated ${format(new Date(), 'PPpp')}`);
 
   cems.forEach((cem, i) => {
     if (i > 0) {

@@ -32,7 +32,7 @@ const PROVIDER_META: Record<IntegrationProvider, {
   },
   MOODLE: {
     label: 'Moodle',
-    tagline: 'Add Moodle enrolments to TCheck; optionally write attendance to mod_attendance.',
+    tagline: 'Add Moodle enrolments to Tcheck; optionally write attendance to mod_attendance.',
     icon: BookOpenCheck,
     gradient: 'from-[#F98012] to-[#D96A0A]',
     isRosterSource: true,
@@ -120,7 +120,7 @@ export function IntegrationsPage() {
             <Sparkles size={22} className="text-blue-500" /> Integrations
           </h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Connect TCheck to your institution's LMS or CRM — pull rosters automatically, push attendance back where your staff already look.
+            Connect Tcheck to your institution's LMS or CRM — pull rosters automatically, push attendance back where your staff already look.
           </p>
         </div>
         {isSuperAdmin && (
@@ -237,7 +237,7 @@ export function IntegrationsPage() {
 
           {/* Unmatched courses — the manual-mapping fallback for whichever roster-source
               connection's last sync found a course whose LMS code doesn't already match a
-              TCheck Course.code. */}
+              Tcheck Course.code. */}
           {/* SBS Phase 7 — Moodle integration centre (status, syncs, review, write-back, history). */}
           {byProvider('MOODLE') && <MoodleCentre connectionId={byProvider('MOODLE')!.id} courses={courses ?? []} />}
 
@@ -318,7 +318,7 @@ function UnmatchedCoursesPanel({
         </h3>
       </div>
       <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
-        These courses exist in {PROVIDER_META[provider].label} but their code didn't match any TCheck course. Map each one by hand — TCheck never creates a course automatically.
+        These courses exist in {PROVIDER_META[provider].label} but their code didn't match any Tcheck course. Map each one by hand — Tcheck never creates a course automatically.
       </p>
       <div className="space-y-2.5">
         {unmatched.map((u) => (
@@ -329,7 +329,7 @@ function UnmatchedCoursesPanel({
             </div>
             <div className="flex-1 min-w-[220px]">
               <SearchableSelect
-                placeholder="Map to TCheck course…"
+                placeholder="Map to Tcheck course…"
                 value={selections[u.externalId] ?? ''}
                 onChange={(v) => setSelections((s) => ({ ...s, [u.externalId]: v }))}
                 options={courses.map((c) => ({ value: c.id, label: c.name, sublabel: c.code }))}
@@ -416,10 +416,10 @@ function ConnectModal({
             <Input label="Moodle address" placeholder="https://moodle.school.ac.ke" value={fields.baseUrl ?? ''} onChange={set('baseUrl')} />
             <Input label="Web-service token" type="password" autoComplete="off" value={fields.token ?? ''} onChange={set('token')} />
             <div className="text-xs text-slate-600 dark:text-slate-400 space-y-1.5 rounded-xl bg-gray-50 dark:bg-white/5 p-3">
-              <p>In Moodle: Site administration → Server → Web services. Create an external service for TCheck, add a token for a dedicated service account, and enable these functions:</p>
+              <p>In Moodle: Site administration → Server → Web services. Create an external service for Tcheck, add a token for a dedicated service account, and enable these functions:</p>
               <p className="font-mono text-[11px] leading-relaxed">core_webservice_get_site_info, core_course_get_courses, core_enrol_get_enrolled_users</p>
               <p>For attendance write-back (optional, needs mod_attendance): <span className="font-mono text-[11px]">mod_attendance_get_sessions, mod_attendance_get_session, mod_attendance_update_user_status</span></p>
-              <p>The token is encrypted in TCheck and never shown again. Use "Test" afterwards to confirm every function is available.</p>
+              <p>The token is encrypted in Tcheck and never shown again. Use "Test" afterwards to confirm every function is available.</p>
             </div>
           </>
         )}
@@ -430,7 +430,7 @@ function ConnectModal({
             <Input label="Token address (optional)" placeholder="https://sis.school.edu/oauth/token" value={fields.tokenUrl ?? ''} onChange={set('tokenUrl')} />
             <Input label="Client ID" value={fields.clientId ?? ''} onChange={set('clientId')} />
             <Input label="Client secret" type="password" autoComplete="off" value={fields.clientSecret ?? ''} onChange={set('clientSecret')} />
-            <p className="text-xs text-slate-600 dark:text-slate-400">Read-only: TCheck pulls orgs, terms, classes and people into Review sync. The secret is encrypted and never shown again.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Read-only: Tcheck pulls orgs, terms, classes and people into Review sync. The secret is encrypted and never shown again.</p>
           </>
         )}
 

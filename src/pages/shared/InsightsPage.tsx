@@ -5,10 +5,11 @@ import { clsx } from 'clsx';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard } from '../../components/ui/GlassCard';
-import type { FeedbackIntelligence, FeedbackRequest, OverviewReport, ProgrammeReport, School, SessionReport } from '../../types';
+import type { FeedbackIntelligence, FeedbackRequest, FollowUpsReport, OverviewReport, ProgrammeReport, School, SessionReport } from '../../types';
 import { overviewCsv, overviewPdf, periodLabel, programmeCsv, programmePdf } from '../../lib/reportsExport';
 import { OverviewView, ProgrammeView, SessionView } from '../../components/insights/OverviewTab';
 import { FeedbackView } from '../../components/insights/FeedbackTab';
+import { FollowUpsView } from '../../components/insights/FollowUpsTab';
 
 /**
  * Insights (09-27: Executive Reports + Feedback Intelligence merged into one page).
@@ -17,11 +18,13 @@ import { FeedbackView } from '../../components/insights/FeedbackTab';
  *              session drill-downs and CSV/PDF export.
  *   Feedback — how delegates rate sessions: scores, weeks, per course, your school's questions,
  *              comments and campaigns.
+ *   Follow-ups — who didn't attend which session (missed / no check-out), patterns first, with
+ *              Message / Email to reach out (owner 09-28: delegates are never emailed about it).
  * One set of filters (school for SUPER_ADMIN, period) drives both; everything lives in the URL so
  * back/forward and shared links keep the view. Both are role-scoped server-side.
  */
 
-type TabKey = 'overview' | 'feedback';
+type TabKey = 'overview' | 'feedback' | 'followups';
 const localYmd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const PRESETS = [
@@ -33,6 +36,8 @@ const PRESETS = [
 ] as const;
 const ROSTER_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'LECTURER'];
 const CAMPAIGN_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'LECTURER', 'CLIENT_EXPERIENCE_MANAGER'];
+/** Roles with the /messages page, so Follow-ups can open a conversation (others get Email only). */
+const MESSAGE_ROLES = ['LECTURER', 'CLIENT_EXPERIENCE_MANAGER'];
 const exportBtn = 'inline-flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-xl text-sm font-medium border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-white/10 disabled:opacity-50 cursor-pointer';
 const selectCls = 'rounded-xl px-3 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-900 dark:text-white';
 
@@ -52,7 +57,8 @@ export function InsightsPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [params, setParams] = useSearchParams();
-  const tab: TabKey = params.get('tab') === 'feedback' ? 'feedback' : 'overview';
+  const tabParam = params.get('tab');
+  const tab: TabKey = tabParam === 'feedback' || tabParam === 'followups' ? tabParam : 'overview';
   const [defFrom, defTo] = PRESETS[2].range();
   const from = params.get('from') ?? defFrom;
   const to = params.get('to') ?? defTo;
@@ -81,8 +87,10 @@ export function InsightsPage() {
   const programme = useApi<ProgrammeReport>(onOverview && canQuery && rangeValid && programmeId && !sessionId ? `/reports/programmes/${programmeId}?${base}` : null);
   const session = useApi<SessionReport>(onOverview && canQuery && sessionId ? `/reports/sessions/${sessionId}${isSuperAdmin && schoolId ? `?schoolId=${schoolId}` : ''}` : null);
   const fbQs = useMemo(() => { const p = new URLSearchParams(base); if (courseId) p.set('courseId', courseId); return p.toString(); }, [base, courseId]);
-  const feedback = useApi<FeedbackIntelligence>(!onOverview && canQuery && rangeValid ? `/feedback/intelligence?${fbQs}` : null);
-  const campaigns = useApi<FeedbackRequest[]>(!onOverview && CAMPAIGN_ROLES.includes(user?.role ?? '') ? '/feedback-requests' : null);
+  const onFeedbackTab = tab === 'feedback';
+  const feedback = useApi<FeedbackIntelligence>(onFeedbackTab && canQuery && rangeValid ? `/feedback/intelligence?${fbQs}` : null);
+  const followUps = useApi<FollowUpsReport>(tab === 'followups' && canQuery && rangeValid ? `/reports/follow-ups?${base}` : null);
+  const campaigns = useApi<FeedbackRequest[]>(onFeedbackTab && CAMPAIGN_ROLES.includes(user?.role ?? '') ? '/feedback-requests' : null);
 
   // The feedback course filter lists every course seen unfiltered, so picking one doesn't shrink it.
   const [knownCourses, setKnownCourses] = useState<{ id: string; label: string }[]>([]);
@@ -96,10 +104,10 @@ export function InsightsPage() {
       : user?.role === 'CLIENT_EXPERIENCE_MANAGER' ? 'Your programmes'
         : user?.school?.name ?? 'Your school';
   const activePreset = PRESETS.find((p) => { const [f, t] = p.range(); return f === from && t === to; })?.key ?? 'custom';
-  const current = !onOverview ? feedback : sessionId ? session : programmeId ? programme : overview;
+  const current = tab === 'followups' ? followUps : onFeedbackTab ? feedback : sessionId ? session : programmeId ? programme : overview;
   const scopedCampaigns = campaigns.data?.filter((c) => !isSuperAdmin || !schoolId || c.school.id === schoolId) ?? null;
 
-  const tabs: { key: TabKey; label: string }[] = [{ key: 'overview', label: 'Overview' }, { key: 'feedback', label: 'Feedback' }];
+  const tabs: { key: TabKey; label: string }[] = [{ key: 'overview', label: 'Overview' }, { key: 'feedback', label: 'Feedback' }, { key: 'followups', label: 'Follow-ups' }];
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -144,13 +152,13 @@ export function InsightsPage() {
               <input aria-label="To" type="date" value={to} min={from} onChange={(e) => e.target.value && set({ to: e.target.value })} className={selectCls} />
             </>
           )}
-          {!onOverview && knownCourses.length > 1 && (
+          {onFeedbackTab && knownCourses.length > 1 && (
             <select aria-label="Course" value={courseId} onChange={(e) => set({ course: e.target.value })} className={clsx(selectCls, 'max-w-[16rem]')}>
               <option value="">All courses</option>
               {knownCourses.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
           )}
-          <p className="ml-auto flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400"><Lock size={11} /> Feedback is anonymous · withheld below 3 responses</p>
+          {tab !== 'followups' && <p className="ml-auto flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400"><Lock size={11} /> Feedback is anonymous · withheld below 3 responses</p>}
         </div>
       </GlassCard>
 
@@ -177,7 +185,9 @@ export function InsightsPage() {
         <GlassCard><p role="alert" className="text-sm text-red-700 dark:text-red-300">This couldn't be loaded. {current.error}</p></GlassCard>
       ) : !current.data ? (
         <GlassCard><p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p></GlassCard>
-      ) : !onOverview && feedback.data ? (
+      ) : tab === 'followups' && followUps.data ? (
+        <FollowUpsView r={followUps.data} scopeLabel={scopeLabel} canMessage={MESSAGE_ROLES.includes(user?.role ?? '')} />
+      ) : onFeedbackTab && feedback.data ? (
         <FeedbackView data={feedback.data} days={days} campaigns={scopedCampaigns}
           canCreateCampaign={['SUPER_ADMIN', 'SCHOOL_ADMIN'].includes(user?.role ?? '')}
           onCampaignsChanged={() => campaigns.refetch({ silent: true })} />

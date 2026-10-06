@@ -941,7 +941,7 @@ export function ReportsPage() {
         <h1 className="text-2xl font-bold tracking-tight text-[var(--app-text)]">Reports</h1>
         <p className="text-sm text-[var(--app-text-muted)] max-w-2xl">
           {seesOrgWide
-            ? 'Download audited PDF reports for rosters or individual courses (TCheck logo on every export).'
+            ? 'Download audited PDF reports for rosters or individual courses (Tcheck logo on every export).'
             : 'Review attendance per teaching session and download PDF reports for your courses.'}
         </p>
       </header>

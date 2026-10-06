@@ -10,6 +10,7 @@ import { Modal } from '../../components/ui/Modal';
 import { ColorPickerField } from '../../components/ui/ColorPickerField';
 import { MetricList, type Metric } from '../../components/analytics/MetricList';
 import { SchoolSettingsFields } from '../../components/platform/TenantSettingsFields';
+import { PickerLogoField } from '../../components/platform/PickerLogoField';
 import { defaultFeatures, defaultSettings, type SchoolSettingsValue } from '../../components/platform/tenantSettings';
 import type { School, User } from '../../types';
 import { GrantRequestForm, GrantsTable, type PlatformGrant } from '../../components/support/PlatformGrants';
@@ -58,7 +59,10 @@ export function PlatformInstitutionsPage() {
               <h2 className="font-semibold flex items-center gap-2"><Building2 size={16} className="text-blue-500" /> {title}
                 <span className="text-xs font-normal text-gray-500">{g.tenants.length} {g.tenants.length === 1 ? 'campus' : 'campuses'}</span>
               </h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center flex-wrap">
+                {g.institution
+                  ? <PickerLogoField kind="institution" id={g.institution.id} name={g.institution.name} />
+                  : g.tenants[0] && <PickerLogoField kind="school" id={g.tenants[0].id} name={g.tenants[0].name} />}
                 {g.institution && <Button size="sm" variant="secondary" onClick={() => setAccess(g.institution!)}><Eye size={14} className="mr-1.5" />Group view access</Button>}
                 <Button size="sm" variant="secondary" onClick={() => setWizard(solo ? { open: true, branchOf: g.tenants[0] } : { open: true, presetGroup: g.institution!.id })}><Plus size={14} className="mr-1" />Add campus / school</Button>
               </div>
@@ -133,7 +137,7 @@ function GroupAccessModal({ group, onClose }: { group: { id: string; name: strin
 
 const FEATURES: [string, string][] = [
   ['execEdSuite', 'Executive Education tenant'], ['onboardingJourney', 'Onboarding journey'], ['messaging', 'Messaging'], ['broadcasts', 'Announcements'],
-  ['anonymousChat', 'Anonymous chat'], ['faceIdCheckIn', 'Face ID check-in'], ['biometricStrictMode', 'Strict biometric mode'], ['dwellTimeTracking', 'Dwell time'],
+  ['anonymousChat', 'Anonymous chat'], ['faceIdCheckIn', 'Face ID & baseline photo'], ['biometricStrictMode', 'Strict biometric mode'], ['dwellTimeTracking', 'Dwell time'],
   ['profileCompletionPrompt', '"Tell us about you" profile prompt'],
 ];
 type ExtraAdmin = { firstName: string; lastName: string; email: string };

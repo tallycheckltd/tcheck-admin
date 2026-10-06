@@ -88,7 +88,7 @@ export function ReviewSync({ connectionId, providerLabel }: { connectionId: stri
           {!!data?.pending && <Button size="sm" disabled={loading} onClick={() => void approve({ all: true })}><CheckCheck size={13} className="mr-1" /> Approve all</Button>}
         </div>
       </div>
-      <p className="text-xs text-slate-600 dark:text-slate-400">Everything is pulled into this review first. Nothing in TCheck changes until you approve; lecturers get an invite only when approved; something removed from {providerLabel} is only flagged here, never deleted.</p>
+      <p className="text-xs text-slate-600 dark:text-slate-400">Everything is pulled into this review first. Nothing in Tcheck changes until you approve; lecturers get an invite only when approved; something removed from {providerLabel} is only flagged here, never deleted.</p>
       {!data?.mapping && <p className="text-xs text-amber-600">Set the mapping once before the first pull.</p>}
 
       {editMapping && draft && (

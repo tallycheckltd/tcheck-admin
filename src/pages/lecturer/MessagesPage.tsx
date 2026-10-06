@@ -194,6 +194,20 @@ export function MessagesPage() {
     setShowContacts(false);
   };
 
+  // Insights → Follow-ups deep link: /messages?to=<userId>&name=<name>&draft=<text> opens that
+  // person's conversation (or starts one) with a friendly draft already typed — once, as soon as the
+  // conversation list has loaded (so an existing thread is reused rather than duplicated).
+  const deepLinked = useRef(false);
+  useEffect(() => {
+    const to = searchParams.get('to');
+    if (!to || deepLinked.current || conversations == null) return;
+    deepLinked.current = true;
+    selectContact(to, searchParams.get('name') || 'Delegate');
+    const draft = searchParams.get('draft');
+    if (draft) setText(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations, searchParams]);
+
   const send = async () => {
     if (!text.trim()) return;
     const replyToId = replyingTo?.id;

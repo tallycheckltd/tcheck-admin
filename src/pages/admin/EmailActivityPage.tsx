@@ -145,7 +145,7 @@ export function EmailActivityPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Email activity</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">What TCheck emailed and what happened. Addresses are masked and message content isn't shown. "Accepted by provider" means the provider took the email; "Delivered" is shown only when the provider confirms it.</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">What Tcheck emailed and what happened. Addresses are masked and message content isn't shown. "Accepted by provider" means the provider took the email; "Delivered" is shown only when the provider confirms it.</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -187,12 +187,12 @@ function PrintInvoice({ row, onClose }: { row: Row; onClose: () => void }) {
     <Modal open onClose={onClose} title="Invoice (calculated)">
       <div className="space-y-4 text-sm" id="printable-invoice">
         <div className="flex justify-between">
-          <div><p className="font-bold text-lg">Tallycheck Ltd</p><p className="text-gray-500">TCheck attendance platform</p></div>
+          <div><p className="font-bold text-lg">Tallycheck Ltd</p><p className="text-gray-500">Tcheck attendance platform</p></div>
           <div className="text-right"><p className="font-semibold">{row.name}</p><p className="text-gray-500">Period: {row.period}</p></div>
         </div>
         <p className="text-gray-500">Campuses: {row.schools.map((s) => s.name).join(', ')}. Billable users ({row.plan!.metric === 'SEAT' ? 'approved accounts at month end' : 'checked in during the month'}): {row.users?.toLocaleString()}.</p>
         <InvoiceLines inv={row.invoice!} plan={row.plan!} users={row.users ?? 0} />
-        <p className="text-xs text-gray-400">Calculated by TCheck on {new Date().toLocaleDateString()}. Not a tax invoice until issued.</p>
+        <p className="text-xs text-gray-400">Calculated by Tcheck on {new Date().toLocaleDateString()}. Not a tax invoice until issued.</p>
         <div className="flex justify-end gap-2 print:hidden"><Button variant="secondary" onClick={onClose}>Close</Button><Button onClick={() => window.print()}><Printer size={14} className="mr-1.5" />Print / save as PDF</Button></div>
       </div>
     </Modal>

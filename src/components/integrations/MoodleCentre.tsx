@@ -19,7 +19,7 @@ const STATE: Record<MoodleConnectionState, { label: string; tone: 'ok' | 'warn' 
   CONNECTED: { label: 'Connected', tone: 'ok', hint: 'The last roster sync completed without issues.' },
   COMPLETED_WITH_ISSUES: { label: 'Completed with issues', tone: 'warn', hint: 'Some records need review before they can be synchronised.' },
   AUTH_FAILED: { label: 'Authentication failed', tone: 'bad', hint: 'Moodle rejected the token. Issue a new token and reconnect.' },
-  UNAVAILABLE: { label: 'Moodle unavailable', tone: 'bad', hint: 'Moodle could not be reached. TCheck keeps working; the next sync will retry.' },
+  UNAVAILABLE: { label: 'Moodle unavailable', tone: 'bad', hint: 'Moodle could not be reached. Tcheck keeps working; the next sync will retry.' },
   FAILED: { label: 'Last sync failed', tone: 'bad', hint: 'See the run history for the reason.' },
 };
 const RUN_STATUS: Record<MoodleSyncRun['status'], string> = { RUNNING: 'Running', COMPLETED: 'Completed', COMPLETED_WITH_ISSUES: 'Completed with issues', FAILED: 'Failed' };
@@ -95,7 +95,7 @@ function LinkDelegate({ connectionId, issue, onDone }: { connectionId: string; i
   return (
     <div className="mt-2 space-y-2">
       <div className="flex gap-2">
-        <input aria-label="Search TCheck delegates" value={q} onChange={(e) => setQ(e.target.value)} className="flex-1 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10" />
+        <input aria-label="Search Tcheck delegates" value={q} onChange={(e) => setQ(e.target.value)} className="flex-1 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10" />
         <button type="button" onClick={() => void search()} disabled={q.trim().length < 2} className="px-3 py-1.5 rounded-lg text-sm border border-gray-200 dark:border-white/10 cursor-pointer disabled:opacity-50">Search</button>
       </div>
       {results.slice(0, 8).map((u) => (
@@ -118,8 +118,8 @@ function LinkCourse({ connectionId, issue, courses, onDone }: { connectionId: st
   };
   return (
     <div className="mt-2 flex flex-wrap gap-2 items-center">
-      <select aria-label="TCheck course" value={courseId} onChange={(e) => setCourseId(e.target.value)} className="rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10">
-        <option value="">Choose the matching TCheck course…</option>
+      <select aria-label="Tcheck course" value={courseId} onChange={(e) => setCourseId(e.target.value)} className="rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10">
+        <option value="">Choose the matching Tcheck course…</option>
         {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
       </select>
       <button type="button" onClick={() => void link()} disabled={!courseId} className="text-sm font-medium text-blue-600 dark:text-blue-400 cursor-pointer disabled:opacity-50">Link</button>
@@ -243,7 +243,7 @@ export function MoodleCentre({ connectionId, courses }: { connectionId: string; 
         <div><dt className="text-slate-500 dark:text-slate-400">Last successful roster sync</dt><dd className="text-slate-900 dark:text-slate-100">{when(lastRoster?.finishedAt)}{lastRoster ? ` · ${runSummary(lastRoster)}` : ''}</dd></div>
         <div><dt className="text-slate-500 dark:text-slate-400">Last attempted</dt><dd className="text-slate-900 dark:text-slate-100">{o.roster.lastAttempted ? `${when(o.roster.lastAttempted.startedAt)} · ${RUN_STATUS[o.roster.lastAttempted.status]}` : '—'}</dd></div>
         <div><dt className="text-slate-500 dark:text-slate-400">Schedule</dt><dd className="text-slate-900 dark:text-slate-100">Roster every 6 hours{o.attendanceWriteBack ? ' · attendance daily' : ''}, plus manual syncs</dd></div>
-        <div><dt className="text-slate-500 dark:text-slate-400">Direction</dt><dd className="text-slate-900 dark:text-slate-100">Enrolments Moodle → TCheck (added only, never removed){o.attendanceWriteBack ? ' · attendance TCheck → Moodle' : ''}</dd></div>
+        <div><dt className="text-slate-500 dark:text-slate-400">Direction</dt><dd className="text-slate-900 dark:text-slate-100">Enrolments Moodle → Tcheck (added only, never removed){o.attendanceWriteBack ? ' · attendance Tcheck → Moodle' : ''}</dd></div>
       </dl>
 
       <Review title="Roster" review={o.roster.review} connectionId={connectionId} courses={courseList} onChanged={() => void refetch({ silent: true })} />
@@ -255,7 +255,7 @@ export function MoodleCentre({ connectionId, courses }: { connectionId: string; 
           <input type="checkbox" checked={o.attendanceWriteBack} disabled={saving}
             onChange={(e) => (e.target.checked ? setConfirm('writeback-on') : void saveSettings({ attendanceWriteBack: false }, 'Attendance write-back turned off.'))}
             className="mt-0.5 rounded border-gray-300 dark:border-white/20" />
-          <span>Write TCheck attendance to Moodle's attendance activity<span className="block text-xs text-slate-500 dark:text-slate-400">Present → P, late → L, for delivered sessions only. Absences are never written and a mark a teacher already made in Moodle is never changed. TCheck remains the attendance record.</span></span>
+          <span>Write Tcheck attendance to Moodle's attendance activity<span className="block text-xs text-slate-500 dark:text-slate-400">Present → P, late → L, for delivered sessions only. Absences are never written and a mark a teacher already made in Moodle is never changed. Tcheck remains the attendance record.</span></span>
         </label>
         {o.attendanceActivities.length === 0 ? (
           <p className="text-sm text-slate-500">Link at least one course (roster sync) to choose its Moodle attendance activity.</p>
@@ -303,7 +303,7 @@ export function MoodleCentre({ connectionId, courses }: { connectionId: string; 
 
       {confirm === 'roster' && (
         <Confirm title="Sync roster from Moodle?" action="Start sync" busy={starting} onCancel={() => setConfirm(null)} onConfirm={() => void start('roster')}
-          body={<><p>TCheck will read this institution's Moodle courses and enrolments, link courses whose code matches, and add TCheck enrolments for delegates it can match with certainty.</p><p>Nothing is removed in TCheck or Moodle. Anyone it can't match is listed for review.</p><p className="text-slate-500">Last successful sync: {when(lastRoster?.finishedAt)}</p></>} />
+          body={<><p>Tcheck will read this institution's Moodle courses and enrolments, link courses whose code matches, and add Tcheck enrolments for delegates it can match with certainty.</p><p>Nothing is removed in Tcheck or Moodle. Anyone it can't match is listed for review.</p><p className="text-slate-500">Last successful sync: {when(lastRoster?.finishedAt)}</p></>} />
       )}
       {confirm === 'attendance' && (
         <Confirm title="Write attendance to Moodle?" action="Start" busy={starting} onCancel={() => setConfirm(null)} onConfirm={() => void start('attendance')}
@@ -311,7 +311,7 @@ export function MoodleCentre({ connectionId, courses }: { connectionId: string; 
       )}
       {confirm === 'writeback-on' && (
         <Confirm title="Turn on attendance write-back?" action="Turn on" busy={saving} onCancel={() => setConfirm(null)} onConfirm={() => void saveSettings({ attendanceWriteBack: true }, 'Attendance write-back turned on.')}
-          body={<><p>Once a course has its Moodle attendance activity set, TCheck will write present (P) and late (L) marks daily.</p><p>Absences are never written and teachers' existing Moodle marks are never changed.</p></>} />
+          body={<><p>Once a course has its Moodle attendance activity set, Tcheck will write present (P) and late (L) marks daily.</p><p>Absences are never written and teachers' existing Moodle marks are never changed.</p></>} />
       )}
     </section>
   );
