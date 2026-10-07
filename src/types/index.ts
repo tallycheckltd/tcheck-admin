@@ -1198,7 +1198,7 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
-export type IntegrationProvider = 'CANVAS' | 'MOODLE' | 'SALESFORCE' | 'ONEROSTER';
+export type IntegrationProvider = 'CANVAS' | 'MOODLE' | 'SALESFORCE' | 'ONEROSTER' | 'BLACKBOARD' | 'BUSINESS_CENTRAL';
 
 export interface IntegrationSyncSummary {
   coursesMatched?: number;

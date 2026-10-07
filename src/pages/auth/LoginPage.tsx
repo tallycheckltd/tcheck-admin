@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, MailCheck, RotateCw } from 'lucide-react';
 import { OtpBoxInput } from '../../components/auth/OtpBoxInput';
 import { homeRouteFor } from '../../lib/rbac';
+import { getMicrosoftConfig, startMicrosoft } from '../../lib/microsoft';
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -21,6 +22,14 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { requestOtp, verifyOtp, user } = useAuth();
+  // Sign in with Microsoft — shown only when the server has it set up.
+  const [microsoftReady, setMicrosoftReady] = useState(false);
+  const [microsoftBusy, setMicrosoftBusy] = useState(false);
+  useEffect(() => { getMicrosoftConfig().then((c) => setMicrosoftReady(c.enabled)).catch(() => {}); }, []);
+  const signInWithMicrosoft = async () => {
+    setError(''); setMicrosoftBusy(true);
+    try { await startMicrosoft('signin'); } catch (e) { setError(e instanceof Error ? e.message : 'Microsoft sign-in failed.'); setMicrosoftBusy(false); }
+  };
   const navigate = useNavigate();
   const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -292,6 +301,25 @@ export function LoginPage() {
               )}
             </button>
           </form>
+          {microsoftReady && (
+            <>
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="text-[11px] uppercase tracking-wider text-slate-500">or</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+              <button
+                type="button"
+                onClick={() => void signInWithMicrosoft()}
+                disabled={microsoftBusy}
+                className="w-full flex items-center justify-center gap-3 py-3 px-6 rounded-xl text-sm font-semibold text-slate-900 bg-white hover:bg-slate-100 border border-white/20 transition-colors disabled:opacity-60 cursor-pointer"
+              >
+                <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022" /><rect x="11" y="1" width="9" height="9" fill="#7fba00" /><rect x="1" y="11" width="9" height="9" fill="#00a4ef" /><rect x="11" y="11" width="9" height="9" fill="#ffb900" /></svg>
+                {microsoftBusy ? 'Opening Microsoft…' : 'Sign in with Microsoft'}
+              </button>
+              <p className="mt-2 text-center text-[11px] text-slate-500">For staff of schools that use Microsoft 365.</p>
+            </>
+          )}
           </>
           )}
 

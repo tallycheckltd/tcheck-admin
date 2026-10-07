@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import { AlertTriangle, CheckCircle2, Loader2, Lock, RefreshCw, UploadCloud, XCircle } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
@@ -173,13 +173,20 @@ function Review({ title, review, connectionId, courses, onChanged }: { title: st
   );
 }
 
-export function MoodleCentre({ connectionId, courses }: { connectionId: string; courses: Course[] }) {
+export function MoodleCentre({ connectionId, courses, onChanged }: { connectionId: string; courses: Course[]; onChanged?: () => void }) {
   const { data: o, refetch, error } = useApi<MoodleOverview>(`/integrations/connections/${connectionId}/moodle`);
   const { mutate: post, loading: starting } = useMutation('post');
   const { mutate: patch, loading: saving } = useMutation('patch');
   const [confirm, setConfirm] = useState<'roster' | 'attendance' | 'writeback-on' | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [activityDraft, setActivityDraft] = useState<Record<string, string>>({});
+
+  // When a sync finishes, let the page refresh the Moodle card (last synced, status, badge).
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    if (wasRunning.current && !o?.running) onChanged?.();
+    wasRunning.current = !!o?.running;
+  }, [o?.running, onChanged]);
 
   // Follow a running sync until it finishes — the only polling here, and only while it runs.
   useEffect(() => {
@@ -195,8 +202,8 @@ export function MoodleCentre({ connectionId, courses }: { connectionId: string; 
   const start = async (kind: 'roster' | 'attendance') => {
     setMsg(null);
     try {
+      // No "started" note: the progress line shows the run, and the history shows how it ended.
       await post(`/integrations/connections/${connectionId}/${kind === 'roster' ? 'sync-roster' : 'export-attendance'}`, {});
-      setMsg({ ok: true, text: kind === 'roster' ? 'Roster sync started.' : 'Attendance write-back started.' });
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : 'Could not start the synchronisation' });
     }

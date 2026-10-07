@@ -8,6 +8,7 @@ import { CemTeamPage } from './pages/cem/CemTeamPage';
 import { PlatformHomePage, PlatformInstitutionsPage, PlatformTenantPage, PlatformOnboardingPage, PlatformBillingPage, PlatformGrantsPage, PlatformSupportSessionPage, PlatformFleetPage, PlatformAnalyticsPage } from './pages/platform/PlatformPages';
 import { GroupViewPage } from './pages/insights/GroupViewPage';
 import { LoginPage } from './pages/auth/LoginPage';
+import { MicrosoftCallbackPage } from './pages/auth/MicrosoftCallbackPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -75,6 +76,8 @@ export default function App() {
           <RouteErrorBoundary>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            {/* Sign in with Microsoft: where Microsoft sends the person back (sign-in, or a School Admin's connect). */}
+            <Route path="/auth/microsoft" element={<MicrosoftCallbackPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/accept-invite" element={<ResetPasswordPage mode="invite" />} />
