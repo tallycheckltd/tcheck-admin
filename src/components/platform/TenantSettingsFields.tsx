@@ -228,6 +228,13 @@ export function SchoolSettingsFields({ value, onChange }: { value: SchoolSetting
             checked={value.features.profileCompletionPrompt}
             onChange={(v) => onChange({ ...value, features: { ...value.features, profileCompletionPrompt: v } })}
           />
+          <ToggleRow
+            icon={IdCard}
+            title="TALI"
+            description="The school's assistant: Weekly Insights, students at risk and Ask for staff, and the students' chat in the apps. The School Admin can then turn the staff side and the student side off separately. Off means neither exists for this school."
+            checked={value.features.insights}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, insights: v } })}
+          />
         </div>
       </AccordionSection>
 

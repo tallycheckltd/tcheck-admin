@@ -1,3 +1,4 @@
+import { TaliSchoolText, type TaliAccess } from '../tali/TaliSetup';
 import { useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { UploadCloud, CalendarDays, FileDown, CheckCircle2, AlertTriangle, XCircle, Play, Trash2, ListChecks } from 'lucide-react';
@@ -42,6 +43,9 @@ export function InstitutionSetupPage() {
   const q = school && isSuperAdmin ? `?schoolId=${school.id}` : '';
   const { data: templates } = useApi<Template[]>('/setup/templates');
   const [checklistKey, setChecklistKey] = useState(0);
+  // TALI's documents are set up here, with the rest of the institution, when TALI is on and this
+  // person may manage it (a School Admin; never Super Admin, who has no access to a school's TALI).
+  const { data: tali } = useApi<TaliAccess>(!isSuperAdmin && user?.schoolId ? '/insights/access' : null);
 
   return (
     <div className="space-y-6">
@@ -61,6 +65,7 @@ export function InstitutionSetupPage() {
           {school.attendanceMode !== 'STAGE_BASED' && <CalendarStep schoolId={school.id} isSuperAdmin={isSuperAdmin} onDone={() => setChecklistKey((k) => k + 1)} />}
           <LmsImportCard schoolId={school.id} />
           <FilesStep schoolId={school.id} q={q} isSuperAdmin={isSuperAdmin} templates={templates ?? []} onDone={() => setChecklistKey((k) => k + 1)} />
+          {tali?.enabled && tali.permissions.includes('MANAGE_INSIGHT_SETTINGS') && <TaliSchoolText />}
         </>
       )}
     </div>

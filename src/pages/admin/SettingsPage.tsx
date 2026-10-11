@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Slider } from '../../components/ui/Slider';
 import { Settings, UserCheck, School as SchoolIcon } from 'lucide-react';
 import type { School } from '../../types';
+import { SwitchesCard, type TaliAccess } from '../tali/TaliSetup';
 
 const emptyForm = {
   lateThresholdMinutes: 10,
@@ -88,6 +89,10 @@ export function SettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  // TALI on/off for staff and for students: the School Admin's own switches (the platform turns
+  // TALI on for an institution first, in the tenant's settings).
+  const { data: tali } = useApi<TaliAccess>(user?.role === 'SCHOOL_ADMIN' ? '/insights/access' : null);
+
   return (
     <div className="space-y-6">
       <div>
@@ -98,6 +103,7 @@ export function SettingsPage() {
       </div>
 
       <div className="max-w-xl space-y-6">
+        {tali?.switches && <SwitchesCard initial={tali.switches} />}
         {isSuperAdmin && (
           <GlassCard>
             <div className="space-y-1">
