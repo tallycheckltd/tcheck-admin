@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
-import { Plus, Pencil, Trash2, Users, Users2, History, MapPin } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, Users2, History, MapPin, ArrowRightLeft } from 'lucide-react';
 import type { AuditEvent, Campus, Cohort, CohortMember, CohortMemberStatus, CohortMode, CohortStatus, LastChanged, Major, School, User } from '../../types';
 import { AuditTimeline, LastChangedLine } from '../../components/academics/LastChangedLine';
 
@@ -33,6 +33,7 @@ export function CohortsPage({ school }: { school?: School | null }) {
   const { data: majors } = useApi<Major[]>(schoolId ? `/academic/majors${q}` : null);
   const { data: campuses, refetch: refetchCampuses } = useApi<Campus[]>(schoolId ? `/academic/campuses${q}` : null);
   const execEdSuiteOn = !!school?.features?.execEdSuite;
+  const cohortMovesOn = !!school?.features?.cohortMoves;
   const { data: cems } = useApi<User[]>(execEdSuiteOn ? `/users?schoolId=${schoolId}&role=CLIENT_EXPERIENCE_MANAGER&status=APPROVED` : null);
   const ids = (cohorts ?? []).map((c) => c.id).join(',');
   const { data: last, refetch: refetchLast } = useApi<Record<string, LastChanged>>(ids ? `/academic/last-changed?entityType=Cohort&ids=${ids}&schoolId=${schoolId}` : null);
@@ -46,6 +47,7 @@ export function CohortsPage({ school }: { school?: School | null }) {
   const [error, setError] = useState('');
   const [membersOf, setMembersOf] = useState<Cohort | null>(null);
   const [syndicatesOf, setSyndicatesOf] = useState<Cohort | null>(null);
+  const [moveFrom, setMoveFrom] = useState<Cohort | null>(null);
   const [timelineOf, setTimelineOf] = useState<Cohort | null>(null);
   const [campusName, setCampusName] = useState('');
 
@@ -115,7 +117,7 @@ export function CohortsPage({ school }: { school?: School | null }) {
                 <tr key={c.id} className="border-b border-gray-100 dark:border-white/5 align-top">
                   <td className="py-3 px-4">
                     <p className="text-slate-950 dark:text-white font-medium">{c.name} <span className="text-xs text-slate-500">{c.year}</span></p>
-                    <p className="text-xs text-slate-500">{[c.mode ? MODE_LABEL[c.mode] : null, c.campus?.name, c.clientOrganisation, `${c._count?.members ?? 0} students`].filter(Boolean).join(' · ')}</p>
+                    <p className="text-xs text-slate-500">{[c.mode ? MODE_LABEL[c.mode] : null, c.campus?.name, c.clientOrganisation, cohortMovesOn && c.currentMembers !== undefined && c.currentMembers !== (c._count?.members ?? 0) ? `${c.currentMembers} current · ${(c._count?.members ?? 0) - c.currentMembers} completed or left` : `${c._count?.members ?? 0} students`].filter(Boolean).join(' · ')}</p>
                     <LastChangedLine value={last?.[c.id]} />
                   </td>
                   <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{c.major?.name ?? '—'}</td>
@@ -127,6 +129,7 @@ export function CohortsPage({ school }: { school?: School | null }) {
                     </td>
                   )}
                   <td className="py-3 px-4 text-right whitespace-nowrap space-x-1">
+                    {cohortMovesOn && <Button variant="secondary" size="sm" onClick={() => setMoveFrom(c)} aria-label={`Move students from ${c.name}`}><ArrowRightLeft size={14} className="mr-1" />Move</Button>}
                     <Button variant="ghost" size="sm" onClick={() => setMembersOf(c)} aria-label={`Members of ${c.name}`}><Users size={14} /></Button>
                     {execEdSuiteOn && <Button variant="ghost" size="sm" onClick={() => setSyndicatesOf(c)} aria-label={`Syndicates of ${c.name}`}><Users2 size={14} /></Button>}
                     <Button variant="ghost" size="sm" onClick={() => setTimelineOf(c)} aria-label={`History of ${c.name}`}><History size={14} /></Button>
@@ -215,6 +218,7 @@ export function CohortsPage({ school }: { school?: School | null }) {
       </Modal>
 
       <MembersModal cohort={membersOf} schoolId={schoolId} onClose={() => { setMembersOf(null); reload(); }} />
+      {cohortMovesOn && <MoveStudentsModal from={moveFrom} cohorts={cohorts ?? []} onClose={() => { setMoveFrom(null); reload(); }} />}
       <SyndicatesModal cohort={syndicatesOf} schoolId={schoolId} onClose={() => { setSyndicatesOf(null); reload(); }} />
       <TimelineModal cohort={timelineOf} schoolId={schoolId} onClose={() => setTimelineOf(null)} />
     </div>
@@ -264,6 +268,103 @@ function MembersModal({ cohort, schoolId, onClose }: { cohort: Cohort | null; sc
           ))}
           {!members?.length && <p className="text-sm text-slate-500 py-4 text-center">No students in this cohort yet.</p>}
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** The stage that usually follows: same programme, "Theory" → "Practical" in the name; else the
+ * first other (non-Theory) cohort of the same programme. Only a suggestion — any cohort can be picked. */
+function suggestTarget(from: Cohort, cohorts: Cohort[]): string {
+  const others = cohorts.filter((c) => c.id !== from.id && c.status !== 'CANCELLED' && c.status !== 'COMPLETED');
+  const next = from.name.replace(/theory/i, 'Practical');
+  const byName = next !== from.name ? others.find((c) => c.name.toLowerCase() === next.toLowerCase()) : undefined;
+  // Never suggest stepping back to a Theory cohort from a later stage.
+  const forward = /theory/i.test(from.name) ? others : others.filter((c) => !/theory/i.test(c.name));
+  return (byName ?? forward.find((c) => from.majorId && c.majorId === from.majorId) ?? forward[0])?.id ?? '';
+}
+
+/** Training schools (features.cohortMoves) — move one student or the whole group to another cohort. */
+function MoveStudentsModal({ from, cohorts, onClose }: { from: Cohort | null; cohorts: Cohort[]; onClose: () => void }) {
+  const { data: members, refetch } = useApi<CohortMember[]>(from ? `/academic/cohorts/${from.id}/members` : null);
+  const { mutate: post, loading } = useMutation('post');
+  const current = (members ?? []).filter((m) => m.status === 'ACTIVE' || m.status === 'DEFERRED');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [toId, setToId] = useState('');
+  const [mode, setMode] = useState<'MOVE' | 'ADD'>('MOVE');
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState('');
+  const [openedFor, setOpenedFor] = useState<string | null>(null);
+  // Fresh state each time the window opens (and forget the last cohort once it closes).
+  if (!from && openedFor !== null) setOpenedFor(null);
+  if (from && openedFor !== from.id) {
+    setOpenedFor(from.id); setPicked(new Set()); setToId(suggestTarget(from, cohorts)); setMode('MOVE'); setConfirming(false); setError(''); setDone('');
+  }
+  const to = cohorts.find((c) => c.id === toId);
+  const allPicked = current.length > 0 && current.every((m) => picked.has(m.userId));
+  const toggle = (id: string) => setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const n = picked.size;
+  const who = `${n} student${n === 1 ? '' : 's'}`;
+
+  const submit = async () => {
+    setError('');
+    try {
+      await post(`/academic/cohorts/${from!.id}/move`, { userIds: [...picked], toCohortId: toId, mode });
+      setDone(mode === 'MOVE' ? `${who} moved to ${to?.name}.` : `${who} also added to ${to?.name}.`);
+      setPicked(new Set()); setConfirming(false); refetch();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not move the students'); setConfirming(false); }
+  };
+
+  return (
+    <Modal open={!!from} onClose={onClose} title={from ? `Move students — ${from.name}` : 'Move students'}>
+      <div className="space-y-4">
+        {done && <p className="text-sm rounded-lg bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300 px-3 py-2">{done}</p>}
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        {confirming ? (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-800 dark:text-gray-200">
+              {mode === 'MOVE'
+                ? <>{who} move from <b>{from?.name}</b> to <b>{to?.name}</b>. From their next class they check in to {to?.name}'s classes, and {from?.name} records them as Completed.</>
+                : <>{who} {n === 1 ? 'is' : 'are'} also added to <b>{to?.name}</b> and stay in <b>{from?.name}</b>. They check in to both cohorts' classes.</>}
+              {' '}Past attendance is kept.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirming(false)}>Back</Button>
+              <Button onClick={() => void submit()} disabled={loading}>{loading ? 'Moving…' : 'Confirm'}</Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="max-h-[40vh] overflow-y-auto divide-y divide-gray-100 dark:divide-white/5 border border-gray-200 dark:border-white/10 rounded-lg">
+              <label className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-900 dark:text-white cursor-pointer">
+                <input type="checkbox" checked={allPicked} disabled={!current.length} onChange={() => setPicked(allPicked ? new Set() : new Set(current.map((m) => m.userId)))} aria-label="Select all students" />
+                Select all ({current.length})
+              </label>
+              {current.map((m) => (
+                <label key={m.userId} className="flex items-center gap-3 px-3 py-2 text-sm text-slate-800 dark:text-gray-200 cursor-pointer">
+                  <input type="checkbox" checked={picked.has(m.userId)} onChange={() => toggle(m.userId)} aria-label={`Select ${m.user.firstName} ${m.user.lastName}`} />
+                  <span className="truncate">{m.user.firstName} {m.user.lastName}{m.user.studentId ? <span className="text-xs text-slate-500"> · {m.user.studentId}</span> : null}</span>
+                </label>
+              ))}
+              {members && !current.length && <p className="text-sm text-slate-500 py-4 text-center">No current students in this cohort.</p>}
+            </div>
+            <div>
+              <label htmlFor="move-to" className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">Move to</label>
+              <select id="move-to" value={toId} onChange={(e) => setToId(e.target.value)} className={selectCls}>
+                <option value="">Pick a cohort…</option>
+                {cohorts.filter((c) => c.id !== from?.id && c.status !== 'CANCELLED').map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1 text-sm text-slate-800 dark:text-gray-200">
+              <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="move-mode" checked={mode === 'MOVE'} onChange={() => setMode('MOVE')} /> Move — they leave {from?.name}</label>
+              <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="move-mode" checked={mode === 'ADD'} onChange={() => setMode('ADD')} /> Also add — they stay in both</label>
+            </div>
+            <div className="flex justify-end">
+              <Button disabled={!n || !toId} onClick={() => setConfirming(true)}>{mode === 'MOVE' ? `Move ${who}` : `Add ${who}`}</Button>
+            </div>
+          </>
+        )}
       </div>
     </Modal>
   );

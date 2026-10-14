@@ -3,7 +3,7 @@ import type { ElementType, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '../ui/Input';
 import { Slider } from '../ui/Slider';
-import { UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer, CalendarDays, Layers, ChevronDown, ToggleRight, Server, Briefcase, Sparkles, IdCard } from 'lucide-react';
+import { UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer, CalendarDays, Layers, ChevronDown, ToggleRight, Server, Briefcase, Sparkles, IdCard, ArrowRightLeft } from 'lucide-react';
 import type { SchoolSettingsValue } from './tenantSettings';
 
 
@@ -220,6 +220,13 @@ export function SchoolSettingsFields({ value, onChange }: { value: SchoolSetting
             description="Premium onboarding: an approval email, a registration-progress percentage on each student's profile, a staff alert when they finish their profile, and programme-welcome / materials-ready templates for Client Experience Managers."
             checked={value.features.onboardingJourney}
             onChange={(v) => onChange({ ...value, features: { ...value.features, onboardingJourney: v } })}
+          />
+          <ToggleRow
+            icon={ArrowRightLeft}
+            title="Move Students Between Cohorts"
+            description="For training schools with monthly intakes and stages (e.g. Theory → Practical). Adds a Move button to Academics → Cohorts: the School Admin picks one student or the whole group and moves them to another cohort in one step — enrolled in the new cohort's courses, the old cohort marked Completed, past attendance kept."
+            checked={value.features.cohortMoves}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, cohortMoves: v } })}
           />
           <ToggleRow
             icon={IdCard}

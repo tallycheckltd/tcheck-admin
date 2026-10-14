@@ -82,6 +82,8 @@ export interface SchoolFeatures {
    * are asked once after baseline capture. Off stops asking students who haven't answered yet;
    * already-answered students are untouched. */
   profileCompletionPrompt?: boolean;
+  /** Opt-in (training schools) — the "Move students" action on Academics → Cohorts. */
+  cohortMoves?: boolean;
 }
 
 export type AttendanceMode = 'CALENDAR_BASED' | 'STAGE_BASED';
@@ -222,6 +224,8 @@ export interface Cohort {
   /** P5 (A4) — intake structure. */
   majorId?: string | null;
   major?: { id: string; name: string; code: string } | null;
+  /** Active + deferred members (the list endpoint); `_count.members` counts every membership ever. */
+  currentMembers?: number;
   campusId?: string | null;
   campus?: { id: string; name: string } | null;
   startDate?: string | null;

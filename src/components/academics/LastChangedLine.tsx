@@ -11,7 +11,7 @@ export function LastChangedLine({ value }: { value?: LastChanged | null }) {
 const ACTION_LABEL: Record<string, string> = {
   'cohort.created': 'Cohort created', 'cohort.updated': 'Details changed', 'cohort.started': 'Cohort started', 'cohort.completed': 'Cohort completed',
   'cohort.cancelled': 'Cohort cancelled', 'cohort.deleted': 'Cohort deleted', 'cohort.cemAssigned': 'CEM assigned', 'cohort.cemUnassigned': 'CEM unassigned',
-  'cohortMember.added': 'Student added', 'cohortMember.removed': 'Student removed', 'cohortMember.deferred': 'Student deferred', 'cohortMember.statusChanged': 'Student status changed',
+  'cohortMember.added': 'Student added', 'cohortMember.removed': 'Student removed', 'cohortMember.deferred': 'Student deferred', 'cohortMember.statusChanged': 'Student status changed', 'cohortMember.moved': 'Student moved',
 };
 
 /** P5 (D-11.9) — the audit timeline, newest first (ids only; names resolved server-side at read time). */
