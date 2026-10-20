@@ -62,6 +62,7 @@ import { EscalationsPage } from './pages/admin/EscalationsPage';
 import { FacilitiesQueuePage } from './pages/admin/FacilitiesQueuePage';
 import { PeopleOrganizationPage } from './pages/admin/PeopleOrganizationPage';
 import { IntegrationsPage } from './pages/admin/IntegrationsPage';
+import { TaliPage } from './pages/tali/TaliPage';
 import { StaffViewPage } from './pages/admin/StaffViewPage';
 import { CemReportsPage } from './pages/admin/CemReportsPage';
 import { AdminProgramDetailPage } from './pages/admin/AdminProgramDetailPage';
@@ -116,6 +117,8 @@ export default function App() {
               <Route path="/admin/nps-analytics" element={<NpsAnalyticsPage />} />
               {/* SBS Phase 5 — role-scoped server-side; not under /feedback/* (that's the public deep-link redirect). */}
               <Route path="/insights" element={<InsightsPage />} />
+              {/* TALI — the school's assistant; what shows is decided by /insights/access. */}
+              <Route path="/tali" element={<TaliPage />} />
               <Route path="/insights/feedback" element={<LegacyInsightsRedirect tab="feedback" />} />
               {/* SBS Phase 6 — Reports & Executive Intelligence (role-scoped server-side). */}
               <Route path="/insights/reports" element={<LegacyInsightsRedirect tab="overview" />} />

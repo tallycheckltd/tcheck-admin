@@ -11,6 +11,7 @@ export const defaultFeatures: Required<SchoolFeatures> = {
   execEdSuite: false,
   onboardingJourney: false,
   profileCompletionPrompt: true,
+  insights: false,
   cohortMoves: false,
 };
 

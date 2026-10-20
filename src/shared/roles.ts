@@ -55,6 +55,9 @@ export type CapabilityPosture = 'bypass' | 'roleOnly' | 'admin' | 'legacy' | 'st
 export type ScopePosture = 'platform' | 'tenant' | 'orgUnit' | 'courses' | 'cohorts' | 'team' | 'infra' | 'self';
 
 /** Which dashboard nav set the role gets (the item lists live in Sidebar.tsx; which role gets which set lives here). */
+/** TALI (doc A3) — the five TALI permissions. */
+export type TaliPermissionName = 'VIEW_WEEKLY_INSIGHTS' | 'VIEW_STUDENT_FLAGS' | 'ACT_ON_INSIGHTS' | 'USE_TALI' | 'MANAGE_INSIGHT_SETTINGS';
+
 export type NavSet = 'superAdmin' | 'admin' | 'executive' | 'hierarchyOps' | 'registrar' | 'ict' | 'cem' | 'cemManager' | 'lecturer' | 'staff' | 'invigilator' | 'none';
 
 export interface RoleDefinition {
@@ -84,7 +87,18 @@ export interface RoleDefinition {
   mobile: boolean;
   homeRoute: string;
   nav: NavSet;
+  /**
+   * TALI (doc A3, B3-1) — the TALI permissions the role holds by default; a School Admin can grant
+   * more through a custom role or direct grant. Absent = TALI is closed to the role whatever it is
+   * granted: Super Admin (watchtower only, R1), lecturers, students, ICT, and the course/cohort-
+   * scoped roles (CEM, CEM Manager, Staff) until TALI can scope to cohorts. `[]` = open, grants only.
+   */
+  tali?: readonly TaliPermissionName[];
 }
+
+const TALI_ALL: readonly TaliPermissionName[] = ['VIEW_WEEKLY_INSIGHTS', 'VIEW_STUDENT_FLAGS', 'ACT_ON_INSIGHTS', 'USE_TALI', 'MANAGE_INSIGHT_SETTINGS'];
+const TALI_LEADER: readonly TaliPermissionName[] = ['VIEW_WEEKLY_INSIGHTS', 'VIEW_STUDENT_FLAGS', 'ACT_ON_INSIGHTS', 'USE_TALI'];
+const TALI_OVERVIEW: readonly TaliPermissionName[] = ['VIEW_WEEKLY_INSIGHTS', 'USE_TALI'];
 
 export const ROLE_TABLE: Record<RoleName, RoleDefinition> = {
   SUPER_ADMIN: {
@@ -95,43 +109,43 @@ export const ROLE_TABLE: Record<RoleName, RoleDefinition> = {
   SCHOOL_ADMIN: {
     label: 'School Admin', tier: 'INSTITUTION_ADMIN', capability: 'admin', scope: 'tenant',
     orgScoped: false, hierarchy: false, schoolFloor: true, scopeLevel: 'TENANT',
-    requiresOrgUnit: false, canHoldCustomRole: false, switchable: false, dashboard: true, mobile: true, homeRoute: '/admin', nav: 'admin',
+    requiresOrgUnit: false, canHoldCustomRole: false, switchable: false, dashboard: true, mobile: true, homeRoute: '/admin', nav: 'admin', tali: TALI_ALL,
   },
   VC: {
     label: 'Vice Chancellor', tier: 'ACADEMIC_HIERARCHY', capability: 'roleOnly', scope: 'tenant',
     orgScoped: true, hierarchy: true, schoolFloor: true, rank: 100, scopeLevel: 'TENANT',
-    requiresOrgUnit: false, canHoldCustomRole: true, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'executive',
+    requiresOrgUnit: false, canHoldCustomRole: true, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'executive', tali: TALI_OVERVIEW,
   },
   DVC: {
     label: 'Deputy Vice Chancellor', tier: 'ACADEMIC_HIERARCHY', capability: 'roleOnly', scope: 'orgUnit',
     orgScoped: true, hierarchy: true, schoolFloor: true, rank: 90, scopeLevel: 'DIVISION', orgUnitLevel: 'DIVISION',
-    requiresOrgUnit: true, canHoldCustomRole: true, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'executive',
+    requiresOrgUnit: true, canHoldCustomRole: true, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'executive', tali: TALI_OVERVIEW,
   },
   REGISTRAR_ACADEMIC: {
     label: 'Registrar (Academic)', tier: 'ACADEMIC_HIERARCHY', capability: 'roleOnly', scope: 'tenant',
     orgScoped: true, hierarchy: true, schoolFloor: true, rank: 80, scopeLevel: 'TENANT',
-    requiresOrgUnit: false, canHoldCustomRole: false, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'registrar',
+    requiresOrgUnit: false, canHoldCustomRole: false, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'registrar', tali: TALI_LEADER,
   },
   REGISTRAR_ADMIN: {
     label: 'Registrar (Administration)', tier: 'ACADEMIC_HIERARCHY', capability: 'roleOnly', scope: 'tenant',
     orgScoped: true, hierarchy: true, schoolFloor: true, rank: 80, scopeLevel: 'TENANT',
-    requiresOrgUnit: false, canHoldCustomRole: false, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'registrar',
+    requiresOrgUnit: false, canHoldCustomRole: false, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'registrar', tali: TALI_OVERVIEW,
   },
   DEAN: {
     label: 'Dean', tier: 'ACADEMIC_HIERARCHY', capability: 'roleOnly', scope: 'orgUnit',
     orgScoped: true, hierarchy: true, schoolFloor: true, rank: 70, scopeLevel: 'FACULTY', orgUnitLevel: 'FACULTY',
-    requiresOrgUnit: true, canHoldCustomRole: true, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'hierarchyOps',
+    requiresOrgUnit: true, canHoldCustomRole: true, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'hierarchyOps', tali: TALI_LEADER,
   },
   HOD: {
     label: 'Head of Department', tier: 'ACADEMIC_HIERARCHY', capability: 'roleOnly', scope: 'orgUnit',
     orgScoped: true, hierarchy: true, schoolFloor: true, rank: 60, scopeLevel: 'DEPARTMENT', orgUnitLevel: 'DEPARTMENT',
-    requiresOrgUnit: true, canHoldCustomRole: true, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'hierarchyOps',
+    requiresOrgUnit: true, canHoldCustomRole: true, switchable: true, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'hierarchyOps', tali: TALI_LEADER,
   },
   DEPUTY_HOD: {
     // May be created unassigned and placed later (the one leadership role not unit-required).
     label: 'Deputy HOD', tier: 'ACADEMIC_HIERARCHY', capability: 'roleOnly', scope: 'orgUnit',
     orgScoped: true, hierarchy: true, schoolFloor: true, rank: 50, scopeLevel: 'SUB_DEPARTMENT', orgUnitLevel: 'SUB_DEPARTMENT',
-    requiresOrgUnit: false, canHoldCustomRole: false, switchable: false, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'hierarchyOps',
+    requiresOrgUnit: false, canHoldCustomRole: false, switchable: false, dashboard: true, mobile: false, homeRoute: '/admin', nav: 'hierarchyOps', tali: [],
   },
   ICT_ADMIN: {
     label: 'ICT Admin', tier: 'INFRASTRUCTURE', capability: 'roleOnly', scope: 'infra',
@@ -193,6 +207,8 @@ export const UNIT_BOUND_ROLES = where((d) => d.requiresOrgUnit);
 export const CUSTOM_ROLE_HOLDERS = where((d) => d.canHoldCustomRole);
 /** Leadership accounts that may hold grants (a CustomRole or MANAGE_COURSES). */
 export const HIERARCHY_GRANT_ROLES = where((d) => d.hierarchy && d.canHoldCustomRole);
+/** TALI (doc A3) — roles TALI is open to (defaults and/or grants). */
+export const TALI_ROLES = where((d) => d.tali !== undefined);
 export const SCHOOL_ADMIN_TIER = where((d) => d.tier === 'INSTITUTION_ADMIN');
 export const ROLE_RANK: Partial<Record<RoleName, number>> = Object.fromEntries(ALL_ROLES.filter((r) => ROLE_TABLE[r].rank !== undefined).map((r) => [r, ROLE_TABLE[r].rank]));
 export const ROLE_LABEL = Object.fromEntries(ALL_ROLES.map((r) => [r, ROLE_TABLE[r].label])) as Record<RoleName, string>;

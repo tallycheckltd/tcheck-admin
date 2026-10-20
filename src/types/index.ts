@@ -82,6 +82,8 @@ export interface SchoolFeatures {
    * are asked once after baseline capture. Off stops asking students who haven't answered yet;
    * already-answered students are untouched. */
   profileCompletionPrompt?: boolean;
+  /** TALI on for the school (platform only); the School Admin then switches staff / student TALI. */
+  insights?: boolean;
   /** Opt-in (training schools) — the "Move students" action on Academics → Cohorts. */
   cohortMoves?: boolean;
 }

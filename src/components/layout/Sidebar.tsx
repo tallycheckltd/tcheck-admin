@@ -462,6 +462,14 @@ export function Sidebar({
   );
   const pendingApprovals = dashboardStats?.pendingApprovals || 0;
 
+  // TALI — in the Overview group, under Dashboard. Shown only where /insights/access says so: TALI on for the school, staff TALI on, and a
+  // TALI permission for this role (a School Admin also sees it while staff TALI is off, to turn it
+  // back on). Never for Super Admin or students.
+  const { data: taliAccess } = useApi<{ enabled: boolean; switches?: unknown }>(
+    user?.schoolId && !isSuperAdmin && user.role !== 'STUDENT' ? '/insights/access' : null,
+  );
+  const taliLinks: NavItem[] = taliAccess?.enabled || taliAccess?.switches ? [{ to: '/tali', icon: Sparkles, label: 'TALI' }] : [];
+
   // Open-tickets badge on Support — shown for both admin roles.
   const { data: ticketsData, refetch: refetchTickets } = useApi<Ticket[]>(
     isAdmin ? '/tickets?status=OPEN' : null,
@@ -641,7 +649,7 @@ export function Sidebar({
         )}
         {isAdmin && !isSuperAdmin && (
           <>
-            <NavSection title="Overview" links={hodOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Overview" links={[...hodOverview, ...taliLinks]} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Administration" links={filterBySchoolConfig(addPendingBadge(hodAdmin))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Operations" links={filterBySchoolConfig(addFacilitiesBadge(addEscalationBadge(hodOperations)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(hodGeneral))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
@@ -649,14 +657,14 @@ export function Sidebar({
         )}
         {isExecutive && (
           <>
-            <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Overview" links={[...hierarchyOverview, ...taliLinks]} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Operations" links={filterBySchoolConfig(execOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="General" links={execGeneral} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
         {isHierarchyOps && (
           <>
-            <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Overview" links={[...hierarchyOverview, ...taliLinks]} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection
               title="Administration"
               links={filterBySchoolConfig(user?.role === 'DEPUTY_HOD' ? hierarchyAdmin.filter((l) => l.label === 'Users') : hierarchyAdmin)}
@@ -680,7 +688,7 @@ export function Sidebar({
         )}
         {isRegistrar && (
           <>
-            <NavSection title="Overview" links={hierarchyOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
+            <NavSection title="Overview" links={[...hierarchyOverview, ...taliLinks]} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="Administration" links={filterBySchoolConfig(registrarAdmin)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
             <NavSection title="General" links={filterBySchoolConfig(registrarGeneral)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
