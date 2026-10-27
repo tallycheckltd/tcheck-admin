@@ -149,7 +149,7 @@ export function SwitchesCard({ initial, onChange }: { initial: { staff: boolean;
     <GlassCard>
       <h2 className="font-semibold text-slate-950 dark:text-white">TALI for your institution</h2>
       <div className="divide-y divide-gray-100 dark:divide-white/5">
-        {row('staff', <Users size={18} className="text-blue-500 mt-0.5" />, 'Staff TALI', 'This tab for the roles allowed it: the weekly briefing, students at risk and Ask. Off hides it for everyone; nightly scoring and briefing emails stop.')}
+        {row('staff', <Users size={18} className="text-blue-500 mt-0.5" />, 'Staff TALI', 'This tab for the roles allowed it: Ask, and what students ask TALI about. Off hides it for everyone. Students at risk are on Follow-ups.')}
         {row('student', <MessageSquareText size={18} className="text-blue-500 mt-0.5" />, 'Student TALI', 'The TALI chat in the student app. Students only ever see their own classes and attendance, and answers about campus come only from your documents. Off removes the chat for every student.')}
       </div>
       {msg && <p role="status" className={clsx('text-xs mt-2', muted)}>{msg}</p>}

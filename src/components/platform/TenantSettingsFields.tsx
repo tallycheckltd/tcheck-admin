@@ -3,7 +3,7 @@ import type { ElementType, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '../ui/Input';
 import { Slider } from '../ui/Slider';
-import { UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer, CalendarDays, Layers, ChevronDown, ToggleRight, Server, Briefcase, Sparkles, IdCard, ArrowRightLeft } from 'lucide-react';
+import { UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer, CalendarDays, Layers, ChevronDown, ToggleRight, Server, Briefcase, Sparkles, IdCard, ArrowRightLeft, CalendarClock } from 'lucide-react';
 import type { SchoolSettingsValue } from './tenantSettings';
 
 
@@ -227,6 +227,13 @@ export function SchoolSettingsFields({ value, onChange }: { value: SchoolSetting
             description="For training schools with monthly intakes and stages (e.g. Theory → Practical). Adds a Move button to Academics → Cohorts: the School Admin picks one student or the whole group and moves them to another cohort in one step — enrolled in the new cohort's courses, the old cohort marked Completed, past attendance kept."
             checked={value.features.cohortMoves}
             onChange={(v) => onChange({ ...value, features: { ...value.features, cohortMoves: v } })}
+          />
+          <ToggleRow
+            icon={CalendarClock}
+            title="Cancel, Move & Switch Classes Online"
+            description="Adds a Change button on Classes: whoever edits classes cancels a class (kept on record, nobody can check in, left out of attendance), moves it to a free room or time (it takes the new room's beacon), or switches it online. Lecturers do the same on their own classes, no approval needed (their HOD is told). Students are told, and every change is listed on Class changes. Students need the newest app to see Cancelled/Moved; older apps simply don't show a cancelled class."
+            checked={value.features.classChanges}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, classChanges: v } })}
           />
           <ToggleRow
             icon={IdCard}

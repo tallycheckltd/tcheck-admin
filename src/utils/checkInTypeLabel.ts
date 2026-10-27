@@ -11,6 +11,7 @@ const LABELS: Record<CheckInType, string> = {
   QR: 'QR',
   MANUAL: 'Manual',
   ONLINE: 'Online',
+  CORRECTION: 'Corrected',
 };
 
 /** Short form for table headers/compact badges where the full label doesn't fit — same rule. */
@@ -19,6 +20,7 @@ const SHORT_LABELS: Record<CheckInType, string> = {
   QR: 'QR',
   MANUAL: 'Manual',
   ONLINE: 'Online',
+  CORRECTION: 'Corrected',
 };
 
 export function formatCheckInType(type: CheckInType | string): string {

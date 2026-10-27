@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { Modal } from '../../components/ui/Modal';
 import type { School, Course, Major, Cohort, ManagedBroadcast, ManagedBroadcastDetail, BroadcastManageTab, ComposeAudiences } from '../../types';
+import { WriteWithTali } from '../../components/agent/WriteWithTali';
 
 type Channel = 'IN_APP' | 'EMAIL';
 type Severity = 'INFO' | 'WARNING' | 'CRITICAL';
@@ -207,6 +208,8 @@ export function SystemAnnouncementsPage({ embedded = false, presetCohortId = '' 
   const [confirm, setConfirm] = useState<{ action: Action; count: number | null } | null>(null);
   const [withdrawTarget, setWithdrawTarget] = useState<ManagedBroadcast | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
+  /** F1/F7: a TALI-drafted announcement to many people needs a second "yes" (CONFIRM_LARGE_SEND). */
+  const [large, setLarge] = useState<{ id: string; message: string } | null>(null);
   const { data: history } = useApi<ManagedBroadcastDetail>(historyFor ? `/broadcasts/${historyFor}/manage` : null);
 
   // Super Admin picks a school and lists that school's audiences; everyone else gets exactly what
@@ -302,6 +305,7 @@ export function SystemAnnouncementsPage({ embedded = false, presetCohortId = '' 
       refetch();
     } catch (e) {
       setConfirm(null);
+      if ((e as { code?: string }).code === 'CONFIRM_LARGE_SEND' && d.id) { setLarge({ id: d.id, message: (e as Error).message }); refetch(); return; }
       setError(e instanceof Error ? e.message : 'Failed to save the announcement');
     } finally {
       setBusy(false);
@@ -330,8 +334,39 @@ export function SystemAnnouncementsPage({ embedded = false, presetCohortId = '' 
       setTab('PUBLISHED');
       refetch();
     } catch (e) {
+      if ((e as { code?: string }).code === 'CONFIRM_LARGE_SEND') { setLarge({ id: a.id, message: (e as Error).message }); return; }
       setError(e instanceof Error ? e.message : 'Failed to publish');
     } finally { setBusy(false); }
+  };
+
+  /** The second "yes" for a large TALI-drafted send. */
+  const sendLarge = async () => {
+    if (!large) return;
+    setBusy(true);
+    try {
+      await api.post(`/broadcasts/${large.id}/publish`, { confirmLarge: true }, { 'Idempotency-Key': newKey() });
+      if (d.id === large.id) reset();
+      setLarge(null);
+      flash('Published — delivering now.');
+      setTab('PUBLISHED');
+      refetch();
+    } catch (e) {
+      setLarge(null);
+      setError(e instanceof Error ? e.message : 'Failed to publish');
+    } finally { setBusy(false); }
+  };
+
+  /** F1: TALI saved a draft — open it in the form below, on the Drafts tab. */
+  const openDrafted = async (id: string) => {
+    try {
+      const r = await api.get<{ announcement: ManagedBroadcast | null }>(`/broadcasts/${id}/manage`);
+      setTab('DRAFT');
+      refetch();
+      if (r.announcement) startEdit(r.announcement);
+      flash('TALI drafted it. Check the wording and audience below, then send or schedule it.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open the draft');
+    }
   };
 
   const withdraw = async () => {
@@ -372,6 +407,7 @@ export function SystemAnnouncementsPage({ embedded = false, presetCohortId = '' 
                       <div className="flex items-center gap-x-3 gap-y-1 mt-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
                         <span>{audienceLabel(a)}</span>
                         <span>· by {a.createdByName}</span>
+                        {a.source === 'TALI_COMPOSER' && <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">· Drafted with TALI</span>}
                         {a.status === 'SCHEDULED' && a.scheduledFor && <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400"><CalendarClock size={11} /> Publishes {fmt(a.scheduledFor)}</span>}
                         {a.status === 'DRAFT' && <span className="flex items-center gap-1"><Clock size={10} /> Saved {fmt(a.updatedAt)}</span>}
                         {a.publishedAt && a.status !== 'DRAFT' && a.status !== 'SCHEDULED' && <span className="flex items-center gap-1"><Clock size={10} /> Published {fmt(a.publishedAt)}</span>}
@@ -434,6 +470,19 @@ export function SystemAnnouncementsPage({ embedded = false, presetCohortId = '' 
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             Write, schedule and publish announcements to a school, department, programme, faculty or cohort. The audience is fixed when an announcement is published.
           </p>
+        </div>
+      )}
+
+      {/* Action Engine F1 — describe it, TALI drafts it, it opens in the form below. */}
+      {!isSuperAdmin && <WriteWithTali onDrafted={(id) => void openDrafted(id)} />}
+
+      {large && (
+        <div role="alert" className="glass-card p-4 flex items-center justify-between gap-3 flex-wrap border-l-4 border-amber-500">
+          <p className="text-sm text-slate-950 dark:text-white">{large.message}</p>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setLarge(null)} className="px-3 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer">Not now</button>
+            <button onClick={() => void sendLarge()} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 cursor-pointer">Send anyway</button>
+          </div>
         </div>
       )}
 

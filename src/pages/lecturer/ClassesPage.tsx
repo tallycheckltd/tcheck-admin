@@ -8,7 +8,8 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Slider } from '../../components/ui/Slider';
 import { Badge } from '../../components/ui/Badge';
-import { Plus, Radio, Eye, Trash2 } from 'lucide-react';
+import { Plus, Radio, Eye, Trash2, CalendarClock } from 'lucide-react';
+import { ClassChangeModal } from '../../components/classes/ClassChangeModal';
 import type { ClassSession, Course } from '../../types';
 import { getClassTimeStatus } from '../../utils/classTimeStatus';
 import { formatClassCalendarDate, formatClassTimeLocal, localCalendarYmd } from '../../utils/classDateDisplay';
@@ -48,6 +49,11 @@ export function ClassesPage() {
   // SBS Phase 4 — check-out window + multi-day quick create are Exec-Ed-only in the UI (user
   // decision); every other school's form is unchanged.
   const isExecEd = !!user?.school?.features?.execEdSuite;
+  // F4: cancel / move / online where the school has it on — editors, and a lecturer on their own classes.
+  const classChangesOn = !!user?.school?.features?.classChanges;
+  const [changing, setChanging] = useState<ClassSession | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+  const canChange = (cls: ClassSession) => classChangesOn && (canManage || (user?.role === 'LECTURER' && cls.course?.lecturerId === user?.id));
   const [creating, setCreating] = useState(false);
 
   const [modal, setModal] = useState(false);
@@ -193,6 +199,8 @@ export function ClassesPage() {
         });
         // P1: the class takes its room's beacons; the server says when there are none to take.
         for (const w of (created as (ClassSession & { beaconWarnings?: string[] }) | undefined)?.beaconWarnings ?? []) beaconWarnings.add(w);
+        // The room is taken then: another class, or a student's TALI booking (by its code).
+        for (const w of (created as (ClassSession & { roomWarnings?: string[] }) | undefined)?.roomWarnings ?? []) beaconWarnings.add(w);
       } catch (e) {
         if (dates.length === 1) { setCreating(false); throw e; }
         failures.push(`${dateStr}: ${e instanceof Error ? e.message : 'failed'}`);
@@ -246,6 +254,15 @@ export function ClassesPage() {
         {canManage && <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Class</Button>}
       </div>
 
+      {flash && (
+        <div role="status" className="glass-card p-3 text-sm text-slate-800 dark:text-slate-200 flex justify-between gap-3">
+          <span>{flash}</span>
+          <button onClick={() => setFlash(null)} className="text-slate-500 cursor-pointer" aria-label="Dismiss">×</button>
+        </div>
+      )}
+      <ClassChangeModal cls={changing} asLecturer={!canManage} onClose={() => setChanging(null)}
+        onDone={(m) => { setChanging(null); setFlash(m); void refetch({ silent: true }); }} />
+
       {!selectedCourseId ? (
         /* Level 1: course grid */
         <CourseDrilldown
@@ -280,10 +297,14 @@ export function ClassesPage() {
                 <td>
                   {formatClassTimeLocal(cls.startTime)} – {formatClassTimeLocal(cls.endTime)}
                 </td>
-                <td>{cls.room || '-'}</td>
+                <td>
+                  {cls.isOnline ? 'Online' : cls.room || '-'}
+                  {cls.movedAt && !cls.cancelledAt && <span className="ml-1.5"><Badge color="yellow">Moved</Badge></span>}
+                </td>
                 <td className="font-medium">{cls._count?.attendances || 0}</td>
                 <td>
                   {(() => {
+                    if (cls.cancelledAt) return <span title={cls.cancelReason ?? undefined}><Badge color="red">Cancelled</Badge></span>;
                     const t = getClassTimeStatus(cls.startTime, cls.endTime);
                     const live = t === 'live';
                     return (
@@ -301,6 +322,11 @@ export function ClassesPage() {
                     <button onClick={() => navigate(`/attendance/${cls.id}`)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer" title="View Attendance">
                       <Eye size={15} className="text-slate-600" />
                     </button>
+                    {canChange(cls) && (
+                      <button onClick={() => setChanging(cls)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer" title="Cancel, move or switch online" aria-label="Change class">
+                        <CalendarClock size={15} className="text-blue-500" />
+                      </button>
+                    )}
                     {canManage && (
                       <button onClick={() => deleteClass(cls.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer" title="Delete">
                         <Trash2 size={15} className="text-red-400" />

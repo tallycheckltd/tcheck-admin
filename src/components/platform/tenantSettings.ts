@@ -13,6 +13,7 @@ export const defaultFeatures: Required<SchoolFeatures> = {
   profileCompletionPrompt: true,
   insights: false,
   cohortMoves: false,
+  classChanges: false,
 };
 
 export interface SchoolSettingsValue {

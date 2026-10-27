@@ -2,7 +2,7 @@ import { Badge } from '../ui/Badge';
 
 /** P11 — renders the aggregation layer's allow-listed metrics (numbers + group labels only). */
 export interface Row { label: string; value: number | null; n: number | null; status: 'ok' | 'insufficient_data' }
-export interface Metric { key: string; tier: 'T0' | 'T1' | 'T2'; label: string; unit: string; value: number | null; n: number | null; status: 'ok' | 'insufficient_data'; breakdown?: Row[] }
+export interface Metric { key: string; tier: 'T0' | 'T1' | 'T2' | 'T3'; label: string; unit: string; value: number | null; n: number | null; status: 'ok' | 'insufficient_data'; breakdown?: Row[] }
 
 export const fmt = (v: number | null, unit: string) => (v === null ? '—' : unit === 'percent' ? `${v}%` : unit === 'seconds' ? `${v}s` : String(v));
 

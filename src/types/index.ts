@@ -6,6 +6,8 @@ export type Role = RoleName;
  * regardless of which surface (mobile or dashboard) the holder is on. */
 export type Permission =
   | 'MOBILE_ACCESS' | 'DASHBOARD_ACCESS'
+  // Action Engine and Follow-ups (2026-10-21).
+  | 'USE_TALI_ACTIONS' | 'WORK_FOLLOW_UPS' | 'ASSIGN_FOLLOW_UPS' | 'VIEW_SENSITIVE_NOTES'
   | 'MANAGE_USERS' | 'MANAGE_SCHOOL_SETTINGS' | 'MANAGE_COURSES' | 'MANAGE_ANNOUNCEMENTS' | 'VIEW_ANALYTICS' | 'MANAGE_TICKETS'
   | 'VIEW_BIRTHDAYS' | 'VIEW_BLE_CHECKINS' | 'VIEW_MANUAL_CHECKINS' | 'MANUAL_CHECK_IN' | 'MESSAGING'
   | 'BROADCAST_STUDENTS_APPROVED' | 'BROADCAST_CLASS_SCHEDULE'
@@ -67,7 +69,8 @@ export interface OrgUnit {
   _count?: { children: number; users: number };
 }
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEACTIVATED' | 'DELETED';
-export type CheckInType = 'BLE' | 'QR' | 'MANUAL' | 'ONLINE';
+/** CORRECTION (F5): added by staff after the class, never a real check-in. */
+export type CheckInType = 'BLE' | 'QR' | 'MANUAL' | 'ONLINE' | 'CORRECTION';
 
 export interface SchoolFeatures {
   anonymousChat?: boolean;
@@ -86,6 +89,8 @@ export interface SchoolFeatures {
   insights?: boolean;
   /** Opt-in (training schools) — the "Move students" action on Academics → Cohorts. */
   cohortMoves?: boolean;
+  /** Opt-in (F4) — cancel / move / switch-online on Classes (editors and the class's lecturer), listed on Class changes. */
+  classChanges?: boolean;
 }
 
 export type AttendanceMode = 'CALENDAR_BASED' | 'STAGE_BASED';
@@ -492,6 +497,13 @@ export interface ClassSession {
   extremelyLateThresholdMinutes?: number | null;
   isActive: boolean;
   isOnline?: boolean;
+  classroomId?: string | null;
+  /** F4 — cancelled, kept on record (isActive false). */
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
+  /** F4 — the last move, and where/when it was before. */
+  movedAt?: string | null;
+  movedFrom?: { startTime: string; endTime: string; room: string | null; classroomId: string | null } | null;
   _count?: { attendances: number };
   attendances?: AttendanceRecord[];
 }
@@ -660,6 +672,8 @@ export type BroadcastStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'WITHDRAWN';
 export type BroadcastManageTab = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'ENDED';
 export interface ManagedBroadcast {
   id: string;
+  /** F1: MANUAL, or TALI_COMPOSER when "Write with TALI" drafted it. */
+  source?: string;
   title: string;
   body: string;
   severity: 'INFO' | 'WARNING' | 'CRITICAL';

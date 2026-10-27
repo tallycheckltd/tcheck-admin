@@ -8,7 +8,7 @@ import type { NavSet, RoleName } from '../../shared/roles';
 import { ROLE_TABLE } from '../../shared/roles';
 import type { Permission } from '../../types';
 
-export type IconName = 'ShieldCheck' | 'BarChart3' | 'Battery' | 'BookOpen' | 'Calendar' | 'ClipboardList' | 'DoorOpen' | 'Eye' | 'FileBarChart' | 'FileText' | 'GraduationCap' | 'Layers' | 'LayoutDashboard' | 'LifeBuoy' | 'Link2' | 'MailCheck' | 'Megaphone' | 'MessageSquare' | 'MessageSquareQuote' | 'Network' | 'Plug' | 'Presentation' | 'Radar' | 'Radio' | 'ScanEye' | 'School' | 'Settings' | 'ShieldAlert' | 'Siren' | 'Smartphone' | 'Sparkles' | 'Star' | 'Tags' | 'UploadCloud' | 'UserCheck' | 'Users' | 'Users2' | 'Wrench';
+export type IconName = 'ShieldCheck' | 'BarChart3' | 'Battery' | 'BookOpen' | 'Calendar' | 'CalendarClock' | 'ClipboardList' | 'DoorOpen' | 'Eye' | 'FileBarChart' | 'FileText' | 'GraduationCap' | 'Layers' | 'LayoutDashboard' | 'LifeBuoy' | 'Link2' | 'MailCheck' | 'Megaphone' | 'MessageSquare' | 'MessageSquareQuote' | 'Network' | 'Plug' | 'Presentation' | 'Radar' | 'Radio' | 'ScanEye' | 'School' | 'Settings' | 'ShieldAlert' | 'Siren' | 'Smartphone' | 'Sparkles' | 'Star' | 'Tags' | 'UploadCloud' | 'UserCheck' | 'Users' | 'Users2' | 'Wrench';
 
 export interface NavLinkDef {
   to: string;
@@ -63,6 +63,8 @@ export const hodAdmin: NavLinkDef[] = [
 export const hodOperations: NavLinkDef[] = [
   { to: '/courses', icon: 'BookOpen', label: 'All Courses' },
   { to: '/classes', icon: 'Calendar', label: 'Classes' },
+  // F4 (10-22) — the record of classes cancelled, moved or switched online (hidden unless School.features.classChanges, Sidebar.tsx).
+  { to: '/class-changes', icon: 'CalendarClock', label: 'Class changes' },
   {
     to: '/admin/attendance',
     icon: 'ClipboardList',
@@ -75,6 +77,7 @@ export const hodOperations: NavLinkDef[] = [
   },
   { to: '/admin/fraud-detection', icon: 'ShieldAlert', label: 'Fraud Detection' },
   { to: '/admin/escalations', icon: 'Siren', label: 'Escalations' },
+  { to: '/follow-ups', icon: 'LifeBuoy', label: 'Follow-ups' },
   { to: '/admin/facilities', icon: 'Wrench', label: 'Facilities' },
   { to: '/live', icon: 'Radio', label: 'Live Attendance' },
   { to: '/admin/lecturer-presence', icon: 'UserCheck', label: 'Lecturer Presence' },
@@ -108,6 +111,8 @@ export const lecturerLinks: NavLinkDef[] = [
   { to: '/lecturer', icon: 'LayoutDashboard', label: 'Dashboard' },
   { to: '/courses', icon: 'BookOpen', label: 'Courses' },
   { to: '/classes', icon: 'Calendar', label: 'Classes' },
+  // F4 (10-22) — the record of classes cancelled, moved or switched online (hidden unless School.features.classChanges, Sidebar.tsx).
+  { to: '/class-changes', icon: 'CalendarClock', label: 'Class changes' },
   // FIXED: program.routes.ts's GET /programs already permits LECTURER — this nav entry was
   // missing, so a lecturer could never reach the page the backend already lets them read.
   { to: '/admin/programs', icon: 'Layers', label: 'Training pipelines' },
@@ -125,6 +130,7 @@ export const lecturerLinks: NavLinkDef[] = [
 
 export const cxmLinks: NavLinkDef[] = [
   { to: '/cem', icon: 'Layers', label: 'Programmes' },
+  { to: '/follow-ups', icon: 'LifeBuoy', label: 'Follow-ups' },
   { to: '/cem/facilities', icon: 'Wrench', label: 'Facilities' },
   { to: '/insights', icon: 'Presentation', label: 'Insights' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
@@ -154,6 +160,8 @@ export const hierarchyAdmin: NavLinkDef[] = [
 export const hierarchyOperations: NavLinkDef[] = [
   { to: '/courses', icon: 'BookOpen', label: 'All Courses' },
   { to: '/classes', icon: 'Calendar', label: 'Classes' },
+  // F4 (10-22) — the record of classes cancelled, moved or switched online (hidden unless School.features.classChanges, Sidebar.tsx).
+  { to: '/class-changes', icon: 'CalendarClock', label: 'Class changes' },
   {
     to: '/admin/attendance',
     icon: 'ClipboardList',
@@ -166,6 +174,7 @@ export const hierarchyOperations: NavLinkDef[] = [
   },
   { to: '/admin/fraud-detection', icon: 'ShieldAlert', label: 'Fraud Detection' },
   { to: '/admin/escalations', icon: 'Siren', label: 'Escalations' },
+  { to: '/follow-ups', icon: 'LifeBuoy', label: 'Follow-ups' },
   { to: '/admin/facilities', icon: 'Wrench', label: 'Facilities' },
   { to: '/live', icon: 'Radio', label: 'Live Attendance' },
   { to: '/admin/invigilation', icon: 'ScanEye', label: 'Invigilation' },
@@ -179,6 +188,7 @@ export const hierarchyOperations: NavLinkDef[] = [
 // UAT (09-29) — VC / DVC see how the institution is doing and announce; no actionable tabs
 // (no Users, Fraud Detection, Device Verification, CEM report).
 export const execOperations: NavLinkDef[] = [
+  { to: '/follow-ups', icon: 'LifeBuoy', label: 'Follow-ups' },
   {
     to: '/admin/attendance',
     icon: 'ClipboardList',
@@ -261,7 +271,8 @@ export const NAV_HIDE: Partial<Record<RoleName, string[]>> = {
   REGISTRAR_ADMIN: ['/admin/programs'],
   DEAN: ['/admin/programs'],
   HOD: ['/admin/programs', '/insights/group'],
-  DEPUTY_HOD: ['/admin/programs', '/admin/fraud-detection', '/admin/escalations', '/admin/facilities', '/insights/group', '/admin/device-verification'],
+  // F4: a Deputy HOD can't edit classes; the HOD sees the class changes.
+  DEPUTY_HOD: ['/admin/programs', '/admin/fraud-detection', '/admin/escalations', '/admin/facilities', '/insights/group', '/admin/device-verification', '/class-changes'],
 };
 
 /** The sections each nav set renders, in order (titles as shown). */
@@ -322,6 +333,7 @@ export const NAV_PAGE_API: Record<string, string> = {
   '/admin/device-verification': 'GET /devices/pending',
   '/admin/email-activity': 'GET /email/deliveries',
   '/admin/escalations': 'GET /escalations',
+  '/follow-ups': 'GET /follow-ups',
   '/admin/facilities': 'GET /facility-tickets',
   '/admin/fraud-detection': 'GET /attendance/fraud-analytics',
   '/admin/integrations': 'GET /integrations/connections',
@@ -349,6 +361,7 @@ export const NAV_PAGE_API: Record<string, string> = {
   '/cem/facilities': 'GET /facility-tickets',
   '/cem-team': 'GET /cem-team/board',
   '/classes': 'GET /classes',
+  '/class-changes': 'GET /class-changes',
   '/courses': 'GET /courses',
   '/insights': 'GET /reports/overview',
   '/insights/feedback': 'GET /feedback/intelligence',
@@ -370,6 +383,7 @@ export const NAV_REQUIRED_PERMISSION: Record<string, Permission | Permission[]> 
   '/live': 'VIEW_LIVE_ATTENDANCE',
   '/reports': 'VIEW_REPORTS',
   '/admin/escalations': 'VIEW_ESCALATIONS',
+  '/follow-ups': 'WORK_FOLLOW_UPS',
   '/admin/facilities': 'VIEW_FACILITIES',
   '/cem/facilities': 'VIEW_FACILITIES',
   '/cem-team': 'VIEW_CEM_TEAM',

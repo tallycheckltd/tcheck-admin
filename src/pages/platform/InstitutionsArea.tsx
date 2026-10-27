@@ -17,7 +17,7 @@ import { GrantRequestForm, GrantsTable, type PlatformGrant } from '../../compone
 
 interface Tenant {
   id: string; name: string; code: string; color?: string; attendanceMode: string; features: Record<string, boolean>; deployment: 'SHARED' | 'ISOLATED'; apiBaseUrl: string | null;
-  tiers: { t1: boolean; t2: boolean; changedAt: string | null }; onboarding: { completedAt: string | null; windowOpen: boolean };
+  tiers: { t1: boolean; t2: boolean; t3?: boolean; changedAt: string | null }; onboarding: { completedAt: string | null; windowOpen: boolean };
   integrations: { total: number; failed: number; providers: string[] }; accounts: number;
 }
 interface Group { institution: { id: string; name: string } | null; tenants: Tenant[] }
@@ -32,7 +32,7 @@ const typeOf = (t: Pick<Tenant, 'features' | 'attendanceMode'>) => (t.features?.
  * UAT §2 (2026-09-29) — one Institutions area (Institutions + the old Schools editor merged). Every
  * tenant sits under an institution: a real group, or — for a single-campus school — itself, until a
  * second campus is added (which creates the group). Click a tenant for its page (Overview, Settings,
- * Admins, Access, Analytics). One create wizard. T1/T2 are changed on the tenant page, behind a confirm.
+ * Admins, Access, Analytics). One create wizard. T1/T2/T3 are changed on the tenant page, behind a confirm.
  */
 export function PlatformInstitutionsPage() {
   const { data, refetch } = useApi<{ groups: Group[] }>('/platform/institutions');
@@ -75,7 +75,7 @@ export function PlatformInstitutionsPage() {
                     <td className={td}><Link to={`/platform/institutions/${t.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">{t.name}</Link><p className="text-xs text-gray-500">{t.code}</p></td>
                     <td className={td}>{t.features?.execEdSuite ? <Badge color="purple">Executive Education</Badge> : typeOf(t)}</td>
                     <td className={td}>{t.deployment === 'ISOLATED' ? <Badge color="yellow">Isolated — not connected</Badge> : 'Shared'}</td>
-                    <td className={td}>{t.tiers.t1 || t.tiers.t2 ? [t.tiers.t1 && 'T1', t.tiers.t2 && 'T2'].filter(Boolean).join(' + ') : <span className="text-gray-400">T0 only</span>}</td>
+                    <td className={td}>{t.tiers.t1 || t.tiers.t2 || t.tiers.t3 ? [t.tiers.t1 && 'T1', t.tiers.t2 && 'T2', t.tiers.t3 && 'T3'].filter(Boolean).join(' + ') : <span className="text-gray-400">T0 only</span>}</td>
                     <td className={td}>{t.onboarding.completedAt ? <Badge color="green">Complete</Badge> : t.onboarding.windowOpen ? <Badge color="blue">In progress</Badge> : <Badge color="gray">Window closed</Badge>}</td>
                     <td className={td}>{t.integrations.total ? `${t.integrations.providers.join(', ')}${t.integrations.failed ? ` · ${t.integrations.failed} failing` : ''}` : '—'}</td>
                     <td className={td}>{t.accounts}</td>
@@ -149,7 +149,7 @@ type ExtraAdmin = { firstName: string; lastName: string; email: string };
  * single-campus school gets its own group created on the spot and the new campus joins it.
  */
 function TenantWizard({ open, groups, presetGroup, branchOf, onClose, onDone }: { open: boolean; groups: { id: string; name: string }[]; presetGroup?: string; branchOf?: Tenant; onClose: () => void; onDone: () => void }) {
-  const blank = () => ({ name: '', code: '', color: '#2563eb', group: presetGroup ?? '', newGroup: '', isolated: false, apiBaseUrl: '', attendanceMode: 'CALENDAR_BASED', features: { profileCompletionPrompt: true } as Record<string, boolean>, late: 10, veryLate: 20, t1: false, t2: false, firstName: '', lastName: '', email: '' });
+  const blank = () => ({ name: '', code: '', color: '#2563eb', group: presetGroup ?? '', newGroup: '', isolated: false, apiBaseUrl: '', attendanceMode: 'CALENDAR_BASED', features: { profileCompletionPrompt: true } as Record<string, boolean>, late: 10, veryLate: 20, t1: false, t2: false, t3: false, firstName: '', lastName: '', email: '' });
   const [step, setStep] = useState(1);
   const [f, setF] = useState(blank);
   const [extra, setExtra] = useState<ExtraAdmin[]>([]);
@@ -172,7 +172,7 @@ function TenantWizard({ open, groups, presetGroup, branchOf, onClose, onDone }: 
     const r = await mutate('/platform/tenants', {
       name: f.name, code: f.code, color: f.color, institutionId, newInstitutionName,
       apiBaseUrl: f.isolated ? f.apiBaseUrl || null : null, attendanceMode: f.attendanceMode, features: f.features,
-      analyticsTier1: f.t1, analyticsTier2: f.t2, admin: { firstName: f.firstName, lastName: f.lastName, email: f.email },
+      analyticsTier1: f.t1, analyticsTier2: f.t2, analyticsTier3: f.t3, admin: { firstName: f.firstName, lastName: f.lastName, email: f.email },
     });
     if (!r?.school) return;
     // Attendance thresholds, then any extra School Admins (each gets an invite).
@@ -220,9 +220,10 @@ function TenantWizard({ open, groups, presetGroup, branchOf, onClose, onDone }: 
           </div>
         </>)}
         {step === 3 && (<>
-          <p className="text-gray-500">T0 (service & billing counts) is always on. T1 and T2 stay off until the contract allows them.</p>
+          <p className="text-gray-500">T0 (service & billing counts) is always on. T1, T2 and T3 stay off until the contract allows them.</p>
           <label className="flex gap-2 items-center"><input type="checkbox" checked={f.t1} onChange={(e) => setF({ ...f, t1: e.target.checked })} /> T1 — aggregate behaviour</label>
           <label className="flex gap-2 items-center"><input type="checkbox" checked={f.t2} onChange={(e) => setF({ ...f, t2: e.target.checked })} /> T2 — sensitive splits (minimum group size applies)</label>
+          <label className="flex gap-2 items-center"><input type="checkbox" checked={f.t3} onChange={(e) => setF({ ...f, t3: e.target.checked })} /> T3 — retention outcomes (follow-ups and recoveries; groups under 5 hidden)</label>
         </>)}
         {step === 4 && (<>
           <p className="text-gray-500">The first School Admin sets their own password from an invite link — no password here. Lecturers and staff are the School Admin's to add.</p>
@@ -295,7 +296,8 @@ export function PlatformTenantPage() {
 }
 
 function OverviewTab({ tenant: t, onChanged }: { tenant: Tenant; onChanged: () => void }) {
-  const [pending, setPending] = useState<{ t1: boolean; t2: boolean } | null>(null);
+  const [pending, setPending] = useState<{ t1: boolean; t2: boolean; t3: boolean } | null>(null);
+  const current = { t1: t.tiers.t1, t2: t.tiers.t2, t3: !!t.tiers.t3 };
   const [busy, setBusy] = useState(false);
   const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div className="flex justify-between gap-4 py-2 border-t border-gray-100 dark:border-white/5 first:border-t-0"><span className="text-gray-500">{label}</span><span className="text-right">{children}</span></div>
@@ -305,7 +307,9 @@ function OverviewTab({ tenant: t, onChanged }: { tenant: Tenant; onChanged: () =
     setBusy(true);
     try { await api.put(`/platform/tenants/${t.id}/tiers`, pending); setPending(null); onChanged(); } finally { setBusy(false); }
   };
-  const turningOn = pending && ((pending.t1 && !t.tiers.t1) || (pending.t2 && !t.tiers.t2));
+  const turningOn = pending && ((pending.t1 && !current.t1) || (pending.t2 && !current.t2) || (pending.t3 && !current.t3));
+  const newlyShared = pending ? [pending.t1 && !current.t1 && 'aggregate behaviour (T1)', pending.t2 && !current.t2 && 'sensitive splits (T2)', pending.t3 && !current.t3 && 'retention outcomes (T3)'].filter(Boolean).join(' and ') : '';
+  const onOff = (x: { t1: boolean; t2: boolean; t3: boolean }) => `T1 ${x.t1 ? 'on' : 'off'} / T2 ${x.t2 ? 'on' : 'off'} / T3 ${x.t3 ? 'on' : 'off'}`;
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <div className="glass-card p-5 text-sm">
@@ -317,10 +321,10 @@ function OverviewTab({ tenant: t, onChanged }: { tenant: Tenant; onChanged: () =
       </div>
       <div className="glass-card p-5 text-sm space-y-3">
         <p className="font-semibold">Data shared with the platform</p>
-        <p className="text-gray-500">T0 (service and billing counts) is always on. T1 and T2 only as the contract allows.</p>
-        {([['t1', 'T1 — aggregate behaviour (attendance rates, check-in methods, punctuality…)'], ['t2', 'T2 — sensitive splits (gender, nationality, NPS, at-risk; groups under 5 hidden)']] as const).map(([k, label]) => (
+        <p className="text-gray-500">T0 (service and billing counts) is always on. T1, T2 and T3 only as the contract allows.</p>
+        {([['t1', 'T1 — aggregate behaviour (attendance rates, check-in methods, punctuality…)'], ['t2', 'T2 — sensitive splits (gender, nationality, NPS, at-risk; groups under 5 hidden)'], ['t3', 'T3 — retention outcomes (students flagged, recovered after a nudge or an adviser; groups under 5 hidden)']] as const).map(([k, label]) => (
           <label key={k} className="flex gap-2 items-start">
-            <input type="checkbox" checked={(pending ?? t.tiers)[k]} onChange={(e) => setPending({ ...(pending ?? { t1: t.tiers.t1, t2: t.tiers.t2 }), [k]: e.target.checked })} aria-label={k.toUpperCase()} />
+            <input type="checkbox" checked={(pending ?? current)[k]} onChange={(e) => setPending({ ...(pending ?? current), [k]: e.target.checked })} aria-label={k.toUpperCase()} />
             <span>{label}</span>
           </label>
         ))}
@@ -330,8 +334,8 @@ function OverviewTab({ tenant: t, onChanged }: { tenant: Tenant; onChanged: () =
         // UAT F2 — the switches used to save to production on click; now they ask first.
         <Modal open onClose={() => setPending(null)} title="Change what this school shares?">
           <div className="space-y-3 text-sm">
-            <p>{turningOn ? <><ShieldAlert size={14} className="inline mr-1 text-amber-500" />This shares {t.name}'s {pending.t2 && !t.tiers.t2 ? 'sensitive splits (T2)' : 'aggregate behaviour (T1)'} with the platform. Only do this if their contract allows it.</> : `This stops sharing with the platform. ${t.name}'s next benchmark snapshot will leave them out.`}</p>
-            <p className="text-gray-500">From T1 {t.tiers.t1 ? 'on' : 'off'} / T2 {t.tiers.t2 ? 'on' : 'off'} → T1 {pending.t1 ? 'on' : 'off'} / T2 {pending.t2 ? 'on' : 'off'}. Recorded with your name and the time.</p>
+            <p>{turningOn ? <><ShieldAlert size={14} className="inline mr-1 text-amber-500" />This shares {t.name}'s {newlyShared} with the platform. Only do this if their contract allows it.</> : `This stops sharing with the platform. ${t.name}'s next benchmark snapshot will leave them out.`}</p>
+            <p className="text-gray-500">From {onOff(current)} → {onOff(pending)}. Recorded with your name and the time.</p>
             <div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => setPending(null)}>Cancel</Button><Button disabled={busy} onClick={() => void apply()}>Confirm</Button></div>
           </div>
         </Modal>

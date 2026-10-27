@@ -16,6 +16,8 @@ import { csvField } from '../../lib/csv';
 import { formatClassCalendarDate, formatClassTimeLocal } from '../../utils/classDateDisplay';
 import { formatCheckInType } from '../../utils/checkInTypeLabel';
 import { seesUnfilteredBySchoolOrUnit } from '../../lib/rbac';
+import { useCan } from '../../hooks/useCan';
+import { CorrectionModal } from '../../components/classes/CorrectionModal';
 
 export function ClassAttendancePage() {
   const { classId, courseId } = useParams<{ classId: string; courseId: string }>();
@@ -315,6 +317,11 @@ function ClassDetailView({ classId }: { classId: string }) {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedAttendanceId, setSelectedAttendanceId] = useState<string | null>(null);
   const [drilldownStudent, setDrilldownStudent] = useState<{ id: string; name: string } | null>(null);
+  // F5: correct a student who was there but whose check-in failed (editors, and the class's lecturer).
+  const { user } = useAuth();
+  const canEditClasses = useCan('MANAGE_COURSES') && user?.role !== 'LECTURER';
+  const [correcting, setCorrecting] = useState<{ id: string; name: string; kind: 'ADD' | 'CHECK_OUT' } | null>(null);
+  const [correctionFlash, setCorrectionFlash] = useState<string | null>(null);
 
   const handleManualCheckIn = async () => {
     if (!selectedStudent) return;
@@ -343,9 +350,22 @@ function ClassDetailView({ classId }: { classId: string }) {
   const bleCount = data.attendances.filter((a) => a.checkInType === 'BLE').length;
   const qrCount = data.attendances.filter((a) => a.checkInType === 'QR').length;
   const manualCount = data.attendances.filter((a) => a.checkInType === 'MANUAL').length;
+  // F5: corrections from the class start until 14 days after it ends, where the school has them on.
+  const classStartMs = new Date(data.classInfo.startTime).getTime();
+  const classEndMs = new Date(data.classInfo.endTime).getTime();
+  const canCorrect = !!user?.school?.features?.classChanges && (canEditClasses || user?.role === 'LECTURER')
+    && Date.now() >= classStartMs && Date.now() - classEndMs <= 14 * 86_400_000;
 
   return (
     <div className="space-y-6">
+      <CorrectionModal classId={classId} student={correcting} kind={correcting?.kind ?? 'ADD'} asLecturer={!canEditClasses}
+        onClose={() => setCorrecting(null)} onDone={(m) => { setCorrecting(null); setCorrectionFlash(m); refetch(); }} />
+      {correctionFlash && (
+        <div role="status" className="glass-card p-3 text-sm text-slate-800 dark:text-slate-200 flex justify-between gap-3">
+          <span>{correctionFlash}</span>
+          <button onClick={() => setCorrectionFlash(null)} className="text-slate-500 cursor-pointer" aria-label="Dismiss">×</button>
+        </div>
+      )}
       <a href="/attendance" className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:hover:text-slate-300 transition-colors">
         &larr; Back to Attendance
       </a>
@@ -436,7 +456,7 @@ function ClassDetailView({ classId }: { classId: string }) {
                 <td className="font-medium text-slate-950 dark:text-white">
                   <button
                     type="button"
-                    onClick={() => setDrilldownStudent({ id: a.userId, name: `${a.user?.firstName} ${a.user?.lastName}` })}
+                    onClick={() => setDrilldownStudent({ id: a.user?.id ?? a.userId, name: `${a.user?.firstName} ${a.user?.lastName}` })}
                     className="hover:underline cursor-pointer"
                     title="View today's signal activity"
                   >
@@ -445,7 +465,13 @@ function ClassDetailView({ classId }: { classId: string }) {
                 </td>
                 <td className="font-mono text-xs">{a.user?.studentId || '-'}</td>
                 <td>{new Date(a.checkInAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
-                <td>{a.checkOutAt ? new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                <td>
+                  {a.checkOutAt ? new Date(a.checkOutAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                  {!a.checkOutAt && a.status !== 'REJECTED' && canCorrect && Date.now() > classEndMs && (
+                    <button onClick={() => setCorrecting({ id: a.user?.id ?? a.userId, name: `${a.user?.firstName} ${a.user?.lastName}`, kind: 'CHECK_OUT' })}
+                      className="ml-2 text-xs text-blue-500 hover:text-blue-600 font-medium cursor-pointer">Fill in</button>
+                  )}
+                </td>
                 <td>
                   <button
                     type="button"
@@ -519,6 +545,12 @@ function ClassDetailView({ classId }: { classId: string }) {
                     >
                       Check in manually
                     </button>
+                    {canCorrect && (
+                      <button onClick={() => setCorrecting({ id: s.id, name: `${s.firstName} ${s.lastName}`, kind: 'ADD' })}
+                        className="ml-3 text-xs text-blue-500 hover:text-blue-600 font-medium cursor-pointer">
+                        Correct attendance
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

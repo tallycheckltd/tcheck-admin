@@ -30,6 +30,7 @@ import { downloadCsv } from '../../lib/csv';
 import { clsx } from 'clsx';
 import { formatClassCalendarDate, safeFormat } from '../../utils/classDateDisplay';
 import { checkOutStateLabel, outcomeLabel, punctualityColor, punctualityLabel } from '../../utils/attendanceLabels';
+import { ReportLibrary } from '../reports/ReportLibrary';
 
 /* ---- HOD / admin exports (CSV) ---- */
 interface RosterRow {
@@ -935,17 +936,8 @@ export function ReportsPage() {
   if (isSuperAdmin) hodCoursesFetchPath = '/courses';
   else if (seesOrgWide && user?.schoolId) hodCoursesFetchPath = `/courses?schoolId=${user.schoolId}`;
 
-  return (
-    <div className="mx-auto max-w-[1600px] space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--app-text)]">Reports</h1>
-        <p className="text-sm text-[var(--app-text-muted)] max-w-2xl">
-          {seesOrgWide
-            ? 'Download audited PDF reports for rosters or individual courses (Tcheck logo on every export).'
-            : 'Review attendance per teaching session and download PDF reports for your courses.'}
-        </p>
-      </header>
-
+  const classicExports = (
+    <div className="space-y-6">
       {seesOrgWide && !isSuperAdmin && !user?.schoolId && (
         <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 flex gap-2">
           <AlertCircle className="shrink-0" size={18} />
@@ -967,6 +959,21 @@ export function ReportsPage() {
       ) : (
         <LecturerReportsView />
       )}
+    </div>
+  );
+
+  return (
+    <div className="mx-auto max-w-[1600px] space-y-6">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--app-text)]">Reports</h1>
+        <p className="text-sm text-[var(--app-text-muted)] max-w-2xl">
+          Ask for any report, or pick one. Download it or have it emailed to you.
+        </p>
+      </header>
+
+      {/* The library replaces the older roster/course exports (owner 10-21). Lecturers keep their
+          session-by-session view, folded at the bottom; Super Admins keep the older page. */}
+      {isSuperAdmin ? classicExports : <ReportLibrary classic={seesOrgWide ? undefined : classicExports} classicLabel="Your sessions, one by one" classicOpen />}
     </div>
   );
 }

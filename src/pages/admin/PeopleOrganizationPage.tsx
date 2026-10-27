@@ -3,7 +3,7 @@ import {
   ShieldCheck, Plus, Pencil, Trash2, UserPlus, Users, Mail, User as UserIcon,
   Cake, MapPin, ClipboardCheck, MessageSquare, Megaphone, Settings2, BookOpen, Sparkles, Star,
   BarChart3, PieChart, Folder, Ticket, CheckSquare, Square, Radio, FileText, Siren, Wrench,
-  ScanEye, Smartphone, ShieldAlert, Search, UserX, Network, ChevronDown, GraduationCap,
+  ScanEye, Smartphone, ShieldAlert, Search, UserX, Network, ChevronDown, GraduationCap, LifeBuoy,
 } from 'lucide-react';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { api } from '../../lib/api';
@@ -97,6 +97,15 @@ const PERMISSION_GROUPS: { title: string; hint?: string; items: PermItem[] }[] =
       { key: 'MANAGE_INVIGILATION', label: 'Reserved for a future update — has no effect yet', icon: ScanEye, note: 'reserved' },
       { key: 'VIEW_DEVICE_VERIFICATION', label: 'See pending and approved student devices', icon: Smartphone },
       { key: 'MANAGE_DEVICE_VERIFICATION', label: 'Approve or reset a student device, reset a biometric lock', icon: Smartphone },
+    ],
+  },
+  {
+    title: 'TALI and follow-ups',
+    items: [
+      { key: 'USE_TALI_ACTIONS', label: 'Use "Write with TALI" and other TALI actions (each also needs its own permission)', icon: Sparkles },
+      { key: 'WORK_FOLLOW_UPS', label: 'Work student follow-up cases: message the student, log contacts and notes, close cases', icon: LifeBuoy },
+      { key: 'ASSIGN_FOLLOW_UPS', label: 'Assign follow-up cases and see the unassigned queue', icon: LifeBuoy },
+      { key: 'VIEW_SENSITIVE_NOTES', label: "Read sensitive notes (health, family) on cases you don't own", icon: LifeBuoy },
     ],
   },
   {

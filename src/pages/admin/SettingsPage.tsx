@@ -9,6 +9,7 @@ import { Slider } from '../../components/ui/Slider';
 import { Settings, UserCheck, School as SchoolIcon } from 'lucide-react';
 import type { School } from '../../types';
 import { SwitchesCard, type TaliAccess } from '../tali/TaliSetup';
+import { AgentActivityCard, AgentSettingsCard } from './TaliAgentsSettings';
 
 const emptyForm = {
   lateThresholdMinutes: 10,
@@ -104,6 +105,12 @@ export function SettingsPage() {
 
       <div className="max-w-xl space-y-6">
         {tali?.switches && <SwitchesCard initial={tali.switches} />}
+        {/* Action Engine F7 — Settings > TALI agents: switches, limits and the activity log. */}
+        {user?.role === 'SCHOOL_ADMIN' && (
+          <Can perm="MANAGE_SCHOOL_SETTINGS" newForLecturer>
+            <AgentSettingsCard />
+          </Can>
+        )}
         {isSuperAdmin && (
           <GlassCard>
             <div className="space-y-1">
@@ -210,6 +217,13 @@ export function SettingsPage() {
           </GlassCard>
         )}
       </div>
+
+      {/* The activity log needs the width for its table. */}
+      {user?.role === 'SCHOOL_ADMIN' && (
+        <div className="max-w-4xl">
+          <Can perm="MANAGE_SCHOOL_SETTINGS" newForLecturer><AgentActivityCard /></Can>
+        </div>
+      )}
     </div>
   );
 }

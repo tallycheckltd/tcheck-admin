@@ -39,6 +39,7 @@ import { CemCohortPanelPage } from './pages/cem/CemCohortPanelPage';
 import { CemFacilitiesPage } from './pages/cem/CemFacilitiesPage';
 import { CoursesPage } from './pages/lecturer/CoursesPage';
 import { ClassesPage } from './pages/lecturer/ClassesPage';
+import { ClassChangesPage } from './pages/admin/ClassChangesPage';
 import { ClassAttendancePage } from './pages/lecturer/ClassAttendancePage';
 import { LiveAttendancePage } from './pages/lecturer/LiveAttendancePage';
 import { ReportsPage } from './pages/lecturer/ReportsPage';
@@ -53,6 +54,7 @@ import { TermsPage } from './pages/admin/TermsPage';
 import { ProgramsPage } from './pages/admin/ProgramsPage';
 import { CourseDetailPage } from './pages/admin/CourseDetailPage';
 import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
+import { FollowUpsPage } from './pages/admin/FollowUpsPage';
 import { RequestFeedbackPage } from './pages/admin/RequestFeedbackPage';
 import { FeedbackRedirectPage } from './pages/public/FeedbackRedirectPage';
 import { EmailPreferencesPage } from './pages/public/EmailPreferencesPage';
@@ -134,6 +136,7 @@ export default function App() {
                 <Route path="/admin/settings" element={<SettingsPage />} />
               </Route>
               <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
+              <Route path="/follow-ups" element={<FollowUpsPage />} />
               <Route path="/admin/request-feedback" element={<RequestFeedbackPage />} />
               <Route path="/admin/support" element={<SupportPage />} />
               {/* SCHOOL_ADMIN is scoped to their own school's beacons; SUPER_ADMIN sees/manages all (beacon.service.ts enforces this) */}
@@ -206,6 +209,7 @@ export default function App() {
               {/* Shared routes (admin and lecturer) */}
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/classes" element={<ClassesPage />} />
+              <Route path="/class-changes" element={<ClassChangesPage />} />
               <Route path="/attendance" element={<ClassAttendancePage />} />
               <Route path="/attendance/course/:courseId" element={<ClassAttendancePage />} />
               <Route path="/attendance/:classId" element={<ClassAttendancePage />} />

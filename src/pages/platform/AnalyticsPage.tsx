@@ -12,12 +12,12 @@ import { seriesColors, FUNNEL_DARK, FUNNEL_LIGHT, OTHER_COLOR } from '../../comp
 
 // ─── Types ────────────────────────────────────────────────────────────────────────────────────
 interface RollupRow { key: string; label: string; unit: string; value: number | null; n: number; breakdown?: { label: string; value: number | null }[] }
-interface TenantRow { tenantId: string; tenant: string; institution: string | null; status?: string; tiers?: { t0: boolean; t1: boolean; t2: boolean }; metrics?: Metric[] }
+interface TenantRow { tenantId: string; tenant: string; institution: string | null; status?: string; tiers?: { t0: boolean; t1: boolean; t2: boolean; t3?: boolean }; metrics?: Metric[] }
 interface Overview { rollup: RollupRow[]; tenantsData: TenantRow[]; period: { from: string; to: string } }
-interface TenantAgg { tenantId: string; tenant: string; tiers: { t0: boolean; t1: boolean; t2: boolean }; metrics: Metric[]; status?: string }
+interface TenantAgg { tenantId: string; tenant: string; tiers: { t0: boolean; t1: boolean; t2: boolean; t3?: boolean }; metrics: Metric[]; status?: string }
 interface SeriesPoint { key: string; label: string; value: number | null; partial: boolean }
 interface Series { granularity: string; series: Record<string, SeriesPoint[]> }
-interface Group { institution: { id: string; name: string } | null; tenants: { id: string; name: string; deployment: string; tiers: { t1: boolean; t2: boolean } }[] }
+interface Group { institution: { id: string; name: string } | null; tenants: { id: string; name: string; deployment: string; tiers: { t1: boolean; t2: boolean; t3?: boolean } }[] }
 
 type View = 'platform' | 'institution' | 'school' | 'compare';
 type PeriodKey = '30d' | 'month' | 'lastMonth' | 'year' | '12m';
@@ -146,7 +146,7 @@ function Funnel({ steps, dark }: { steps: { label: string; value: number | null 
   );
 }
 
-function Locked({ tier, what }: { tier: 'T1' | 'T2'; what: string }) {
+function Locked({ tier, what }: { tier: 'T1' | 'T2' | 'T3'; what: string }) {
   return (
     <div className="glass-card p-5 border border-dashed border-gray-300 dark:border-white/15 flex items-start gap-3">
       <Lock size={16} className="text-gray-400 mt-0.5" />
@@ -192,7 +192,7 @@ export function PlatformAnalyticsPage() {
       <div className="flex justify-between items-start gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Analytics</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">How every institution is doing — numbers about groups, never a person. T0 for every school; T1 / T2 only where the school shares them.</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">How every institution is doing — numbers about groups, never a person. T0 for every school; T1 / T2 / T3 only where the school shares them.</p>
         </div>
         <Button variant="secondary" size="sm" onClick={async () => { await api.post('/platform/snapshots/run', {}); window.location.reload(); }}><RefreshCw size={13} className="mr-1.5" />Record this month now</Button>
       </div>
@@ -322,10 +322,11 @@ function PlatformView({ range, prev, gran, colors, dark, onOpen }: { range: { fr
 }
 
 // ─── One school (and an institution = its campuses added up) ─────────────────────────────────
-const SECTIONS: { key: string; label: string; tier: 'T0' | 'T1' | 'T2'; metrics: string[] }[] = [
+const SECTIONS: { key: string; label: string; tier: 'T0' | 'T1' | 'T2' | 'T3'; metrics: string[] }[] = [
   { key: 'adoption', label: 'Adoption', tier: 'T0', metrics: ['t0.students_active', 't0.staff', 't0.activation', 't0.device_os_mix'] },
   { key: 'attendance', label: 'Attendance', tier: 'T1', metrics: ['t1.attendance_rate', 't1.attendance_by_programme', 't1.punctuality', 't1.check_in_methods', 't1.verification_methods', 't1.check_out_completion', 't1.offline_queue_use', 't1.dwell_time', 't1.fraud_rate'] },
   { key: 'experience', label: 'Experience', tier: 'T2', metrics: ['t2.nps', 't2.gender_participation', 't2.nationality_participation', 't2.attrition_non_reenrolment', 't2.attrition_at_risk'] },
+  { key: 'retention', label: 'Retention outcomes', tier: 'T3', metrics: ['t3.students_flagged', 't3.recovered_after_nudge', 't3.recovered_after_adviser', 't3.days_to_recover', 't3.attendance_before_after', 't3.recovery_by_reason'] },
   { key: 'operations', label: 'Operations', tier: 'T0', metrics: ['t0.courses', 't0.classes_held', 't0.rooms', 't0.check_ins', 't0.support_tickets', 't0.org_scale', 't1.escalations', 't1.facility_tickets'] },
 ];
 
@@ -333,7 +334,7 @@ function MetricBlock({ m, before, color }: { m: Metric; before?: Metric; color: 
   const isFunnel = m.key === 't0.activation';
   return (
     <div className="rounded-xl bg-gray-50 dark:bg-white/5 p-4">
-      <div className="flex justify-between gap-2"><p className="text-sm text-gray-600 dark:text-gray-300">{m.label}</p><Badge color={m.tier === 'T2' ? 'purple' : m.tier === 'T1' ? 'blue' : 'gray'}>{m.tier}</Badge></div>
+      <div className="flex justify-between gap-2"><p className="text-sm text-gray-600 dark:text-gray-300">{m.label}</p><Badge color={m.tier === 'T3' ? 'green' : m.tier === 'T2' ? 'purple' : m.tier === 'T1' ? 'blue' : 'gray'}>{m.tier}</Badge></div>
       {m.status === 'insufficient_data' ? <p className="text-sm text-gray-500 mt-1">Insufficient data (groups under the minimum size).</p> : (
         <>
           {!m.breakdown?.length || isFunnel ? <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{fmt(m.value, m.unit)}</p> : null}
@@ -345,12 +346,12 @@ function MetricBlock({ m, before, color }: { m: Metric; before?: Metric; color: 
   );
 }
 
-function SectionsView({ metrics, before, tiers, colors, growthScope, gran }: { metrics: Metric[]; before?: Metric[]; tiers: { t1: boolean; t2: boolean }; colors: readonly string[]; growthScope: string; gran: Gran }) {
+function SectionsView({ metrics, before, tiers, colors, growthScope, gran }: { metrics: Metric[]; before?: Metric[]; tiers: { t1: boolean; t2: boolean; t3?: boolean }; colors: readonly string[]; growthScope: string; gran: Gran }) {
   const [tab, setTab] = useState('adoption');
   const [growthKey, setGrowthKey] = useState('t0.check_ins');
   const { data: growth } = useApi<Series>(`/platform/analytics/series?${growthScope}&metrics=${growthKey}&granularity=${gran}`);
   const section = SECTIONS.find((s) => s.key === tab)!;
-  const locked = (section.tier === 'T1' && !tiers.t1) || (section.tier === 'T2' && !tiers.t2);
+  const locked = (section.tier === 'T1' && !tiers.t1) || (section.tier === 'T2' && !tiers.t2) || (section.tier === 'T3' && !tiers.t3);
   const shown = section.metrics.map((k) => metrics.find((m) => m.key === k)).filter(Boolean) as Metric[];
   const growthOptions = [['t0.check_ins', 'Check-ins'], ['t0.students_active', 'Active students'], ['t0.classes_held', 'Classes held'], ...(tiers.t1 ? [['t1.attendance_rate', 'Attendance rate'], ['t1.check_out_completion', 'Check-out completion']] : [])];
   const unit = metrics.find((m) => m.key === growthKey)?.unit ?? 'count';
@@ -363,7 +364,7 @@ function SectionsView({ metrics, before, tiers, colors, growthScope, gran }: { m
       <div role="tablist" className="inline-flex rounded-lg bg-gray-100 dark:bg-white/5 p-1 text-sm">
         {SECTIONS.map((s) => <button key={s.key} role="tab" aria-selected={tab === s.key} onClick={() => setTab(s.key)} className={`px-3 py-1 rounded-md cursor-pointer ${tab === s.key ? 'bg-white dark:bg-white/15 shadow-sm font-medium' : 'text-gray-500'}`}>{s.label}</button>)}
       </div>
-      {locked ? <Locked tier={section.tier as 'T1' | 'T2'} what={section.label} /> : (
+      {locked ? <Locked tier={section.tier as 'T1' | 'T2' | 'T3'} what={section.label} /> : (
         <div className="grid md:grid-cols-2 gap-3">
           {shown.map((m) => <MetricBlock key={m.key} m={m} before={before?.find((b) => b.key === m.key)} color={colors[0]!} />)}
           {section.key === 'operations' && !tiers.t1 && <Locked tier="T1" what="Escalations and facility tickets" />}
@@ -381,7 +382,7 @@ function SchoolView({ id, range, prev, gran, colors }: { id: string; range: { fr
   if (!data?.metrics) return <p className="glass-card p-6 text-sm text-gray-500">{data?.status === 'unreachable' ? 'Isolated — not connected yet.' : 'No data.'}</p>;
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500"><strong className="text-gray-900 dark:text-white">{data.tenant}</strong> · shares T0{data.tiers.t1 ? ' · T1' : ''}{data.tiers.t2 ? ' · T2' : ''}</p>
+      <p className="text-sm text-gray-500"><strong className="text-gray-900 dark:text-white">{data.tenant}</strong> · shares T0{data.tiers.t1 ? ' · T1' : ''}{data.tiers.t2 ? ' · T2' : ''}{data.tiers.t3 ? ' · T3' : ''}</p>
       <SectionsView metrics={data.metrics} before={before?.metrics} tiers={data.tiers} colors={colors} growthScope={`scope=school&id=${id}`} gran={gran} />
     </div>
   );
@@ -407,7 +408,7 @@ function InstitutionView({ id, name, range, prev, gran, colors }: { id: string; 
     });
   };
   const ok = (data?.tenantsData ?? []).filter((t) => t.metrics);
-  const tiers = { t1: ok.length > 0 && ok.every((t) => t.tiers.t1), t2: ok.length > 0 && ok.every((t) => t.tiers.t2) };
+  const tiers = { t1: ok.length > 0 && ok.every((t) => t.tiers.t1), t2: ok.length > 0 && ok.every((t) => t.tiers.t2), t3: ok.length > 0 && ok.every((t) => t.tiers.t3) };
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">

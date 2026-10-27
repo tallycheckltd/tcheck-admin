@@ -99,7 +99,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       if ((options.method ?? 'GET').toUpperCase() !== 'GET') window.dispatchEvent(new CustomEvent(PERMISSION_DENIED_EVENT, { detail: { message } }));
       throw new PermissionDeniedError(message);
     }
-    throw new Error(err.error || 'Request failed');
+    // `code` and `status` let a page react to a specific refusal (e.g. CONFIRM_LARGE_SEND: ask again).
+    throw Object.assign(new Error(err.error || 'Request failed'), { code: err.code as string | undefined, status: res.status });
   }
 
   if (res.status === 204) return undefined as T;
