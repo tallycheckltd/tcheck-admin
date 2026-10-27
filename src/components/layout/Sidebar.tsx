@@ -177,12 +177,31 @@ function NavBadge({ count, collapsed }: { count?: number; collapsed: boolean }) 
   );
 }
 
+// Sidebar page search: what the person typed in the box above the nav. Every list of links below
+// (the sectioned ones and the flat per-role ones) is filtered through matchLinks.
+const NavQuery = React.createContext('');
+
+/** Links whose label (or a child's label, or parent + child together) contains every typed word. */
+function matchLinks<T extends { label: string; children?: T[] }>(links: T[], query: string): T[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return links;
+  const hit = (text: string) => words.every((w) => text.toLowerCase().includes(w));
+  const out: T[] = [];
+  for (const l of links) {
+    if (hit(l.label)) { out.push(l); continue; }
+    const kids = l.children?.filter((c) => hit(`${l.label} ${c.label}`));
+    if (kids?.length) out.push({ ...l, children: kids });
+  }
+  return out;
+}
+
 function NavSection({
   title, links, isSuperAdmin, onNavigate, collapsed,
 }: {
   title: string; links: NavItem[]; isSuperAdmin: boolean; onNavigate: () => void; collapsed: boolean;
 }) {
-  const visibleLinks = links.filter((l) => !l.superAdminOnly || isSuperAdmin);
+  const query = React.useContext(NavQuery);
+  const visibleLinks = matchLinks(links.filter((l) => !l.superAdminOnly || isSuperAdmin), query);
   const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
   const location = window.location;
 
@@ -207,7 +226,7 @@ function NavSection({
       </p>
       {visibleLinks.map((link) => {
         const hasChildren = link.children && link.children.length > 0;
-        const isExpanded = expandedItems.includes(link.label);
+        const isExpanded = expandedItems.includes(link.label) || (query.trim() !== '' && !!hasChildren);
         const isChildActive = hasChildren && link.children?.some(child => location.pathname.startsWith(child.to));
 
         // In collapsed rail mode there's no room for a flyout submenu — the parent becomes a
@@ -426,6 +445,15 @@ export function Sidebar({
 }: {
   open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void; onOpenSearch: () => void;
 }) {
+  const [navQuery, setNavQuery] = useState('');
+  const navSearchRef = useRef<HTMLInputElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  // After the filtered links render, note whether anything matched (for the "no pages match" line).
+  const [navNoMatch, setNavNoMatch] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setNavNoMatch(navQuery.trim() !== '' && !navRef.current?.querySelector('a[href]')));
+    return () => cancelAnimationFrame(id);
+  }, [navQuery]);
   const { user, logout } = useAuth();
   const { dark, toggle } = useTheme();
   const navigate = useNavigate();
@@ -642,7 +670,41 @@ export function Sidebar({
         </button>
       </div>
 
-      <nav className="sidebar-nav-scroll flex-1 px-3 pt-4 space-y-1 overflow-y-auto overflow-x-hidden">
+      <div className={clsx('px-3 pt-3', collapsed && 'lg:px-2')}>
+        {collapsed && (
+          <button
+            type="button"
+            onClick={() => { onToggleCollapse(); setTimeout(() => navSearchRef.current?.focus(), 50); }}
+            title="Search pages"
+            aria-label="Search pages"
+            className="hidden lg:flex mx-auto w-11 h-9 items-center justify-center rounded-lg text-[color:var(--app-text-muted)] hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
+          >
+            <Search size={16} />
+          </button>
+        )}
+        <div className={clsx('relative', collapsed && 'lg:hidden')}>
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--app-text-muted)] pointer-events-none" />
+          <input
+            ref={navSearchRef}
+            type="search"
+            value={navQuery}
+            onChange={(e) => setNavQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') { setNavQuery(''); (e.target as HTMLInputElement).blur(); }
+              if (e.key === 'Enter') {
+                const first = navRef.current?.querySelector<HTMLAnchorElement>('a[href]');
+                if (first) { e.preventDefault(); first.click(); setNavQuery(''); }
+              }
+            }}
+            placeholder="Search pages…"
+            aria-label="Search pages in the menu"
+            className="w-full h-9 pl-8 pr-3 rounded-lg text-sm bg-slate-100 dark:bg-white/5 border border-transparent focus:border-[color:var(--sidebar-edge)] focus:outline-none text-[color:var(--app-text)] dark:text-white placeholder:text-[color:var(--app-text-muted)]"
+          />
+        </div>
+      </div>
+
+      <NavQuery.Provider value={navQuery}>
+      <nav ref={navRef} className="sidebar-nav-scroll flex-1 px-3 pt-4 space-y-1 overflow-y-auto overflow-x-hidden">
         {isSuperAdmin && (
           <>
             <NavSection title="Overview" links={superAdminOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
@@ -696,7 +758,7 @@ export function Sidebar({
             <NavSection title="General" links={filterBySchoolConfig(registrarGeneral)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
           </>
         )}
-        {isIctAdmin && addEscalationBadge(ictAdminLinks).map((link) => (
+        {isIctAdmin && matchLinks(addEscalationBadge(ictAdminLinks), navQuery).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -717,7 +779,7 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isLecturer && addFacilitiesBadge(addEscalationBadge(filterByPermission(filterBySchoolConfig(lecturerNavLinks)))).map((link) => (
+        {isLecturer && matchLinks(addFacilitiesBadge(addEscalationBadge(filterByPermission(filterBySchoolConfig(lecturerNavLinks)))), navQuery).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -738,7 +800,7 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isCemManager && addFacilitiesBadge(filterByPermission(filterBySchoolConfig(cemManagerNavLinks))).map((link) => (
+        {isCemManager && matchLinks(addFacilitiesBadge(filterByPermission(filterBySchoolConfig(cemManagerNavLinks))), navQuery).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -758,7 +820,7 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
-        {isStaff && filterByPermission(filterBySchoolConfig(staffNavLinks)).map((link) => (
+        {isStaff && matchLinks(filterByPermission(filterBySchoolConfig(staffNavLinks)), navQuery).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -777,7 +839,7 @@ export function Sidebar({
             <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
           </NavLink>
         ))}
-        {isCxm && cxmCohortId && buildCxmCohortLinks(cxmCohortId).map((link) => {
+        {isCxm && cxmCohortId && matchLinks(buildCxmCohortLinks(cxmCohortId), navQuery).map((link) => {
           // Every panel is its own real route now, so NavLink's own pathname-based isActive works
           // natively — except the overview link (`/cem/cohorts/:id`), which is a *prefix* of every
           // panel route and needs `end` to avoid staying lit while on a sub-page. Messages carries
@@ -811,7 +873,7 @@ export function Sidebar({
             rule (keyed on the *label* "Training pipelines") targets the admin/hierarchy pipelines item
             and must never touch a CEM's own "Programmes" link on any
             CALENDAR_BASED school. */}
-        {isCxm && !cxmCohortId && addFacilitiesBadge(filterByPermission(cxmLinks)).map((link) => (
+        {isCxm && !cxmCohortId && matchLinks(addFacilitiesBadge(filterByPermission(cxmLinks)), navQuery).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -831,7 +893,11 @@ export function Sidebar({
             {collapsed && <NavBadge count={link.badge} collapsed />}
           </NavLink>
         ))}
+        {navNoMatch && (
+          <p className="px-3 py-6 text-sm text-center text-[color:var(--app-text-muted)]">No pages match “{navQuery.trim()}”</p>
+        )}
       </nav>
+      </NavQuery.Provider>
 
       <div className="p-3">
         <ProfileMenu
