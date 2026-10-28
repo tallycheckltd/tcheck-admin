@@ -30,7 +30,7 @@ export function ClassroomsPage() {
 
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Classroom | null>(null);
-  const [form, setForm] = useState({ name: '', schoolId: '', description: '' });
+  const [form, setForm] = useState({ name: '', schoolId: '', description: '', capacity: '' });
   const [beaconToAssign, setBeaconToAssign] = useState('');
 
   // Only needed once a classroom is actually being edited (has an id + a known school) — lets the
@@ -55,13 +55,23 @@ export function ClassroomsPage() {
     refetch();
   };
 
-  const openCreate = () => { setEditing(null); setForm({ name: '', schoolId: isSuperAdmin ? '' : user?.schoolId ?? '', description: '' }); setBeaconToAssign(''); setModal(true); };
-  const openEdit = (c: Classroom) => { setEditing(c); setForm({ name: c.name, schoolId: c.schoolId, description: c.description ?? '' }); setBeaconToAssign(''); setModal(true); };
+  const openCreate = () => { setEditing(null); setForm({ name: '', schoolId: isSuperAdmin ? '' : user?.schoolId ?? '', description: '', capacity: '' }); setBeaconToAssign(''); setModal(true); };
+  const openEdit = (c: Classroom) => { setEditing(c); setForm({ name: c.name, schoolId: c.schoolId, description: c.description ?? '', capacity: c.capacity ? String(c.capacity) : '' }); setBeaconToAssign(''); setModal(true); };
+
+  // Seats: blank = "not set" (Reports then skip how full the room runs), else a whole number 1–5000
+  // (the API's limits). Anything else is shown as an error and not saved, never silently cleared.
+  // A text field, not type=number: a number input reports half-typed or invalid text as "", which
+  // would read as blank and wipe the seats on save.
+  const seatsText = form.capacity.trim();
+  const seatsError = seatsText && !(/^\d+$/.test(seatsText) && Number(seatsText) >= 1 && Number(seatsText) <= 5000)
+    ? 'Seats must be a whole number from 1 to 5000, or left blank.' : undefined;
 
   const handleSubmit = async () => {
-    const payload = { name: form.name, schoolId: form.schoolId, description: form.description.trim() || undefined };
+    if (seatsError) return;
+    const capacity = seatsText ? Number(seatsText) : null;
+    const payload = { name: form.name, schoolId: form.schoolId, description: form.description.trim() || undefined, capacity: capacity ?? undefined };
     if (editing) {
-      await update(`/academic/classrooms/${editing.id}`, { name: payload.name, description: payload.description ?? null });
+      await update(`/academic/classrooms/${editing.id}`, { name: payload.name, description: payload.description ?? null, capacity });
     } else {
       await create('/academic/classrooms', payload);
     }
@@ -93,6 +103,7 @@ export function ClassroomsPage() {
             <tr className="border-b border-gray-200 dark:border-white/10">
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Description</th>
+              <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Seats</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Institution</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Beacons</th>
               <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Actions</th>
@@ -103,6 +114,7 @@ export function ClassroomsPage() {
               <tr key={c.id} className="border-b border-gray-100 dark:border-white/5">
                 <td className="py-3 px-4 text-slate-950 dark:text-white font-medium">{c.name}</td>
                 <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{c.description || '—'}</td>
+                <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{c.capacity ?? '—'}</td>
                 <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{c.school?.name ?? '—'}</td>
                 <td className="py-3 px-4 text-slate-700 dark:text-gray-300">
                   <span className="inline-flex items-center gap-1">
@@ -117,7 +129,7 @@ export function ClassroomsPage() {
             ))}
             {classrooms?.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-slate-500 dark:text-slate-400">No classrooms yet.</td>
+                <td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">No classrooms yet.</td>
               </tr>
             )}
           </tbody>
@@ -127,7 +139,9 @@ export function ClassroomsPage() {
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Classroom' : 'Add Classroom'}>
         <div className="space-y-4">
           <Input label="Name" placeholder="e.g. Auditorium A" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <Input label="Description (optional)" placeholder="e.g. Ground floor, 80-seat capacity" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <Input label="Description (optional)" placeholder="e.g. Ground floor, next to the library" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <Input label="Seats (optional)" type="text" inputMode="numeric" placeholder="e.g. 80" value={form.capacity} error={seatsError} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+          <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">Used by Reports to show how full the room runs and which days could use fewer rooms.</p>
           {!editing && isSuperAdmin && (
             <div>
               <label className="block text-sm font-medium text-slate-800 dark:text-gray-300 mb-1">Institution</label>
@@ -148,7 +162,7 @@ export function ClassroomsPage() {
               Institution: <span className="font-medium text-slate-800 dark:text-gray-300">{user?.school?.name ?? 'your school'}</span>
             </p>
           )}
-          <Button onClick={handleSubmit} className="w-full" disabled={!form.name.trim() || (!editing && !form.schoolId)}>
+          <Button onClick={handleSubmit} className="w-full" disabled={!form.name.trim() || (!editing && !form.schoolId) || !!seatsError}>
             {editing ? 'Update' : 'Create'}
           </Button>
 

@@ -257,6 +257,8 @@ export interface Classroom {
   schoolId: string;
   school?: School;
   description?: string | null;
+  /** Seats (optional): Reports use it for how full the room runs. */
+  capacity?: number | null;
   createdAt: string;
   updatedAt: string;
   _count?: { beacons: number };
