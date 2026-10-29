@@ -24,7 +24,7 @@ export function ProfilePage() {
   if (!user) return null;
 
   const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
-  const canSubmit = currentPassword.length > 0 && newPassword.length >= 6 && newPassword === confirmPassword;
+  const canSubmit = currentPassword.length > 0 && newPassword.length >= 8 && newPassword === confirmPassword;
 
   const handleChangePassword = async () => {
     setFormError('');
