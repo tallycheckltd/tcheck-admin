@@ -5,6 +5,7 @@ import { School, Users, Radio, LifeBuoy, Battery, AlertTriangle, CheckCircle2, C
 import { useApi } from '../../hooks/useApi';
 import { useTheme } from '../../context/ThemeContext';
 import { seriesColors } from '../../components/platform/vizPalette';
+import { DownloadClicksCard } from '../../components/platform/DownloadClicksCard';
 
 interface Home {
   tenants: number; activeStudents: { seat: number; usage30d: number }; checkInsToday: number; openSupportTickets: number; beaconsNeedingAttention: number;
@@ -163,6 +164,8 @@ export function PlatformHomePage() {
           )}
         </section>
       </div>
+
+      <DownloadClicksCard />
     </div>
   );
 }
