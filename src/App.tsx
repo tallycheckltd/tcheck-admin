@@ -63,6 +63,7 @@ import { IntegrationsPage } from './pages/admin/IntegrationsPage';
 import { StaffViewPage } from './pages/admin/StaffViewPage';
 import { CemReportsPage } from './pages/admin/CemReportsPage';
 import { AdminProgramDetailPage } from './pages/admin/AdminProgramDetailPage';
+import { PilotAnalyticsPage } from './pages/admin/PilotAnalyticsPage';
 import { LegalPage } from './pages/LegalPage';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
@@ -152,6 +153,12 @@ export default function App() {
                   either (see Sidebar.tsx's new SUB_ADMIN/SCHOOL_ADMIN entry). */}
               <Route element={<RequireRole roles={['SUB_ADMIN', 'SCHOOL_ADMIN']} />}>
                 <Route path="/admin/messages" element={<AdminMessagesPage />} />
+              </Route>
+
+              {/* Moi Pilot — the main pilot screen. Same allow-list as the backend's /pilot-analytics
+                  routes; ICT_ADMIN is deliberately excluded (infrastructure-only, no student data). */}
+              <Route element={<RequireRole roles={['SUPER_ADMIN', 'SUB_ADMIN', 'SCHOOL_ADMIN']} />}>
+                <Route path="/pilot-analytics" element={<PilotAnalyticsPage />} />
               </Route>
 
               {/* Lecturer dashboard */}

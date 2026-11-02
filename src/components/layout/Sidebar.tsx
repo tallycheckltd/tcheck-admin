@@ -11,7 +11,7 @@ import {
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star, Presentation,
   ShieldAlert, ChevronDown, ChevronRight, ChevronLeft, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, Battery, Network, UploadCloud,
-  User as UserIcon, Plug, Wrench, DoorOpen, FileBarChart, Eye, MailCheck } from 'lucide-react';
+  User as UserIcon, Plug, Wrench, DoorOpen, FileBarChart, Eye, MailCheck, Activity } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation, FacilityTicket, Permission, User } from '../../types';
 import { isHierarchyRole, ROLE_LABEL } from '../../lib/rbac';
@@ -28,6 +28,8 @@ interface NavItem {
 /* ---- SUPER_ADMIN (Tallycheck Global) ---- */
 const superAdminOverview: NavItem[] = [
   { to: '/admin', icon: LayoutDashboard, label: 'Overview' },
+  // Moi Pilot's main screen — sign-ins, check-ins, PIN lockouts (PilotAnalyticsPage.tsx).
+  { to: '/pilot-analytics', icon: Activity, label: 'Pilot analytics' },
 ];
 
 const superAdminAdmin: NavItem[] = [
@@ -73,6 +75,9 @@ const superAdminGeneral: NavItem[] = [
 /* ---- ADMIN / SUB_ADMIN (University HOD) ---- */
 const hodOverview: NavItem[] = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  // SUB_ADMIN + SCHOOL_ADMIN only (hodOverview isn't shared with ICT_ADMIN/hierarchy navs) —
+  // matches the RequireRole guard on /pilot-analytics in App.tsx.
+  { to: '/pilot-analytics', icon: Activity, label: 'Pilot analytics' },
 ];
 
 const hodAdmin: NavItem[] = [
