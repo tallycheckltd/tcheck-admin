@@ -28,8 +28,8 @@ interface NavItem {
 /* ---- SUPER_ADMIN (Tallycheck Global) ---- */
 const superAdminOverview: NavItem[] = [
   { to: '/admin', icon: LayoutDashboard, label: 'Overview' },
-  // Moi Pilot's main screen — sign-ins, check-ins, PIN lockouts (PilotAnalyticsPage.tsx).
-  { to: '/pilot-analytics', icon: Activity, label: 'Pilot analytics' },
+  // Moi Pilot's main screen — sign-ins, check-ins, PIN lockouts (AnalyticsPage.tsx).
+  { to: '/analytics', icon: Activity, label: 'Analytics' },
 ];
 
 const superAdminAdmin: NavItem[] = [
@@ -76,8 +76,8 @@ const superAdminGeneral: NavItem[] = [
 const hodOverview: NavItem[] = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   // SUB_ADMIN + SCHOOL_ADMIN only (hodOverview isn't shared with ICT_ADMIN/hierarchy navs) —
-  // matches the RequireRole guard on /pilot-analytics in App.tsx.
-  { to: '/pilot-analytics', icon: Activity, label: 'Pilot analytics' },
+  // matches the RequireRole guard on /analytics in App.tsx.
+  { to: '/analytics', icon: Activity, label: 'Analytics' },
 ];
 
 const hodAdmin: NavItem[] = [

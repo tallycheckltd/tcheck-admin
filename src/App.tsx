@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
@@ -63,7 +63,13 @@ import { IntegrationsPage } from './pages/admin/IntegrationsPage';
 import { StaffViewPage } from './pages/admin/StaffViewPage';
 import { CemReportsPage } from './pages/admin/CemReportsPage';
 import { AdminProgramDetailPage } from './pages/admin/AdminProgramDetailPage';
-import { PilotAnalyticsPage } from './pages/admin/PilotAnalyticsPage';
+import { AnalyticsPage } from './pages/admin/AnalyticsPage';
+
+/** /pilot-analytics was renamed /analytics (11-02); old links and bookmarks land on the new page. */
+function LegacyAnalyticsRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/analytics${search}`} replace />;
+}
 import { LegalPage } from './pages/LegalPage';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
@@ -155,10 +161,12 @@ export default function App() {
                 <Route path="/admin/messages" element={<AdminMessagesPage />} />
               </Route>
 
-              {/* Moi Pilot — the main pilot screen. Same allow-list as the backend's /pilot-analytics
-                  routes; ICT_ADMIN is deliberately excluded (infrastructure-only, no student data). */}
+              {/* Moi Pilot — the main pilot screen (renamed Analytics 11-02; the old URL redirects, keeping
+                  ?schoolId). Same allow-list as the backend's /pilot-analytics routes; ICT_ADMIN is
+                  deliberately excluded (infrastructure-only, no student data). */}
               <Route element={<RequireRole roles={['SUPER_ADMIN', 'SUB_ADMIN', 'SCHOOL_ADMIN']} />}>
-                <Route path="/pilot-analytics" element={<PilotAnalyticsPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/pilot-analytics" element={<LegacyAnalyticsRedirect />} />
               </Route>
 
               {/* Lecturer dashboard */}

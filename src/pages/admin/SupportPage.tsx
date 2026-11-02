@@ -229,24 +229,40 @@ export function SupportPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {detail.messages?.map((m) => {
-                  const fromSchool = m.sender?.role === 'SUB_ADMIN';
+                {/* WhatsApp-style: whoever is reading sees their own messages on the right (blue), everyone
+                    else's on the left (grey), with the sender's name over theirs. Decided by who sent it, not
+                    by role, so it reads the same way for a School Admin and for the platform. */}
+                {detail.messages?.map((m, i) => {
+                  const mine = (m.sender?.id ?? m.senderId) === user?.id;
+                  const prev = detail.messages?.[i - 1];
+                  const sameAsPrev = !!prev && (prev.sender?.id ?? prev.senderId) === (m.sender?.id ?? m.senderId);
+                  const day = new Date(m.createdAt).toDateString();
+                  const newDay = !prev || new Date(prev.createdAt).toDateString() !== day;
                   return (
-                    <div key={m.id} className={`flex ${fromSchool ? 'justify-start' : 'justify-end'}`}>
-                      <div className="max-w-sm">
-                        <p className={`text-xs mb-1 ${fromSchool ? 'text-left' : 'text-right'} text-slate-600 dark:text-slate-400`}>
-                          {m.sender?.firstName} {m.sender?.lastName}
-                        </p>
-                        <div className={`px-4 py-2.5 rounded-2xl text-sm ${
-                          fromSchool
-                            ? 'bg-gray-100 dark:bg-white/5 text-slate-950 dark:text-white rounded-bl-md'
-                            : 'bg-blue-500/10 text-slate-950 dark:text-white rounded-br-md'
-                        }`}>
-                          {m.content}
+                    <div key={m.id}>
+                      {newDay && (
+                        <div className="my-3 flex justify-center">
+                          <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-medium text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                            {new Date(m.createdAt).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}
+                          </span>
                         </div>
-                        <p className={`text-xs mt-1 ${fromSchool ? 'text-left' : 'text-right'} text-slate-600 dark:text-slate-400`}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                      )}
+                      <div className={`flex ${mine ? 'justify-end' : 'justify-start'} ${sameAsPrev && !newDay ? '-mt-2' : ''}`}>
+                        <div className={`max-w-[75%] sm:max-w-md px-3.5 py-2 text-sm shadow-sm ${
+                          mine
+                            ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
+                            : 'bg-gray-100 dark:bg-white/10 text-slate-950 dark:text-white rounded-2xl rounded-bl-md'
+                        }`}>
+                          {!mine && (!sameAsPrev || newDay) && (
+                            <p className="mb-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                              {m.sender?.firstName} {m.sender?.lastName}
+                            </p>
+                          )}
+                          <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                          <p className={`mt-1 text-right text-[10px] ${mine ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                            {mine ? 'You · ' : ''}{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );
