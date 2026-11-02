@@ -6,6 +6,7 @@ import {
   BarChart3, AlertTriangle, CheckCircle2, School, ArrowLeft, ArrowUp, ArrowDown, Target,
   Repeat, XCircle, MapPinOff, SlidersHorizontal, X, Eye, EyeOff, ChevronDown, ChevronUp,
   Table2, Download, Maximize2, Minimize2, LayoutGrid, Funnel, Check, UserPlus, Camera, ShieldCheck,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
 import {
   BarChart, Bar, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, ReferenceLine,
@@ -138,8 +139,18 @@ function auditDetail(e: PilotAuditEvent): string {
 
 /* ---- Building blocks ---- */
 
+type Health = 'good' | 'warn' | 'bad';
+const HEALTH: Record<Health, { label: string; text: string; bar: string; edge: string; dot: string }> = {
+  good: { label: 'Good', text: 'text-emerald-700 dark:text-emerald-300', bar: 'bg-emerald-500', edge: 'before:bg-emerald-500', dot: 'bg-emerald-500' },
+  warn: { label: 'Watch', text: 'text-amber-700 dark:text-amber-300', bar: 'bg-amber-500', edge: 'before:bg-amber-500', dot: 'bg-amber-500' },
+  bad: { label: 'Needs attention', text: 'text-rose-700 dark:text-rose-300', bar: 'bg-rose-500', edge: 'before:bg-rose-500', dot: 'bg-rose-500' },
+};
+/** A rate (0–1) judged against "good at or above" and "bad below" lines. */
+const rateHealth = (r: number | null | undefined, good: number, bad: number): Health | undefined =>
+  r == null ? undefined : r >= good ? 'good' : r < bad ? 'bad' : 'warn';
+
 function KpiTile({
-  label, value, hint, icon: Icon, tone = 'blue', alert = false,
+  label, value, hint, icon: Icon, tone = 'blue', alert = false, meter, health, verdict, onClick,
 }: {
   label: string;
   value: ReactNode;
@@ -147,6 +158,14 @@ function KpiTile({
   icon: typeof Activity;
   tone?: 'blue' | 'green' | 'amber' | 'violet' | 'cyan' | 'red' | 'gray';
   alert?: boolean;
+  /** 0–1: drawn as a bar under the number (rates and shares). */
+  meter?: number | null;
+  /** Good / Watch / Needs attention — a coloured edge and a word, so the colour is never the only cue. */
+  health?: Health;
+  /** One plain sentence on what the number means right now. */
+  verdict?: string;
+  /** Jump to the section that explains this number. */
+  onClick?: () => void;
 }) {
   // Static class map — Tailwind can't see interpolated class names (same reason as StatCard.tsx).
   const toneClass = {
@@ -158,25 +177,39 @@ function KpiTile({
     red: 'bg-red-500/10 text-red-500',
     gray: 'bg-gray-500/10 text-gray-500',
   }[alert ? 'red' : tone];
+  const h = health ?? (alert ? 'bad' : undefined);
+  const Wrapper = onClick ? 'button' : 'div';
   return (
-    <div
+    <Wrapper
+      {...(onClick ? { type: 'button' as const, onClick, title: 'Show the details' } : {})}
       className={clsx(
         cardShell,
-        'flex items-start gap-3 p-4',
-        alert && '!border-red-500/50 !bg-red-50 dark:!bg-red-500/10 ring-1 ring-red-500/30',
+        'relative flex h-full w-full flex-col gap-2 overflow-hidden p-4 text-left',
+        h && "before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-['']",
+        h && HEALTH[h].edge,
+        onClick && 'cursor-pointer transition-shadow hover:ring-2 hover:ring-indigo-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
       )}
     >
-      <div className={clsx('flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg', toneClass)}>
-        <Icon size={18} />
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
+        <div className={clsx('flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg', toneClass)}>
+          <Icon size={15} />
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className={clsx('text-xs font-medium', alert ? 'text-red-700 dark:text-red-300' : 'text-gray-500 dark:text-gray-400')}>{label}</p>
-        <p className={clsx('mt-0.5 text-2xl font-bold leading-tight tabular-nums', alert ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white')}>
-          {value}
+      <p className="text-2xl font-bold leading-none tabular-nums text-gray-900 dark:text-white">{value}</p>
+      {meter != null && (
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10" aria-hidden>
+          <div className={clsx('h-full rounded-full', h ? HEALTH[h].bar : 'bg-indigo-500')} style={{ width: `${Math.max(2, Math.min(100, Math.round(meter * 100)))}%` }} />
+        </div>
+      )}
+      {hint && <p className="text-[11px] leading-snug text-gray-500 dark:text-gray-400">{hint}</p>}
+      {h && (
+        <p className={clsx('mt-auto flex items-center gap-1.5 text-[11px] font-semibold', HEALTH[h].text)}>
+          <span className={clsx('h-1.5 w-1.5 rounded-full', HEALTH[h].dot)} aria-hidden />
+          {verdict ?? HEALTH[h].label}
         </p>
-        {hint && <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">{hint}</p>}
-      </div>
-    </div>
+      )}
+    </Wrapper>
   );
 }
 
@@ -220,6 +253,48 @@ function Table({ head, children }: { head: string[]; children: ReactNode }) {
   );
 }
 
+const PAGE_SIZES = [10, 25, 50, 100] as const;
+
+/** Page controls under a table: rows per page, "1–25 of 120", first / previous / next / last. */
+function Pager({
+  page, pageSize, total, onPage, onPageSize, hasMore = false, loadingMore = false,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPage: (p: number) => void;
+  onPageSize: (n: number) => void;
+  /** The server has more rows than are loaded (audit log): Next stays available on the last page. */
+  hasMore?: boolean;
+  loadingMore?: boolean;
+}) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (total <= PAGE_SIZES[0] && !hasMore) return null;
+  const from = total ? page * pageSize + 1 : 0;
+  const to = Math.min(total, (page + 1) * pageSize);
+  const btn = 'inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-slate-200 px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5';
+  return (
+    <div className="flex flex-col gap-2 border-t border-gray-100 px-4 py-3 text-xs text-gray-500 dark:border-white/5 sm:flex-row sm:items-center sm:justify-between">
+      <label className="inline-flex items-center gap-2">
+        Rows per page
+        <select value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+          {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </label>
+      <div className="flex items-center gap-1.5">
+        <span className="mr-2 tabular-nums">{from.toLocaleString()}–{to.toLocaleString()} of {total.toLocaleString()}{hasMore ? '+' : ''}</span>
+        <button type="button" className={btn} onClick={() => onPage(0)} disabled={page === 0} aria-label="First page"><ChevronsLeft size={14} /></button>
+        <button type="button" className={btn} onClick={() => onPage(page - 1)} disabled={page === 0} aria-label="Previous page"><ChevronLeft size={14} /></button>
+        <span className="px-1 tabular-nums">Page {page + 1} of {pages}{hasMore ? '+' : ''}</span>
+        <button type="button" className={btn} onClick={() => onPage(page + 1)} disabled={(page >= pages - 1 && !hasMore) || loadingMore} aria-label="Next page">
+          {loadingMore ? <RefreshCw size={13} className="animate-spin" /> : <ChevronRight size={14} />}
+        </button>
+        <button type="button" className={btn} onClick={() => onPage(pages - 1)} disabled={page >= pages - 1} aria-label="Last page"><ChevronsRight size={14} /></button>
+      </div>
+    </div>
+  );
+}
+
 export interface Column<T> {
   key: string;
   label: string;
@@ -235,7 +310,7 @@ export interface Column<T> {
  * value; clicking a header sorts by it (again to reverse); CSV is what the filters show.
  */
 function DataTable<T>({
-  rows, columns, empty, filename, searchPlaceholder = 'Search…', toolbar, initialSort, rowKey, highlight, filter,
+  rows, columns, empty, filename, searchPlaceholder = 'Search…', toolbar, initialSort, rowKey, highlight, highlightClass, filter,
 }: {
   rows: T[];
   columns: Column<T>[];
@@ -246,11 +321,15 @@ function DataTable<T>({
   initialSort?: { key: string; dir: 'asc' | 'desc' };
   rowKey: (row: T, i: number) => string;
   highlight?: (row: T) => boolean;
+  /** Class for highlighted rows; defaults to the soft red used for problem rows. */
+  highlightClass?: string;
   /** An extra filter the widget controls (e.g. "only classes with problems"). */
   filter?: (row: T) => boolean;
 }) {
   const [q, setQ] = useState('');
   const [sort, setSort] = useState(initialSort ?? null);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(10);
   const valueOf = (c: Column<T>, r: T) => (c.value ? c.value(r) : (r as Record<string, unknown>)[c.key] as string | number | null | undefined);
 
   const shown = useMemo(() => {
@@ -274,8 +353,14 @@ function DataTable<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, columns, q, sort, filter]);
 
-  const toggleSort = (key: string) =>
+  const toggleSort = (key: string) => {
     setSort((s) => (s?.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' }));
+    setPage(0);
+  };
+  // A new search, filter or data refresh that shrinks the list never leaves you on a page past the end.
+  const pages = Math.max(1, Math.ceil(shown.length / pageSize));
+  const current = Math.min(page, pages - 1);
+  const visibleRows = shown.slice(current * pageSize, (current + 1) * pageSize);
 
   const exportCsv = () =>
     downloadCsv(filename, columns.map((c) => ({ key: c.key, label: c.label })), shown.map((r) => Object.fromEntries(columns.map((c) => [c.key, valueOf(c, r)]))));
@@ -284,7 +369,7 @@ function DataTable<T>({
     <div>
       <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 dark:border-white/5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          {rows.length > 0 && <SearchInput placeholder={searchPlaceholder} value={q} onChange={(e) => setQ(e.target.value)} className="min-w-[200px]" />}
+          {rows.length > 0 && <SearchInput placeholder={searchPlaceholder} value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} className="min-w-[200px]" />}
           {toolbar}
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-500">
@@ -296,12 +381,12 @@ function DataTable<T>({
           )}
         </div>
       </div>
-      <div className="max-h-[560px] overflow-auto">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-[1] bg-gray-50 text-[10px] uppercase tracking-wider text-gray-500 dark:bg-slate-900">
+          <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-500 dark:bg-slate-900">
             <tr>
               {columns.map((c) => (
-                <th key={c.key} className={clsx(thClass, c.align === 'right' && 'text-right')}>
+                <th key={c.key} className={clsx(thClass, 'whitespace-nowrap', c.align === 'right' && 'text-right')}>
                   <button type="button" onClick={() => toggleSort(c.key)} className="inline-flex items-center gap-1 uppercase hover:text-gray-900 dark:hover:text-white">
                     {c.label}
                     {sort?.key === c.key && (sort.dir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
@@ -311,8 +396,8 @@ function DataTable<T>({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/5 dark:text-gray-300">
-            {shown.map((r, i) => (
-              <tr key={rowKey(r, i)} className={clsx('align-top', highlight?.(r) ? 'bg-rose-50/60 dark:bg-rose-500/[0.06]' : 'hover:bg-gray-50/50 dark:hover:bg-white/[0.02]')}>
+            {visibleRows.map((r, i) => (
+              <tr key={rowKey(r, current * pageSize + i)} className={clsx('align-top', highlight?.(r) ? (highlightClass ?? 'bg-rose-50/60 dark:bg-rose-500/[0.06]') : 'hover:bg-gray-50/50 dark:hover:bg-white/[0.02]')}>
                 {columns.map((c) => (
                   <td key={c.key} className={clsx(tdClass, c.className, c.align === 'right' && 'text-right tabular-nums')}>
                     {c.render ? c.render(r) : (valueOf(c, r) ?? '—')}
@@ -324,6 +409,7 @@ function DataTable<T>({
           </tbody>
         </table>
       </div>
+      <Pager page={current} pageSize={pageSize} total={shown.length} onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
     </div>
   );
 }
@@ -418,12 +504,15 @@ function LockedStudents({ rows, schoolId, onChanged }: { rows: PilotAnalytics['l
 
   // A row that just succeeded drops out of `rows` on the refresh — keep its confirmation visible.
   const doneElsewhere = Object.entries(status).filter(([id, st]) => st.kind === 'ok' && !rows.some((r) => r.id === id));
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const current = Math.min(page, Math.max(0, Math.ceil(rows.length / pageSize) - 1));
 
   return (
     <>
       <p className="border-b border-gray-100 px-4 py-2 text-xs text-gray-500 dark:border-white/5">Unlock lets them try their own PIN again; Reset sets the PIN back to 123456.</p>
       <Table head={['Student ID', 'Name', 'Wrong PINs', 'Locked until', '']}>
-        {rows.map((r) => {
+        {rows.slice(current * pageSize, (current + 1) * pageSize).map((r) => {
           const st = status[r.id];
           const busy = st?.kind === 'busy';
           return (
@@ -460,6 +549,7 @@ function LockedStudents({ rows, schoolId, onChanged }: { rows: PilotAnalytics['l
         })}
         {rows.length === 0 && <EmptyRow cols={5} title="Nobody is locked out right now." />}
       </Table>
+      <Pager page={current} pageSize={pageSize} total={rows.length} onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
       {doneElsewhere.length > 0 && (
         <div className="space-y-1 border-t border-gray-100 px-4 py-3 dark:border-white/5">
           {doneElsewhere.map(([id, st]) => (
@@ -484,6 +574,8 @@ function AuditLog({ reloadKey, schoolId }: { reloadKey: number; schoolId: string
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(25);
 
   // Debounce the student ID box so each keystroke isn't its own request.
   useEffect(() => {
@@ -495,7 +587,7 @@ function AuditLog({ reloadKey, schoolId }: { reloadKey: number; schoolId: string
     setLoading(true);
     setError(null);
     return fetchPilotAudit({ type, q, schoolId })
-      .then((page) => { setEvents(page.events); setNextBefore(page.nextBefore); })
+      .then((res) => { setEvents(res.events); setNextBefore(res.nextBefore); setPage(0); })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Could not load the audit log'))
       .finally(() => setLoading(false));
   }, [type, q, schoolId]);
@@ -506,19 +598,28 @@ function AuditLog({ reloadKey, schoolId }: { reloadKey: number; schoolId: string
     return () => { cancelled = true; };
   }, [loadFirstPage, reloadKey]);
 
-  const loadMore = async () => {
-    if (!nextBefore) return;
+  /** Pages are cut from the events already loaded; stepping past them fetches the next batch first
+   * (the server pages by `nextBefore`, 50 at a time), so the list never grows into one long scroll. */
+  const goToPage = async (target: number) => {
+    let loaded = events;
+    let cursor = nextBefore;
     setLoadingMore(true);
     try {
-      const page = await fetchPilotAudit({ type, q, before: nextBefore, schoolId });
-      setEvents((prev) => [...prev, ...page.events]);
-      setNextBefore(page.nextBefore);
+      while (cursor && loaded.length < (target + 1) * pageSize) {
+        const res = await fetchPilotAudit({ type, q, before: cursor, schoolId });
+        loaded = [...loaded, ...res.events];
+        cursor = res.nextBefore;
+      }
+      setEvents(loaded);
+      setNextBefore(cursor);
+      setPage(Math.max(0, Math.min(target, Math.ceil(loaded.length / pageSize) - 1)));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load more events');
     } finally {
       setLoadingMore(false);
     }
   };
+  const pageEvents = events.slice(page * pageSize, (page + 1) * pageSize);
 
   const tone = (t: string): 'green' | 'red' | 'yellow' | 'blue' | 'gray' =>
     t === 'SIGNIN_OK' ? 'green'
@@ -555,7 +656,7 @@ function AuditLog({ reloadKey, schoolId }: { reloadKey: number; schoolId: string
         </div>
         {events.length > 0 && (
           <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-300">
-            <Download size={13} /> CSV of loaded rows
+            <Download size={13} /> CSV ({events.length.toLocaleString()} loaded)
           </button>
         )}
       </div>
@@ -565,9 +666,9 @@ function AuditLog({ reloadKey, schoolId }: { reloadKey: number; schoolId: string
           <div className="h-7 w-7 animate-spin rounded-full border-b-2 border-blue-600" />
         </div>
       ) : (
-        <div className="max-h-[560px] overflow-auto">
+        <div className="overflow-x-auto">
           <Table head={['Time', 'Event', 'Student ID typed', 'Matched student', 'IP', 'Phone', 'Detail']}>
-            {events.map((e) => (
+            {pageEvents.map((e) => (
               <tr key={e.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01]">
                 <td className={clsx(tdClass, 'whitespace-nowrap text-xs text-gray-500')}>{fmtTime(e.createdAt, 'd MMM, HH:mm:ss')}</td>
                 <td className={tdClass}><Badge color={tone(e.type)}>{labelFor(AUDIT_EVENT_LABEL, e.type)}</Badge></td>
@@ -589,18 +690,48 @@ function AuditLog({ reloadKey, schoolId }: { reloadKey: number; schoolId: string
           </Table>
         </div>
       )}
-      {!loading && nextBefore && (
-        <div className="border-t border-gray-100 p-3 text-center dark:border-white/5">
-          <button type="button" onClick={() => void loadMore()} disabled={loadingMore} className={pillBtn}>
-            {loadingMore ? 'Loading…' : 'Load more'}
-          </button>
-        </div>
+      {!loading && (
+        <Pager
+          page={page}
+          pageSize={pageSize}
+          total={events.length}
+          hasMore={!!nextBefore}
+          loadingMore={loadingMore}
+          onPage={(p) => void goToPage(p)}
+          onPageSize={(n) => { setPageSize(n); setPage(0); }}
+        />
       )}
     </>
   );
 }
 
 /* ---- SUPER_ADMIN only: one row of headline numbers per school ---- */
+
+/** A school's state in words: what's wrong, worst first. Severity drives the pill colour. */
+function schoolHealth(s: PilotSchoolRow, nowMs: number): { health: Health; issues: { text: string; health: Health }[] } {
+  const issues: { text: string; health: Health }[] = [];
+  const attempts = (s.signInsToday ?? 0) + (s.failedSignInsToday ?? 0);
+  const okRate = attempts ? (s.signInsToday ?? 0) / attempts : null;
+  if (attempts >= 5 && okRate != null && okRate < 0.7) issues.push({ text: `Most sign-ins failing today (${s.failedSignInsToday} of ${attempts})`, health: 'bad' });
+  else if (attempts >= 5 && okRate != null && okRate < 0.9) issues.push({ text: `Some sign-ins failing today (${s.failedSignInsToday})`, health: 'warn' });
+  if ((s.gaveUpThisWeek ?? 0) > 0) issues.push({ text: `${s.gaveUpThisWeek} gave up checking in this week`, health: (s.gaveUpThisWeek ?? 0) >= 10 ? 'bad' : 'warn' });
+  const share = s.students ? s.signedIn / s.students : 1;
+  if (s.students && share < 0.4) issues.push({ text: `Only ${pct(s.signedIn, s.students)}% of students signed in`, health: share < 0.25 ? 'bad' : 'warn' });
+  if (s.openTickets > 0) issues.push({ text: `${s.openTickets} open ticket${s.openTickets === 1 ? '' : 's'}`, health: 'warn' });
+  const quietDays = s.lastCheckInAt ? (nowMs - new Date(s.lastCheckInAt).getTime()) / 86_400_000 : Infinity;
+  if (s.classesThisWeek > 0 && quietDays > 3) issues.push({ text: s.lastCheckInAt ? 'No check-ins for 3+ days' : 'No check-ins yet', health: 'bad' });
+  issues.sort((a, b) => (a.health === b.health ? 0 : a.health === 'bad' ? -1 : 1));
+  const health: Health = issues.some((i) => i.health === 'bad') ? 'bad' : issues.length ? 'warn' : 'good';
+  return { health, issues };
+}
+
+function Meter({ value, health }: { value: number | null; health?: Health }) {
+  return (
+    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10" aria-hidden>
+      <div className={clsx('h-full rounded-full', health ? HEALTH[health].bar : 'bg-indigo-500')} style={{ width: `${Math.max(value ? 3 : 0, Math.round((value ?? 0) * 100))}%` }} />
+    </div>
+  );
+}
 
 function AllSchools({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string | null) => void }) {
   const { data, loading, error, refetch } = useApi<PilotSchoolsSummary>(PILOT_SCHOOLS_PATH, { refetchWhenVisible: true });
@@ -613,6 +744,10 @@ function AllSchools({ selectedId, onSelect }: { selectedId: string | null; onSel
   }, [refetch]);
 
   const schools = useMemo(() => data?.schools ?? [], [data]);
+  const nowMs = data ? new Date(data.generatedAt).getTime() : 0;
+  const healthOf = useMemo(() => new Map(schools.map((s) => [s.id, schoolHealth(s, nowMs)])), [schools, nowMs]);
+  const counts = { good: 0, warn: 0, bad: 0 } as Record<Health, number>;
+  healthOf.forEach((h) => { counts[h.health] += 1; });
   const totals = {
     students: sum(schools, (s) => s.students),
     signedIn: sum(schools, (s) => s.signedIn),
@@ -621,59 +756,130 @@ function AllSchools({ selectedId, onSelect }: { selectedId: string | null; onSel
     activeStudentsThisWeek: sum(schools, (s) => s.activeStudentsThisWeek),
     openTickets: sum(schools, (s) => s.openTickets),
   };
-  const nowMs = data ? new Date(data.generatedAt).getTime() : 0;
+  const rank: Record<Health, number> = { bad: 0, warn: 1, good: 2 };
 
   const columns: Column<PilotSchoolRow>[] = [
     {
       key: 'name', label: 'School',
-      render: (s) => (
-        <button type="button" onClick={() => onSelect(s.id === selectedId ? null : s.id)} className="text-left">
-          <p className={clsx('font-semibold hover:underline', s.id === selectedId ? 'text-indigo-600 dark:text-indigo-300' : 'text-gray-900 dark:text-white')}>{s.name}</p>
-          <p className="text-[10px] text-gray-500">{s.code} · {s.staff} staff · {s.courses} courses · {s.classesThisWeek} classes this week</p>
-        </button>
-      ),
+      render: (s) => {
+        const h = healthOf.get(s.id)!;
+        return (
+          <div className="min-w-[180px]">
+            <div className="flex items-center gap-2">
+              <span className={clsx('h-2 w-2 flex-shrink-0 rounded-full', HEALTH[h.health].dot)} aria-hidden />
+              <p className={clsx('font-semibold', s.id === selectedId ? 'text-indigo-600 dark:text-indigo-300' : 'text-gray-900 dark:text-white')}>{s.name}</p>
+            </div>
+            <p className="mt-0.5 pl-4 text-[11px] text-gray-500">{s.code} · {s.staff} staff · {s.courses} courses · {s.classesThisWeek} classes this week</p>
+            <button
+              type="button"
+              onClick={() => onSelect(s.id === selectedId ? null : s.id)}
+              className={clsx('ml-4 mt-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors',
+                s.id === selectedId ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-200 dark:hover:bg-indigo-500/20')}
+            >
+              {s.id === selectedId ? 'Viewing ✓' : 'View details →'}
+            </button>
+          </div>
+        );
+      },
     },
-    { key: 'students', label: 'Students', align: 'right' },
+    {
+      key: 'health', label: 'Status', value: (s) => rank[healthOf.get(s.id)!.health],
+      render: (s) => {
+        const h = healthOf.get(s.id)!;
+        return (
+          <div className="min-w-[190px] max-w-[260px] space-y-1">
+            <span className={clsx('inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1',
+              h.health === 'good' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300'
+                : h.health === 'warn' ? 'bg-amber-50 text-amber-700 ring-amber-600/15 dark:bg-amber-500/10 dark:text-amber-300'
+                  : 'bg-rose-50 text-rose-700 ring-rose-600/15 dark:bg-rose-500/10 dark:text-rose-300')}>
+              {h.health === 'good' ? 'Healthy' : HEALTH[h.health].label}
+            </span>
+            {h.issues.slice(0, 3).map((i) => (
+              <p key={i.text} className={clsx('text-[11px] leading-snug', HEALTH[i.health].text)}>• {i.text}</p>
+            ))}
+          </div>
+        );
+      },
+    },
     {
       key: 'signedIn', label: 'Signed in', value: (s) => pct(s.signedIn, s.students),
       render: (s) => (
-        <div className="min-w-[120px]">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <div className="h-2 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
-              <div className="h-full rounded-full" style={{ width: `${pct(s.signedIn, s.students)}%`, background: C.indigo }} />
-            </div>
-            <span className="tabular-nums text-xs">{pct(s.signedIn, s.students)}%</span>
+            <Meter value={s.students ? s.signedIn / s.students : null} health={rateHealth(s.students ? s.signedIn / s.students : null, 0.8, 0.4)} />
+            <span className="tabular-nums text-xs font-semibold">{pct(s.signedIn, s.students)}%</span>
           </div>
-          <p className="text-[10px] text-gray-500">{s.signedIn.toLocaleString()} students</p>
+          <p className="text-[11px] text-gray-500">{s.signedIn.toLocaleString()} of {s.students.toLocaleString()}</p>
         </div>
       ),
     },
     {
-      key: 'signInsToday', label: 'Sign-ins today',
-      render: (s) => <span className="whitespace-nowrap tabular-nums"><span className="text-green-600 dark:text-green-400">{s.signInsToday ?? 0}</span><span className="text-xs text-gray-400"> ok · </span><span className={s.failedSignInsToday > 0 ? 'text-red-500' : ''}>{s.failedSignInsToday}</span><span className="text-xs text-gray-400"> failed</span></span>,
+      key: 'signInsToday', label: 'Sign-ins today', value: (s) => (s.signInsToday ?? 0) + (s.failedSignInsToday ?? 0),
+      render: (s) => {
+        const attempts = (s.signInsToday ?? 0) + (s.failedSignInsToday ?? 0);
+        const r = attempts ? (s.signInsToday ?? 0) / attempts : null;
+        return attempts ? (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Meter value={r} health={attempts >= 5 ? rateHealth(r, 0.9, 0.7) : undefined} />
+              <span className="tabular-nums text-xs font-semibold">{pct(s.signInsToday ?? 0, attempts)}%</span>
+            </div>
+            <p className="whitespace-nowrap text-[11px] text-gray-500"><span className="text-emerald-600 dark:text-emerald-400">{s.signInsToday ?? 0} ok</span> · <span className={s.failedSignInsToday ? 'text-rose-500' : ''}>{s.failedSignInsToday} failed</span></p>
+          </div>
+        ) : <span className="text-xs text-gray-400">No attempts</span>;
+      },
     },
     {
-      key: 'checkInsToday', label: 'Check-ins today',
-      render: (s) => <span className="whitespace-nowrap tabular-nums">{s.checkInsToday}<span className="text-xs text-gray-400"> in · </span><span className={(s.failedCheckInsToday ?? 0) > 0 ? 'text-red-500' : ''}>{s.failedCheckInsToday ?? 0}</span><span className="text-xs text-gray-400"> failed</span></span>,
+      key: 'checkInsThisWeek', label: 'Check-ins (week)',
+      render: (s) => (
+        <div>
+          <p className="tabular-nums font-semibold text-gray-900 dark:text-white">{s.checkInsThisWeek.toLocaleString()}</p>
+          <p className="whitespace-nowrap text-[11px] text-gray-500">{s.activeStudentsThisWeek.toLocaleString()} students · {s.checkInsToday} today</p>
+          <p className={clsx('whitespace-nowrap text-[11px]', (s.gaveUpThisWeek ?? 0) > 0 ? 'font-semibold text-rose-600 dark:text-rose-400' : 'text-gray-400')}>
+            {s.gaveUpThisWeek ?? 0} gave up · {(s.failedCheckInsThisWeek ?? 0).toLocaleString()} failed tries
+          </p>
+        </div>
+      ),
     },
-    { key: 'checkInsThisWeek', label: 'Check-ins this week', align: 'right' },
-    { key: 'activeStudentsThisWeek', label: 'Active this week', align: 'right' },
-    { key: 'gaveUpThisWeek', label: 'Gave up this week', align: 'right', render: (s) => <span className={(s.gaveUpThisWeek ?? 0) > 0 ? 'font-semibold text-red-500' : ''}>{s.gaveUpThisWeek ?? 0}</span> },
-    { key: 'openTickets', label: 'Open tickets', align: 'right' },
-    { key: 'lastCheckInAt', label: 'Last check-in', render: (s) => <span className="whitespace-nowrap text-xs text-gray-500" title={s.lastCheckInAt ? fmtTime(s.lastCheckInAt) : undefined}>{timeAgo(s.lastCheckInAt, nowMs)}</span> },
+    { key: 'openTickets', label: 'Tickets', align: 'right', render: (s) => <span className={s.openTickets ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-gray-400'}>{s.openTickets}</span> },
+    {
+      key: 'lastCheckInAt', label: 'Last check-in',
+      render: (s) => {
+        const recent = s.lastCheckInAt && nowMs - new Date(s.lastCheckInAt).getTime() < 60 * 60 * 1000;
+        return (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500" title={s.lastCheckInAt ? fmtTime(s.lastCheckInAt) : undefined}>
+            {recent && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden />}
+            {timeAgo(s.lastCheckInAt, nowMs)}
+          </span>
+        );
+      },
+    },
   ];
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-6">
-        <KpiTile label="Students, all schools" value={totals.students.toLocaleString()} icon={Users} tone="blue" />
-        <KpiTile label="Signed in" value={totals.signedIn.toLocaleString()} hint={`${pct(totals.signedIn, totals.students)}% of students`} icon={LogIn} tone="green" />
-        <KpiTile label="Check-ins today" value={totals.checkInsToday.toLocaleString()} icon={CalendarCheck} tone="cyan" />
-        <KpiTile label="Check-ins this week" value={totals.checkInsThisWeek.toLocaleString()} icon={UserCheck} tone="violet" />
-        <KpiTile label="Active students this week" value={totals.activeStudentsThisWeek.toLocaleString()} icon={Activity} tone="green" />
-        <KpiTile label="Open tickets" value={totals.openTickets.toLocaleString()} icon={LifeBuoy} tone="amber" />
-      </div>
-      {error && <p className="border-y border-red-500/20 bg-red-500/5 px-4 py-2 text-xs text-red-600 dark:text-red-400">Couldn't load schools: {error}</p>}
+      {schools.length > 1 && (
+        <div className="grid grid-cols-2 divide-gray-100 border-b border-gray-100 dark:divide-white/5 dark:border-white/5 sm:grid-cols-3 lg:grid-cols-6 lg:divide-x">
+          {[
+            { label: 'Schools', value: schools.length.toLocaleString(), sub: `${counts.good} healthy · ${counts.warn} to watch · ${counts.bad} need attention` },
+            { label: 'Students', value: totals.students.toLocaleString(), sub: `${pct(totals.signedIn, totals.students)}% signed in` },
+            { label: 'Check-ins today', value: totals.checkInsToday.toLocaleString() },
+            { label: 'Check-ins this week', value: totals.checkInsThisWeek.toLocaleString() },
+            { label: 'Active this week', value: totals.activeStudentsThisWeek.toLocaleString(), sub: 'students' },
+            { label: 'Open tickets', value: totals.openTickets.toLocaleString() },
+          ].map((t) => (
+            <div key={t.label} className="px-4 py-3">
+              <p className="text-[11px] font-medium text-gray-500">{t.label}</p>
+              <p className="text-lg font-bold tabular-nums text-gray-900 dark:text-white">{t.value}</p>
+              {t.sub && <p className="text-[10px] text-gray-500">{t.sub}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+      {schools.length === 1 && (
+        <p className="border-b border-gray-100 px-4 py-2 text-xs text-gray-500 dark:border-white/5">One school so far — its numbers are in Headline numbers below.</p>
+      )}
+      {error && <p className="border-b border-red-500/20 bg-red-500/5 px-4 py-2 text-xs text-red-600 dark:text-red-400">Couldn't load schools: {error}</p>}
       {loading && !data ? (
         <div className="flex justify-center py-10"><div className="h-7 w-7 animate-spin rounded-full border-b-2 border-blue-600" /></div>
       ) : (
@@ -684,7 +890,9 @@ function AllSchools({ selectedId, onSelect }: { selectedId: string | null; onSel
           empty="No schools yet."
           filename="schools.csv"
           searchPlaceholder="Search schools…"
-          initialSort={{ key: 'students', dir: 'desc' }}
+          initialSort={{ key: 'health', dir: 'asc' }}
+          highlight={(s) => s.id === selectedId}
+          highlightClass="bg-indigo-50/70 dark:bg-indigo-500/10"
         />
       )}
     </div>
@@ -918,35 +1126,73 @@ export function AnalyticsPage() {
   const checkInFailures = [...(data?.checkInFailureReasons ?? [])].sort((a, b) => b.count - a.count);
   const modelData = [...(data?.deviceModels ?? [])].sort((a, b) => b.count - a.count).map((m) => ({ ...m, label: m.model || 'Unknown' }));
 
-  /* The headline numbers the viewer can pick from (Customize → Headline numbers). */
+  /** Open a section (adding it if hidden) and scroll to it — headline tiles link to their detail. */
+  const jumpTo = (id: string) => {
+    if (!layout.widgets.includes(id)) ctl.toggleWidget(id);
+    window.setTimeout(() => document.getElementById(`w-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+
+  /* The headline numbers the viewer can pick from (Customize → Headline numbers). Each says, in
+     words, whether it's good, worth watching or needs attention — colour is never the only cue. */
+  const signInAttemptsToday = k ? k.signInsOkToday + k.signInsFailedToday : 0;
+  const signInRateToday = k && signInAttemptsToday ? k.signInsOkToday / signInAttemptsToday : null;
+  const signedInShare = k && k.students ? k.signedIn / k.students : null;
   const kpiTiles: Record<string, () => ReactNode> = !k ? {} : {
-    students: () => <KpiTile label="Students" value={k.students.toLocaleString()} icon={Users} tone="blue" />,
-    signedIn: () => <KpiTile label="Signed in" value={k.signedIn.toLocaleString()} hint={`${pct(k.signedIn, k.students)}% of students · ${k.signedInToday} today`} icon={LogIn} tone="green" />,
-    signedInToday: () => <KpiTile label="Signed in today" value={k.signedInToday.toLocaleString()} icon={LogIn} tone="green" />,
-    termsAccepted: () => <KpiTile label="Accepted the terms" value={k.termsAccepted.toLocaleString()} hint={`${pct(k.termsAccepted, k.students)}% of students`} icon={ShieldCheck} tone="violet" />,
-    baselineCaptured: () => <KpiTile label="Baseline photo taken" value={k.baselineCaptured.toLocaleString()} hint={`${pct(k.baselineCaptured, k.students)}% of students`} icon={Camera} tone="cyan" />,
-    checkInsToday: () => <KpiTile label="Check-ins today" value={k.checkInsToday.toLocaleString()} icon={CalendarCheck} tone="cyan" />,
-    checkInsPeriod: () => <KpiTile label={`Check-ins, ${periodLabel}`} value={k.checkInsPeriod.toLocaleString()} icon={UserCheck} tone="violet" />,
-    checkOutRate: () => <KpiTile label="Check-out rate" value={k.checkOutRate == null ? '—' : `${Math.round(k.checkOutRate * 100)}%`} hint="Check-ins that also checked out" icon={LogOut} tone="cyan" />,
-    checkInSuccessRate: () => <KpiTile label="Check-in success rate" value={k.checkInSuccessRate == null ? '—' : `${Math.round(k.checkInSuccessRate * 100)}%`} hint={`Students who tried and got in, ${periodLabel}`} icon={Target} tone="green" />,
-    firstTry: () => <KpiTile label="Got in first try" value={(k.checkInFirstTryPeriod ?? 0).toLocaleString()} hint={periodLabel} icon={CheckCircle2} tone="green" />,
-    retried: () => <KpiTile label="Got in after retrying" value={(k.checkInRetriedPeriod ?? 0).toLocaleString()} hint={periodLabel} icon={Repeat} tone="amber" />,
-    gaveUp: () => <KpiTile label="Tried but gave up" value={(k.checkInGaveUpPeriod ?? 0).toLocaleString()} hint={`Never got in, ${periodLabel}`} icon={XCircle} tone="gray" alert={(k.checkInGaveUpPeriod ?? 0) > 0} />,
-    failedAttemptsToday: () => <KpiTile label="Failed check-in attempts today" value={(k.checkInFailedAttemptsToday ?? 0).toLocaleString()} icon={MapPinOff} tone="red" />,
-    failedAttemptsPeriod: () => <KpiTile label={`Failed check-in attempts, ${periodLabel}`} value={(k.checkInFailedAttemptsPeriod ?? 0).toLocaleString()} icon={MapPinOff} tone="red" />,
-    signInsToday: () => (
-      <KpiTile
-        label="Sign-ins today"
-        value={<><span className="text-green-600 dark:text-green-400">{k.signInsOkToday}</span><span className="text-base font-medium text-gray-400"> ok · </span><span className={k.signInsFailedToday > 0 ? 'text-red-500' : ''}>{k.signInsFailedToday}</span><span className="text-base font-medium text-gray-400"> failed</span></>}
-        icon={KeyRound}
-        tone="blue"
-      />
-    ),
-    signInSuccessToday: () => <KpiTile label="Sign-in success today" value={k.signInsOkToday + k.signInsFailedToday ? `${pct(k.signInsOkToday, k.signInsOkToday + k.signInsFailedToday)}%` : '—'} hint={`${k.signInsOkToday} of ${k.signInsOkToday + k.signInsFailedToday} attempts`} icon={UserPlus} tone="green" />,
-    pinLockedNow: () => <KpiTile label="PIN-locked now" value={k.pinLockedNow} hint={k.pinLockedNow > 0 ? 'See "Needs help now"' : 'Nobody locked out'} icon={Lock} tone="gray" alert={k.pinLockedNow > 0} />,
-    pendingDeviceChanges: () => <KpiTile label="Pending phone changes" value={k.pendingDeviceChanges} hint="Waiting in Verification" icon={Smartphone} tone="amber" />,
-    closedAccounts: () => <KpiTile label="Closed accounts" value={k.closedAccounts} hint="Deleted or deactivated" icon={UserX} tone="gray" />,
-    openTickets: () => <KpiTile label="Open tickets" value={openTickets.length} icon={LifeBuoy} tone="amber" />,
+    students: () => <KpiTile label="Students" value={k.students.toLocaleString()} hint="On the school's list" icon={Users} tone="blue" />,
+    signedIn: () => {
+      const h = rateHealth(signedInShare, 0.8, 0.4);
+      return (
+        <KpiTile label="Signed in" value={k.signedIn.toLocaleString()} meter={signedInShare} health={h}
+          hint={`${pct(k.signedIn, k.students)}% of ${k.students.toLocaleString()} students · ${k.signedInToday} today`}
+          verdict={h === 'bad' ? 'Most students haven\'t signed in yet' : h === 'warn' ? 'Sign-up still in progress' : 'Most students are in'}
+          icon={LogIn} tone="green" onClick={() => jumpTo('funnel')} />
+      );
+    },
+    signedInToday: () => <KpiTile label="Signed in today" value={k.signedInToday.toLocaleString()} hint="Students who signed in for the first time today" icon={LogIn} tone="green" onClick={() => jumpTo('signins-per-day')} />,
+    termsAccepted: () => <KpiTile label="Accepted the terms" value={k.termsAccepted.toLocaleString()} meter={k.students ? k.termsAccepted / k.students : null} hint={`${pct(k.termsAccepted, k.students)}% of students`} icon={ShieldCheck} tone="violet" onClick={() => jumpTo('funnel')} />,
+    baselineCaptured: () => <KpiTile label="Baseline photo taken" value={k.baselineCaptured.toLocaleString()} meter={k.students ? k.baselineCaptured / k.students : null} hint={`${pct(k.baselineCaptured, k.students)}% of students`} icon={Camera} tone="cyan" onClick={() => jumpTo('funnel')} />,
+    checkInsToday: () => <KpiTile label="Check-ins today" value={k.checkInsToday.toLocaleString()} hint={k.checkInsToday ? 'Students checked in to a class today' : 'None yet today'} icon={CalendarCheck} tone="cyan" onClick={() => jumpTo('checkins-per-day')} />,
+    checkInsPeriod: () => <KpiTile label={`Check-ins, ${periodLabel}`} value={k.checkInsPeriod.toLocaleString()} icon={UserCheck} tone="violet" onClick={() => jumpTo('checkins-per-day')} />,
+    checkOutRate: () => {
+      const h = rateHealth(k.checkOutRate, 0.8, 0.5);
+      return <KpiTile label="Check-out rate" value={k.checkOutRate == null ? '—' : `${Math.round(k.checkOutRate * 100)}%`} meter={k.checkOutRate} health={h} hint="Check-ins that also checked out" verdict={h === 'bad' ? 'Many students don\'t check out' : h === 'warn' ? 'Some students don\'t check out' : undefined} icon={LogOut} tone="cyan" onClick={() => jumpTo('classes')} />;
+    },
+    checkInSuccessRate: () => {
+      const h = rateHealth(k.checkInSuccessRate, 0.95, 0.85);
+      return <KpiTile label="Check-in success rate" value={k.checkInSuccessRate == null ? '—' : `${Math.round(k.checkInSuccessRate * 100)}%`} meter={k.checkInSuccessRate} health={h} hint={`Students who tried and got in, ${periodLabel}`} verdict={h === 'good' ? 'Almost everyone gets in' : h === 'warn' ? 'Some students can\'t get in' : 'Too many students can\'t get in'} icon={Target} tone="green" onClick={() => jumpTo('checkin-outcomes')} />;
+    },
+    firstTry: () => {
+      const total = (k.checkInFirstTryPeriod ?? 0) + (k.checkInRetriedPeriod ?? 0) + (k.checkInGaveUpPeriod ?? 0);
+      return <KpiTile label="Got in first try" value={(k.checkInFirstTryPeriod ?? 0).toLocaleString()} meter={total ? (k.checkInFirstTryPeriod ?? 0) / total : null} hint={`${pct(k.checkInFirstTryPeriod ?? 0, total)}% of attempts, ${periodLabel}`} icon={CheckCircle2} tone="green" onClick={() => jumpTo('checkin-outcomes')} />;
+    },
+    retried: () => <KpiTile label="Got in after retrying" value={(k.checkInRetriedPeriod ?? 0).toLocaleString()} health={(k.checkInRetriedPeriod ?? 0) > 0 ? 'warn' : undefined} verdict={(k.checkInRetriedPeriod ?? 0) > 0 ? 'Had to try more than once' : undefined} hint={periodLabel} icon={Repeat} tone="amber" onClick={() => jumpTo('checkin-failures')} />,
+    gaveUp: () => <KpiTile label="Tried but gave up" value={(k.checkInGaveUpPeriod ?? 0).toLocaleString()} health={(k.checkInGaveUpPeriod ?? 0) > 0 ? 'bad' : 'good'} verdict={(k.checkInGaveUpPeriod ?? 0) > 0 ? 'Never got in — see why' : 'Nobody gave up'} hint={periodLabel} icon={XCircle} tone="gray" onClick={() => jumpTo('checkin-failures')} />,
+    failedAttemptsToday: () => <KpiTile label="Failed check-in attempts today" value={(k.checkInFailedAttemptsToday ?? 0).toLocaleString()} health={(k.checkInFailedAttemptsToday ?? 0) > 0 ? 'warn' : undefined} hint={`${(k.checkInFailedAttemptsPeriod ?? 0).toLocaleString()} ${periodLabel}`} icon={MapPinOff} tone="red" onClick={() => jumpTo('checkin-failures')} />,
+    failedAttemptsPeriod: () => <KpiTile label={`Failed check-in attempts, ${periodLabel}`} value={(k.checkInFailedAttemptsPeriod ?? 0).toLocaleString()} icon={MapPinOff} tone="red" onClick={() => jumpTo('checkin-failures')} />,
+    signInsToday: () => {
+      const h = signInAttemptsToday >= 5 ? rateHealth(signInRateToday, 0.9, 0.7) : undefined;
+      return (
+        <KpiTile
+          label="Sign-ins today"
+          value={<><span className="text-emerald-600 dark:text-emerald-400">{k.signInsOkToday}</span><span className="text-sm font-medium text-gray-400"> ok · </span><span className={k.signInsFailedToday > 0 ? 'text-rose-500' : ''}>{k.signInsFailedToday}</span><span className="text-sm font-medium text-gray-400"> failed</span></>}
+          meter={signInRateToday}
+          health={h}
+          hint={signInAttemptsToday ? `${pct(k.signInsOkToday, signInAttemptsToday)}% of ${signInAttemptsToday} attempts worked` : 'No attempts yet today'}
+          verdict={h === 'bad' ? 'Most sign-ins are failing — see why' : h === 'warn' ? 'Some sign-ins are failing' : undefined}
+          icon={KeyRound}
+          tone="blue"
+          onClick={() => jumpTo('signin-failures')}
+        />
+      );
+    },
+    signInSuccessToday: () => {
+      const h = signInAttemptsToday >= 5 ? rateHealth(signInRateToday, 0.9, 0.7) : undefined;
+      return <KpiTile label="Sign-in success today" value={signInRateToday == null ? '—' : `${Math.round(signInRateToday * 100)}%`} meter={signInRateToday} health={h} hint={`${k.signInsOkToday} of ${signInAttemptsToday} attempts`} verdict={h === 'bad' ? 'Most sign-ins are failing' : undefined} icon={UserPlus} tone="green" onClick={() => jumpTo('signin-failures')} />;
+    },
+    pinLockedNow: () => <KpiTile label="PIN-locked now" value={k.pinLockedNow} health={k.pinLockedNow > 0 ? 'bad' : 'good'} verdict={k.pinLockedNow > 0 ? 'Needs your help — unlock them' : 'Nobody locked out'} icon={Lock} tone="gray" onClick={() => jumpTo('needs-help')} />,
+    pendingDeviceChanges: () => <KpiTile label="Pending phone changes" value={k.pendingDeviceChanges} health={k.pendingDeviceChanges > 0 ? 'warn' : undefined} verdict={k.pendingDeviceChanges > 0 ? 'Waiting in Verification' : undefined} icon={Smartphone} tone="amber" onClick={() => jumpTo('device-events')} />,
+    closedAccounts: () => <KpiTile label="Closed accounts" value={k.closedAccounts} hint="Deleted or deactivated" icon={UserX} tone="gray" onClick={() => jumpTo('closed-accounts')} />,
+    openTickets: () => <KpiTile label="Open tickets" value={openTickets.length} health={openTickets.length > 0 ? 'warn' : 'good'} verdict={openTickets.length > 0 ? 'Waiting for a reply' : 'All answered'} icon={LifeBuoy} tone="amber" onClick={() => jumpTo('tickets')} />,
   };
 
   const visible = layout.widgets
@@ -966,9 +1212,22 @@ export function AnalyticsPage() {
         return { node: <AllSchools selectedId={schoolId} onSelect={selectSchool} /> };
       case 'kpis': {
         const tiles = layout.kpis.filter((id) => kpiTiles[id]);
+        // Grouped into bands (Onboarding, Check-ins, Sign-ins & access, …) in the viewer's order within each.
+        const bands = (Object.keys(GROUP_LABEL) as WidgetGroup[])
+          .map((g) => ({ g, ids: tiles.filter((id) => KPIS.find((x) => x.id === id)?.group === g) }))
+          .filter((b) => b.ids.length);
+        const BAND_LABEL: Partial<Record<WidgetGroup, string>> = { overview: 'Students & onboarding', signins: 'Sign-ins & access', phones: 'Phones & accounts' };
         return {
           node: tiles.length ? (
-            <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-5">{tiles.map((id) => <div key={id}>{kpiTiles[id]()}</div>)}</div>
+            <div className="space-y-5 p-4">
+              {bands.map((b) => (
+                <div key={b.g}>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{BAND_LABEL[b.g] ?? GROUP_LABEL[b.g]}</p>
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">{b.ids.map((id) => <div key={id}>{kpiTiles[id]()}</div>)}</div>
+                </div>
+              ))}
+              <p className="text-[11px] text-gray-400">Click a number to see the section behind it.</p>
+            </div>
           ) : (
             <div className="p-6 text-center text-sm text-gray-500">
               No numbers picked. <button type="button" onClick={() => setCustomizing(true)} className="font-medium text-indigo-600 hover:underline">Choose some</button>
