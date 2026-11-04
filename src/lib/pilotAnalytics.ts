@@ -68,6 +68,34 @@ export interface PilotAnalytics {
   }[];
   tickets: { id: string; status: string; subject: string; createdAt: string; studentId: string | null; name: string | null }[];
   escalations: { status: string; reason: string; count: number }[];
+  /* ---- Trends (backend 2026-11-04; absent on an older backend, so every one is optional) ---- */
+  /** Per day: classes that started, seats expected (enrolled students per class), check-ins to those classes. */
+  attendanceByDay?: { day: string; classes: number; expected: number; attended: number; students: number; emptyClasses: number }[];
+  /** ISO weekday (1 = Monday) × hour of day, EAT. */
+  checkInsByHour?: { dow: number; hour: number; count: number }[];
+  failuresByHour?: { hour: number; count: number }[];
+  /** Minutes after the class start: early, 0-5, 5-10, 10-15, 15-30, 30-60, 60+. */
+  lateness?: { bucket: string; count: number }[];
+  courses?: PilotCourse[];
+  /** Every enrolled student with a class held in the period, lowest attendance first. */
+  students?: PilotStudent[];
+  failureReasonsByDay?: { day: string; reason: string; count: number }[];
+  signInFailuresByDay?: { day: string; reason: string; count: number }[];
+  rssiByDay?: { day: string; avg: number | null; min: number | null; max: number | null; failAvg: number | null }[];
+  onboardingByDay?: { day: string; signedIn: number; terms: number; baseline: number }[];
+  onboardingBefore?: { signedIn: number; terms: number; baseline: number };
+  previousPeriod?: { checkIns: number; checkOuts: number; expected: number; attended: number; failedAttempts: number; signInsOk: number; signInsFailed: number };
+}
+
+export interface PilotCourse {
+  id: string; code: string; name: string; lecturer: string; enrolled: number; classesHeld: number;
+  checkins: number; late: number; checkouts: number; avgRssi: number | null;
+  failedAttempts: number; studentsFailing: number; gaveUp: number;
+}
+
+export interface PilotStudent {
+  id: string; studentId: string | null; name: string; signedIn: boolean; baseline: boolean; phone: string | null; pinLocked: boolean;
+  expected: number; attended: number; lastCheckInAt: string | null; failedAttempts: number; lastFailReason: string | null;
 }
 
 export interface PilotAuditEvent {

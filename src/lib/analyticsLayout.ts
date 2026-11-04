@@ -32,14 +32,27 @@ export const GROUP_LABEL: Record<WidgetGroup, string> = {
 export const WIDGETS: WidgetDef[] = [
   { id: 'schools', title: 'All schools', group: 'overview', size: 'full', superAdminOnly: true, description: 'Headline numbers for every school. Click a school to see its details.' },
   { id: 'kpis', title: 'Headline numbers', group: 'overview', size: 'full', description: 'The numbers you picked, at a glance.' },
+  { id: 'insights', title: 'What is going wrong, and why', group: 'overview', size: 'full', description: 'The biggest problems in this period, worked out from the numbers below, worst first.' },
+  { id: 'period-compare', title: 'This period vs the one before', group: 'overview', size: 'half', description: 'The same numbers for the previous period of the same length, with the change.' },
+  { id: 'attendance-trend', title: 'Attendance trend', group: 'checkins', size: 'full', chart: true, description: 'Seats expected (enrolled students in each class held) against check-ins, and the attendance rate, day by day.' },
   { id: 'needs-help', title: 'Needs help now', group: 'overview', size: 'full', description: 'Students locked out after 5 wrong PINs, with Unlock and Reset.' },
   { id: 'funnel', title: 'Onboarding progress', group: 'overview', size: 'half', description: 'How far students have got with setting up the app.' },
+  { id: 'onboarding-trend', title: 'Onboarding over time', group: 'overview', size: 'half', chart: true, description: 'Running totals: signed in on a phone, accepted the terms, took the baseline photo.' },
   { id: 'checkin-outcomes', title: 'Check-in outcomes', group: 'checkins', size: 'half', chart: true, description: 'Per student per class: first try, after retrying, or gave up.' },
-  { id: 'checkins-per-day', title: 'Check-ins per day', group: 'checkins', size: 'half', chart: true, description: 'Present, late and other check-ins each day.' },
+  { id: 'checkins-per-day', title: 'Check-ins per day', group: 'checkins', size: 'half', chart: true, description: 'Present, late and other check-ins each day, with the check-out rate.' },
+  { id: 'failure-trend', title: 'Check-in failures over time', group: 'checkins', size: 'full', chart: true, description: 'Failed check-in attempts each day, split by the reason students saw.' },
   { id: 'checkin-failures', title: 'Why check-ins failed', group: 'checkins', size: 'full', description: 'The message students saw when a check-in did not go through.' },
+  { id: 'courses', title: 'Courses', group: 'checkins', size: 'full', chart: true, description: 'Attendance rate, lateness, failed attempts and drop-outs for every course, worst first.' },
+  { id: 'students-at-risk', title: 'Students', group: 'checkins', size: 'full', description: 'Every enrolled student: classes expected vs attended, failed attempts and the last error they saw.' },
+  { id: 'attendance-distribution', title: 'Students by attendance', group: 'checkins', size: 'half', chart: true, description: 'How many students attend all, most, some or none of their classes.' },
+  { id: 'checkin-times', title: 'Time of day', group: 'checkins', size: 'half', chart: true, description: 'When in the day students check in, and when check-ins fail.' },
+  { id: 'lateness', title: 'How late students check in', group: 'checkins', size: 'half', chart: true, description: 'Minutes after the class start time.' },
+  { id: 'heatmap', title: 'Busiest days and hours', group: 'checkins', size: 'half', description: 'Check-ins by weekday and hour. Darker = more.' },
   { id: 'rssi', title: 'Beacon signal at check-in', group: 'checkins', size: 'half', chart: true, description: 'Signal strength when students checked in, against the threshold.' },
+  { id: 'rssi-trend', title: 'Beacon signal over time', group: 'checkins', size: 'half', chart: true, description: 'Average, weakest and strongest signal each day, and the average on failed attempts.' },
   { id: 'classes', title: 'Classes', group: 'checkins', size: 'full', description: 'Every class in the period plus the next 2 days, with its check-in results.' },
   { id: 'signins-per-day', title: 'Sign-ins per day', group: 'signins', size: 'half', chart: true, description: 'Successful and failed sign-in attempts each day.' },
+  { id: 'signin-trend', title: 'Sign-in success over time', group: 'signins', size: 'half', chart: true, description: 'The share of sign-in attempts that worked each day, and why the rest failed.' },
   { id: 'signin-failures', title: 'Why sign-ins failed', group: 'signins', size: 'half', chart: true, description: 'Failed sign-in attempts by reason.' },
   { id: 'audit', title: 'Sign-in audit log', group: 'signins', size: 'full', description: 'Every sign-in attempt and PIN change, newest first.' },
   { id: 'device-events', title: 'Phone security events', group: 'phones', size: 'half', description: 'Phone switches and blocked attempts.' },
@@ -72,28 +85,39 @@ export const KPIS: KpiDef[] = [
   { id: 'pendingDeviceChanges', label: 'Pending phone changes', group: 'phones' },
   { id: 'closedAccounts', label: 'Closed accounts', group: 'phones' },
   { id: 'openTickets', label: 'Open tickets', group: 'support' },
+  { id: 'attendanceRate', label: 'Attendance rate', group: 'checkins' },
+  { id: 'activeStudents', label: 'Students who attended', group: 'checkins' },
+  { id: 'atRisk', label: 'Students under 75%', group: 'checkins' },
+  { id: 'neverAttended', label: 'Never attended', group: 'checkins' },
+  { id: 'emptyClasses', label: 'Classes nobody attended', group: 'checkins' },
+  { id: 'onTime', label: 'On-time share', group: 'checkins' },
 ];
 
 export interface Preset { id: string; label: string; description: string; widgets: string[]; kpis: string[] }
-const ALL_KPIS_DEFAULT = ['students', 'signedIn', 'checkInsToday', 'checkInsPeriod', 'checkOutRate', 'signInsToday', 'pinLockedNow', 'checkInSuccessRate', 'firstTry', 'retried', 'gaveUp', 'failedAttemptsToday'];
+const ALL_KPIS_DEFAULT = ['students', 'signedIn', 'attendanceRate', 'activeStudents', 'atRisk', 'neverAttended', 'checkInsToday', 'checkInsPeriod', 'checkOutRate', 'onTime', 'signInsToday', 'pinLockedNow', 'checkInSuccessRate', 'firstTry', 'retried', 'gaveUp', 'failedAttemptsToday', 'emptyClasses'];
 export const PRESETS: Preset[] = [
   {
     id: 'everything', label: 'Everything', description: 'Every section, in the standard order.',
     widgets: WIDGETS.map((w) => w.id), kpis: ALL_KPIS_DEFAULT,
   },
   {
+    id: 'owner', label: 'Owner report', description: 'What is failing and why: trends, courses, students at risk.',
+    widgets: ['schools', 'kpis', 'insights', 'period-compare', 'onboarding-trend', 'attendance-trend', 'failure-trend', 'courses', 'students-at-risk', 'attendance-distribution', 'signin-trend', 'checkin-times', 'lateness', 'rssi-trend'],
+    kpis: ['students', 'signedIn', 'attendanceRate', 'activeStudents', 'atRisk', 'neverAttended', 'checkInSuccessRate', 'gaveUp', 'signInSuccessToday', 'onTime', 'checkOutRate', 'openTickets'],
+  },
+  {
     id: 'daily', label: 'Daily check', description: 'Who needs help, today\'s check-ins and sign-ins, open tickets.',
-    widgets: ['schools', 'kpis', 'needs-help', 'checkin-outcomes', 'signins-per-day', 'checkin-failures', 'tickets'],
-    kpis: ['checkInsToday', 'checkInSuccessRate', 'gaveUp', 'failedAttemptsToday', 'signInsToday', 'pinLockedNow', 'openTickets'],
+    widgets: ['schools', 'kpis', 'insights', 'needs-help', 'attendance-trend', 'checkin-outcomes', 'signins-per-day', 'checkin-failures', 'tickets'],
+    kpis: ['checkInsToday', 'attendanceRate', 'checkInSuccessRate', 'gaveUp', 'failedAttemptsToday', 'signInsToday', 'pinLockedNow', 'openTickets'],
   },
   {
     id: 'checkins', label: 'Check-in quality', description: 'Why check-ins fail, beacon signal, class by class.',
-    widgets: ['schools', 'kpis', 'checkin-outcomes', 'checkins-per-day', 'checkin-failures', 'rssi', 'classes'],
-    kpis: ['checkInsPeriod', 'checkInSuccessRate', 'firstTry', 'retried', 'gaveUp', 'failedAttemptsPeriod', 'checkOutRate'],
+    widgets: ['schools', 'kpis', 'insights', 'attendance-trend', 'checkin-outcomes', 'checkins-per-day', 'failure-trend', 'checkin-failures', 'courses', 'checkin-times', 'lateness', 'heatmap', 'rssi', 'rssi-trend', 'classes'],
+    kpis: ['attendanceRate', 'checkInsPeriod', 'checkInSuccessRate', 'firstTry', 'retried', 'gaveUp', 'failedAttemptsPeriod', 'checkOutRate', 'onTime', 'emptyClasses'],
   },
   {
     id: 'onboarding', label: 'Onboarding', description: 'Sign-up progress, sign-in problems, phones in use.',
-    widgets: ['schools', 'kpis', 'funnel', 'signins-per-day', 'signin-failures', 'phone-models', 'audit'],
+    widgets: ['schools', 'kpis', 'funnel', 'onboarding-trend', 'signins-per-day', 'signin-trend', 'signin-failures', 'phone-models', 'audit'],
     kpis: ['students', 'signedIn', 'signedInToday', 'termsAccepted', 'baselineCaptured', 'signInSuccessToday', 'pinLockedNow'],
   },
   {
@@ -113,6 +137,8 @@ export interface Layout {
   sizes: Record<string, WidgetSize>;
   views: Record<string, WidgetView>;
   collapsed: string[];
+  /** Every section id this browser has been offered, so sections added later show up once. */
+  seen?: string[];
 }
 
 export const DEFAULT_LAYOUT: Layout = {
@@ -123,7 +149,11 @@ export const DEFAULT_LAYOUT: Layout = {
   sizes: {},
   views: {},
   collapsed: [],
+  seen: WIDGETS.map((w) => w.id),
 };
+
+/** The sections of the first Analytics release (11-03) — a layout saved then has no `seen` list. */
+const FIRST_RELEASE_WIDGETS = ['schools', 'kpis', 'needs-help', 'funnel', 'checkin-outcomes', 'checkins-per-day', 'checkin-failures', 'rssi', 'classes', 'signins-per-day', 'signin-failures', 'audit', 'device-events', 'phone-models', 'closed-accounts', 'tickets', 'escalations'];
 
 const storageKey = (userId: string | undefined) => `tcheck.analytics.layout.v1:${userId ?? 'anon'}`;
 
@@ -134,12 +164,23 @@ function load(userId: string | undefined): Layout {
     const v = JSON.parse(raw) as Partial<Layout>;
     const known = new Set(WIDGETS.map((w) => w.id));
     const knownKpi = new Set(KPIS.map((k) => k.id));
+    // A section removed in a later version just drops out of a saved layout. One added later shows
+    // up: a named view is re-read from its preset; a custom layout gets the new sections at the end.
+    const seen = new Set(v.seen ?? FIRST_RELEASE_WIDGETS);
+    const fresh = WIDGETS.map((w) => w.id).filter((id) => !seen.has(id));
+    const preset = PRESETS.find((p) => p.id === v.preset);
+    let widgets = (v.widgets ?? DEFAULT_LAYOUT.widgets).filter((id) => known.has(id));
+    let kpis = (v.kpis ?? DEFAULT_LAYOUT.kpis).filter((id) => knownKpi.has(id));
+    if (fresh.length) {
+      if (preset) { widgets = preset.widgets; kpis = preset.kpis; }
+      else widgets = [...widgets, ...fresh.filter((id) => !widgets.includes(id))];
+    }
     return {
       ...DEFAULT_LAYOUT,
       ...v,
-      // A section removed in a later version just drops out of a saved layout.
-      widgets: (v.widgets ?? DEFAULT_LAYOUT.widgets).filter((id) => known.has(id)),
-      kpis: (v.kpis ?? DEFAULT_LAYOUT.kpis).filter((id) => knownKpi.has(id)),
+      widgets,
+      kpis,
+      seen: [...known],
       days: [1, 7, 14, 30].includes(v.days ?? 7) ? (v.days as number) : 7,
     };
   } catch {

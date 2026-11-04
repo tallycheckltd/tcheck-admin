@@ -6,10 +6,11 @@ import {
   BarChart3, AlertTriangle, CheckCircle2, School, ArrowLeft, ArrowUp, ArrowDown, Target,
   Repeat, XCircle, MapPinOff, SlidersHorizontal, X, Eye, EyeOff, ChevronDown, ChevronUp,
   Table2, Download, Maximize2, Minimize2, LayoutGrid, Funnel, Check, UserPlus, Camera, ShieldCheck,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, TrendingUp, Lightbulb, GraduationCap, Clock, Timer,
+  Grid3x3, FileText, FileSpreadsheet, Signal, GitCompare, PieChart as PieIcon, UsersRound,
 } from 'lucide-react';
 import {
-  BarChart, Bar, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, ReferenceLine,
+  BarChart, Bar, ComposedChart, Line, LineChart, Area, AreaChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, ReferenceLine,
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { clsx } from 'clsx';
@@ -27,6 +28,8 @@ import {
   useAnalyticsLayout, downloadCsv, WIDGETS, KPIS, PRESETS, GROUP_LABEL, widgetById,
   type WidgetDef, type WidgetGroup, type WidgetSize, type WidgetView,
 } from '../../lib/analyticsLayout';
+import { deriveTrends, buildInsights, AT_RISK, DOW_LABEL, type Insight, type StudentRow, type CourseRow } from '../../lib/analyticsInsights';
+import { reportSections, downloadReportCsv, downloadReportPdf } from '../../lib/analyticsReport';
 
 /*
  * Analytics (was "Pilot analytics", 11-02). The page is built from sections the viewer picks:
@@ -83,7 +86,13 @@ const WIDGET_ICON: Record<string, typeof Activity> = {
   'checkins-per-day': CalendarCheck, 'checkin-failures': MapPinOff, rssi: Radio, classes: BookOpen,
   'signins-per-day': LogIn, 'signin-failures': KeyRound, audit: History, 'device-events': ShieldX,
   'phone-models': Smartphone, 'closed-accounts': UserX, tickets: LifeBuoy, escalations: Siren,
+  insights: Lightbulb, 'period-compare': GitCompare, 'attendance-trend': TrendingUp, 'onboarding-trend': UsersRound,
+  'failure-trend': AlertTriangle, courses: GraduationCap, 'students-at-risk': Users, 'attendance-distribution': PieIcon,
+  'checkin-times': Clock, lateness: Timer, heatmap: Grid3x3, 'rssi-trend': Signal, 'signin-trend': KeyRound,
 };
+
+/** Series colours for "split by reason" charts, in order of size. */
+const SERIES = [C.rose, C.amber, C.violet, C.sky, C.cyan, C.slate];
 
 /* ---- Formatting — every timestamp is rendered in the browser's own timezone (EAT at Moi). ---- */
 
@@ -109,6 +118,17 @@ const timeAgo = (iso: string | null | undefined, nowMs: number) => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
+/** "▲ 6 pts vs previous" for rates, "▲ 12% vs previous" for counts. */
+const deltaText = (now: number | null | undefined, before: number | null | undefined, rate = false) => {
+  if (now == null || before == null) return 'no earlier period to compare';
+  if (rate) {
+    const d = Math.round((now - before) * 100);
+    return d === 0 ? 'same as previous period' : `${d > 0 ? '▲' : '▼'} ${Math.abs(d)} pts vs previous`;
+  }
+  if (!before) return now ? 'new this period' : 'same as previous period';
+  const d = Math.round(((now - before) / before) * 100);
+  return d === 0 ? 'same as previous period' : `${d > 0 ? '▲' : '▼'} ${Math.abs(d)}% vs previous`;
+};
 const labelFor = (map: Record<string, string>, code: string) => map[code] ?? code.replace(/_/g, ' ').toLowerCase();
 const sum = <T,>(rows: T[], f: (r: T) => number) => rows.reduce((n, r) => n + f(r), 0);
 
@@ -213,9 +233,10 @@ function KpiTile({
   );
 }
 
-function ChartBox({ empty, children }: { empty: boolean; children: ReactNode }) {
+function ChartBox({ empty, children, title, tall = false }: { empty: boolean; children: ReactNode; title?: string; tall?: boolean }) {
   return (
-    <div className="h-[280px] p-4">
+    // data-chart: the PDF report snapshots every chart on the page under this title.
+    <div className={clsx(tall ? 'h-[340px]' : 'h-[280px]', 'p-4')} data-chart={empty ? undefined : title}>
       {empty ? (
         <div className="flex h-full items-center justify-center">
           <EmptyState icon={BarChart3} title="Nothing to show for this period yet." size="sm" />
@@ -1060,6 +1081,114 @@ function CustomizePanel({
   );
 }
 
+/* ---- Trend building blocks (11-04) ---- */
+
+function OldBackendNote() {
+  return <p className="p-6 text-center text-sm text-gray-500">This school's server hasn't been updated with trends yet. Refresh after the next backend update.</p>;
+}
+
+function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
+  return (
+    <div>
+      <p className="text-[11px] text-gray-500">{label}</p>
+      <p className="text-lg font-bold tabular-nums text-gray-900 dark:text-white">{value}</p>
+      {sub && <p className="text-[11px] text-gray-400">{sub}</p>}
+    </div>
+  );
+}
+
+/** A rate with a small bar, coloured by the at-risk line. */
+function RateCell({ r }: { r: number | null | undefined }) {
+  if (r == null) return <span className="text-gray-400">—</span>;
+  const v = Math.round(r * 100);
+  const color = r < 0.5 ? 'bg-rose-500' : r < AT_RISK ? 'bg-amber-500' : 'bg-emerald-500';
+  return (
+    <span className="inline-flex items-center justify-end gap-2">
+      <span className="hidden h-1.5 w-14 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10 sm:inline-block" aria-hidden>
+        <span className={clsx('block h-full rounded-full', color)} style={{ width: `${Math.max(3, Math.min(100, v))}%` }} />
+      </span>
+      <span className={clsx('font-semibold', r < 0.5 ? 'text-rose-600 dark:text-rose-400' : r < AT_RISK ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400')}>{v}%</span>
+    </span>
+  );
+}
+
+/** Our best guess, in words, at why a student's attendance is where it is. */
+function studentReason(s: StudentRow): string {
+  if (s.rate >= AT_RISK) return 'Attending';
+  if (s.pinLocked) return 'Locked out of the app (wrong PIN)';
+  if (!s.signedIn) return 'Never signed in on a phone';
+  if (!s.baseline) return 'Signed in, but no baseline photo';
+  if (s.failedAttempts > 0 && s.attended === 0) return 'Tries to check in but it always fails';
+  if (s.failedAttempts > 0) return 'Some check-ins fail';
+  if (s.attended === 0) return 'Set up, but never tried to check in';
+  return 'Missing classes';
+}
+
+const SEV_STYLE: Record<Insight['severity'], { edge: string; icon: typeof Activity; tone: string; label: string }> = {
+  bad: { edge: 'border-l-rose-500', icon: XCircle, tone: 'text-rose-600 dark:text-rose-400', label: 'Needs attention' },
+  warn: { edge: 'border-l-amber-500', icon: AlertTriangle, tone: 'text-amber-600 dark:text-amber-400', label: 'Watch' },
+  good: { edge: 'border-l-emerald-500', icon: CheckCircle2, tone: 'text-emerald-600 dark:text-emerald-400', label: 'Good' },
+};
+
+function Insights({ items, onJump }: { items: Insight[]; onJump: (id: string) => void }) {
+  return (
+    <ol className="grid gap-3 p-4 lg:grid-cols-2">
+      {items.map((i, n) => {
+        const st = SEV_STYLE[i.severity];
+        const Icon = st.icon;
+        return (
+          <li key={n} className={clsx('flex gap-3 rounded-xl border border-l-4 border-gray-100 bg-white/60 p-3 dark:border-white/10 dark:bg-white/[0.03]', st.edge)}>
+            <Icon size={18} className={clsx('mt-0.5 flex-shrink-0', st.tone)} />
+            <div className="min-w-0 flex-1">
+              <p className={clsx('text-[10px] font-semibold uppercase tracking-wider', st.tone)}>{st.label}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{i.title}</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-gray-600 dark:text-gray-400">{i.detail}</p>
+              {i.widget && (
+                <button type="button" onClick={() => onJump(i.widget!)} className="mt-1.5 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-300">
+                  See the detail →
+                </button>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function Heatmap({ heat, max, hours }: { heat: Map<string, number>; max: number; hours: number[] }) {
+  if (!max) return <div className="p-6"><EmptyState icon={BarChart3} title="Nothing to show for this period yet." size="sm" /></div>;
+  return (
+    <div className="overflow-x-auto p-4">
+      <table className="border-separate border-spacing-1 text-[10px]">
+        <thead>
+          <tr>
+            <th />
+            {hours.map((h) => <th key={h} className="w-7 font-medium text-gray-400">{String(h).padStart(2, '0')}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+            <tr key={d}>
+              <th className="pr-2 text-right font-medium text-gray-500">{DOW_LABEL[d]}</th>
+              {hours.map((h) => {
+                const v = heat.get(`${d}-${h}`) ?? 0;
+                return (
+                  <td key={h} title={`${DOW_LABEL[d]} ${String(h).padStart(2, '0')}:00 — ${v} check-ins`}
+                    className="h-7 w-7 rounded-md text-center tabular-nums"
+                    style={{ background: v ? `rgba(99,102,241,${0.12 + 0.88 * (v / max)})` : 'rgba(148,163,184,0.1)', color: v / max > 0.55 ? '#fff' : '#64748b' }}>
+                    {v || ''}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /* ---- Page ---- */
 
 export function AnalyticsPage() {
@@ -1125,6 +1254,12 @@ export function AnalyticsPage() {
   const outcomeData = (data?.checkInOutcomesByDay ?? []).map((d) => ({ ...d, label: fmtDay(d.day) }));
   const checkInFailures = [...(data?.checkInFailureReasons ?? [])].sort((a, b) => b.count - a.count);
   const modelData = [...(data?.deviceModels ?? [])].sort((a, b) => b.count - a.count).map((m) => ({ ...m, label: m.model || 'Unknown' }));
+  // Trends and findings, worked out once per response (lib/analyticsInsights.ts).
+  const t = useMemo(() => (data ? deriveTrends(data) : null), [data]);
+  const insights = useMemo(() => (data && t ? buildInsights(data, t) : []), [data, t]);
+  const [studentFilter, setStudentFilter] = useState<'risk' | 'none' | 'failing' | 'all'>('risk');
+  const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   /** Open a section (adding it if hidden) and scroll to it — headline tiles link to their detail. */
   const jumpTo = (id: string) => {
@@ -1192,6 +1327,24 @@ export function AnalyticsPage() {
     pinLockedNow: () => <KpiTile label="PIN-locked now" value={k.pinLockedNow} health={k.pinLockedNow > 0 ? 'bad' : 'good'} verdict={k.pinLockedNow > 0 ? 'Needs your help — unlock them' : 'Nobody locked out'} icon={Lock} tone="gray" onClick={() => jumpTo('needs-help')} />,
     pendingDeviceChanges: () => <KpiTile label="Pending phone changes" value={k.pendingDeviceChanges} health={k.pendingDeviceChanges > 0 ? 'warn' : undefined} verdict={k.pendingDeviceChanges > 0 ? 'Waiting in Verification' : undefined} icon={Smartphone} tone="amber" onClick={() => jumpTo('device-events')} />,
     closedAccounts: () => <KpiTile label="Closed accounts" value={k.closedAccounts} hint="Deleted or deactivated" icon={UserX} tone="gray" onClick={() => jumpTo('closed-accounts')} />,
+    attendanceRate: () => {
+      const r = t?.attendanceRate ?? null;
+      const h = t && t.expected ? rateHealth(r, 0.8, 0.6) : undefined;
+      return (
+        <KpiTile label="Attendance rate" value={r == null ? '—' : `${Math.round(r * 100)}%`} meter={r} health={h}
+          hint={t && t.expected ? `${t.attended.toLocaleString()} of ${t.expected.toLocaleString()} seats · ${deltaText(r, t.prevAttendanceRate, true)}` : 'No classes with enrolled students yet'}
+          verdict={h === 'bad' ? 'Too many students miss class' : h === 'warn' ? 'Attendance could be better' : h === 'good' ? 'Most students attend' : undefined}
+          icon={TrendingUp} tone="green" onClick={() => jumpTo('attendance-trend')} />
+      );
+    },
+    activeStudents: () => <KpiTile label="Students who attended" value={(t?.activeStudents ?? 0).toLocaleString()} meter={t && t.students.length ? t.activeStudents / t.students.length : null} hint={t ? `${pct(t.activeStudents, t.students.length)}% of ${t.students.length.toLocaleString()} with classes, ${periodLabel}` : periodLabel} icon={UserCheck} tone="cyan" onClick={() => jumpTo('students-at-risk')} />,
+    atRisk: () => <KpiTile label={`Students under ${Math.round(AT_RISK * 100)}%`} value={(t?.atRisk.length ?? 0).toLocaleString()} health={t ? (t.atRisk.length === 0 ? 'good' : t.atRisk.length / Math.max(1, t.students.length) > 0.3 ? 'bad' : 'warn') : undefined} verdict={t?.atRisk.length ? 'See who and why' : 'Nobody at risk'} hint={t ? `${pct(t.atRisk.length, t.students.length)}% of students with classes` : undefined} icon={AlertTriangle} tone="amber" onClick={() => jumpTo('students-at-risk')} />,
+    neverAttended: () => <KpiTile label="Never attended" value={(t?.neverAttended.length ?? 0).toLocaleString()} health={t?.neverAttended.length ? 'bad' : 'good'} verdict={t?.neverAttended.length ? 'Enrolled, but no check-in at all' : 'Everyone attended at least once'} hint={t ? `${t.neverAttended.filter((x) => !x.signedIn).length} of them never signed in` : undefined} icon={UserX} tone="red" onClick={() => { setStudentFilter('none'); jumpTo('students-at-risk'); }} />,
+    emptyClasses: () => <KpiTile label="Classes nobody attended" value={(t?.emptyClasses ?? 0).toLocaleString()} health={t?.emptyClasses ? 'warn' : 'good'} hint={t ? `of ${t.classesHeld.toLocaleString()} classes held, ${periodLabel}` : undefined} icon={BookOpen} tone="gray" onClick={() => jumpTo('classes')} />,
+    onTime: () => {
+      const h = rateHealth(t?.onTimeShare, 0.85, 0.6);
+      return <KpiTile label="On-time share" value={t?.onTimeShare == null ? '—' : `${Math.round(t.onTimeShare * 100)}%`} meter={t?.onTimeShare} health={h} hint="Check-ins within 15 min of the start" verdict={h === 'bad' ? 'Most check-ins are late' : h === 'warn' ? 'Many check-ins are late' : undefined} icon={Timer} tone="violet" onClick={() => jumpTo('lateness')} />;
+    },
     openTickets: () => <KpiTile label="Open tickets" value={openTickets.length} health={openTickets.length > 0 ? 'warn' : 'good'} verdict={openTickets.length > 0 ? 'Waiting for a reply' : 'All answered'} icon={LifeBuoy} tone="amber" onClick={() => jumpTo('tickets')} />,
   };
 
@@ -1200,9 +1353,9 @@ export function AnalyticsPage() {
     .filter((w): w is WidgetDef => !!w && (!w.superAdminOnly || isSuperAdmin));
 
   /** A chart widget's body: the chart, or the same numbers as a table, as the viewer chose. */
-  const chartOrTable = <T,>(id: string, empty: boolean, chart: ReactNode, table: { rows: T[]; columns: Column<T>[]; rowKey: (r: T, i: number) => string }) =>
+  const chartOrTable = <T,>(id: string, empty: boolean, chart: ReactNode, table: { rows: T[]; columns: Column<T>[]; rowKey: (r: T, i: number) => string }, tall = false) =>
     (layout.views[id] ?? 'chart') === 'chart'
-      ? <ChartBox empty={empty}>{chart}</ChartBox>
+      ? <ChartBox empty={empty} title={widgetById(id)?.title} tall={tall}>{chart}</ChartBox>
       : <DataTable rows={table.rows} columns={table.columns} rowKey={table.rowKey} empty="Nothing in this period." filename={`${id}.csv`} />;
 
   const body = (w: WidgetDef): { node: ReactNode; count?: number } | null => {
@@ -1296,16 +1449,18 @@ export function AnalyticsPage() {
         return {
           count: sum(checkInData, (d) => d.present + d.late + d.other),
           node: chartOrTable('checkins-per-day', checkInData.every((d) => d.present + d.late + d.other === 0), (
-            <BarChart data={checkInData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+            <ComposedChart data={checkInData.map((d) => ({ ...d, checkoutRate: pct(d.withCheckout, d.present + d.late + d.other) }))} margin={{ top: 8, right: 4, left: -12, bottom: 0 }}>
               <CartesianGrid stroke={C.grid} strokeDasharray="4 8" vertical={false} />
               <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(128,128,128,0.06)' }} />
+              <YAxis yAxisId="n" allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="r" orientation="right" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={axisTick} axisLine={false} tickLine={false} width={40} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(128,128,128,0.06)' }} formatter={(v, name) => (name === 'Check-out rate' ? `${v}%` : v)} />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-              <Bar dataKey="present" name="Present" stackId="c" fill={C.emerald} />
-              <Bar dataKey="late" name="Late" stackId="c" fill={C.amber} />
-              <Bar dataKey="other" name="Other" stackId="c" fill={C.slate} radius={[6, 6, 0, 0]} />
-            </BarChart>
+              <Bar yAxisId="n" dataKey="present" name="Present" stackId="c" fill={C.emerald} />
+              <Bar yAxisId="n" dataKey="late" name="Late" stackId="c" fill={C.amber} />
+              <Bar yAxisId="n" dataKey="other" name="Other" stackId="c" fill={C.slate} radius={[6, 6, 0, 0]} />
+              <Line yAxisId="r" type="monotone" dataKey="checkoutRate" name="Check-out rate" stroke={C.violet} strokeWidth={2.5} dot={{ r: 3, fill: C.violet }} isAnimationActive={false} />
+            </ComposedChart>
           ), {
             rows: checkInData, rowKey: (d) => d.day,
             columns: [
@@ -1560,12 +1715,408 @@ export function AnalyticsPage() {
             />
           ),
         };
+      case 'insights':
+        return { count: insights.filter((i) => i.severity !== 'good').length, node: t?.hasTrends === false ? <OldBackendNote /> : <Insights items={insights} onJump={jumpTo} /> };
+      case 'period-compare':
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        return {
+          node: (
+            <Table head={['', 'This period', 'Previous period', 'Change']}>
+              {t.compare.map((c) => {
+                const fmt = (v: number | null) => (v == null ? '—' : c.rate ? `${Math.round(v * 100)}%` : v.toLocaleString());
+                const diff = c.now == null || c.before == null ? null : c.now - c.before;
+                const good = diff == null || diff === 0 || c.better === 'none' ? null : (diff > 0) === (c.better === 'up');
+                return (
+                  <tr key={c.metric}>
+                    <td className={clsx(tdClass, 'font-medium text-gray-900 dark:text-white')}>{c.metric}</td>
+                    <td className={clsx(tdClass, 'tabular-nums')}>{fmt(c.now)}</td>
+                    <td className={clsx(tdClass, 'tabular-nums text-gray-500')}>{fmt(c.before)}</td>
+                    <td className={clsx(tdClass, 'tabular-nums text-xs font-semibold', good === true && 'text-emerald-600 dark:text-emerald-400', good === false && 'text-rose-600 dark:text-rose-400')}>
+                      {deltaText(c.now, c.before, c.rate).replace(' vs previous', '')}
+                    </td>
+                  </tr>
+                );
+              })}
+            </Table>
+          ),
+        };
+      case 'attendance-trend': {
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        const rows = t.attendanceByDay.map((d) => ({ ...d, label: fmtDay(d.day), ratePct: d.rate == null ? null : Math.round(d.rate * 100), missed: Math.max(0, d.expected - d.attended) }));
+        return {
+          count: t.attended,
+          node: (
+            <>
+              <div className="grid grid-cols-2 gap-3 border-b border-gray-100 px-4 py-3 text-xs dark:border-white/5 md:grid-cols-5">
+                <Stat label="Attendance rate" value={t.attendanceRate == null ? '—' : `${Math.round(t.attendanceRate * 100)}%`} sub={deltaText(t.attendanceRate, t.prevAttendanceRate, true)} />
+                <Stat label="Seats expected" value={t.expected.toLocaleString()} sub={`${t.classesHeld.toLocaleString()} classes held`} />
+                <Stat label="Check-ins" value={t.attended.toLocaleString()} sub={`${Math.max(0, t.expected - t.attended).toLocaleString()} seats missed`} />
+                <Stat label="Students who attended" value={t.activeStudents.toLocaleString()} sub={`of ${t.students.length.toLocaleString()} with classes`} />
+                <Stat label="Classes nobody attended" value={t.emptyClasses.toLocaleString()} sub={t.classesHeld ? `${pct(t.emptyClasses, t.classesHeld)}% of classes` : ''} />
+              </div>
+              {chartOrTable('attendance-trend', rows.every((d) => d.expected + d.attended === 0), (
+                <ComposedChart data={rows} margin={{ top: 8, right: 4, left: -12, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="attFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={C.emerald} stopOpacity={0.9} />
+                      <stop offset="100%" stopColor={C.emerald} stopOpacity={0.55} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke={C.grid} strokeDasharray="4 8" vertical={false} />
+                  <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="n" allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="r" orientation="right" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={axisTick} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(128,128,128,0.06)' }} formatter={(v, name) => (name === 'Attendance rate' ? `${v}%` : v)} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                  <ReferenceLine yAxisId="r" y={AT_RISK * 100} stroke={C.amber} strokeDasharray="5 5" label={{ value: `${Math.round(AT_RISK * 100)}% target`, fill: '#94a3b8', fontSize: 10, position: 'insideTopRight' }} />
+                  <Bar yAxisId="n" dataKey="attended" name="Checked in" stackId="s" fill="url(#attFill)" />
+                  <Bar yAxisId="n" dataKey="missed" name="Missed seats" stackId="s" fill="rgba(244,63,94,0.35)" radius={[6, 6, 0, 0]} />
+                  <Line yAxisId="r" type="monotone" dataKey="ratePct" name="Attendance rate" stroke={C.indigo} strokeWidth={3} dot={{ r: 3.5, fill: C.indigo }} connectNulls isAnimationActive={false} />
+                  <Line yAxisId="n" type="monotone" dataKey="students" name="Students who attended" stroke={C.cyan} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} />
+                </ComposedChart>
+              ), {
+                rows, rowKey: (d) => d.day,
+                columns: [
+                  { key: 'label', label: 'Day', value: (d) => d.day, render: (d) => d.label },
+                  { key: 'classes', label: 'Classes', align: 'right' },
+                  { key: 'expected', label: 'Seats expected', align: 'right' },
+                  { key: 'attended', label: 'Checked in', align: 'right' },
+                  { key: 'missed', label: 'Missed', align: 'right' },
+                  { key: 'ratePct', label: 'Rate', align: 'right', render: (d) => (d.ratePct == null ? '—' : `${d.ratePct}%`) },
+                  { key: 'students', label: 'Students', align: 'right' },
+                  { key: 'emptyClasses', label: 'Empty classes', align: 'right' },
+                ],
+              }, true)}
+            </>
+          ),
+        };
+      }
+      case 'onboarding-trend': {
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        const rows = t.onboarding.map((d) => ({ ...d, label: fmtDay(d.day) }));
+        return {
+          node: chartOrTable('onboarding-trend', rows.length === 0, (
+            <AreaChart data={rows} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+              <defs>
+                {[['obS', C.indigo], ['obT', C.violet], ['obB', C.emerald]].map(([id, c]) => (
+                  <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={c} stopOpacity={0.35} /><stop offset="100%" stopColor={c} stopOpacity={0.02} /></linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid stroke={C.grid} strokeDasharray="4 8" vertical={false} />
+              <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} domain={[0, Math.max(1, k.students)]} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              <ReferenceLine y={k.students} stroke={C.slate} strokeDasharray="5 5" label={{ value: `${k.students} students`, fill: '#94a3b8', fontSize: 10, position: 'insideTopLeft' }} />
+              <Area type="monotone" dataKey="signedIn" name="Signed in" stroke={C.indigo} strokeWidth={2.5} fill="url(#obS)" isAnimationActive={false} />
+              <Area type="monotone" dataKey="terms" name="Accepted terms" stroke={C.violet} strokeWidth={2} fill="url(#obT)" isAnimationActive={false} />
+              <Area type="monotone" dataKey="baseline" name="Baseline photo" stroke={C.emerald} strokeWidth={2} fill="url(#obB)" isAnimationActive={false} />
+            </AreaChart>
+          ), {
+            rows, rowKey: (d) => d.day,
+            columns: [
+              { key: 'label', label: 'Day', value: (d) => d.day, render: (d) => d.label },
+              { key: 'newSignedIn', label: 'New sign-ins', align: 'right' },
+              { key: 'signedIn', label: 'Signed in (total)', align: 'right' },
+              { key: 'terms', label: 'Terms (total)', align: 'right' },
+              { key: 'baseline', label: 'Baseline (total)', align: 'right' },
+            ],
+          }),
+        };
+      }
+      case 'failure-trend': {
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        const { keys, rows: raw } = t.failureTrend;
+        const rows: Record<string, string | number | null>[] = raw.map((r) => ({ ...r, label: fmtDay(String(r.day)), total: keys.reduce((n, key) => n + Number(r[key] ?? 0), 0) }));
+        return {
+          count: sum(rows, (r) => Number(r.total)),
+          node: chartOrTable('failure-trend', rows.length === 0, (
+            <ComposedChart data={rows} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+              <CartesianGrid stroke={C.grid} strokeDasharray="4 8" vertical={false} />
+              <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(128,128,128,0.06)' }} />
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              {keys.map((key, i) => (
+                <Bar key={key} dataKey={key} name={key} stackId="f" fill={SERIES[i % SERIES.length]} radius={i === keys.length - 1 ? [6, 6, 0, 0] : undefined} />
+              ))}
+              <Line type="monotone" dataKey="total" name="All failures" stroke={C.indigo} strokeWidth={2.5} dot={{ r: 3, fill: C.indigo }} isAnimationActive={false} />
+            </ComposedChart>
+          ), {
+            rows, rowKey: (r) => String(r.day),
+            columns: [
+              { key: 'label', label: 'Day', value: (r) => String(r.day), render: (r) => r.label },
+              ...keys.map((key) => ({ key, label: key, align: 'right' as const, value: (r: (typeof rows)[number]) => Number(r[key] ?? 0) })),
+              { key: 'total', label: 'Total', align: 'right' as const },
+            ],
+          }, true),
+        };
+      }
+      case 'courses': {
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        const chartRows = [...t.courses].filter((c) => c.rate != null).sort((a, b) => (a.rate ?? 0) - (b.rate ?? 0)).slice(0, 15).map((c) => ({ ...c, ratePct: Math.round((c.rate ?? 0) * 100), latePct: Math.round((c.lateShare ?? 0) * 100) }));
+        const view = layout.views.courses ?? 'chart';
+        return {
+          count: t.courses.length,
+          node: (
+            <>
+              {view === 'chart' && (
+                <ChartBox empty={chartRows.length === 0} title="Courses — attendance rate (worst first)" tall>
+                  <BarChart data={chartRows} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
+                    <CartesianGrid stroke={C.grid} strokeDasharray="4 8" horizontal={false} />
+                    <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={axisTick} axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="code" width={90} tick={axisTick} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(128,128,128,0.06)' }} formatter={(v) => `${v}%`} labelFormatter={(l) => chartRows.find((c) => c.code === l)?.name ?? l} />
+                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                    <ReferenceLine x={AT_RISK * 100} stroke={C.amber} strokeDasharray="5 5" />
+                    <Bar dataKey="ratePct" name="Attendance" fill={C.emerald} radius={[0, 6, 6, 0]}>
+                      {chartRows.map((c) => <Cell key={c.id} fill={c.ratePct < 50 ? C.rose : c.ratePct < AT_RISK * 100 ? C.amber : C.emerald} />)}
+                    </Bar>
+                    <Bar dataKey="latePct" name="Late share" fill={C.violet} fillOpacity={0.55} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ChartBox>
+              )}
+              <DataTable<CourseRow>
+                rows={t.courses}
+                rowKey={(c) => c.id}
+                filename="courses.csv"
+                empty="No courses."
+                searchPlaceholder="Search course or lecturer…"
+                initialSort={{ key: 'rate', dir: 'asc' }}
+                highlight={(c) => c.rate != null && c.rate < 0.5}
+                columns={[
+                  { key: 'code', label: 'Course', render: (c) => <><p className="font-medium text-gray-900 dark:text-white">{c.code}</p><p className="text-[11px] text-gray-500">{c.name}</p></> },
+                  { key: 'lecturer', label: 'Lecturer', className: 'text-xs' },
+                  { key: 'enrolled', label: 'Enrolled', align: 'right' },
+                  { key: 'classesHeld', label: 'Classes', align: 'right' },
+                  { key: 'rate', label: 'Attendance', align: 'right', value: (c) => (c.rate == null ? null : Math.round(c.rate * 100)), render: (c) => <RateCell r={c.rate} /> },
+                  { key: 'checkins', label: 'Check-ins', align: 'right', render: (c) => <span>{c.checkins}<span className="text-gray-400"> / {c.expected}</span></span> },
+                  { key: 'late', label: 'Late', align: 'right', render: (c) => <span>{c.late}{c.lateShare != null && c.checkins > 0 && <span className="text-gray-400"> ({Math.round(c.lateShare * 100)}%)</span>}</span> },
+                  { key: 'checkoutShare', label: 'Checked out', align: 'right', value: (c) => (c.checkoutShare == null ? null : Math.round(c.checkoutShare * 100)), render: (c) => (c.checkoutShare == null ? '—' : `${Math.round(c.checkoutShare * 100)}%`) },
+                  { key: 'failedAttempts', label: 'Failed', align: 'right', render: (c) => <span className={c.failedAttempts ? 'text-amber-600 dark:text-amber-400' : ''}>{c.failedAttempts}</span> },
+                  { key: 'gaveUp', label: 'Gave up', align: 'right', render: (c) => <span className={c.gaveUp ? 'font-semibold text-red-500' : ''}>{c.gaveUp}</span> },
+                  { key: 'avgRssi', label: 'Avg signal', align: 'right', render: (c) => (c.avgRssi == null ? '—' : `${c.avgRssi} dBm`) },
+                ]}
+              />
+            </>
+          ),
+        };
+      }
+      case 'students-at-risk': {
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        const filters = {
+          risk: (s: StudentRow) => s.rate < AT_RISK,
+          none: (s: StudentRow) => s.attended === 0,
+          failing: (s: StudentRow) => s.failedAttempts > 0,
+          all: undefined,
+        } as const;
+        return {
+          count: t.atRisk.length,
+          node: (
+            <DataTable<StudentRow>
+              rows={t.students}
+              rowKey={(s) => s.id}
+              filename="students-attendance.csv"
+              empty="No enrolled students had classes in this period."
+              searchPlaceholder="Search name or ID…"
+              initialSort={{ key: 'rate', dir: 'asc' }}
+              filter={filters[studentFilter]}
+              highlight={(s) => s.attended === 0}
+              toolbar={(
+                <select value={studentFilter} onChange={(e) => setStudentFilter(e.target.value as typeof studentFilter)} aria-label="Which students" className="rounded-xl border border-slate-200/90 bg-white/90 px-3 py-2 text-sm dark:border-white/15 dark:bg-slate-900/80 dark:text-white">
+                  <option value="risk">Under {Math.round(AT_RISK * 100)}% ({t.atRisk.length})</option>
+                  <option value="none">Never attended ({t.neverAttended.length})</option>
+                  <option value="failing">Had failed check-ins ({t.students.filter((x) => x.failedAttempts > 0).length})</option>
+                  <option value="all">Everyone ({t.students.length})</option>
+                </select>
+              )}
+              columns={[
+                { key: 'name', label: 'Student', value: (s) => `${s.name} ${s.studentId ?? ''}`, render: (s) => <><p className="font-medium text-gray-900 dark:text-white">{s.name}</p><p className="font-mono text-[10px] text-gray-500">{s.studentId ?? '—'}</p></> },
+                { key: 'rate', label: 'Attendance', align: 'right', value: (s) => Math.round(s.rate * 100), render: (s) => <RateCell r={s.rate} /> },
+                { key: 'attended', label: 'Attended', align: 'right', render: (s) => <span>{s.attended}<span className="text-gray-400"> / {s.expected}</span></span> },
+                { key: 'why', label: 'Likely reason', value: (s) => studentReason(s), render: (s) => <span className="text-xs">{studentReason(s)}</span> },
+                { key: 'failedAttempts', label: 'Failed tries', align: 'right', render: (s) => <span className={s.failedAttempts ? 'text-amber-600 dark:text-amber-400' : ''}>{s.failedAttempts}</span> },
+                { key: 'lastFailReason', label: 'Last error', className: 'max-w-[260px] text-xs text-gray-500', value: (s) => s.lastFailReason ?? '' },
+                { key: 'lastCheckInAt', label: 'Last check-in', className: 'whitespace-nowrap text-xs text-gray-500', render: (s) => fmtTime(s.lastCheckInAt) },
+                { key: 'phone', label: 'Phone', className: 'text-xs', value: (s) => s.phone ?? '' },
+              ]}
+            />
+          ),
+        };
+      }
+      case 'attendance-distribution': {
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        const colors = [C.rose, '#fb7185', C.amber, '#34d399', C.emerald];
+        return {
+          count: t.students.length,
+          node: chartOrTable('attendance-distribution', t.students.length === 0, (
+            <BarChart data={t.distribution} margin={{ top: 16, right: 8, left: -12, bottom: 0 }}>
+              <CartesianGrid stroke={C.grid} strokeDasharray="4 8" vertical={false} />
+              <XAxis dataKey="band" tick={axisTick} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(128,128,128,0.06)' }} />
+              <Bar dataKey="count" name="Students" radius={[6, 6, 0, 0]} label={{ position: 'top', fill: '#94a3b8', fontSize: 11 }}>
+                {t.distribution.map((d, i) => <Cell key={d.key} fill={colors[i]} />)}
+              </Bar>
+            </BarChart>
+          ), {
+            rows: t.distribution, rowKey: (d) => d.key,
+            columns: [
+              { key: 'band', label: 'Attendance' },
+              { key: 'count', label: 'Students', align: 'right' },
+              { key: 'share', label: 'Share', align: 'right', value: (d) => pct(d.count, t.students.length), render: (d) => `${pct(d.count, t.students.length)}%` },
+            ],
+          }),
+        };
+      }
+      case 'checkin-times':
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        return {
+          node: chartOrTable('checkin-times', t.hours.every((h) => h.checkins + h.failures === 0), (
+            <ComposedChart data={t.hours} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+              <defs>
+                <linearGradient id="hourFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.indigo} stopOpacity={0.45} /><stop offset="100%" stopColor={C.indigo} stopOpacity={0.03} /></linearGradient>
+              </defs>
+              <CartesianGrid stroke={C.grid} strokeDasharray="4 8" vertical={false} />
+              <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              <Area type="monotone" dataKey="checkins" name="Check-ins" stroke={C.indigo} strokeWidth={2.5} fill="url(#hourFill)" isAnimationActive={false} />
+              <Line type="monotone" dataKey="failures" name="Failed attempts" stroke={C.rose} strokeWidth={2} dot={{ r: 2.5, fill: C.rose }} isAnimationActive={false} />
+            </ComposedChart>
+          ), {
+            rows: t.hours, rowKey: (h) => String(h.hour),
+            columns: [
+              { key: 'label', label: 'Hour' },
+              { key: 'checkins', label: 'Check-ins', align: 'right' },
+              { key: 'failures', label: 'Failed attempts', align: 'right' },
+            ],
+          }),
+        };
+      case 'lateness':
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        return {
+          count: sum(t.lateness, (l) => l.count),
+          node: chartOrTable('lateness', t.lateness.every((l) => l.count === 0), (
+            <BarChart data={t.lateness} margin={{ top: 16, right: 8, left: -12, bottom: 0 }}>
+              <CartesianGrid stroke={C.grid} strokeDasharray="4 8" vertical={false} />
+              <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} interval={0} />
+              <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(128,128,128,0.06)' }} />
+              <Bar dataKey="count" name="Check-ins" radius={[6, 6, 0, 0]} label={{ position: 'top', fill: '#94a3b8', fontSize: 10 }}>
+                {t.lateness.map((l, i) => <Cell key={l.bucket} fill={i <= 2 ? C.emerald : i === 3 ? C.amber : C.rose} />)}
+              </Bar>
+            </BarChart>
+          ), {
+            rows: t.lateness, rowKey: (l) => l.bucket,
+            columns: [
+              { key: 'label', label: 'After the start' },
+              { key: 'count', label: 'Check-ins', align: 'right' },
+              { key: 'share', label: 'Share', align: 'right', value: (l) => pct(l.count, sum(t.lateness, (x) => x.count)), render: (l) => `${pct(l.count, sum(t.lateness, (x) => x.count))}%` },
+            ],
+          }),
+        };
+      case 'heatmap':
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        return { node: <Heatmap heat={t.heat} max={t.heatMax} hours={t.hours.map((h) => h.hour)} /> };
+      case 'rssi-trend': {
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        const rows = (data.rssiByDay ?? []).map((d) => ({ ...d, label: fmtDay(d.day) }));
+        return {
+          node: chartOrTable('rssi-trend', rows.length === 0, (
+            <LineChart data={rows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+              <CartesianGrid stroke={C.grid} strokeDasharray="4 8" vertical={false} />
+              <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+              <YAxis tick={axisTick} axisLine={false} tickLine={false} domain={['dataMin - 5', 'dataMax + 5']} tickFormatter={(v) => `${v}`} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v) => `${v} dBm`} />
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              <ReferenceLine y={rssiThreshold} stroke={C.rose} strokeDasharray="5 5" label={{ value: `Threshold ${rssiThreshold}`, fill: '#94a3b8', fontSize: 10, position: 'insideBottomRight' }} />
+              <Line type="monotone" dataKey="max" name="Strongest" stroke={C.emerald} strokeWidth={1.5} strokeDasharray="4 4" dot={false} connectNulls isAnimationActive={false} />
+              <Line type="monotone" dataKey="avg" name="Average" stroke={C.indigo} strokeWidth={3} dot={{ r: 3, fill: C.indigo }} connectNulls isAnimationActive={false} />
+              <Line type="monotone" dataKey="min" name="Weakest" stroke={C.amber} strokeWidth={1.5} strokeDasharray="4 4" dot={false} connectNulls isAnimationActive={false} />
+              <Line type="monotone" dataKey="failAvg" name="Avg on failed tries" stroke={C.rose} strokeWidth={2} dot={{ r: 3, fill: C.rose }} connectNulls isAnimationActive={false} />
+            </LineChart>
+          ), {
+            rows, rowKey: (d) => d.day,
+            columns: [
+              { key: 'label', label: 'Day', value: (d) => d.day, render: (d) => d.label },
+              { key: 'avg', label: 'Average', align: 'right' },
+              { key: 'min', label: 'Weakest', align: 'right' },
+              { key: 'max', label: 'Strongest', align: 'right' },
+              { key: 'failAvg', label: 'Avg on failed', align: 'right' },
+            ],
+          }),
+        };
+      }
+      case 'signin-trend': {
+        if (!t?.hasTrends) return { node: <OldBackendNote /> };
+        const keys = t.signInTrend.keys;
+        const rows: Record<string, string | number | null>[] = t.signInRateByDay.map((d) => ({ ...d, label: fmtDay(String(d.day)) }));
+        return {
+          node: chartOrTable('signin-trend', rows.every((d) => Number(d.ok) + Number(d.failed) === 0), (
+            <ComposedChart data={rows} margin={{ top: 8, right: 4, left: -12, bottom: 0 }}>
+              <CartesianGrid stroke={C.grid} strokeDasharray="4 8" vertical={false} />
+              <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="n" allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="r" orientation="right" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={axisTick} axisLine={false} tickLine={false} width={40} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v, name) => (name === 'Success rate' ? `${v}%` : v)} />
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              {keys.map((key, i) => <Bar key={key} yAxisId="n" dataKey={key} name={key} stackId="f" fill={SERIES[i % SERIES.length]} fillOpacity={0.75} />)}
+              <Line yAxisId="r" type="monotone" dataKey="rate" name="Success rate" stroke={C.emerald} strokeWidth={3} dot={{ r: 3.5, fill: C.emerald }} connectNulls isAnimationActive={false} />
+            </ComposedChart>
+          ), {
+            rows, rowKey: (d) => String(d.day),
+            columns: [
+              { key: 'label', label: 'Day', value: (d) => String(d.day), render: (d) => d.label },
+              { key: 'ok', label: 'Signed in', align: 'right', value: (d) => Number(d.ok) },
+              { key: 'failed', label: 'Failed', align: 'right', value: (d) => Number(d.failed) },
+              { key: 'rate', label: 'Success', align: 'right', value: (d) => (d.rate == null ? null : Number(d.rate)), render: (d) => (d.rate == null ? '—' : `${d.rate}%`) },
+              ...keys.map((key) => ({ key, label: key, align: 'right' as const, value: (d: (typeof rows)[number]) => Number(d[key] ?? 0) })),
+            ],
+          }),
+        };
+      }
       default:
         return null;
     }
   };
 
   const presetLabel = PRESETS.find((p) => p.id === layout.preset)?.label ?? 'Custom';
+
+  /** Downloads: the whole report (every section, not only the visible ones) as CSV or PDF. */
+  const download = async (kind: 'csv' | 'pdf') => {
+    if (!data || !k || !t) return;
+    setExporting(kind);
+    setExportError(null);
+    const rate = (r: number | null | undefined) => (r == null ? '—' : `${Math.round(r * 100)}%`);
+    const headline = [
+      { label: 'Students', value: k.students.toLocaleString() },
+      { label: 'Signed in on a phone', value: `${k.signedIn.toLocaleString()} (${pct(k.signedIn, k.students)}%)` },
+      { label: 'Attendance rate', value: rate(t.attendanceRate) },
+      { label: 'Seats expected / check-ins', value: `${t.expected.toLocaleString()} / ${t.attended.toLocaleString()}` },
+      { label: 'Students who attended', value: t.activeStudents.toLocaleString() },
+      { label: `Students under ${Math.round(AT_RISK * 100)}%`, value: t.atRisk.length.toLocaleString() },
+      { label: 'Never attended', value: t.neverAttended.length.toLocaleString() },
+      { label: 'Check-in success rate', value: rate(k.checkInSuccessRate) },
+      { label: 'Gave up checking in', value: (k.checkInGaveUpPeriod ?? 0).toLocaleString() },
+      { label: 'Failed check-in attempts', value: (k.checkInFailedAttemptsPeriod ?? 0).toLocaleString() },
+      { label: 'On-time share', value: rate(t.onTimeShare) },
+      { label: 'Check-out rate', value: rate(k.checkOutRate) },
+      { label: 'Classes nobody attended', value: `${t.emptyClasses} of ${t.classesHeld}` },
+      { label: 'PIN-locked now', value: String(k.pinLockedNow) },
+      { label: 'Open tickets', value: String(openTickets.length) },
+    ];
+    try {
+      const sections = reportSections(data, t, insights, headline);
+      if (kind === 'csv') downloadReportCsv(data, sections);
+      else await downloadReportPdf(data, sections, insights);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'The download failed');
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1680px] space-y-5 text-[color:var(--app-text)]">
@@ -1620,6 +2171,12 @@ export function AnalyticsPage() {
             <RefreshCw size={16} className={loading ? 'animate-spin text-indigo-500' : ''} />
             Refresh
           </button>
+          <button type="button" onClick={() => void download('csv')} disabled={!data || exporting != null} className={pillBtn} title="Every section as one spreadsheet">
+            <FileSpreadsheet size={16} className="text-emerald-600" /> {exporting === 'csv' ? 'Preparing…' : 'CSV'}
+          </button>
+          <button type="button" onClick={() => void download('pdf')} disabled={!data || exporting != null} className={clsx(pillBtn, '!border-transparent !bg-indigo-600 !text-white hover:!bg-indigo-700')} title="PDF report with the TCheck logo, findings, charts and tables">
+            {exporting === 'pdf' ? <RefreshCw size={16} className="animate-spin" /> : <FileText size={16} />} {exporting === 'pdf' ? 'Building PDF…' : 'PDF report'}
+          </button>
         </div>
       </header>
 
@@ -1655,6 +2212,12 @@ export function AnalyticsPage() {
             </button>
           )}
         </div>
+      )}
+
+      {exportError && (
+        <p className="flex items-center gap-2 rounded-xl border border-rose-300/60 bg-rose-50 px-4 py-2 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+          <AlertTriangle size={15} /> Couldn't build the download: {exportError}
+        </p>
       )}
 
       {error && (
