@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import { Badge } from '../../components/ui/Badge';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { ArrowLeft, CheckCircle2, XCircle, Smartphone } from 'lucide-react';
 import type { CourseAttendanceDetail } from '../../types';
 import { formatClassCalendarDate, formatClassTimeLocal } from '../../utils/classDateDisplay';
@@ -9,6 +11,8 @@ export function CourseAttendanceDetailPage() {
   const { id, courseId } = useParams<{ id: string; courseId: string }>();
   const navigate = useNavigate();
   const { data } = useApi<CourseAttendanceDetail>(id && courseId ? `/users/${id}/courses/${courseId}/attendance` : null);
+
+  const pager = usePagination(data?.sessions);
 
   if (!data) {
     return (
@@ -48,6 +52,7 @@ export function CourseAttendanceDetailPage() {
         <table className="w-full text-sm gradient-table">
           <thead>
             <tr>
+              <RowNumberHead />
               <th>Session</th>
               <th>Date</th>
               <th>Room</th>
@@ -57,8 +62,9 @@ export function CourseAttendanceDetailPage() {
             </tr>
           </thead>
           <tbody className="text-slate-800 dark:text-gray-300">
-            {data.sessions.map((s) => (
+            {pager.rows.map((s, i) => (
               <tr key={s.classId}>
+                <RowNumberCell n={pager.offset + i + 1} />
                 <td className="font-medium text-slate-950 dark:text-white">{s.title}</td>
                 <td>{formatClassCalendarDate(s.date)}</td>
                 <td>{s.isOnline ? <Badge color="blue">Online</Badge> : (s.room || '—')}</td>
@@ -82,13 +88,14 @@ export function CourseAttendanceDetailPage() {
             ))}
             {data.sessions.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-slate-500 dark:text-slate-400">
+                <td colSpan={7} className="text-center py-12 text-slate-500 dark:text-slate-400">
                   No sessions scheduled for this course yet.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        <Pagination {...pager.props} />
       </div>
     </div>
   );

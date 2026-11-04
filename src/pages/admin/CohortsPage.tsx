@@ -4,6 +4,8 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import type { Cohort, School, User } from '../../types';
 
@@ -49,6 +51,8 @@ export function CohortsPage() {
     refetch();
   };
 
+  const pager = usePagination(cohorts);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -61,6 +65,7 @@ export function CohortsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-white/10">
+                <RowNumberHead className="py-3" />
                 <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">Name</th>
                 <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">Year</th>
                 <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">School</th>
@@ -69,8 +74,9 @@ export function CohortsPage() {
               </tr>
             </thead>
             <tbody>
-              {cohorts?.map((c) => (
+              {pager.rows.map((c, i) => (
                 <tr key={c.id} className="border-b border-gray-100 dark:border-white/5">
+                  <RowNumberCell n={pager.offset + i + 1} />
                   <td className="py-3 px-4 text-slate-950 dark:text-white font-medium whitespace-nowrap">{c.name}</td>
                   <td className="py-3 px-4 text-slate-700 dark:text-gray-300 whitespace-nowrap">{c.year}</td>
                   <td className="py-3 px-4 text-slate-700 dark:text-gray-300 whitespace-nowrap">{c.school?.name ?? '—'}</td>
@@ -84,6 +90,7 @@ export function CohortsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination {...pager.props} />
       </GlassCard>
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Cohort' : 'Add Cohort'}>

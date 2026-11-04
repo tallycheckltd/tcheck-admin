@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import { Badge } from '../../components/ui/Badge';
+import { Pagination, RowNumberBadge } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { ArrowLeft, BookOpen, Users, UserCheck, Sparkles, School as SchoolIcon, Calendar, MapPin } from 'lucide-react';
 import type { Course } from '../../types';
 import { formatClassCalendarDate, formatClassTimeLocal } from '../../utils/classDateDisplay';
@@ -16,6 +18,11 @@ export function CourseDetailPage() {
   const navigate = useNavigate();
   const { data: course, loading } = useApi<Course>(courseId ? `/courses/${courseId}` : null);
 
+  const classes = [...(course?.classes ?? [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const enrollments = course?.enrollments ?? [];
+  const enrollPager = usePagination(enrollments);
+  const classPager = usePagination(classes);
+
   if (loading || !course) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -23,9 +30,6 @@ export function CourseDetailPage() {
       </div>
     );
   }
-
-  const classes = [...(course.classes ?? [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const enrollments = course.enrollments ?? [];
 
   return (
     <div className="space-y-6">
@@ -91,15 +95,19 @@ export function CourseDetailPage() {
           {enrollments.length === 0 ? (
             <p className="text-sm text-gray-400 py-4 text-center">No students enrolled yet.</p>
           ) : (
-            <ul className="space-y-1.5 max-h-96 overflow-y-auto">
-              {enrollments.map((e) => (
-                <li key={e.user.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
-                  <span className="text-sm text-gray-800 dark:text-gray-200">{e.user.firstName} {e.user.lastName}</span>
+            <ul className="space-y-1.5">
+              {enrollPager.rows.map((e, i) => (
+                <li key={e.user.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <RowNumberBadge n={enrollPager.offset + i + 1} />
+                    <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{e.user.firstName} {e.user.lastName}</span>
+                  </span>
                   {e.user.studentId && <span className="text-xs text-gray-400 font-mono">{e.user.studentId}</span>}
                 </li>
               ))}
             </ul>
           )}
+          <Pagination {...enrollPager.props} flush className="mt-3" />
         </div>
 
         <div className="glass-card p-6">
@@ -109,11 +117,12 @@ export function CourseDetailPage() {
           {classes.length === 0 ? (
             <p className="text-sm text-gray-400 py-4 text-center">No sessions scheduled yet.</p>
           ) : (
-            <ul className="space-y-1.5 max-h-96 overflow-y-auto">
-              {classes.map((c) => (
+            <ul className="space-y-1.5">
+              {classPager.rows.map((c, i) => (
                 <li key={c.id} className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                      <RowNumberBadge n={classPager.offset + i + 1} className="mr-1" />
                       {c.title}
                       {!c.isActive && <Badge color="gray">Cancelled</Badge>}
                       {c.isOnline && <Badge color="blue">Online</Badge>}
@@ -130,6 +139,7 @@ export function CourseDetailPage() {
               ))}
             </ul>
           )}
+          <Pagination {...classPager.props} flush className="mt-3" />
         </div>
       </div>
     </div>

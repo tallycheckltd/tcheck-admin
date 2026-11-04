@@ -4,6 +4,8 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import type { Level, School } from '../../types';
 
@@ -37,6 +39,8 @@ export function LevelsPage() {
     refetch();
   };
 
+  const pager = usePagination(levels);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -48,14 +52,16 @@ export function LevelsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-white/10">
+              <RowNumberHead className="py-3" />
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">School</th>
               <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {levels?.map((l) => (
+            {pager.rows.map((l, i) => (
               <tr key={l.id} className="border-b border-gray-100 dark:border-white/5">
+                <RowNumberCell n={pager.offset + i + 1} />
                 <td className="py-3 px-4 text-slate-950 dark:text-white font-medium">{l.name}</td>
                 <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{l.school?.name ?? '—'}</td>
                 <td className="py-3 px-4 text-right space-x-2">
@@ -66,6 +72,7 @@ export function LevelsPage() {
             ))}
           </tbody>
         </table>
+        <Pagination {...pager.props} />
       </GlassCard>
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Level' : 'Add Level'}>

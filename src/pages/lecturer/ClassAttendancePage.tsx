@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { ForensicDetailModal } from '../../components/ForensicDetailModal';
 import { CourseDrilldown, CourseDrilldownBackLink } from '../../components/shared/CourseDrilldown';
 import { RoomSignalMap } from '../../components/admin/heatmap/RoomSignalMap';
@@ -86,6 +88,8 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
     const q = search.toLowerCase();
     return s.title.toLowerCase().includes(q) || s.course.name.toLowerCase().includes(q) || s.course.code.toLowerCase().includes(q);
   });
+
+  const pager = usePagination(filtered, { resetKey: search });
 
   const exportCSV = () => {
     if (!filtered) return;
@@ -186,6 +190,7 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
           <table className="min-w-[900px] w-full border-collapse text-sm">
           <thead>
             <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-900/90 dark:text-slate-400">
+              <RowNumberHead />
               <th className="px-5 py-3">Session</th>
               <th className="px-4 py-3">Course</th>
               <th className="px-4 py-3">Scheduled</th>
@@ -199,11 +204,12 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
             </tr>
           </thead>
           <tbody className="text-slate-800 dark:text-slate-300">
-            {filtered?.map((s) => (
+            {pager.rows.map((s, i) => (
               <tr
                 key={s.id}
                 className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-900/70 dark:hover:bg-white/[0.03]"
               >
+                <RowNumberCell n={pager.offset + i + 1} className="align-top" />
                 <td className="max-w-[200px] px-5 py-3 align-top font-semibold text-slate-950 dark:text-white">
                   <span className="line-clamp-2">{s.title}</span>
                 </td>
@@ -273,7 +279,7 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
             ))}
             {(!filtered || filtered.length === 0) && (
               <tr>
-                <td colSpan={10} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
+                <td colSpan={11} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
                   No sessions found for this roster.
                 </td>
               </tr>
@@ -281,6 +287,7 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
           </tbody>
         </table>
         </div>
+        <Pagination {...pager.props} />
       </div>
     </div>
   );
@@ -313,6 +320,9 @@ function ClassDetailView({ classId }: { classId: string }) {
     await promote(`/students/${module.studentId}/promote?moduleId=${module.id}`);
     refetch();
   };
+
+  const presentPager = usePagination(data?.attendances);
+  const absentPager = usePagination(data?.absentStudents);
 
   if (!data) {
     return (
@@ -409,9 +419,9 @@ function ClassDetailView({ classId }: { classId: string }) {
             </tr>
           </thead>
           <tbody className="text-slate-800 dark:text-gray-300">
-            {data.attendances.map((a, i) => (
+            {presentPager.rows.map((a, i) => (
               <tr key={a.id}>
-                <td className="text-slate-600 dark:text-slate-400">{i + 1}</td>
+                <td className="text-slate-600 dark:text-slate-400 tabular-nums">{presentPager.offset + i + 1}</td>
                 <td className="font-medium text-slate-950 dark:text-white">
                   <button
                     type="button"
@@ -454,6 +464,7 @@ function ClassDetailView({ classId }: { classId: string }) {
           </tbody>
         </table>
         </div>
+        <Pagination {...presentPager.props} />
       </div>
 
       {/* Absent Students */}
@@ -476,9 +487,9 @@ function ClassDetailView({ classId }: { classId: string }) {
               </tr>
             </thead>
             <tbody className="text-slate-800 dark:text-gray-300">
-              {data.absentStudents.map((s, i) => (
+              {absentPager.rows.map((s, i) => (
                 <tr key={s.id}>
-                  <td className="text-slate-600 dark:text-slate-400">{i + 1}</td>
+                  <td className="text-slate-600 dark:text-slate-400 tabular-nums">{absentPager.offset + i + 1}</td>
                   <td className="font-medium text-slate-950 dark:text-white">
                     <button
                       type="button"
@@ -504,6 +515,7 @@ function ClassDetailView({ classId }: { classId: string }) {
             </tbody>
           </table>
           </div>
+          <Pagination {...absentPager.props} />
         </div>
       )}
 

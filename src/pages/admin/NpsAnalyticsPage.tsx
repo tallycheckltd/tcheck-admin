@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
+import { Pagination } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { FileDown, RefreshCw, Search, Smile, Star, Table2, Users } from 'lucide-react';
 import { exportNpsAnalyticsPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
@@ -105,6 +107,7 @@ export function NpsAnalyticsPage() {
         r.class_title.toLowerCase().includes(q),
     );
   }, [nps, search]);
+  const npsPager = usePagination(filteredNps, { resetKey: search });
 
   const overallStats = useMemo(() => {
     const rated = nps.filter((r) => r.avg_nps != null && r.response_count > 0);
@@ -374,6 +377,7 @@ export function NpsAnalyticsPage() {
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-cyan-500/10 text-left text-xs uppercase tracking-wide text-slate-600 dark:border-white/10 dark:from-indigo-500/15 dark:via-violet-500/10 dark:to-cyan-500/10 dark:text-slate-300">
+                    <th className="w-12 px-4 py-3 text-right font-bold">#</th>
                     <th className="px-4 py-3 font-bold">Course</th>
                     <th className="px-4 py-3 font-bold">Lecturer</th>
                     <th className="px-4 py-3 font-bold">Session</th>
@@ -383,7 +387,7 @@ export function NpsAnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredNps.map((r, idx) => (
+                  {npsPager.rows.map((r, idx) => (
                     <tr
                       key={r.class_id}
                       className={clsx(
@@ -391,6 +395,7 @@ export function NpsAnalyticsPage() {
                         idx % 2 === 1 && 'bg-slate-50/50 dark:bg-white/[0.02]',
                       )}
                     >
+                      <td className="w-12 px-4 py-3 text-right text-xs tabular-nums text-slate-400 dark:text-slate-500">{npsPager.offset + idx + 1}</td>
                       <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{r.course_code}</td>
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{r.lecturer_name}</td>
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{r.class_title}</td>
@@ -411,7 +416,7 @@ export function NpsAnalyticsPage() {
                   ))}
                   {filteredNps.length === 0 && !error && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={7} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
                         <Star className="mx-auto mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
                         {nps.length === 0 ? 'No sessions rated yet.' : 'Nothing matches your search.'}
                       </td>
@@ -420,6 +425,7 @@ export function NpsAnalyticsPage() {
                 </tbody>
               </table>
             </div>
+            <Pagination {...npsPager.props} />
           </div>
         </section>
       )}

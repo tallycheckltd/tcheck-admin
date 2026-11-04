@@ -6,6 +6,8 @@ import { useCan } from '../../hooks/useCan';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { Slider } from '../../components/ui/Slider';
 import { Badge } from '../../components/ui/Badge';
 import { Plus, Radio, Eye, Trash2 } from 'lucide-react';
@@ -82,6 +84,7 @@ export function ClassesPage() {
   ).sort((a, b) => a.course.code.localeCompare(b.course.code));
   const sessionsForSelectedCourse = selectedCourseId ? myClasses.filter((c) => c.courseId === selectedCourseId) : myClasses;
   const selectedCourse = courseGroups.find((g) => g.course.id === selectedCourseId)?.course;
+  const pager = usePagination(sessionsForSelectedCourse, { resetKey: selectedCourseId });
 
   // Auto-populate room when course changes. Beacon(s) are NOT set here — createClass resolves
   // the class's full beacon set from the course's CourseBeacon assignments itself; sending an
@@ -244,6 +247,7 @@ export function ClassesPage() {
         <table className="w-full text-sm gradient-table">
           <thead>
             <tr>
+              <RowNumberHead />
               <th>Title</th>
               <th>Course</th>
               <th>Date</th>
@@ -255,8 +259,9 @@ export function ClassesPage() {
             </tr>
           </thead>
           <tbody className="text-slate-800 dark:text-gray-300">
-            {sessionsForSelectedCourse.map((cls) => (
+            {pager.rows.map((cls, i) => (
               <tr key={cls.id}>
+                <RowNumberCell n={pager.offset + i + 1} />
                 <td className="font-medium text-slate-950 dark:text-white">{cls.title}</td>
                 <td>{cls.course?.name || '-'} <span className="text-slate-600 dark:text-slate-400">({cls.course?.code})</span></td>
                 <td>{formatClassCalendarDate(cls.date)}</td>
@@ -294,10 +299,11 @@ export function ClassesPage() {
               </tr>
             ))}
             {sessionsForSelectedCourse.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-8 text-slate-600 dark:text-slate-400">No classes found</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-slate-600 dark:text-slate-400">No classes found</td></tr>
             )}
           </tbody>
         </table>
+        <Pagination {...pager.props} />
       </div>
       )}
 

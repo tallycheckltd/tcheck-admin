@@ -4,6 +4,8 @@ import { useApi } from '../../hooks/useApi';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StatCard } from '../../components/ui/StatCard';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { useAuth } from '../../context/AuthContext';
 import { Users, GraduationCap, Wrench, MessageSquareHeart, CheckCircle2, Clock, BarChart3, ChevronRight } from 'lucide-react';
 import type { FacilityTicket, FacilityTicketPreset } from '../../types';
@@ -74,6 +76,7 @@ export function CemDashboardPage() {
 
   const cohorts = dashboard?.cohorts ?? [];
   const openTickets = (tickets ?? []).filter((t) => t.status !== 'RESOLVED');
+  const ticketPager = usePagination([...(tickets ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
   const unacknowledgedTickets = (tickets ?? []).filter((t) => t.status === 'OPEN');
   const totalPendingWelcomes = cohorts.reduce((sum, c) => sum + c.pendingWelcomeCount, 0);
 
@@ -221,6 +224,7 @@ export function CemDashboardPage() {
             <table className="w-full text-sm">
               <thead className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 <tr>
+                  <RowNumberHead className="py-2" />
                   <th className="text-left py-2 px-4">Issue</th>
                   <th className="text-left py-2 px-4">Class</th>
                   <th className="text-left py-2 px-4">Raised by</th>
@@ -230,10 +234,11 @@ export function CemDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                {[...(tickets ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((t) => {
+                {ticketPager.rows.map((t, i) => {
                   const u = urgency(t);
                   return (
                     <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                      <RowNumberCell n={ticketPager.offset + i + 1} className="py-2" />
                       <td className="py-2 px-4 text-gray-800 dark:text-gray-200">
                         <p className="font-medium">{presetLabel(t.presetType)}</p>
                         {t.detail && <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{t.detail}</p>}
@@ -252,6 +257,7 @@ export function CemDashboardPage() {
                 })}
               </tbody>
             </table>
+            <Pagination {...ticketPager.props} />
           </div>
         )}
       </section>

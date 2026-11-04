@@ -8,6 +8,8 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { SearchInput } from '../../components/ui/SearchInput';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { UserDirectoryTabs } from '../../components/admin/UserDirectoryTabs';
 import { Plus, CheckCircle, XCircle, Eye, UserPlus, Trash2, ShieldPlus, Search, ScanEye } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -55,6 +57,8 @@ export function UsersPage() {
       (u.studentId?.toLowerCase().includes(q))
     );
   });
+
+  const pager = usePagination(filtered, { resetKey: `${filter}|${search}` });
 
   const approve = async (id: string) => { await patch(`/users/${id}/status`, { status: 'APPROVED' }); refetch(); };
   const reject = async (id: string) => { await patch(`/users/${id}/status`, { status: 'REJECTED' }); refetch(); };
@@ -181,6 +185,7 @@ export function UsersPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-white/10">
+                <RowNumberHead className="py-4" />
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">User Profile</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Organization</th>
@@ -189,8 +194,9 @@ export function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-              {filtered?.map((u) => (
+              {pager.rows.map((u, i) => (
                 <tr key={u.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors group">
+                  <RowNumberCell n={pager.offset + i + 1} className="py-4" />
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-white/10 dark:to-white/5 flex items-center justify-center text-slate-500 dark:text-gray-400 font-bold text-xs ring-2 ring-white dark:ring-slate-800">
@@ -239,7 +245,7 @@ export function UsersPage() {
               ))}
               {filtered?.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-16">
+                  <td colSpan={6} className="text-center py-16">
                     <div className="w-16 h-16 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Search className="text-gray-300" size={32} />
                     </div>
@@ -250,6 +256,7 @@ export function UsersPage() {
             </tbody>
           </table>
         </div>
+        <Pagination {...pager.props} />
       </div>
 
       <Modal open={modal} onClose={() => setModal(false)} title={`Create ${createTypeLabel[createType]}`}>

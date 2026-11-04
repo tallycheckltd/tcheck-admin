@@ -5,6 +5,8 @@ import { Badge } from '../../components/ui/Badge';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { StatCard } from '../../components/ui/StatCard';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { format } from 'date-fns';
 import type { Beacon } from '../../types';
 
@@ -47,6 +49,7 @@ export function BeaconHealthPage() {
         return (a.batteryLevel ?? 100) - (b.batteryLevel ?? 100);
       });
   }, [beacons, search]);
+  const pager = usePagination(rows, { resetKey: search });
 
   const criticalCount = rows.filter((r) => r.tier === 'critical').length;
   const offlineCount = rows.filter((r) => r.offline).length;
@@ -89,6 +92,7 @@ export function BeaconHealthPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
                 <tr>
+                  <RowNumberHead />
                   <th className="text-left py-3 px-6">Room Assignment</th>
                   <th className="text-left py-3 px-6">Sensor ID</th>
                   <th className="text-left py-3 px-6">Battery Level</th>
@@ -97,8 +101,9 @@ export function BeaconHealthPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                {rows.map((b) => (
+                {pager.rows.map((b, i) => (
                   <tr key={b.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                    <RowNumberCell n={pager.offset + i + 1} className="py-4" />
                     <td className="py-4 px-6">
                       <p className="font-medium text-gray-900 dark:text-white">{b.location || b.name}</p>
                       <p className="text-xs text-gray-400">{b.name}</p>
@@ -128,6 +133,7 @@ export function BeaconHealthPage() {
                 ))}
               </tbody>
             </table>
+            <Pagination {...pager.props} />
           </div>
         )}
       </div>

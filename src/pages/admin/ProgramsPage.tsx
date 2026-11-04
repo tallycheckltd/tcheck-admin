@@ -5,6 +5,8 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { Plus, Users, Layers } from 'lucide-react';
 import type { Course, Program, ProgramTemplate, School, User } from '../../types';
 
@@ -88,6 +90,8 @@ export function ProgramsPage() {
     }
   };
 
+  const pager = usePagination(programs, { resetKey: schoolFilter });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -120,6 +124,7 @@ export function ProgramsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-white/10">
+              <RowNumberHead className="py-3" />
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Template</th>
               {isSuperAdmin && <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">School</th>}
@@ -128,8 +133,9 @@ export function ProgramsPage() {
             </tr>
           </thead>
           <tbody>
-            {programs?.map((p) => (
+            {pager.rows.map((p, i) => (
               <tr key={p.id} className="border-b border-gray-100 dark:border-white/5">
+                <RowNumberCell n={pager.offset + i + 1} />
                 <td className="py-3 px-4 text-slate-950 dark:text-white font-medium">
                   <span className="flex items-center gap-2">
                     <Layers size={14} className="text-blue-500" />
@@ -155,13 +161,14 @@ export function ProgramsPage() {
             ))}
             {programs?.length === 0 && (
               <tr>
-                <td colSpan={isSuperAdmin ? 5 : 4} className="py-8 px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={isSuperAdmin ? 6 : 5} className="py-8 px-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   No programs yet.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        <Pagination {...pager.props} />
       </GlassCard>
 
       <Modal open={modal} onClose={() => setModal(false)} title="Add Program">

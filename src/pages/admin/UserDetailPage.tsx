@@ -4,6 +4,8 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { ArrowLeft, Mail, School, BookOpen, Calendar, TrendingUp, Fingerprint, Download, Table2, Smartphone, ShieldAlert, RefreshCw, CheckCircle2, XCircle, FileText, ScanEye, Globe2, Briefcase, Building2, Cake, IdCard, ShieldCheck, KeyRound, Network, Link2, AlertTriangle, FileCheck, Camera, MessageSquare, Users } from 'lucide-react';
 import type { UserDetail, DeviceChangeReason } from '../../types';
 import { formatCheckInType } from '../../utils/checkInTypeLabel';
@@ -191,6 +193,8 @@ export function UserDetailPage() {
     }
     return groups;
   })();
+
+  const courseStatsPager = usePagination(user?.courseStats);
 
   if (!user) {
     return (
@@ -600,6 +604,7 @@ export function UserDetailPage() {
           <table className="w-full text-sm gradient-table">
             <thead>
               <tr>
+                <RowNumberHead />
                 <th>Course</th>
                 <th>Classes Attended</th>
                 <th>Total Classes</th>
@@ -608,7 +613,7 @@ export function UserDetailPage() {
               </tr>
             </thead>
             <tbody className="text-slate-800 dark:text-gray-300">
-              {user.courseStats.map((cs) => {
+              {courseStatsPager.rows.map((cs, i) => {
                 const threshold = user.school?.attendanceThreshold ?? 80;
                 return (
                 <tr
@@ -616,6 +621,7 @@ export function UserDetailPage() {
                   onClick={() => navigate(`/admin/users/${id}/courses/${cs.courseId}`)}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                 >
+                  <RowNumberCell n={courseStatsPager.offset + i + 1} className="!text-left" />
                   <td className="font-medium text-slate-950 dark:text-white">{cs.courseName}</td>
                   <td>{cs.attended}</td>
                   <td>{cs.total}</td>
@@ -640,6 +646,7 @@ export function UserDetailPage() {
               })}
             </tbody>
           </table>
+          <Pagination {...courseStatsPager.props} />
         </div>
       )}
 
@@ -675,6 +682,7 @@ export function UserDetailPage() {
                 <table className="w-full text-sm gradient-table">
                   <thead>
                     <tr>
+                      <RowNumberHead />
                       <th>Course</th>
                       <th>Code</th>
                       <th>Enrolled Students</th>
@@ -683,8 +691,9 @@ export function UserDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="text-slate-800 dark:text-gray-300">
-                    {g.courses.map((c) => (
+                    {g.courses.map((c, i) => (
                       <tr key={c.id}>
+                        <RowNumberCell n={i + 1} className="!text-left" />
                         <td className="font-medium text-slate-950 dark:text-white">{c.name}</td>
                         <td className="font-mono">{c.code}</td>
                         <td>{c._count?.enrollments || 0}</td>
@@ -726,47 +735,7 @@ export function UserDetailPage() {
                 {isExpanded && termGroup.courses.map((course) => (
                   <div key={course.courseKey} className="px-5 pb-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5 mt-2">{course.courseName}</p>
-                    <table className="w-full text-sm gradient-table">
-                      <thead>
-                        <tr>
-                          <th>Class</th>
-                          <th>Timestamp</th>
-                          <th>Room</th>
-                          <th>Device</th>
-                          <th>Type</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-slate-800 dark:text-gray-300">
-                        {course.records.map((a) => (
-                          <tr key={a.id}>
-                            <td>{a.class?.title || '-'}</td>
-                            <td>{new Date(a.checkInAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                            <td>{a.class?.room || '—'}</td>
-                            <td>
-                              {a.verification?.deviceModel ? (
-                                <div>
-                                  <p>{a.verification.deviceModel}</p>
-                                  {a.verification.deviceId && (
-                                    <p className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]">{a.verification.deviceId}</p>
-                                  )}
-                                </div>
-                              ) : '—'}
-                            </td>
-                            <td>
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                                a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
-                                a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                                'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
-                              }`}>
-                                {formatCheckInType(a.checkInType)}
-                              </span>
-                            </td>
-                            <td><Badge color="green">{a.status}</Badge></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <HistoryRecordsTable records={course.records} />
                   </div>
                 ))}
               </div>
@@ -775,6 +744,60 @@ export function UserDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** One course's check-ins inside the Attendance History accordion — paged so a long-running
+ * course doesn't dump hundreds of rows at once; numbering continues across pages. */
+function HistoryRecordsTable({ records }: { records: HistoryRecord[] }) {
+  const pager = usePagination(records);
+  return (
+    <>
+      <table className="w-full text-sm gradient-table">
+        <thead>
+          <tr>
+            <RowNumberHead />
+            <th>Class</th>
+            <th>Timestamp</th>
+            <th>Room</th>
+            <th>Device</th>
+            <th>Type</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody className="text-slate-800 dark:text-gray-300">
+          {pager.rows.map((a, i) => (
+            <tr key={a.id}>
+              <RowNumberCell n={pager.offset + i + 1} className="!text-left" />
+              <td>{a.class?.title || '-'}</td>
+              <td>{new Date(a.checkInAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+              <td>{a.class?.room || '—'}</td>
+              <td>
+                {a.verification?.deviceModel ? (
+                  <div>
+                    <p>{a.verification.deviceModel}</p>
+                    {a.verification.deviceId && (
+                      <p className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]">{a.verification.deviceId}</p>
+                    )}
+                  </div>
+                ) : '—'}
+              </td>
+              <td>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  a.checkInType === 'BLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
+                  a.checkInType === 'QR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
+                  'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-slate-500'
+                }`}>
+                  {formatCheckInType(a.checkInType)}
+                </span>
+              </td>
+              <td><Badge color="green">{a.status}</Badge></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Pagination {...pager.props} flush />
+    </>
   );
 }
 

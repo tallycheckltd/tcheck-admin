@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
+import { Pagination } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { Slider } from '../../components/ui/Slider';
 import { Plus, Pencil, Trash2, MapPin } from 'lucide-react';
 import type { Beacon, Classroom, School } from '../../types';
@@ -28,6 +30,7 @@ export function BLEBeaconPage() {
   const { data: beacons, refetch } = useApi<Beacon[]>('/beacons');
   const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
   const { data: classrooms } = useApi<Classroom[]>('/academic/classrooms');
+  const pager = usePagination(beacons);
   const { mutate: create } = useMutation('post');
   const { mutate: update } = useMutation('put');
   const { mutate: del } = useMutation('delete');
@@ -107,6 +110,7 @@ export function BLEBeaconPage() {
         <table className="w-full text-sm gradient-table">
           <thead>
             <tr>
+              <th className="w-12 !text-right">#</th>
               <th>Name</th>
               {isSuperAdmin && <th>School</th>}
               <th>UUID</th>
@@ -120,8 +124,9 @@ export function BLEBeaconPage() {
             </tr>
           </thead>
           <tbody className="text-slate-800 dark:text-gray-300">
-            {beacons?.map((b) => (
+            {pager.rows.map((b, i) => (
               <tr key={b.id}>
+                <td className="w-12 text-right text-xs tabular-nums text-slate-400 dark:text-slate-500">{pager.offset + i + 1}</td>
                 <td className="font-medium text-slate-950 dark:text-white">
                   <span className="flex items-center gap-2">
                     <MapPin size={14} className="text-blue-500" />
@@ -160,10 +165,11 @@ export function BLEBeaconPage() {
               </tr>
             ))}
             {(!beacons || beacons.length === 0) && (
-              <tr><td colSpan={isSuperAdmin ? 10 : 9} className="text-center py-8 text-slate-600 dark:text-slate-400">No beacons configured yet</td></tr>
+              <tr><td colSpan={isSuperAdmin ? 11 : 10} className="text-center py-8 text-slate-600 dark:text-slate-400">No beacons configured yet</td></tr>
             )}
           </tbody>
         </table>
+        <Pagination {...pager.props} />
       </div>
 
       <Modal open={modal} onClose={() => { setModal(false); setEditing(null); }} title={editing ? 'Edit Sensor' : 'Create Sensor'}>

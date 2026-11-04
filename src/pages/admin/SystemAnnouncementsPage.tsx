@@ -7,6 +7,8 @@ import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import type { School, Course, Major, Cohort, ManagedBroadcast, ManagedBroadcastDetail, BroadcastManageTab } from '../../types';
 
 type Channel = 'IN_APP' | 'EMAIL';
@@ -390,6 +392,15 @@ export function SystemAnnouncementsPage() {
   const firstKey = groups[0]?.key;
   const isDayOpen = (key: string) => openDays[`${tab}:${key}`] ?? (searching || key === dayKey(new Date()) || (tab === 'SCHEDULED' && key === firstKey));
   const toggleDay = (key: string) => setOpenDays((o) => ({ ...o, [`${tab}:${key}`]: !isDayOpen(key) }));
+  // Pages are whole days (so a day never splits across pages); each announcement keeps an
+  // overall number in on-screen order that continues from page to page.
+  const dayPager = usePagination(groups, { resetKey: `${tab}|${search}` });
+  const itemNumber = useMemo(() => {
+    const m = new Map<string, number>();
+    let n = 0;
+    for (const g of groups) for (const a of g.items) m.set(a.id, ++n);
+    return m;
+  }, [groups]);
 
   const ready = d.title.trim() && d.body.trim();
   const scheduleOk = !!d.scheduledFor && new Date(d.scheduledFor).getTime() > Date.now();
@@ -554,7 +565,7 @@ export function SystemAnnouncementsPage() {
           <input type="search" placeholder="Search announcements" value={search} onChange={(e) => setSearch(e.target.value)} className={`${inputCls} sm:w-64`} />
         </div>
         <div className="space-y-2">
-          {groups.map((g) => {
+          {dayPager.rows.map((g) => {
             const open = isDayOpen(g.key);
             return (
               <section key={g.key} className="glass-card overflow-hidden">
@@ -575,6 +586,7 @@ export function SystemAnnouncementsPage() {
                         <li key={a.id}>
                           <button type="button" onClick={() => setOpenItem(expanded ? null : a.id)} aria-expanded={expanded}
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-left cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03]">
+                            <span className="w-6 shrink-0 text-right text-xs tabular-nums text-slate-400 dark:text-slate-500">{itemNumber.get(a.id)}</span>
                             <span className="w-12 shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">{timeOf(dateFor(a, tab))}</span>
                             <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} aria-hidden />
                             <span className="flex-1 min-w-0 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{a.title}</span>
@@ -594,6 +606,11 @@ export function SystemAnnouncementsPage() {
             <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-8">
               {tab === 'DRAFT' ? 'No drafts.' : tab === 'SCHEDULED' ? 'Nothing scheduled.' : tab === 'PUBLISHED' ? 'No live announcements.' : 'No withdrawn or expired announcements.'}
             </p>
+          )}
+          {dayPager.total > 10 && (
+            <div className="glass-card overflow-hidden">
+              <Pagination {...dayPager.props} bordered={false} />
+            </div>
           )}
         </div>
       </div>

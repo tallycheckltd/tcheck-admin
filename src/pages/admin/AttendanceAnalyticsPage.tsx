@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Pagination, RowNumberBadge } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { exportCampusAnalyticsPdf, exportTrendAnalysisPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
 import { format, parseISO } from 'date-fns';
@@ -164,6 +166,10 @@ export function AttendanceAnalyticsPage() {
       return { ...g, aggregateRate: totalEnrolled > 0 ? Math.round((totalCheckedIn / totalEnrolled) * 100) : 0 };
     }).sort((a, b) => a.courseCode.localeCompare(b.courseCode));
   }, [filtered]);
+
+  const ledgerPager = usePagination(ledgerByCourse, { resetKey: `${search}|${courseFilter}` });
+  const watchPager = usePagination(campus?.atRiskStudents, { resetKey: courseFilter });
+  const unloggedPager = usePagination(campus?.unloggedSessions, { resetKey: courseFilter });
 
   const trendLineData = useMemo(() => {
     if (!campus?.overallTrendSparkline?.length) return [];
@@ -563,10 +569,12 @@ export function AttendanceAnalyticsPage() {
               <Users className="h-5 w-5 text-amber-500" aria-hidden />
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Watch list (&lt; {campus.attendanceThreshold}%)</h3>
             </div>
-            <div className="max-h-[300px] overflow-auto rounded-xl border border-slate-200/80 dark:border-white/10">
+            <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-white/10">
+            <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-sm">
                 <thead className="sticky top-0 z-[1] bg-gradient-to-r from-amber-100/90 to-rose-100/70 text-xs uppercase tracking-wide text-amber-900/80 dark:from-amber-950/90 dark:to-rose-950/70 dark:text-amber-100/90">
                   <tr>
+                    <th className="w-10 py-3 pl-4 text-right font-semibold">#</th>
                     <th className="py-3 pl-4 font-semibold">Student</th>
                     <th className="py-3 px-2 font-semibold">ID</th>
                     <th className="py-3 px-2 text-right font-semibold">%</th>
@@ -576,12 +584,12 @@ export function AttendanceAnalyticsPage() {
                 <tbody>
                   {campus.atRiskStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={5} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
                         No students under {campus.attendanceThreshold}% in this scope.
                       </td>
                     </tr>
                   ) : (
-                    campus.atRiskStudents.map((s, i) => (
+                    watchPager.rows.map((s, i) => (
                       <tr
                         key={`${s.studentId}-${s.displayName}`}
                         className={clsx(
@@ -589,6 +597,7 @@ export function AttendanceAnalyticsPage() {
                           i % 2 === 0 ? 'bg-white/50 dark:bg-white/[0.02]' : 'bg-amber-50/20 dark:bg-amber-500/[0.04]',
                         )}
                       >
+                        <td className="w-10 py-2.5 pl-4 text-right text-xs tabular-nums text-slate-400 dark:text-slate-500">{watchPager.offset + i + 1}</td>
                         <td className="py-2.5 pl-4 font-medium text-slate-900 dark:text-white">{s.displayName}</td>
                         <td className="px-2 font-mono text-xs text-slate-500 dark:text-slate-400">{s.studentId}</td>
                         <td className="py-2.5 px-2 text-right tabular-nums">
@@ -628,6 +637,8 @@ export function AttendanceAnalyticsPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+            <Pagination {...watchPager.props} />
             </div>
           </div>
 
@@ -718,25 +729,29 @@ export function AttendanceAnalyticsPage() {
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Zero-attendance sessions</h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">Past 60 days — enrolled but no check-ins</p>
-            <div className="mt-3 max-h-[280px] space-y-2 overflow-y-auto pr-1">
+            <div className="mt-3 space-y-2">
               {campus.unloggedSessions.length === 0 ? (
                 <p className="rounded-xl border border-emerald-200/60 bg-emerald-50/80 py-10 text-center text-sm font-medium text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-200">
                   All scoped sessions have at least one check-in.
                 </p>
               ) : (
-                campus.unloggedSessions.map((u) => (
+                unloggedPager.rows.map((u, i) => (
                   <div
                     key={u.id}
-                    className="rounded-xl border border-rose-200/60 bg-gradient-to-r from-rose-50/90 to-amber-50/50 px-4 py-3 dark:border-rose-500/25 dark:from-rose-950/35 dark:to-amber-950/20"
+                    className="flex items-start gap-3 rounded-xl border border-rose-200/60 bg-gradient-to-r from-rose-50/90 to-amber-50/50 px-4 py-3 dark:border-rose-500/25 dark:from-rose-950/35 dark:to-amber-950/20"
                   >
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{u.title}</p>
-                    <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
-                      {u.courseCode} · {formatSessionDayLabel(u.dateIso)} · {u.lecturerName} · {u.enrolled} enrolled
-                    </p>
+                    <RowNumberBadge n={unloggedPager.offset + i + 1} className="bg-white/70 dark:bg-white/10" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">{u.title}</p>
+                      <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                        {u.courseCode} · {formatSessionDayLabel(u.dateIso)} · {u.lecturerName} · {u.enrolled} enrolled
+                      </p>
+                    </div>
                   </div>
                 ))
               )}
             </div>
+            <Pagination {...unloggedPager.props} className="-mx-5 -mb-5 mt-3 px-5" />
           </div>
         </div>
       )}
@@ -767,6 +782,7 @@ export function AttendanceAnalyticsPage() {
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-cyan-500/10 text-left text-xs uppercase tracking-wide text-slate-600 dark:border-white/10 dark:from-indigo-500/15 dark:via-violet-500/10 dark:to-cyan-500/10 dark:text-slate-300">
+                  <th className="w-12 px-4 py-3 text-right font-bold">#</th>
                   <th className="px-4 py-3 font-bold">Session / course</th>
                   <th className="px-4 py-3 font-bold">Lecturer</th>
                   <th className="px-4 py-3 text-center font-bold">Present</th>
@@ -775,7 +791,7 @@ export function AttendanceAnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {ledgerByCourse.map((group) => {
+                {ledgerPager.rows.map((group, gi) => {
                   const isOpen = expandedCourses.has(group.courseCode);
                   return (
                     <Fragment key={group.courseCode}>
@@ -783,6 +799,7 @@ export function AttendanceAnalyticsPage() {
                         onClick={() => toggleCourseGroup(group.courseCode)}
                         className="cursor-pointer border-b border-slate-200 bg-slate-100/70 transition-colors hover:bg-slate-200/60 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]"
                       >
+                        <td className="w-12 px-4 py-3 text-right text-xs font-semibold tabular-nums text-slate-400 dark:text-slate-500">{ledgerPager.offset + gi + 1}</td>
                         <td className="px-4 py-3 font-bold text-slate-900 dark:text-white" colSpan={2}>
                           <span className={`inline-block mr-2 transition-transform ${isOpen ? 'rotate-90' : ''}`}>›</span>
                           {group.courseName}
@@ -806,6 +823,7 @@ export function AttendanceAnalyticsPage() {
                       idx % 2 === 1 && 'bg-slate-50/50 dark:bg-white/[0.02]',
                     )}
                   >
+                    <td className="w-12 px-4 py-3 text-right align-top text-[11px] tabular-nums text-slate-400 dark:text-slate-500">{ledgerPager.offset + gi + 1}.{idx + 1}</td>
                     <td className="px-4 py-3 pl-8 align-top">
                       <div className="flex flex-col gap-1">
                         <span className="font-bold text-slate-900 dark:text-white">{s.title}</span>
@@ -875,7 +893,7 @@ export function AttendanceAnalyticsPage() {
                 })}
                 {filtered.length === 0 && !rowsError && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
+                    <td colSpan={6} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
                       <Activity className="mx-auto mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
                       Nothing matches your filters.
                     </td>
@@ -884,6 +902,7 @@ export function AttendanceAnalyticsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination {...ledgerPager.props} />
         </div>
       </section>
     </div>

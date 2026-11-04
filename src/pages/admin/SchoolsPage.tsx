@@ -5,6 +5,8 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { Slider } from '../../components/ui/Slider';
 import { ColorPickerField } from '../../components/ui/ColorPickerField';
 import {
@@ -453,6 +455,8 @@ export function SchoolsPage() {
     }
   };
 
+  const pager = usePagination(schools);
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this school?')) return;
     await remove(`/schools/${id}`);
@@ -476,6 +480,7 @@ export function SchoolsPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-white/10">
+                <RowNumberHead className="py-4" />
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Institution</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Code</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Brand Color</th>
@@ -483,8 +488,9 @@ export function SchoolsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-              {schools?.map((s) => (
+              {pager.rows.map((s, i) => (
                 <tr key={s.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors group">
+                  <RowNumberCell n={pager.offset + i + 1} className="py-4" />
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-gray-500 border border-gray-100 dark:border-white/10">
@@ -528,7 +534,7 @@ export function SchoolsPage() {
               ))}
               {(!schools || schools.length === 0) && (
                 <tr>
-                  <td colSpan={4} className="text-center py-16">
+                  <td colSpan={5} className="text-center py-16">
                     <SchoolIcon className="mx-auto text-gray-200 dark:text-gray-700 mb-4" size={48} />
                     <p className="text-gray-500 dark:text-gray-400">No schools registered yet.</p>
                   </td>
@@ -537,6 +543,7 @@ export function SchoolsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination {...pager.props} />
       </div>
 
       <Modal

@@ -6,6 +6,8 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell, RowNumberBadge } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import {
   Search, MessageSquare, Eye, Flag, CheckCircle, XCircle,
   Users, ChevronRight, AlertTriangle, Clock, Shield, Megaphone,
@@ -127,6 +129,9 @@ export function AdminMessagesPage() {
 
   const pendingFlags = flags?.filter((f) => f.status === 'PENDING') || [];
   const resolvedFlags = flags?.filter((f) => f.status !== 'PENDING') || [];
+  const convoPager = usePagination(filteredConversations, { initialPageSize: 25, resetKey: search });
+  const pendingPager = usePagination(pendingFlags);
+  const resolvedPager = usePagination(resolvedFlags);
 
   const roleColor = (role?: string) => {
     switch (role) {
@@ -264,7 +269,7 @@ export function AdminMessagesPage() {
             </div>
 
             <div className="glass-card flex-1 overflow-y-auto p-2 space-y-1">
-              {filteredConversations?.map((c) => (
+              {convoPager.rows.map((c, i) => (
                 <button
                   key={c.id}
                   onClick={() => loadConversation(c.id)}
@@ -275,6 +280,7 @@ export function AdminMessagesPage() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
+                    <RowNumberBadge n={convoPager.offset + i + 1} className="mt-px" />
                     <div className="flex-1 min-w-0">
                       {c.kind === 'DIRECT' && c.user1 && c.user2 ? (
                         <>
@@ -336,6 +342,7 @@ export function AdminMessagesPage() {
                 </div>
               )}
             </div>
+            <Pagination {...convoPager.props} compact bordered={false} className="!px-1" />
           </div>
 
           {/* Conversation detail (read-only) */}
@@ -449,11 +456,12 @@ export function AdminMessagesPage() {
                 <AlertTriangle size={16} /> Pending Escalations ({pendingFlags.length})
               </h3>
               <div className="space-y-3">
-                {pendingFlags.map((flag) => (
+                {pendingPager.rows.map((flag, i) => (
                   <div key={flag.id} className="glass-card p-5 border-l-4 border-l-orange-500">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
+                          <RowNumberBadge n={pendingPager.offset + i + 1} />
                           <Badge color="yellow">Pending</Badge>
                           <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
                             <Clock size={12} /> {timeAgo(flag.createdAt)}
@@ -498,6 +506,7 @@ export function AdminMessagesPage() {
                   </div>
                 ))}
               </div>
+              <Pagination {...pendingPager.props} flush />
             </div>
           )}
 
@@ -511,6 +520,7 @@ export function AdminMessagesPage() {
                 <table className="w-full text-sm gradient-table">
                   <thead>
                     <tr>
+                      <RowNumberHead />
                       <th>Reported By</th>
                       <th>Between</th>
                       <th>Reason</th>
@@ -520,8 +530,9 @@ export function AdminMessagesPage() {
                     </tr>
                   </thead>
                   <tbody className="text-slate-800 dark:text-gray-300">
-                    {resolvedFlags.map((flag) => (
+                    {resolvedPager.rows.map((flag, i) => (
                       <tr key={flag.id}>
+                        <RowNumberCell n={resolvedPager.offset + i + 1} className="!text-left" />
                         <td className="font-medium text-slate-950 dark:text-white">
                           {flag.flaggedBy?.firstName} {flag.flaggedBy?.lastName}
                         </td>
@@ -540,6 +551,7 @@ export function AdminMessagesPage() {
                     ))}
                   </tbody>
                 </table>
+                <Pagination {...resolvedPager.props} />
               </div>
             </div>
           )}

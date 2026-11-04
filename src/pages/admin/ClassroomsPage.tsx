@@ -5,6 +5,8 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { Plus, Pencil, Trash2, Radio, X } from 'lucide-react';
 import type { Beacon, Classroom, School } from '../../types';
 
@@ -75,6 +77,8 @@ export function ClassroomsPage() {
     refetch();
   };
 
+  const pager = usePagination(classrooms);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -91,6 +95,7 @@ export function ClassroomsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-white/10">
+              <RowNumberHead className="py-3" />
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Description</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">School</th>
@@ -99,8 +104,9 @@ export function ClassroomsPage() {
             </tr>
           </thead>
           <tbody>
-            {classrooms?.map((c) => (
+            {pager.rows.map((c, i) => (
               <tr key={c.id} className="border-b border-gray-100 dark:border-white/5">
+                <RowNumberCell n={pager.offset + i + 1} />
                 <td className="py-3 px-4 text-slate-950 dark:text-white font-medium">{c.name}</td>
                 <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{c.description || '—'}</td>
                 <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{c.school?.name ?? '—'}</td>
@@ -117,11 +123,12 @@ export function ClassroomsPage() {
             ))}
             {classrooms?.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-slate-500 dark:text-slate-400">No classrooms yet.</td>
+                <td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">No classrooms yet.</td>
               </tr>
             )}
           </tbody>
         </table>
+        <Pagination {...pager.props} />
       </GlassCard>
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Classroom' : 'Add Classroom'}>

@@ -4,6 +4,8 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import type { Major, School } from '../../types';
 
@@ -37,6 +39,8 @@ export function MajorsPage() {
     refetch();
   };
 
+  const pager = usePagination(majors);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -48,6 +52,7 @@ export function MajorsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-white/10">
+              <RowNumberHead className="py-3" />
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Code</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">School</th>
@@ -55,8 +60,9 @@ export function MajorsPage() {
             </tr>
           </thead>
           <tbody>
-            {majors?.map((m) => (
+            {pager.rows.map((m, i) => (
               <tr key={m.id} className="border-b border-gray-100 dark:border-white/5">
+                <RowNumberCell n={pager.offset + i + 1} />
                 <td className="py-3 px-4 text-slate-950 dark:text-white font-medium">{m.name}</td>
                 <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{m.code}</td>
                 <td className="py-3 px-4 text-slate-700 dark:text-gray-300">{m.school?.name ?? '—'}</td>
@@ -68,6 +74,7 @@ export function MajorsPage() {
             ))}
           </tbody>
         </table>
+        <Pagination {...pager.props} />
       </GlassCard>
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Major' : 'Add Major'}>

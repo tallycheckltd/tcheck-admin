@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Filter, ChevronDown, ChevronRight, Plus, X, Save, Search, BookOpen, GraduationCap, Layers } from 'lucide-react';
 import type { Course, Major, Cohort, Level } from '../../types';
 import { Badge } from '../ui/Badge';
+import { Pagination, RowNumberBadge } from '../ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -152,9 +154,10 @@ function GroupHeader({
 /*  Course row                                                         */
 /* ------------------------------------------------------------------ */
 
-function CourseRow({ course }: { course: Course }) {
+function CourseRow({ course, n }: { course: Course; n: number }) {
   return (
     <div className="glass-card px-5 py-4 flex items-center gap-4 group">
+      <RowNumberBadge n={n} />
       {/* Info */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
@@ -368,6 +371,12 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
         return a.label.localeCompare(b.label);
       });
   }, [filtered, groupBy]);
+
+  // Flat view only — grouped view keeps its collapsible groups and numbers within each group.
+  const pager = usePagination(filtered, {
+    initialPageSize: 25,
+    resetKey: [search, ...selectedLevels, '|', ...selectedMajors, '|', ...selectedCohorts].join(','),
+  });
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups((prev) => {
@@ -648,8 +657,8 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
                     />
                     {!isCollapsed && (
                       <div className="space-y-2 ml-4">
-                        {group.courses.map((course) => (
-                          <CourseRow key={course.id} course={course} />
+                        {group.courses.map((course, i) => (
+                          <CourseRow key={course.id} course={course} n={i + 1} />
                         ))}
                       </div>
                     )}
@@ -659,9 +668,10 @@ export function CourseDataGrid({ courses }: CourseDataGridProps) {
             </div>
           ) : (
             <div className="space-y-2">
-              {filtered.map((course) => (
-                <CourseRow key={course.id} course={course} />
+              {pager.rows.map((course, i) => (
+                <CourseRow key={course.id} course={course} n={pager.offset + i + 1} />
               ))}
+              <Pagination {...pager.props} bordered={false} className="glass-card" />
             </div>
           )}
         </div>

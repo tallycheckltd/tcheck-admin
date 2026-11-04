@@ -1,5 +1,7 @@
 import { BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { EmptyState } from '../ui/EmptyState';
+import { Pagination, RowNumberBadge } from '../ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 export interface CourseDrilldownGroup {
   course: { id: string; code: string; name: string };
@@ -22,9 +24,11 @@ interface CourseDrilldownProps {
  * instead of four near-identical copies that would drift out of sync.
  */
 export function CourseDrilldown({ groups, onSelect, countNoun, countNounPlural, emptyTitle }: CourseDrilldownProps) {
+  const pager = usePagination(groups, { initialPageSize: 25 });
   return (
+    <div className="space-y-4">
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {groups.map(({ course, count }) => (
+      {pager.rows.map(({ course, count }, i) => (
         <button
           key={course.id}
           onClick={() => onSelect(course.id)}
@@ -33,6 +37,7 @@ export function CourseDrilldown({ groups, onSelect, countNoun, countNounPlural, 
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
+                <RowNumberBadge n={pager.offset + i + 1} />
                 <BookOpen size={15} className="text-blue-500 flex-shrink-0" />
                 <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{course.code}</span>
               </div>
@@ -50,6 +55,8 @@ export function CourseDrilldown({ groups, onSelect, countNoun, countNounPlural, 
           <EmptyState icon={BookOpen} title={emptyTitle} size="md" />
         </div>
       )}
+    </div>
+    <Pagination {...pager.props} bordered={false} className="glass-card" />
     </div>
   );
 }

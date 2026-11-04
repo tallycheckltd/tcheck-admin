@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useApi, useMutation } from '../../hooks/useApi';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -48,6 +50,8 @@ export function SchoolAdminsPage() {
       (a.school?.name || '').toLowerCase().includes(q)
     );
   });
+
+  const pager = usePagination(filtered, { resetKey: `${schoolFilterId}|${search}` });
 
   const handleCreate = async () => {
     if (form.kind === 'SCHOOL_ADMIN') {
@@ -123,6 +127,7 @@ export function SchoolAdminsPage() {
           <table className="w-full text-sm gradient-table">
             <thead>
               <tr>
+                <RowNumberHead />
                 <th>Name</th>
                 <th>Email</th>
                 <th>University</th>
@@ -131,8 +136,9 @@ export function SchoolAdminsPage() {
               </tr>
             </thead>
             <tbody className="text-slate-800 dark:text-gray-300">
-              {filtered.map((admin) => (
+              {pager.rows.map((admin, i) => (
                 <tr key={admin.id}>
+                  <RowNumberCell n={pager.offset + i + 1} className="!text-left" />
                   <td>
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
@@ -167,7 +173,7 @@ export function SchoolAdminsPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-12">
+                  <td colSpan={6} className="text-center py-12">
                     <Users size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
                     <p className="text-sm text-slate-600 dark:text-slate-400">No school admins found.</p>
                   </td>
@@ -176,6 +182,7 @@ export function SchoolAdminsPage() {
             </tbody>
           </table>
         )}
+        {!loading && <Pagination {...pager.props} />}
       </div>
 
       <Modal open={modal} onClose={() => setModal(false)} title="Create Admin">

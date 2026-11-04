@@ -8,6 +8,8 @@ import {
 import { Badge } from '../../components/ui/Badge';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { format } from 'date-fns';
 import type { PendingDeviceBinding, DeviceSecurityEvent, DeviceChangeReason } from '../../types';
 
@@ -91,6 +93,12 @@ export function DeviceVerificationPage() {
       .map(([key, g]) => ({ key, ...g }));
   }, [filteredBound]);
 
+  const pendingPager = usePagination(filtered, { resetKey: search });
+  // Only one month group is open at a time, so a single pager serves whichever one it is.
+  const openGroup = boundGroups.find((g) => expandedGroup === g.key) ?? (expandedGroup === null ? boundGroups[0] : undefined);
+  const boundPager = usePagination(openGroup?.rows, { resetKey: `${search}|${openGroup?.key ?? ''}` });
+
+  // eslint-disable-next-line react-hooks/purity -- "this week" counts use wall clock at render
   const weekAgo = Date.now() - WEEK_MS;
   const conflictsThisWeek = securityLog?.filter((e) => e.type === 'CONFLICT_BLOCKED' && new Date(e.createdAt).getTime() >= weekAgo).length ?? 0;
   const changesThisWeek = securityLog?.filter((e) => e.type === 'CHANGE_REQUESTED' && new Date(e.createdAt).getTime() >= weekAgo).length ?? 0;
@@ -201,6 +209,7 @@ export function DeviceVerificationPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
                 <tr>
+                  <RowNumberHead />
                   <th className="text-left py-3 px-6">Student</th>
                   <th className="text-left py-3 px-6">Device</th>
                   <th className="text-left py-3 px-6">Reason</th>
@@ -209,8 +218,9 @@ export function DeviceVerificationPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                {filtered.map((p) => (
+                {pendingPager.rows.map((p, i) => (
                   <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors align-top">
+                    <RowNumberCell n={pendingPager.offset + i + 1} className="py-4" />
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-xs">
@@ -277,7 +287,7 @@ export function DeviceVerificationPage() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       <EmptyState icon={ShieldCheck} title="No pending device verifications." size="sm" />
                     </td>
                   </tr>
@@ -285,6 +295,7 @@ export function DeviceVerificationPage() {
               </tbody>
             </table>
           </div>
+          <Pagination {...pendingPager.props} />
         </div>
 
         {/* Info Sidebar */}
@@ -369,7 +380,7 @@ export function DeviceVerificationPage() {
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-white/5">
             {boundGroups.map((group) => {
-              const isOpen = expandedGroup === group.key || (expandedGroup === null && group === boundGroups[0]);
+              const isOpen = group === openGroup;
               return (
                 <div key={group.key}>
                   <button
@@ -384,9 +395,11 @@ export function DeviceVerificationPage() {
                     </span>
                   </button>
                   {isOpen && (
+                    <>
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
                         <tr>
+                          <RowNumberHead className="py-2" />
                           <th className="text-left py-2 px-6">Student</th>
                           <th className="text-left py-2 px-6">Device</th>
                           <th className="text-left py-2 px-6">Bound Since</th>
@@ -394,8 +407,9 @@ export function DeviceVerificationPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                        {group.rows.map((p) => (
+                        {boundPager.rows.map((p, i) => (
                           <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors">
+                            <RowNumberCell n={boundPager.offset + i + 1} className="py-4" />
                             <td className="py-4 px-6">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center font-bold text-xs">
@@ -435,6 +449,8 @@ export function DeviceVerificationPage() {
                         ))}
                       </tbody>
                     </table>
+                    <Pagination {...boundPager.props} />
+                    </>
                   )}
                 </div>
               );

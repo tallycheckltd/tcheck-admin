@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Can } from '../../components/shared/Can';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Pagination, RowNumberBadge } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { LifeBuoy, Clock, CheckCircle2, AlertTriangle, GraduationCap, BookOpen, Search, Camera, Fingerprint } from 'lucide-react';
 import type { Escalation } from '../../types';
 
@@ -57,6 +59,7 @@ export function EscalationsPage() {
       (e.class?.course.name || '').toLowerCase().includes(q) ||
       e.reason.toLowerCase().includes(q));
   }, [escalations, search]);
+  const pager = usePagination(filtered, { initialPageSize: 25, resetKey: `${search}|${statusFilter}` });
 
   const openCount = (escalations || []).filter((e) => e.status === 'OPEN').length;
   const staleCount = (escalations || []).filter((e) => e.status === 'OPEN' && urgency(e).label === 'Stale').length;
@@ -150,8 +153,9 @@ export function EscalationsPage() {
             ))}
           </div>
 
-          <div className="glass-card flex-1 overflow-y-auto p-2 space-y-1">
-            {filtered.map((e) => {
+          <div className="glass-card flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {pager.rows.map((e, i) => {
               const u = urgency(e);
               return (
                 <button
@@ -164,6 +168,7 @@ export function EscalationsPage() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
+                    <RowNumberBadge n={pager.offset + i + 1} />
                     <p className="text-sm font-medium text-slate-950 dark:text-white truncate flex-1">
                       {e.student?.firstName} {e.student?.lastName}
                     </p>
@@ -185,6 +190,8 @@ export function EscalationsPage() {
                 <p className="text-sm text-slate-600 dark:text-slate-400">No escalations{statusFilter !== 'ALL' ? ` (${statusFilter.toLowerCase()})` : ''}</p>
               </div>
             )}
+          </div>
+          <Pagination {...pager.props} compact />
           </div>
         </div>
 

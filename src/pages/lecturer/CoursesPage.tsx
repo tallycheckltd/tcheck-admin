@@ -6,6 +6,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberBadge } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { BookOpen, Users, Calendar, Plus, Trash2, MapPin, Sparkles, Edit2, LayoutGrid, List } from 'lucide-react';
 import type { Course, School, User, Beacon, OrgUnit } from '../../types';
@@ -101,6 +103,9 @@ export function CoursesPage() {
     refetch();
   };
 
+  // The card view pages client-side; the table view (CourseDataGrid) is its own component.
+  const pager = usePagination(courses);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -130,12 +135,13 @@ export function CoursesPage() {
       )}
 
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${isAdmin && viewMode === 'grid' ? 'hidden' : ''}`}>
-        {courses?.map((course) => (
+        {pager.rows.map((course, i) => (
           <div key={course.id} className="glass-card p-5">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-semibold text-slate-950 dark:text-white text-lg">{course.name}</h3>
                 <div className="flex items-center gap-2 mt-1">
+                  <RowNumberBadge n={pager.offset + i + 1} />
                   <Badge color="blue">{course.code}</Badge>
                   {course.school && <span className="text-xs text-slate-600 dark:text-slate-400">{course.school.name}</span>}
                 </div>
@@ -202,6 +208,9 @@ export function CoursesPage() {
           </div>
         ))}
       </div>
+      {!(isAdmin && viewMode === 'grid') && (
+        <Pagination {...pager.props} className="glass-card rounded-2xl border-t-0" />
+      )}
 
       {/* Create Course Modal */}
       <Modal open={modal} onClose={() => setModal(false)} title="Create Course">

@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
+import { Pagination, RowNumberBadge } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { FacilitiesQueue } from '../../components/facilities/FacilitiesQueue';
 import type { Permission, FacilityTicket } from '../../types';
 import { RequestFeedbackWorkspace } from '../../components/feedback/FeedbackCampaigns';
@@ -174,21 +176,28 @@ export function StaffViewPage() {
 
 function BirthdaysPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
   const { data } = useApi<StaffBirthday[]>(withCohort('/staff/birthdays', cohortId));
+  const pager = usePagination(data);
   return (
     <Panel id="panel-birthdays" title="Birthdays" icon={Cake} defaultOpen={open}>
       {!data?.length ? (
         <p className="text-sm text-gray-400 py-4 text-center">No upcoming birthdays in your assigned courses.</p>
       ) : (
-        <ul className="space-y-2 max-h-72 overflow-y-auto">
-          {data.map((b) => (
-            <li key={b.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
-              <span className="text-sm text-gray-800 dark:text-gray-200">{b.firstName} {b.lastName}</span>
+        <>
+        <ul className="space-y-2">
+          {pager.rows.map((b, i) => (
+            <li key={b.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
+              <span className="flex items-center gap-2 min-w-0">
+                <RowNumberBadge n={pager.offset + i + 1} />
+                <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{b.firstName} {b.lastName}</span>
+              </span>
               <span className={`text-xs font-semibold ${b.isToday ? 'text-pink-500' : 'text-gray-400'}`}>
                 {b.isToday ? 'Today 🎂' : `${MONTH_NAMES[b.month - 1]} ${b.day}`}
               </span>
             </li>
           ))}
         </ul>
+        <Pagination {...pager.props} flush className="mt-2" />
+        </>
       )}
     </Panel>
   );
@@ -200,6 +209,7 @@ function BirthdaysPanel({ cohortId, open = false }: { cohortId?: string; open?: 
 function CombinedCheckInsPanel({ canManual, canOnSite, cohortId, open = false }: { canManual: boolean; canOnSite: boolean; cohortId?: string; open?: boolean }) {
   const [type, setType] = useState<'manual' | 'ble'>(canManual ? 'manual' : 'ble');
   const { data } = useApi<StaffCheckIn[]>(withCohort(`/staff/checkins?type=${type}`, cohortId));
+  const pager = usePagination(data, { resetKey: type });
   return (
     <Panel id="panel-checkins" title="Check-Ins" icon={ClipboardCheck} defaultOpen={open}>
       {canManual && canOnSite && (
@@ -221,17 +231,23 @@ function CombinedCheckInsPanel({ canManual, canOnSite, cohortId, open = false }:
       {!data?.length ? (
         <p className="text-sm text-gray-400 py-4 text-center">No {type === 'ble' ? 'Aura' : 'manual'} check-ins yet.</p>
       ) : (
-        <ul className="space-y-2 max-h-72 overflow-y-auto">
-          {data.map((c) => (
-            <li key={c.id} className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-800 dark:text-gray-200">{c.student.firstName} {c.student.lastName}</span>
-                <span className="text-xs text-gray-400">{new Date(c.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        <>
+        <ul className="space-y-2">
+          {pager.rows.map((c, i) => (
+            <li key={c.id} className="flex items-start gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
+              <RowNumberBadge n={pager.offset + i + 1} className="mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-800 dark:text-gray-200">{c.student.firstName} {c.student.lastName}</span>
+                  <span className="text-xs text-gray-400">{new Date(c.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <p className="text-xs text-gray-400">{c.course?.name} &middot; {c.classTitle}</p>
               </div>
-              <p className="text-xs text-gray-400">{c.course?.name} &middot; {c.classTitle}</p>
             </li>
           ))}
         </ul>
+        <Pagination {...pager.props} flush className="mt-2" />
+        </>
       )}
     </Panel>
   );
@@ -472,6 +488,7 @@ function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [url, setUrl] = useState('');
+  const pager = usePagination(materials);
 
   const submit = async () => {
     if (!title.trim()) return;
@@ -486,18 +503,24 @@ function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: 
         {!materials?.length ? (
           <p className="text-sm text-gray-400 py-2">No materials yet.</p>
         ) : (
-          <ul className="space-y-2 max-h-72 overflow-y-auto">
-            {materials.map((m) => (
-              <li key={m.id} className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{m.title}</span>
-                  <span className="text-xs text-gray-400">{m.course?.name ?? 'General'}</span>
+          <div>
+          <ul className="space-y-2">
+            {pager.rows.map((m, i) => (
+              <li key={m.id} className="flex items-start gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
+                <RowNumberBadge n={pager.offset + i + 1} className="mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{m.title}</span>
+                    <span className="text-xs text-gray-400">{m.course?.name ?? 'General'}</span>
+                  </div>
+                  {m.description && <p className="text-xs text-gray-400 mt-0.5">{m.description}</p>}
+                  {m.url && <a href={m.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">Open</a>}
                 </div>
-                {m.description && <p className="text-xs text-gray-400 mt-0.5">{m.description}</p>}
-                {m.url && <a href={m.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">Open</a>}
               </li>
             ))}
           </ul>
+          <Pagination {...pager.props} flush className="mt-2" />
+          </div>
         )}
         {isAdding ? (
           <div className="space-y-2 p-3 rounded-xl bg-gray-50 dark:bg-white/5">
@@ -529,25 +552,32 @@ function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: 
 function FacilitiesPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
   const { data: tickets } = useApi<FacilityTicket[]>(withCohort('/facility-tickets', cohortId));
   const openTickets = (tickets ?? []).filter((t) => t.status !== 'RESOLVED');
+  const pager = usePagination(tickets);
 
   return (
     <Panel id="panel-facilities" title="Facilities" icon={Wrench} defaultOpen={open}>
       {!tickets?.length ? (
         <p className="text-sm text-gray-400 py-4 text-center">No facility tickets for this programme yet.</p>
       ) : (
-        <ul className="space-y-2 max-h-72 overflow-y-auto">
-          {tickets.map((t) => (
+        <>
+        <ul className="space-y-2">
+          {pager.rows.map((t, i) => (
             <li key={t.id} className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{t.class?.title ?? 'a class'}</span>
+                <span className="flex items-center gap-2 min-w-0">
+                  <RowNumberBadge n={pager.offset + i + 1} />
+                  <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{t.class?.title ?? 'a class'}</span>
+                </span>
                 <Badge color={t.status === 'RESOLVED' ? 'green' : t.priority === 'URGENT' ? 'red' : t.status === 'ACKNOWLEDGED' ? 'blue' : 'yellow'}>
                   {t.status === 'RESOLVED' ? 'Resolved' : t.priority === 'URGENT' ? 'Escalated' : t.status === 'ACKNOWLEDGED' ? 'Being handled' : 'Open'}
                 </Badge>
               </div>
-              <p className="text-xs text-gray-400">{new Date(t.createdAt).toLocaleDateString()}</p>
+              <p className="text-xs text-gray-400 pl-8">{new Date(t.createdAt).toLocaleDateString()}</p>
             </li>
           ))}
         </ul>
+        <Pagination {...pager.props} flush className="mt-2" />
+        </>
       )}
       {openTickets.length > 0 && (
         <a href="/admin/facilities" className="block mt-3 text-xs text-blue-500 hover:underline">Open the full Facilities Queue to reply →</a>

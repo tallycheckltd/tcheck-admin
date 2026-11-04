@@ -9,6 +9,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { StatCard } from '../../components/ui/StatCard';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell, RowNumberBadge } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { format } from 'date-fns';
 
 interface BiometricFlag {
@@ -55,6 +57,9 @@ export function FraudDetectionPage() {
   const [expandedDeviceId, setExpandedDeviceId] = useState<string | null>(null);
   const [reviewFlag, setReviewFlag] = useState<BiometricFlag | null>(null);
   const [reviewPhoto, setReviewPhoto] = useState<string | null | undefined>(undefined);
+  // Paged before the loading/error early returns so hook order never changes between renders.
+  const flagPager = usePagination(flags);
+  const pairPager = usePagination(sharing?.suspiciousPairs);
 
   const openReview = async (flag: BiometricFlag) => {
     setReviewFlag(flag);
@@ -136,6 +141,7 @@ export function FraudDetectionPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-white/5">
+                  <RowNumberHead className="py-4" />
                   <th className="px-6 py-4">Photo</th>
                   <th className="px-6 py-4">Student</th>
                   <th className="px-6 py-4">Class/Course</th>
@@ -144,8 +150,9 @@ export function FraudDetectionPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                {flags.map((f) => (
+                {flagPager.rows.map((f, i) => (
                   <tr key={f.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                    <RowNumberCell n={flagPager.offset + i + 1} className="py-4" />
                     <td className="px-6 py-4">
                       <button
                         type="button"
@@ -175,7 +182,7 @@ export function FraudDetectionPage() {
                 ))}
                 {flags.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="text-center py-12">
+                    <td colSpan={6} className="text-center py-12">
                       <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
                         <CheckCircle className="text-green-500" size={24} />
                       </div>
@@ -186,6 +193,7 @@ export function FraudDetectionPage() {
               </tbody>
             </table>
           </div>
+          <Pagination {...flagPager.props} />
         </div>
 
         {/* Device Sharing Patterns */}
@@ -196,7 +204,7 @@ export function FraudDetectionPage() {
           </h2>
           <p className="text-xs text-gray-500 mb-6">Devices used by more than one student to check in (buddy punching indicator) — last 90 days.</p>
           <div className="space-y-3">
-            {suspiciousPairs.map((p) => {
+            {pairPager.rows.map((p, idx) => {
               const isExpanded = expandedDeviceId === p.deviceId;
               const relatedFlags = sharing?.flaggedAttendances.filter((f) => f.deviceId === p.deviceId) ?? [];
               return (
@@ -207,6 +215,7 @@ export function FraudDetectionPage() {
                     className="w-full flex items-center justify-between p-4 hover:bg-orange-500/10 transition-colors cursor-pointer text-left"
                   >
                     <div className="flex items-center gap-3 min-w-0">
+                      <RowNumberBadge n={pairPager.offset + idx + 1} />
                       <div className="flex -space-x-3 flex-shrink-0">
                         {p.users.slice(0, 4).map((u, i) => (
                           <div
@@ -253,6 +262,7 @@ export function FraudDetectionPage() {
               </div>
             )}
           </div>
+          <Pagination {...pairPager.props} className="-mx-6 mt-4 px-6" />
           <button
             type="button"
             onClick={() => refetchSharing()}

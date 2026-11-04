@@ -6,6 +6,8 @@ import { Badge } from '../../components/ui/Badge';
 import { UserDirectoryTabs } from '../../components/admin/UserDirectoryTabs';
 import { Search, CheckCircle, XCircle, Trash2, Presentation } from 'lucide-react';
 import { clsx } from 'clsx';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import type { User } from '../../types';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
@@ -31,6 +33,8 @@ export function AllLecturersPage() {
       u.email.toLowerCase().includes(q)
     );
   });
+
+  const pager = usePagination(filtered, { resetKey: `${filter}|${search}` });
 
   const approve = async (id: string) => {
     await patch(`/users/${id}/status`, { status: 'APPROVED' });
@@ -97,6 +101,7 @@ export function AllLecturersPage() {
         <table className="w-full text-sm gradient-table">
           <thead>
             <tr>
+              <RowNumberHead />
               <th>Name</th>
               <th>Email</th>
               <th>School</th>
@@ -105,12 +110,13 @@ export function AllLecturersPage() {
             </tr>
           </thead>
           <tbody className="text-gray-700 dark:text-gray-300">
-            {filtered?.map((u) => (
+            {pager.rows.map((u, i) => (
               <tr
                 key={u.id}
                 onClick={() => navigate(`/admin/users/${u.id}`)}
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
               >
+                <RowNumberCell n={pager.offset + i + 1} className="!text-left" />
                 <td className="font-medium text-gray-900 dark:text-white">
                   {u.firstName} {u.lastName}
                 </td>
@@ -152,7 +158,7 @@ export function AllLecturersPage() {
             ))}
             {filtered?.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-center py-12">
+                <td colSpan={6} className="text-center py-12">
                   <div className="flex flex-col items-center">
                     <Presentation size={40} className="text-gray-300 dark:text-gray-600 mb-2" />
                     <p className="text-gray-400">No lecturers found matching filters</p>
@@ -162,6 +168,7 @@ export function AllLecturersPage() {
             )}
           </tbody>
         </table>
+        <Pagination {...pager.props} />
       </div>
     </div>
   );

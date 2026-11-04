@@ -9,6 +9,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberBadge } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { LifeBuoy, Plus, Send, School as SchoolIcon, Search } from 'lucide-react';
 import type { Ticket, School } from '../../types';
 
@@ -118,6 +120,7 @@ export function SupportPage() {
     const q = search.toLowerCase();
     return t.subject.toLowerCase().includes(q) || (t.school?.name || '').toLowerCase().includes(q);
   });
+  const pager = usePagination(filtered, { initialPageSize: 25, resetKey: `${search}|${schoolFilter}` });
 
   return (
     <div className="space-y-6">
@@ -158,8 +161,9 @@ export function SupportPage() {
             </select>
           )}
 
-          <div className="glass-card flex-1 overflow-y-auto p-2 space-y-1">
-            {filtered.map((t) => (
+          <div className="glass-card flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {pager.rows.map((t, i) => (
               <button
                 key={t.id}
                 onClick={() => loadDetail(t.id)}
@@ -170,6 +174,7 @@ export function SupportPage() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
+                  <RowNumberBadge n={pager.offset + i + 1} />
                   <p className="text-sm font-medium text-slate-950 dark:text-white truncate flex-1">{t.subject}</p>
                   <span className="text-xs text-slate-600 dark:text-slate-400 flex-shrink-0">{timeAgo(t.updatedAt)}</span>
                 </div>
@@ -191,6 +196,8 @@ export function SupportPage() {
                 <p className="text-sm text-slate-600 dark:text-slate-400">No tickets yet</p>
               </div>
             )}
+          </div>
+          <Pagination {...pager.props} compact />
           </div>
         </div>
 

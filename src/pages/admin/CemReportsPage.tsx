@@ -5,6 +5,8 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { exportCemReportPdf } from '../../lib/adminPdfExport';
 import { Download, GraduationCap, ChevronDown, ChevronRight, Users } from 'lucide-react';
 
@@ -26,6 +28,40 @@ const dateRange = (start: string | null, end: string | null) => {
   const f = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   return f(start) === f(end) ? f(start) : `${f(start)} – ${f(end)}`;
 };
+
+/** One programme's student roster, numbered and paged so a large cohort stays a short table. */
+function CohortRoster({ students }: { students: CemReportStudent[] }) {
+  const pager = usePagination(students);
+  return (
+    <div className="rounded-xl border border-gray-100 dark:border-white/5 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5">
+            <tr>
+              <th className="w-10 text-right py-2 px-3">#</th>
+              <th className="text-left py-2 px-3">Name</th>
+              <th className="text-left py-2 px-3">Role / Company</th>
+              <th className="text-left py-2 px-3">Email</th>
+              <th className="text-left py-2 px-3">ID</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+            {pager.rows.map((s, i) => (
+              <tr key={s.id}>
+                <td className="w-10 py-2 px-3 text-right tabular-nums text-gray-400 dark:text-gray-500">{pager.offset + i + 1}</td>
+                <td className="py-2 px-3 text-gray-800 dark:text-gray-200">{s.firstName} {s.lastName}</td>
+                <td className="py-2 px-3 text-gray-600 dark:text-gray-300">{s.jobTitle ? `${s.jobTitle}${s.company ? ` · ${s.company}` : ''}` : '—'}</td>
+                <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{s.email}</td>
+                <td className="py-2 px-3 text-gray-400 font-mono">{s.studentId ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Pagination {...pager.props} />
+    </div>
+  );
+}
 
 /**
  * Cross-CEM oversight report for Dean/School Admin/executive-tier roles (server-side gate is the
@@ -117,28 +153,7 @@ export function CemReportsPage() {
                           {!c.students.length ? (
                             <p className="text-xs text-gray-400 py-2">No students enrolled yet.</p>
                           ) : (
-                            <div className="rounded-xl border border-gray-100 dark:border-white/5 overflow-x-auto">
-                              <table className="w-full text-xs">
-                                <thead className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5">
-                                  <tr>
-                                    <th className="text-left py-2 px-3">Name</th>
-                                    <th className="text-left py-2 px-3">Role / Company</th>
-                                    <th className="text-left py-2 px-3">Email</th>
-                                    <th className="text-left py-2 px-3">ID</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                                  {c.students.map((s) => (
-                                    <tr key={s.id}>
-                                      <td className="py-2 px-3 text-gray-800 dark:text-gray-200">{s.firstName} {s.lastName}</td>
-                                      <td className="py-2 px-3 text-gray-600 dark:text-gray-300">{s.jobTitle ? `${s.jobTitle}${s.company ? ` · ${s.company}` : ''}` : '—'}</td>
-                                      <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{s.email}</td>
-                                      <td className="py-2 px-3 text-gray-400 font-mono">{s.studentId ?? '—'}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
+                            <CohortRoster students={c.students} />
                           )}
                         </div>
                       )}

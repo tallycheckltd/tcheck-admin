@@ -3,6 +3,8 @@ import {
   PlayCircle, Loader2, Info, Clock, MapPin, Calendar, QrCode, X, Timer
 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
+import { Pagination } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { format, isToday } from 'date-fns';
 import { getClassTimeStatus } from '../../utils/classTimeStatus';
 import { useState } from 'react';
@@ -40,6 +42,7 @@ export function LecturerPresencePage() {
 
   // Use session start in local time so "today" matches the class schedule, not only the date column.
   const todayClasses = classes?.filter((c: ClassSession) => isToday(new Date(c.startTime))) || [];
+  const punctualityPager = usePagination(punctuality);
 
   if (loading) {
     return (
@@ -187,6 +190,7 @@ export function LecturerPresencePage() {
             <table className="w-full text-sm gradient-table min-w-[560px]">
               <thead>
                 <tr>
+                  <th className="w-12 !text-right">#</th>
                   <th>Lecturer</th>
                   <th>Sessions</th>
                   <th>Avg. Lateness</th>
@@ -195,8 +199,9 @@ export function LecturerPresencePage() {
                 </tr>
               </thead>
               <tbody>
-                {punctuality?.map((row) => (
+                {punctualityPager.rows.map((row, i) => (
                   <tr key={row.lecturerId}>
+                    <td className="w-12 text-right text-xs tabular-nums text-gray-400 dark:text-gray-500">{punctualityPager.offset + i + 1}</td>
                     <td className="font-medium text-gray-900 dark:text-white">{row.name}</td>
                     <td>{row.sessions}</td>
                     <td>
@@ -209,12 +214,13 @@ export function LecturerPresencePage() {
                   </tr>
                 ))}
                 {(!punctuality || punctuality.length === 0) && (
-                  <tr><td colSpan={5} className="text-center py-8 text-slate-500 dark:text-slate-400">No session activity in this window.</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-slate-500 dark:text-slate-400">No session activity in this window.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
+        {!punctualityLoading && <Pagination {...punctualityPager.props} />}
       </div>
 
       {/* QR Modal */}

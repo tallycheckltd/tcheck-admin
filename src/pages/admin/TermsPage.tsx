@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Plus, CalendarRange, CheckCircle2 } from 'lucide-react';
@@ -48,6 +50,8 @@ export function TermsPage() {
     refetch();
   };
 
+  const pager = usePagination(terms, { resetKey: schoolFilter });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -76,6 +80,7 @@ export function TermsPage() {
         <table className="w-full text-sm gradient-table">
           <thead>
             <tr>
+              <RowNumberHead />
               <th>Name</th>
               {isSuperAdmin && !schoolFilter && <th>School</th>}
               <th>Start</th>
@@ -85,8 +90,9 @@ export function TermsPage() {
             </tr>
           </thead>
           <tbody className="text-slate-800 dark:text-gray-300">
-            {terms?.map((t) => (
+            {pager.rows.map((t, i) => (
               <tr key={t.id}>
+                <RowNumberCell n={pager.offset + i + 1} />
                 <td className="font-medium text-slate-950 dark:text-white flex items-center gap-2">
                   <CalendarRange size={14} className="text-blue-500" />
                   {t.name}
@@ -113,6 +119,7 @@ export function TermsPage() {
             ))}
           </tbody>
         </table>
+        <Pagination {...pager.props} />
         {(!terms || terms.length === 0) && (
           <EmptyState icon={CalendarRange} title="No terms yet" description="Create one to start scoping enrollments and course chat rooms by term." size="md" />
         )}

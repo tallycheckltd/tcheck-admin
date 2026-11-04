@@ -3,6 +3,7 @@ import { Mail, AlertTriangle, CheckCircle, Clock, Ban, Filter, ChevronDown, Chev
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import type { School } from '../../types';
+import { Pagination } from '../../components/ui/Pagination';
 
 /**
  * SBS Phase 9 — read-only email activity. What was sent, to whom (masked), and what happened —
@@ -53,7 +54,9 @@ const ERROR: Record<string, string> = {
 
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '');
 const time = (d: string | null) => (d ? new Date(d).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '');
-const PAGE = 300;
+// Server page size (rows per page). Paging is cursor-based (`before` = the oldest createdAt on
+// the previous page), so the page number is just how many cursors deep we are.
+const DEFAULT_PAGE_SIZE = 100;
 
 /** Owner 09-27: group by day, and within a day by send (same email type + subject + school), so one
  * announcement to 49 people is one row — "49 emails · 47 accepted · 2 not sent" — that expands to
@@ -123,15 +126,33 @@ export function EmailActivityPage() {
   const [status, setStatus] = useState('');
   const [category, setCategory] = useState('');
   const [schoolId, setSchoolId] = useState('');
-  const [before, setBefore] = useState<string | null>(null);
+  const [cursors, setCursors] = useState<string[]>([]);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const before = cursors.length ? cursors[cursors.length - 1] : null;
+  const resetPaging = () => setCursors([]);
   const [openBatches, setOpenBatches] = useState<Set<string>>(new Set());
   const [closedDays, setClosedDays] = useState<Set<string>>(new Set());
   const toggle = (set: Set<string>, key: string) => { const n = new Set(set); if (n.has(key)) n.delete(key); else n.add(key); return n; };
-  const q = new URLSearchParams({ limit: String(PAGE), ...(status ? { status } : {}), ...(category ? { category } : {}), ...(schoolId ? { schoolId } : {}), ...(before ? { before } : {}) });
+  const q = new URLSearchParams({ limit: String(pageSize), ...(status ? { status } : {}), ...(category ? { category } : {}), ...(schoolId ? { schoolId } : {}), ...(before ? { before } : {}) });
   const { data: rows, loading } = useApi<DeliveryRow[]>(`/email/deliveries?${q}`);
   const { data: summary } = useApi<Summary>(`/email/deliveries/summary?days=7${schoolId ? `&schoolId=${schoolId}` : ''}`);
   const { data: schools } = useApi<School[]>(isSuperAdmin ? '/schools' : null);
   const days = useMemo(() => groupByDay(rows ?? []), [rows]);
+  const page = cursors.length;
+  const offset = page * pageSize;
+  const hasMore = !!rows && rows.length === pageSize;
+  // Row numbers follow the on-screen order (day → send → recipient) and continue across pages.
+  const rowNumber = useMemo(() => {
+    const m = new Map<string, number>();
+    let n = offset;
+    for (const d of days) for (const b of d.batches) for (const r of b.rows) m.set(r.id, ++n);
+    return m;
+  }, [days, offset]);
+  const goToPage = (p: number) => {
+    if (p <= 0) setCursors([]);
+    else if (p < page) setCursors((c) => c.slice(0, p));
+    else if (p === page + 1 && rows?.length) setCursors((c) => [...c, rows[rows.length - 1].createdAt]);
+  };
 
   const s = summary?.byStatus ?? {};
   const cards = [
@@ -161,16 +182,16 @@ export function EmailActivityPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Filter size={14} className="text-slate-400" />
         {isSuperAdmin && (
-          <select value={schoolId} onChange={(e) => { setSchoolId(e.target.value); setBefore(null); }} className={select}>
+          <select value={schoolId} onChange={(e) => { setSchoolId(e.target.value); resetPaging(); }} className={select}>
             <option value="">All schools</option>
             {schools?.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
           </select>
         )}
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setBefore(null); }} className={select}>
+        <select value={status} onChange={(e) => { setStatus(e.target.value); resetPaging(); }} className={select}>
           <option value="">Any status</option>
           {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{k === 'SUPPRESSED' ? 'Not sent — opted out / suppressed' : k === 'SKIPPED' ? 'Not sent — skipped' : v.label}</option>)}
         </select>
-        <select value={category} onChange={(e) => { setCategory(e.target.value); setBefore(null); }} className={select}>
+        <select value={category} onChange={(e) => { setCategory(e.target.value); resetPaging(); }} className={select}>
           <option value="">Any kind</option>
           <option value="PROGRAMME">Programme (optional)</option>
           <option value="OPERATIONAL">Operational</option>
@@ -219,7 +240,8 @@ export function EmailActivityPage() {
                               const st = STATUS[r.status] ?? STATUS.QUEUED;
                               const detail = [r.statusReason ? REASON[r.statusReason] ?? r.statusReason : null, r.error ? ERROR[r.error] ?? r.error : null, r.attempts > 1 ? `${r.attempts} attempts` : null].filter(Boolean).join(' · ');
                               return (
-                                <li key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 pl-11 pr-4 text-sm">
+                                <li key={r.id} className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 py-2 pl-4 pr-4 text-sm">
+                                  <span className="text-right text-xs tabular-nums text-slate-400 dark:text-slate-500">{rowNumber.get(r.id)}</span>
                                   <span className="min-w-0">
                                     <span className="text-slate-800 dark:text-slate-200">{r.recipientName ?? '—'}</span>
                                     <span className="ml-2 font-mono text-xs text-slate-500">{r.recipient}</span>
@@ -248,12 +270,21 @@ export function EmailActivityPage() {
           <p className="glass-card flex items-center justify-center gap-2 py-10 text-sm text-slate-500"><Mail size={16} /> No emails match.</p>
         )}
       </div>
-      <div className="flex justify-end gap-2">
-        {before && <button onClick={() => setBefore(null)} className="px-3 py-1.5 rounded-lg text-xs bg-gray-100 dark:bg-white/10 cursor-pointer">Newest</button>}
-        {rows && rows.length === PAGE && (
-          <button onClick={() => setBefore(rows[rows.length - 1].createdAt)} className="px-3 py-1.5 rounded-lg text-xs bg-gray-100 dark:bg-white/10 cursor-pointer">Older</button>
-        )}
-      </div>
+      {(page > 0 || hasMore || (rows?.length ?? 0) > 0) && (
+        <div className="glass-card overflow-hidden">
+          <Pagination
+            alwaysShow
+            bordered={false}
+            page={page}
+            pageSize={pageSize}
+            total={offset + (rows?.length ?? 0)}
+            hasMore={hasMore}
+            loadingMore={loading}
+            onPage={goToPage}
+            onPageSize={(n) => { setPageSize(n); resetPaging(); }}
+          />
+        </div>
+      )}
     </div>
   );
 }

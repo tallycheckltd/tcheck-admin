@@ -15,6 +15,8 @@ import { ROLE_LABEL } from '../../lib/rbac';
 import { OrgUnitsSection } from '../../components/org/OrgUnitsSection';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
+import { Pagination, RowNumberHead, RowNumberCell, RowNumberBadge } from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { LEVEL_LABEL, ORG_LEVEL_FOR_ROLE, SCOPE_FOR_ROLE, roleHasOrgUnit, roleRequiresOrgUnit } from '../../lib/hierarchyRoles';
 
 /** The full catalog — grouped for the checklist UI. Mirrors server/prisma/schema.prisma's
@@ -238,6 +240,7 @@ export function PeopleOrganizationPage() {
   // a school has dozens of them, rather than a wall of cards.
   const [roleSearch, setRoleSearch] = useState('');
   const filteredRoles = (roles ?? []).filter((r) => r.name.toLowerCase().includes(roleSearch.trim().toLowerCase()));
+  const rolesPager = usePagination(filteredRoles, { resetKey: roleSearch });
 
   const [userModal, setUserModal] = useState(false);
   const [userForm, setUserForm] = useState(emptyUserForm);
@@ -262,6 +265,7 @@ export function PeopleOrganizationPage() {
     if (customRoleFilter !== 'ALL' && customRoleFilter !== 'NONE' && u.customRoleId !== customRoleFilter) return false;
     return true;
   });
+  const staffPager = usePagination(filteredStaff, { resetKey: `${accountTypeFilter}|${customRoleFilter}|${schoolId}` });
 
   const openCreateRole = () => {
     setEditingRole(null);
@@ -447,10 +451,12 @@ export function PeopleOrganizationPage() {
             {!filteredRoles.length ? (
               <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No roles match &quot;{roleSearch}&quot;.</p>
             ) : (
-              <div className="max-h-96 overflow-y-auto rounded-xl border border-gray-100 dark:border-white/5 divide-y divide-gray-100 dark:divide-white/5">
-                {filteredRoles.map((role) => (
+              <div className="rounded-xl border border-gray-100 dark:border-white/5 overflow-hidden">
+              <div className="divide-y divide-gray-100 dark:divide-white/5">
+                {rolesPager.rows.map((role, i) => (
                   <div key={role.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5">
-                    <div className="min-w-0">
+                    <RowNumberBadge n={rolesPager.offset + i + 1} />
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{role.name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         {role.permissions.length} permission{role.permissions.length === 1 ? '' : 's'} &middot; {role._count?.users ?? 0} user{role._count?.users === 1 ? '' : 's'}
@@ -466,6 +472,8 @@ export function PeopleOrganizationPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+              <Pagination {...rolesPager.props} />
               </div>
             )}
           </>
@@ -527,6 +535,7 @@ export function PeopleOrganizationPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-white/10">
+                      <RowNumberHead className="py-2.5 pl-0 !text-left" />
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Account Type</th>
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Org Unit</th>
@@ -535,8 +544,9 @@ export function PeopleOrganizationPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                    {filteredStaff.map((u) => (
+                    {staffPager.rows.map((u, i) => (
                       <tr key={u.id}>
+                        <RowNumberCell n={staffPager.offset + i + 1} className="py-3 pl-0 !text-left" />
                         <td className="py-3 text-sm text-gray-900 dark:text-white">{u.firstName} {u.lastName}<br /><span className="text-xs text-gray-400">{u.email}</span></td>
                         <td className="py-3">
                           {u.role === 'DEPUTY_HOD' ? (
@@ -611,6 +621,7 @@ export function PeopleOrganizationPage() {
                     ))}
                   </tbody>
                 </table>
+                <Pagination {...staffPager.props} flush />
               </div>
             )}
           </>
