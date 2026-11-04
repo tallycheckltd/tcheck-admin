@@ -7,6 +7,60 @@ import { FAILURE_REASON_LABEL, type PilotAnalytics, type PilotCourse, type Pilot
  */
 
 export const AT_RISK = 0.75;
+
+/* ---- Day / week / month grouping (11-05) — long periods are drawn per week or per month ---- */
+
+export type Grain = 'day' | 'week' | 'month';
+export const GRAIN_LABEL: Record<Grain, string> = { day: 'Day', week: 'Week', month: 'Month' };
+/** The grouping a period starts with: days up to a month, weeks up to ~4 months, then months. */
+export const autoGrain = (days: number): Grain => (days <= 31 ? 'day' : days <= 120 ? 'week' : 'month');
+
+/** `YYYY-MM-DD` → its bucket: the same day, the Monday of its week, or `YYYY-MM`. */
+export function grainKey(day: string, g: Grain): string {
+  if (g === 'day') return day;
+  if (g === 'month') return day.slice(0, 7);
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** A bucket key in words: "Tue 4 Nov", "Week of 3 Nov", "Nov 2026". */
+export function grainLabel(key: string, g: Grain): string {
+  if (g === 'month') return `${MONTHS[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
+  const d = new Date(`${key}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return key;
+  const dm = `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+  return g === 'week' ? `Week of ${dm}` : `${WEEKDAYS[d.getUTCDay()]} ${dm}`;
+}
+
+type How = 'sum' | 'max' | 'min' | 'avg' | 'last';
+/** Group day rows into buckets. Numbers add up unless `how` says otherwise; `day` becomes the bucket key. */
+export function rollup<T extends { day: string }>(rows: T[], g: Grain, how: Partial<Record<string, How>> = {}): T[] {
+  if (g === 'day') return rows;
+  const groups = new Map<string, T[]>();
+  for (const r of [...rows].sort((a, b) => String(a.day).localeCompare(String(b.day)))) {
+    const k = grainKey(String(r.day), g);
+    groups.set(k, [...(groups.get(k) ?? []), r]);
+  }
+  return [...groups.entries()].map(([day, list]) => {
+    const out: Record<string, unknown> = { day };
+    const keys = new Set(list.flatMap((r) => Object.keys(r)));
+    for (const key of keys) {
+      if (key === 'day') continue;
+      const vals = list.map((r) => (r as Record<string, unknown>)[key]).filter((v): v is number => typeof v === 'number');
+      const mode = how[key] ?? 'sum';
+      if (!vals.length) { out[key] = null; continue; }
+      out[key] = mode === 'sum' ? vals.reduce((a, b) => a + b, 0)
+        : mode === 'max' ? Math.max(...vals)
+          : mode === 'min' ? Math.min(...vals)
+            : mode === 'last' ? vals[vals.length - 1]
+              : Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    }
+    return out as T;
+  });
+}
 const share = (part: number, whole: number) => (whole > 0 ? part / whole : null);
 const labelFor = (map: Record<string, string>, code: string) => map[code] ?? code.replace(/_/g, ' ').toLowerCase();
 
@@ -66,15 +120,17 @@ function pivot(rows: { day: string; reason: string; count: number }[], label: (r
   return { keys: outKeys, rows: out.sort((a, b) => String(a.day).localeCompare(String(b.day))), totals };
 }
 
-export function deriveTrends(data: PilotAnalytics) {
-  const attendanceByDay = (data.attendanceByDay ?? []).map((d) => ({ ...d, rate: share(d.attended, d.expected) }));
-  const expected = attendanceByDay.reduce((n, d) => n + d.expected, 0);
-  const attended = attendanceByDay.reduce((n, d) => n + d.attended, 0);
+export function deriveTrends(data: PilotAnalytics, grain: Grain = 'day') {
+  const rawAttendance = data.attendanceByDay ?? [];
+  // Distinct students can't be added across days; a week or month shows its busiest day.
+  const attendanceByDay = rollup(rawAttendance, grain, { students: 'max' }).map((d) => ({ ...d, rate: share(d.attended, d.expected) }));
+  const expected = rawAttendance.reduce((n, d) => n + d.expected, 0);
+  const attended = rawAttendance.reduce((n, d) => n + d.attended, 0);
   const attendanceRate = share(attended, expected);
   const prev = data.previousPeriod;
   const prevAttendanceRate = prev ? share(prev.attended, prev.expected) : null;
-  const emptyClasses = attendanceByDay.reduce((n, d) => n + d.emptyClasses, 0);
-  const classesHeld = attendanceByDay.reduce((n, d) => n + d.classes, 0);
+  const emptyClasses = rawAttendance.reduce((n, d) => n + d.emptyClasses, 0);
+  const classesHeld = rawAttendance.reduce((n, d) => n + d.classes, 0);
 
   const courses: CourseRow[] = (data.courses ?? []).map((c) => {
     const exp = c.enrolled * c.classesHeld;
@@ -112,13 +168,19 @@ export function deriveTrends(data: PilotAnalytics) {
     return { hour: h, label: `${String(h).padStart(2, '0')}:00`, checkins: hourCheckins.get(h) ?? 0, failures: hourFails.get(h) ?? 0 };
   });
 
-  const failureTrend = pivot(data.failureReasonsByDay ?? [], shortReason);
+  const failurePivot = pivot(data.failureReasonsByDay ?? [], shortReason);
+  const failureTrend = { ...failurePivot, rows: rollup(failurePivot.rows as (Record<string, number | string> & { day: string })[], grain) };
   const signInTrend = pivot(data.signInFailuresByDay ?? [], (r) => labelFor(FAILURE_REASON_LABEL, r), 4);
-  const signInRateByDay = (data.signInsByDay ?? []).map((d) => {
+  const signInRateDaily = (data.signInsByDay ?? []).map((d) => {
     const row: Record<string, number | string | null> = { day: d.day, ok: d.ok, failed: d.failed, rate: share(d.ok, d.ok + d.failed) == null ? null : Math.round((d.ok / (d.ok + d.failed)) * 100) };
     const f = signInTrend.rows.find((r) => r.day === d.day);
     for (const k of signInTrend.keys) row[k] = Number(f?.[k] ?? 0);
     return row;
+  });
+  const signInRateByDay = rollup(signInRateDaily as (Record<string, number | string | null> & { day: string })[], grain).map((d) => {
+    const ok = Number(d.ok);
+    const failed = Number(d.failed);
+    return { ...d, rate: ok + failed ? Math.round((ok / (ok + failed)) * 100) : null } as Record<string, number | string | null> & { day: string };
   });
 
   // Running totals of the three onboarding steps across the period.
@@ -126,16 +188,19 @@ export function deriveTrends(data: PilotAnalytics) {
   const obDays = new Map((data.onboardingByDay ?? []).map((d) => [d.day, d]));
   const allDays = [...new Set([...(data.checkInsByDay ?? []).map((d) => d.day), ...(data.signInsByDay ?? []).map((d) => d.day), ...obDays.keys()])].sort();
   let run = { ...before };
-  const onboarding = allDays.map((day) => {
+  const onboarding = rollup(allDays.map((day) => {
     const d = obDays.get(day);
     run = { signedIn: run.signedIn + (d?.signedIn ?? 0), terms: run.terms + (d?.terms ?? 0), baseline: run.baseline + (d?.baseline ?? 0) };
     return { day, ...run, newSignedIn: d?.signedIn ?? 0 };
-  });
+  }), grain, { signedIn: 'last', terms: 'last', baseline: 'last' });
 
-  const checkoutByDay = (data.checkInsByDay ?? []).map((d) => {
+  const checkoutByDay = rollup(data.checkInsByDay ?? [], grain).map((d) => {
     const total = d.present + d.late + d.other;
     return { ...d, total, checkoutRate: total ? Math.round((d.withCheckout / total) * 100) : null };
   });
+  const checkInOutcomes = rollup(data.checkInOutcomesByDay ?? [], grain);
+  const signInsByDay = rollup(data.signInsByDay ?? [], grain);
+  const rssiByDay = rollup(data.rssiByDay ?? [], grain, { avg: 'avg', min: 'min', max: 'max', failAvg: 'avg' });
 
   const heat = new Map<string, number>();
   for (const h of data.checkInsByHour ?? []) heat.set(`${h.dow}-${h.hour}`, h.count);
@@ -158,6 +223,7 @@ export function deriveTrends(data: PilotAnalytics) {
 
   return {
     hasTrends: data.attendanceByDay !== undefined,
+    grain, checkInOutcomes, signInsByDay, rssiByDay,
     attendanceByDay, expected, attended, attendanceRate, prevAttendanceRate, emptyClasses, classesHeld,
     courses, students, atRisk, neverAttended, activeStudents, distribution,
     lateness, onTimeShare, hours, failureTrend, signInTrend, signInRateByDay, onboarding, checkoutByDay,

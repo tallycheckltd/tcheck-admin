@@ -12,7 +12,7 @@ import {
 import {
   BarChart, Bar, ComposedChart, Line, LineChart, Area, AreaChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, ReferenceLine,
 } from 'recharts';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
@@ -28,7 +28,10 @@ import {
   useAnalyticsLayout, downloadCsv, WIDGETS, KPIS, PRESETS, GROUP_LABEL, widgetById,
   type WidgetDef, type WidgetGroup, type WidgetSize, type WidgetView,
 } from '../../lib/analyticsLayout';
-import { deriveTrends, buildInsights, AT_RISK, DOW_LABEL, type Insight, type StudentRow, type CourseRow } from '../../lib/analyticsInsights';
+import {
+  deriveTrends, buildInsights, autoGrain, grainLabel, AT_RISK, DOW_LABEL, GRAIN_LABEL,
+  type Grain, type Insight, type StudentRow, type CourseRow,
+} from '../../lib/analyticsInsights';
 import { reportSections, downloadReportCsv, downloadReportPdf } from '../../lib/analyticsReport';
 
 /*
@@ -43,10 +46,12 @@ const REFRESH_MS = 60_000;
 const DEFAULT_RSSI_THRESHOLD = -95;
 
 const PERIODS = [
-  { days: 1, label: 'Today' },
-  { days: 7, label: '7 days' },
-  { days: 14, label: '14 days' },
-  { days: 30, label: '30 days' },
+  { days: 1, label: 'Today', text: 'today' },
+  { days: 7, label: '7 days', text: 'last 7 days' },
+  { days: 30, label: '30 days', text: 'last 30 days' },
+  { days: 90, label: '3 months', text: 'last 3 months' },
+  { days: 182, label: '6 months', text: 'last 6 months' },
+  { days: 365, label: '1 year', text: 'last 12 months' },
 ] as const;
 
 /** Same palette as AttendanceAnalyticsPage so the two analytics screens read as one product. */
@@ -100,11 +105,6 @@ const fmtTime = (iso: string | null | undefined, pattern = 'd MMM, HH:mm') => {
   if (!iso) return '—';
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : format(d, pattern);
-};
-/** `YYYY-MM-DD` day keys are calendar days, not instants — parseISO reads them as local midnight. */
-const fmtDay = (day: string) => {
-  const d = parseISO(day);
-  return Number.isNaN(d.getTime()) ? day : format(d, 'EEE d MMM');
 };
 /** Relative to the response's own generatedAt rather than Date.now(), so render stays pure. */
 const timeAgo = (iso: string | null | undefined, nowMs: number) => {
@@ -1189,6 +1189,32 @@ function Heatmap({ heat, max, hours }: { heat: Map<string, number>; max: number;
   );
 }
 
+/** Day / Week / Month for every chart over time. Grouping a single day makes no sense, so it hides on Today. */
+function GrainSwitch({ value, onChange, days, compact = false }: { value: Grain; onChange: (g: Grain) => void; days: number; compact?: boolean }) {
+  if (days <= 1) return null;
+  return (
+    <div className={clsx('inline-flex rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm dark:border-white/15 dark:bg-slate-900/60', compact && '!rounded-lg !p-0.5 shadow-none')} role="group" aria-label="Group by">
+      {(['day', 'week', 'month'] as const).map((g) => (
+        <button
+          key={g}
+          type="button"
+          onClick={() => onChange(g)}
+          aria-pressed={value === g}
+          disabled={g === 'month' && days < 28}
+          title={`Group by ${GRAIN_LABEL[g].toLowerCase()}`}
+          className={clsx(
+            'rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-35',
+            compact ? 'px-2 py-0.5 text-xs' : 'px-3 py-1.5 text-sm',
+            value === g ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10',
+          )}
+        >
+          {compact ? GRAIN_LABEL[g][0] : `By ${GRAIN_LABEL[g].toLowerCase()}`}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ---- Page ---- */
 
 export function AnalyticsPage() {
@@ -1235,7 +1261,11 @@ export function AnalyticsPage() {
   };
 
   const k = data?.kpis;
-  const periodLabel = days === 1 ? 'today' : `last ${days} days`;
+  const periodLabel = PERIODS.find((p) => p.days === days)?.text ?? `last ${days} days`;
+  // Charts over time are drawn per day, week or month; a new period starts from its natural choice.
+  const [grainPick, setGrainPick] = useState<Grain | null>(null);
+  const grain: Grain = grainPick ?? autoGrain(days);
+  const fmtB = (key: string) => grainLabel(key, grain);
   // Classes can each carry their own threshold; show the most common one, else the pilot default.
   const thresholdCounts = new Map<number, number>();
   for (const c of data?.classes ?? []) {
@@ -1247,15 +1277,15 @@ export function AnalyticsPage() {
   const failureData = (data?.failureReasons ?? [])
     .map((f) => ({ ...f, label: labelFor(FAILURE_REASON_LABEL, f.reason) }))
     .sort((a, b) => b.count - a.count);
-  const checkInData = (data?.checkInsByDay ?? []).map((d) => ({ ...d, label: fmtDay(d.day) }));
-  const signInData = (data?.signInsByDay ?? []).map((d) => ({ ...d, label: fmtDay(d.day) }));
   const generatedMs = data ? new Date(data.generatedAt).getTime() : 0;
   const openTickets = (data?.tickets ?? []).filter((t) => !['RESOLVED', 'CLOSED'].includes(t.status));
-  const outcomeData = (data?.checkInOutcomesByDay ?? []).map((d) => ({ ...d, label: fmtDay(d.day) }));
   const checkInFailures = [...(data?.checkInFailureReasons ?? [])].sort((a, b) => b.count - a.count);
   const modelData = [...(data?.deviceModels ?? [])].sort((a, b) => b.count - a.count).map((m) => ({ ...m, label: m.model || 'Unknown' }));
   // Trends and findings, worked out once per response (lib/analyticsInsights.ts).
-  const t = useMemo(() => (data ? deriveTrends(data) : null), [data]);
+  const t = useMemo(() => (data ? deriveTrends(data, grain) : null), [data, grain]);
+  const checkInData = (t?.checkoutByDay ?? []).map((d) => ({ ...d, label: fmtB(d.day) }));
+  const signInData = (t?.signInsByDay ?? []).map((d) => ({ ...d, label: fmtB(d.day) }));
+  const outcomeData = (t?.checkInOutcomes ?? []).map((d) => ({ ...d, label: fmtB(d.day) }));
   const insights = useMemo(() => (data && t ? buildInsights(data, t) : []), [data, t]);
   const [studentFilter, setStudentFilter] = useState<'risk' | 'none' | 'failing' | 'all'>('risk');
   const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
@@ -1436,7 +1466,7 @@ export function AnalyticsPage() {
           ), {
             rows: outcomeData, rowKey: (d) => d.day,
             columns: [
-              { key: 'label', label: 'Day', value: (d) => d.day, render: (d) => d.label },
+              { key: 'label', label: GRAIN_LABEL[grain], value: (d) => d.day, render: (d) => d.label },
               { key: 'firstTry', label: 'First try', align: 'right' },
               { key: 'retriedThenIn', label: 'Retried, then in', align: 'right' },
               { key: 'gaveUp', label: 'Gave up', align: 'right' },
@@ -1464,7 +1494,7 @@ export function AnalyticsPage() {
           ), {
             rows: checkInData, rowKey: (d) => d.day,
             columns: [
-              { key: 'label', label: 'Day', value: (d) => d.day, render: (d) => d.label },
+              { key: 'label', label: GRAIN_LABEL[grain], value: (d) => d.day, render: (d) => d.label },
               { key: 'present', label: 'Present', align: 'right' },
               { key: 'late', label: 'Late', align: 'right' },
               { key: 'other', label: 'Other', align: 'right' },
@@ -1579,7 +1609,7 @@ export function AnalyticsPage() {
           ), {
             rows: signInData, rowKey: (d) => d.day,
             columns: [
-              { key: 'label', label: 'Day', value: (d) => d.day, render: (d) => d.label },
+              { key: 'label', label: GRAIN_LABEL[grain], value: (d) => d.day, render: (d) => d.label },
               { key: 'ok', label: 'Signed in', align: 'right' },
               { key: 'failed', label: 'Failed', align: 'right' },
               { key: 'rate', label: 'Success', align: 'right', value: (d) => pct(d.ok, d.ok + d.failed), render: (d) => (d.ok + d.failed ? `${pct(d.ok, d.ok + d.failed)}%` : '—') },
@@ -1742,7 +1772,7 @@ export function AnalyticsPage() {
         };
       case 'attendance-trend': {
         if (!t?.hasTrends) return { node: <OldBackendNote /> };
-        const rows = t.attendanceByDay.map((d) => ({ ...d, label: fmtDay(d.day), ratePct: d.rate == null ? null : Math.round(d.rate * 100), missed: Math.max(0, d.expected - d.attended) }));
+        const rows = t.attendanceByDay.map((d) => ({ ...d, label: fmtB(d.day), ratePct: d.rate == null ? null : Math.round(d.rate * 100), missed: Math.max(0, d.expected - d.attended) }));
         return {
           count: t.attended,
           node: (
@@ -1772,12 +1802,12 @@ export function AnalyticsPage() {
                   <Bar yAxisId="n" dataKey="attended" name="Checked in" stackId="s" fill="url(#attFill)" />
                   <Bar yAxisId="n" dataKey="missed" name="Missed seats" stackId="s" fill="rgba(244,63,94,0.35)" radius={[6, 6, 0, 0]} />
                   <Line yAxisId="r" type="monotone" dataKey="ratePct" name="Attendance rate" stroke={C.indigo} strokeWidth={3} dot={{ r: 3.5, fill: C.indigo }} connectNulls isAnimationActive={false} />
-                  <Line yAxisId="n" type="monotone" dataKey="students" name="Students who attended" stroke={C.cyan} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} />
+                  <Line yAxisId="n" type="monotone" dataKey="students" name={grain === 'day' ? 'Students who attended' : 'Students (busiest day)'} stroke={C.cyan} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} />
                 </ComposedChart>
               ), {
                 rows, rowKey: (d) => d.day,
                 columns: [
-                  { key: 'label', label: 'Day', value: (d) => d.day, render: (d) => d.label },
+                  { key: 'label', label: GRAIN_LABEL[grain], value: (d) => d.day, render: (d) => d.label },
                   { key: 'classes', label: 'Classes', align: 'right' },
                   { key: 'expected', label: 'Seats expected', align: 'right' },
                   { key: 'attended', label: 'Checked in', align: 'right' },
@@ -1793,7 +1823,7 @@ export function AnalyticsPage() {
       }
       case 'onboarding-trend': {
         if (!t?.hasTrends) return { node: <OldBackendNote /> };
-        const rows = t.onboarding.map((d) => ({ ...d, label: fmtDay(d.day) }));
+        const rows = t.onboarding.map((d) => ({ ...d, label: fmtB(d.day) }));
         return {
           node: chartOrTable('onboarding-trend', rows.length === 0, (
             <AreaChart data={rows} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
@@ -1815,7 +1845,7 @@ export function AnalyticsPage() {
           ), {
             rows, rowKey: (d) => d.day,
             columns: [
-              { key: 'label', label: 'Day', value: (d) => d.day, render: (d) => d.label },
+              { key: 'label', label: GRAIN_LABEL[grain], value: (d) => d.day, render: (d) => d.label },
               { key: 'newSignedIn', label: 'New sign-ins', align: 'right' },
               { key: 'signedIn', label: 'Signed in (total)', align: 'right' },
               { key: 'terms', label: 'Terms (total)', align: 'right' },
@@ -1827,7 +1857,7 @@ export function AnalyticsPage() {
       case 'failure-trend': {
         if (!t?.hasTrends) return { node: <OldBackendNote /> };
         const { keys, rows: raw } = t.failureTrend;
-        const rows: Record<string, string | number | null>[] = raw.map((r) => ({ ...r, label: fmtDay(String(r.day)), total: keys.reduce((n, key) => n + Number(r[key] ?? 0), 0) }));
+        const rows: Record<string, string | number | null>[] = raw.map((r) => ({ ...r, label: fmtB(String(r.day)), total: keys.reduce((n, key) => n + Number(r[key] ?? 0), 0) }));
         return {
           count: sum(rows, (r) => Number(r.total)),
           node: chartOrTable('failure-trend', rows.length === 0, (
@@ -1845,7 +1875,7 @@ export function AnalyticsPage() {
           ), {
             rows, rowKey: (r) => String(r.day),
             columns: [
-              { key: 'label', label: 'Day', value: (r) => String(r.day), render: (r) => r.label },
+              { key: 'label', label: GRAIN_LABEL[grain], value: (r) => String(r.day), render: (r) => r.label },
               ...keys.map((key) => ({ key, label: key, align: 'right' as const, value: (r: (typeof rows)[number]) => Number(r[key] ?? 0) })),
               { key: 'total', label: 'Total', align: 'right' as const },
             ],
@@ -2022,7 +2052,7 @@ export function AnalyticsPage() {
         return { node: <Heatmap heat={t.heat} max={t.heatMax} hours={t.hours.map((h) => h.hour)} /> };
       case 'rssi-trend': {
         if (!t?.hasTrends) return { node: <OldBackendNote /> };
-        const rows = (data.rssiByDay ?? []).map((d) => ({ ...d, label: fmtDay(d.day) }));
+        const rows = t.rssiByDay.map((d) => ({ ...d, label: fmtB(d.day) }));
         return {
           node: chartOrTable('rssi-trend', rows.length === 0, (
             <LineChart data={rows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
@@ -2040,7 +2070,7 @@ export function AnalyticsPage() {
           ), {
             rows, rowKey: (d) => d.day,
             columns: [
-              { key: 'label', label: 'Day', value: (d) => d.day, render: (d) => d.label },
+              { key: 'label', label: GRAIN_LABEL[grain], value: (d) => d.day, render: (d) => d.label },
               { key: 'avg', label: 'Average', align: 'right' },
               { key: 'min', label: 'Weakest', align: 'right' },
               { key: 'max', label: 'Strongest', align: 'right' },
@@ -2052,7 +2082,7 @@ export function AnalyticsPage() {
       case 'signin-trend': {
         if (!t?.hasTrends) return { node: <OldBackendNote /> };
         const keys = t.signInTrend.keys;
-        const rows: Record<string, string | number | null>[] = t.signInRateByDay.map((d) => ({ ...d, label: fmtDay(String(d.day)) }));
+        const rows: Record<string, string | number | null>[] = t.signInRateByDay.map((d) => ({ ...d, label: fmtB(String(d.day)) }));
         return {
           node: chartOrTable('signin-trend', rows.every((d) => Number(d.ok) + Number(d.failed) === 0), (
             <ComposedChart data={rows} margin={{ top: 8, right: 4, left: -12, bottom: 0 }}>
@@ -2068,7 +2098,7 @@ export function AnalyticsPage() {
           ), {
             rows, rowKey: (d) => String(d.day),
             columns: [
-              { key: 'label', label: 'Day', value: (d) => String(d.day), render: (d) => d.label },
+              { key: 'label', label: GRAIN_LABEL[grain], value: (d) => String(d.day), render: (d) => d.label },
               { key: 'ok', label: 'Signed in', align: 'right', value: (d) => Number(d.ok) },
               { key: 'failed', label: 'Failed', align: 'right', value: (d) => Number(d.failed) },
               { key: 'rate', label: 'Success', align: 'right', value: (d) => (d.rate == null ? null : Number(d.rate)), render: (d) => (d.rate == null ? '—' : `${d.rate}%`) },
@@ -2142,7 +2172,7 @@ export function AnalyticsPage() {
               <button
                 key={p.days}
                 type="button"
-                onClick={() => ctl.setDays(p.days)}
+                onClick={() => { ctl.setDays(p.days); setGrainPick(null); }}
                 aria-pressed={days === p.days}
                 className={clsx(
                   'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
@@ -2153,6 +2183,7 @@ export function AnalyticsPage() {
               </button>
             ))}
           </div>
+          <GrainSwitch value={grain} onChange={setGrainPick} days={days} />
           <label className="sr-only" htmlFor="analytics-view">View</label>
           <select
             id="analytics-view"
@@ -2264,6 +2295,13 @@ export function AnalyticsPage() {
                 onHide={() => ctl.toggleWidget(w.id)}
                 headerExtra={w.id === 'kpis' ? (
                   <button type="button" onClick={() => setCustomizing(true)} className="mr-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-300">Choose numbers</button>
+                ) : w.id === 'attendance-trend' ? (
+                  <div className="mr-1 flex items-center gap-1">
+                    <select value={days} onChange={(e) => { ctl.setDays(Number(e.target.value)); setGrainPick(null); }} aria-label="Period" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100">
+                      {PERIODS.map((p) => <option key={p.days} value={p.days}>{p.label}</option>)}
+                    </select>
+                    <GrainSwitch value={grain} onChange={setGrainPick} days={days} compact />
+                  </div>
                 ) : undefined}
               >
                 {b.node}

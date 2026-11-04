@@ -79,7 +79,7 @@ export function reportSections(data: PilotAnalytics, t: Trends, insights: Insigh
 }
 
 const fileBase = (data: PilotAnalytics) => `tcheck-analytics-${(data.school?.code ?? 'school').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${data.days}d-${format(new Date(), 'yyyy-MM-dd-HHmm')}`;
-const periodText = (days: number) => (days === 1 ? 'Today' : `Last ${days} days`);
+const periodText = (days: number) => ({ 1: 'Today', 90: 'Last 3 months', 182: 'Last 6 months', 365: 'Last 12 months' } as Record<number, string>)[days] ?? `Last ${days} days`;
 
 /** The whole report as one CSV: each section's title, its header row, its rows, then a blank line. */
 export function downloadReportCsv(data: PilotAnalytics, sections: Section[]) {

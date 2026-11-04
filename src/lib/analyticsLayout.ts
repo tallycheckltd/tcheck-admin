@@ -34,7 +34,7 @@ export const WIDGETS: WidgetDef[] = [
   { id: 'kpis', title: 'Headline numbers', group: 'overview', size: 'full', description: 'The numbers you picked, at a glance.' },
   { id: 'insights', title: 'What is going wrong, and why', group: 'overview', size: 'full', description: 'The biggest problems in this period, worked out from the numbers below, worst first.' },
   { id: 'period-compare', title: 'This period vs the one before', group: 'overview', size: 'half', description: 'The same numbers for the previous period of the same length, with the change.' },
-  { id: 'attendance-trend', title: 'Attendance trend', group: 'checkins', size: 'full', chart: true, description: 'Seats expected (enrolled students in each class held) against check-ins, and the attendance rate, day by day.' },
+  { id: 'attendance-trend', title: 'Attendance trend', group: 'checkins', size: 'full', chart: true, description: 'Seats expected (enrolled students in each class held) against check-ins, and the attendance rate, per day, week or month.' },
   { id: 'needs-help', title: 'Needs help now', group: 'overview', size: 'full', description: 'Students locked out after 5 wrong PINs, with Unlock and Reset.' },
   { id: 'funnel', title: 'Onboarding progress', group: 'overview', size: 'half', description: 'How far students have got with setting up the app.' },
   { id: 'onboarding-trend', title: 'Onboarding over time', group: 'overview', size: 'half', chart: true, description: 'Running totals: signed in on a phone, accepted the terms, took the baseline photo.' },
@@ -181,7 +181,7 @@ function load(userId: string | undefined): Layout {
       widgets,
       kpis,
       seen: [...known],
-      days: [1, 7, 14, 30].includes(v.days ?? 7) ? (v.days as number) : 7,
+      days: [1, 7, 14, 30, 90, 182, 365].includes(v.days ?? 7) ? (v.days as number) : 7,
     };
   } catch {
     return DEFAULT_LAYOUT;
