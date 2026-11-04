@@ -133,18 +133,21 @@ export function OverviewPage() {
           reusing the exact same plain greeting header for both read as "this is just one more
           school's dashboard," which is the opposite of what SUPER_ADMIN should feel like. */}
       {isSuperAdmin ? (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-6 py-7 sm:px-8 sm:py-8">
-          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl" />
-          <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-indigo-500/10 blur-3xl" />
+        // Light mode gets its own airy blue hero rather than the navy one: the global light-mode
+        // `main h1` colour rule (index.css) beats Tailwind's text-white, so the heading rendered
+        // near-black on navy. Dark text on a light surface works with that rule instead of against it.
+        <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-blue-50 to-indigo-100 shadow-sm px-6 py-7 sm:px-8 sm:py-8 dark:border-white/5 dark:from-slate-900 dark:via-slate-800 dark:to-blue-950 dark:shadow-none">
+          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-blue-400/20 dark:bg-blue-500/10 blur-3xl" />
+          <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-indigo-400/15 dark:bg-indigo-500/10 blur-3xl" />
           <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
             <div>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-blue-300/80 bg-blue-400/10 px-2.5 py-1 rounded-full border border-blue-400/20">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-blue-700 bg-blue-100/80 border-blue-200 dark:text-blue-300/80 dark:bg-blue-400/10 px-2.5 py-1 rounded-full border dark:border-blue-400/20">
                 <Globe2 size={12} /> Platform Console
               </span>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mt-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-3">
                 {getGreeting()}, {user?.firstName}
               </h1>
-              <p className="text-slate-400 mt-1.5 text-sm">
+              <p className="text-slate-600 dark:text-slate-400 mt-1.5 text-sm">
                 You're operating Tallycheck across every school on the platform — not a single institution's own view.
               </p>
             </div>
@@ -154,10 +157,10 @@ export function OverviewPage() {
                 { label: 'Students', value: platformTotals.students, icon: GraduationCap },
                 { label: 'Staff', value: platformTotals.lecturers, icon: Users },
               ].map(({ label, value, icon: Icon }) => (
-                <div key={label} className="text-center px-3 sm:px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 min-w-[76px]">
-                  <Icon size={15} className="mx-auto text-blue-300 mb-1" />
-                  <p className="text-lg font-bold text-white leading-tight">{value}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-slate-400">{label}</p>
+                <div key={label} className="text-center px-3 sm:px-4 py-2.5 rounded-xl bg-white/80 border border-blue-100 shadow-sm dark:bg-white/5 dark:border-white/10 dark:shadow-none min-w-[76px]">
+                  <Icon size={15} className="mx-auto text-blue-600 dark:text-blue-300 mb-1" />
+                  <p className="text-lg font-bold text-slate-900 dark:text-white leading-tight tabular-nums">{value.toLocaleString()}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
                 </div>
               ))}
             </div>
