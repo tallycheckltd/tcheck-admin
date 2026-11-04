@@ -789,16 +789,16 @@ function AllSchools({ selectedId, onSelect }: { selectedId: string | null; onSel
             <div className="flex items-center gap-2">
               <span className={clsx('h-2 w-2 flex-shrink-0 rounded-full', HEALTH[h.health].dot)} aria-hidden />
               <p className={clsx('font-semibold', s.id === selectedId ? 'text-indigo-600 dark:text-indigo-300' : 'text-gray-900 dark:text-white')}>{s.name}</p>
+              <button
+                type="button"
+                onClick={() => onSelect(s.id === selectedId ? null : s.id)}
+                className={clsx('rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors',
+                  s.id === selectedId ? 'bg-indigo-600 text-white' : 'text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:ring-indigo-500/30 dark:hover:bg-indigo-500/10')}
+              >
+                {s.id === selectedId ? 'Viewing ✓' : 'View details →'}
+              </button>
             </div>
-            <p className="mt-0.5 pl-4 text-[11px] text-gray-500">{s.code} · {s.staff} staff · {s.courses} courses · {s.classesThisWeek} classes this week</p>
-            <button
-              type="button"
-              onClick={() => onSelect(s.id === selectedId ? null : s.id)}
-              className={clsx('ml-4 mt-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors',
-                s.id === selectedId ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-200 dark:hover:bg-indigo-500/20')}
-            >
-              {s.id === selectedId ? 'Viewing ✓' : 'View details →'}
-            </button>
+            <p className="mt-0.5 pl-4 text-[11px] text-gray-400">{s.code} · {s.staff} staff · {s.courses} courses · {s.classesThisWeek} classes this week</p>
           </div>
         );
       },
@@ -815,9 +815,17 @@ function AllSchools({ selectedId, onSelect }: { selectedId: string | null; onSel
                   : 'bg-rose-50 text-rose-700 ring-rose-600/15 dark:bg-rose-500/10 dark:text-rose-300')}>
               {h.health === 'good' ? 'Healthy' : HEALTH[h.health].label}
             </span>
-            {h.issues.slice(0, 3).map((i) => (
-              <p key={i.text} className={clsx('text-[11px] leading-snug', HEALTH[i.health].text)}>• {i.text}</p>
-            ))}
+            {/* The worst problem in full; the rest one click away, so the row stays one line tall. */}
+            {h.issues[0] && <p className={clsx('text-[11px] leading-snug', HEALTH[h.issues[0].health].text)}>{h.issues[0].text}</p>}
+            {h.issues.length > 1 && (
+              <details className="group text-[11px]">
+                <summary className="cursor-pointer list-none font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                  <span className="group-open:hidden">+{Math.min(2, h.issues.length - 1)} more</span>
+                  <span className="hidden group-open:inline">Show less</span>
+                </summary>
+                {h.issues.slice(1, 3).map((i) => <p key={i.text} className={clsx('mt-1 leading-snug', HEALTH[i.health].text)}>{i.text}</p>)}
+              </details>
+            )}
           </div>
         );
       },
@@ -1208,9 +1216,51 @@ function GrainSwitch({ value, onChange, days, compact = false }: { value: Grain;
             value === g ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10',
           )}
         >
-          {compact ? GRAIN_LABEL[g][0] : `By ${GRAIN_LABEL[g].toLowerCase()}`}
+          {compact ? GRAIN_LABEL[g] : `By ${GRAIN_LABEL[g].toLowerCase()}`}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** CSV and PDF behind one button, so the header carries one download action instead of two. */
+function DownloadMenu({ disabled, busy, onPick }: { disabled: boolean; busy: 'csv' | 'pdf' | null; onPick: (k: 'csv' | 'pdf') => void }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('click', close);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('click', close); window.removeEventListener('keydown', onKey); };
+  }, [open]);
+  const item = 'flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-white/5';
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={clsx(pillBtn, '!border-transparent !bg-indigo-600 !text-white hover:!bg-indigo-700')}
+      >
+        {busy ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
+        {busy === 'pdf' ? 'Building PDF…' : busy === 'csv' ? 'Preparing…' : 'Download'}
+        <ChevronDown size={14} className="opacity-80" />
+      </button>
+      {open && (
+        <div role="menu" onClick={(e) => e.stopPropagation()} className="absolute right-0 z-30 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-white/10 dark:bg-slate-900">
+          <button type="button" role="menuitem" className={item} onClick={() => { setOpen(false); onPick('pdf'); }}>
+            <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><FileText size={16} /></span>
+            <span><span className="block text-sm font-semibold text-gray-900 dark:text-white">PDF report</span><span className="block text-xs text-gray-500">TCheck logo, findings, charts and tables</span></span>
+          </button>
+          <button type="button" role="menuitem" className={item} onClick={() => { setOpen(false); onPick('csv'); }}>
+            <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"><FileSpreadsheet size={16} /></span>
+            <span><span className="block text-sm font-semibold text-gray-900 dark:text-white">CSV spreadsheet</span><span className="block text-xs text-gray-500">Every section in one file</span></span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -2150,24 +2200,53 @@ export function AnalyticsPage() {
 
   return (
     <div className="mx-auto max-w-[1680px] space-y-5 text-[color:var(--app-text)]">
-      {/* Header */}
-      <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
-            <Activity size={22} className="text-indigo-500" />
-            Analytics
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {data?.school ? data.school.name : 'Student sign-ins, check-ins and anything that needs your help.'}
-            {data && (
-              <span className="mt-0.5 block text-xs">
-                Last updated {fmtTime(data.generatedAt, 'HH:mm:ss')} · refreshes every minute while this tab is open
-              </span>
-            )}
-          </p>
+      {/* Header: who and when on the left, actions on the right; the controls sit in one strip below. */}
+      <header className="space-y-3">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+              <Activity size={22} className="text-indigo-500" />
+              Analytics
+            </h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-gray-500 dark:text-gray-400">
+              {isSuperAdmin ? (
+                <span className="inline-flex flex-wrap items-center gap-1.5 rounded-full border border-indigo-200/80 bg-indigo-50/80 py-0.5 pl-2 pr-1 text-xs text-indigo-900 dark:border-indigo-500/25 dark:bg-indigo-500/10 dark:text-indigo-100">
+                  <School size={13} />
+                  <span>Details are for</span>
+                  {/* useApi keeps the previous school's data while the new one loads — don't mislabel it. */}
+                  <b className="font-semibold">{schoolId && data?.school?.id !== schoolId ? 'the selected school (loading…)' : data?.school?.name ?? 'the Student ID school'}</b>
+                  {schoolId ? (
+                    <button type="button" onClick={() => selectSchool(null)} title="Back to the default school" className="ml-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold text-indigo-700 hover:bg-indigo-100 dark:text-indigo-200 dark:hover:bg-indigo-500/20">
+                      <ArrowLeft size={12} /> Default
+                    </button>
+                  ) : (
+                    <span className="pr-1.5 text-indigo-700/70 dark:text-indigo-200/60">(default — pick another in All schools)</span>
+                  )}
+                </span>
+              ) : (
+                <span className="font-medium text-gray-700 dark:text-gray-200">{data?.school ? data.school.name : 'Student sign-ins, check-ins and anything that needs your help.'}</span>
+              )}
+              {data && (
+                <span className="inline-flex items-center gap-1.5 text-xs" title="Refreshes every minute while this tab is open">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden />
+                  Updated {fmtTime(data.generatedAt, 'HH:mm:ss')} · auto-refresh
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <button type="button" onClick={refreshAll} disabled={loading} className={clsx(pillBtn, '!px-2.5')} title="Refresh now" aria-label="Refresh">
+              <RefreshCw size={16} className={loading ? 'animate-spin text-indigo-500' : ''} />
+            </button>
+            <button type="button" onClick={() => setCustomizing(true)} className={clsx(pillBtn, '!border-indigo-300 !text-indigo-700 dark:!border-indigo-400/40 dark:!text-indigo-200')}>
+              <SlidersHorizontal size={16} /> Customize
+            </button>
+            <DownloadMenu disabled={!data || exporting != null} busy={exporting} onPick={(kind) => void download(kind)} />
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm dark:border-white/15 dark:bg-slate-900/60" role="group" aria-label="Period">
+
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/70 p-1.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.03]">
+          <div className="inline-flex flex-wrap rounded-xl bg-slate-100/80 p-0.5 dark:bg-white/5" role="group" aria-label="Period">
             {PERIODS.map((p) => (
               <button
                 key={p.days}
@@ -2175,74 +2254,47 @@ export function AnalyticsPage() {
                 onClick={() => { ctl.setDays(p.days); setGrainPick(null); }}
                 aria-pressed={days === p.days}
                 className={clsx(
-                  'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
-                  days === p.days ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10',
+                  'rounded-lg px-3 py-1 text-sm font-medium transition-colors',
+                  days === p.days ? 'bg-white text-indigo-700 shadow-sm dark:bg-indigo-600 dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white',
                 )}
               >
                 {p.label}
               </button>
             ))}
           </div>
-          <GrainSwitch value={grain} onChange={setGrainPick} days={days} />
-          <label className="sr-only" htmlFor="analytics-view">View</label>
-          <select
-            id="analytics-view"
-            value={layout.preset}
-            onChange={(e) => e.target.value !== 'custom' && ctl.applyPreset(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-100"
-            title="Switch view"
-          >
-            {PRESETS.map((p) => <option key={p.id} value={p.id}>View: {p.label}</option>)}
-            {layout.preset === 'custom' && <option value="custom">View: Custom</option>}
-          </select>
-          <button type="button" onClick={() => setCustomizing(true)} className={clsx(pillBtn, '!border-indigo-300 !text-indigo-700 dark:!border-indigo-400/40 dark:!text-indigo-200')}>
-            <SlidersHorizontal size={16} /> Customize
-          </button>
-          <button type="button" onClick={refreshAll} disabled={loading} className={pillBtn}>
-            <RefreshCw size={16} className={loading ? 'animate-spin text-indigo-500' : ''} />
-            Refresh
-          </button>
-          <button type="button" onClick={() => void download('csv')} disabled={!data || exporting != null} className={pillBtn} title="Every section as one spreadsheet">
-            <FileSpreadsheet size={16} className="text-emerald-600" /> {exporting === 'csv' ? 'Preparing…' : 'CSV'}
-          </button>
-          <button type="button" onClick={() => void download('pdf')} disabled={!data || exporting != null} className={clsx(pillBtn, '!border-transparent !bg-indigo-600 !text-white hover:!bg-indigo-700')} title="PDF report with the TCheck logo, findings, charts and tables">
-            {exporting === 'pdf' ? <RefreshCw size={16} className="animate-spin" /> : <FileText size={16} />} {exporting === 'pdf' ? 'Building PDF…' : 'PDF report'}
-          </button>
+          <span className="hidden h-6 w-px bg-slate-200 dark:bg-white/10 sm:block" aria-hidden />
+          <GrainSwitch value={grain} onChange={setGrainPick} days={days} compact />
+          <div className="ml-auto">
+            <label className="sr-only" htmlFor="analytics-view">View</label>
+            <select
+              id="analytics-view"
+              value={layout.preset}
+              onChange={(e) => e.target.value !== 'custom' && ctl.applyPreset(e.target.value)}
+              className="rounded-xl border-0 bg-transparent py-1 pl-2 pr-8 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 dark:hover:bg-white/5"
+              title="Switch view"
+            >
+              {PRESETS.map((p) => <option key={p.id} value={p.id}>View: {p.label}</option>)}
+              {layout.preset === 'custom' && <option value="custom">View: Custom</option>}
+            </select>
+          </div>
         </div>
       </header>
 
       {/* Jump to a section */}
       {visible.length > 1 && (
-        <nav aria-label="Sections" className="sticky top-0 z-10 -mx-1 flex gap-1.5 overflow-x-auto rounded-2xl bg-[var(--app-bg,transparent)]/80 px-1 py-2 backdrop-blur">
-          <span className="flex flex-shrink-0 items-center px-2 text-xs font-medium text-gray-400">{presetLabel}:</span>
-          {visible.map((w) => {
-            const Icon = WIDGET_ICON[w.id] ?? Activity;
-            return (
-              <a key={w.id} href={`#w-${w.id}`} className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-300 hover:text-indigo-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-white">
-                <Icon size={12} /> {w.title}
-              </a>
-            );
-          })}
+        <nav aria-label="Sections" className="sticky top-0 z-10 -mx-1 flex items-center gap-2 rounded-2xl bg-[var(--app-bg,transparent)]/80 px-1 py-1.5 backdrop-blur">
+          <span className="flex-shrink-0 px-1 text-[11px] font-medium uppercase tracking-wider text-gray-400">{presetLabel}</span>
+          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-24px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {visible.map((w) => {
+              const Icon = WIDGET_ICON[w.id] ?? Activity;
+              return (
+                <a key={w.id} href={`#w-${w.id}`} className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs text-slate-500 transition-colors first:ml-2 last:mr-6 hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white">
+                  <Icon size={12} /> {w.title}
+                </a>
+              );
+            })}
+          </div>
         </nav>
-      )}
-
-      {isSuperAdmin && (
-        <div className="flex flex-col gap-2 rounded-2xl border border-indigo-200/70 bg-indigo-50/70 px-4 py-3 text-sm dark:border-indigo-500/20 dark:bg-indigo-500/10 sm:flex-row sm:items-center sm:justify-between">
-          <p className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
-            <School size={16} />
-            Details are for{' '}
-            <span className="font-semibold">
-              {/* useApi keeps the previous school's data while the new one loads — don't mislabel it. */}
-              {schoolId && data?.school?.id !== schoolId ? 'the selected school (loading…)' : data?.school?.name ?? 'the Student ID school'}
-            </span>
-            {!schoolId && <span className="text-xs text-indigo-700/70 dark:text-indigo-200/60">(default — pick another in All schools)</span>}
-          </p>
-          {schoolId && (
-            <button type="button" onClick={() => selectSchool(null)} className="inline-flex items-center gap-1.5 self-start rounded-lg px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:text-indigo-200 dark:hover:bg-indigo-500/20 sm:self-auto">
-              <ArrowLeft size={13} /> Back to the default school
-            </button>
-          )}
-        </div>
       )}
 
       {exportError && (
