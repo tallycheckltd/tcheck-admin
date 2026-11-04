@@ -527,8 +527,11 @@ function ProfileMenu({
     };
   }, [open]);
 
-  const itemClass = 'flex items-center gap-3 w-full px-2.5 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle';
-  const iconBadgeClass = 'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-black/[0.03] dark:bg-white/5';
+  // Each row gets its own tinted icon tile so the menu reads at a glance in light mode too —
+  // the old uniform grey boxes on white washed out into one flat block.
+  const itemClass = 'group flex items-center gap-3 w-full px-2 py-1.5 rounded-xl text-sm font-medium cursor-pointer transition-colors text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/[0.06] dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40';
+  const iconTileClass = 'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 ring-1 ring-inset transition-colors';
+  const roleLabel = user?.role ? ROLE_LABEL[user.role] : undefined;
 
   return (
     <div ref={ref} className="relative">
@@ -543,35 +546,77 @@ function ProfileMenu({
             // variant — this dropdown sits directly over other content in the same panel (nav
             // items, or the page behind it when the rail is collapsed), and a solid hex here
             // guarantees full coverage regardless of any compositing/paint-order quirk.
-            className="absolute bottom-full left-0 z-50 isolate mb-2 w-64 rounded-2xl border border-[color:var(--sidebar-edge)] shadow-xl overflow-hidden p-1.5 space-y-0.5 origin-bottom-left"
+            className="absolute bottom-full left-0 z-50 isolate mb-2 w-72 rounded-2xl border border-slate-200 dark:border-white/10 shadow-[0_18px_48px_-12px_rgba(15,23,42,0.28),0_4px_12px_-4px_rgba(15,23,42,0.08)] dark:shadow-[0_18px_48px_-12px_rgba(0,0,0,0.6)] overflow-hidden origin-bottom-left"
             style={{ backgroundColor: dark ? '#0f172a' : '#ffffff' }}
           >
-            <button onClick={() => { onOpenSearch(); setOpen(false); }} type="button" className={itemClass}>
-              <span className={iconBadgeClass}><Search size={16} /></span>
-              <span className="flex-1 text-left">Search</span>
-              <kbd className="inline-flex items-center justify-center px-1.5 h-5 rounded-md text-[10px] font-medium border border-[color:var(--sidebar-edge)] text-[color:var(--app-text-muted)]">
-                /
-              </kbd>
-            </button>
-            <button onClick={() => { navigate('/profile'); setOpen(false); }} type="button" className={itemClass}>
-              <span className={iconBadgeClass}><UserIcon size={16} /></span>
-              <span className="flex-1 text-left">My Profile</span>
-            </button>
-            <button onClick={() => { onToggleTheme(); setOpen(false); }} type="button" className={itemClass}>
-              <span className={iconBadgeClass}>{dark ? <Sun size={16} /> : <Moon size={16} />}</span>
-              <span className="flex-1 text-left">{dark ? 'Light Mode' : 'Dark Mode'}</span>
-            </button>
-            <div className="my-1 border-t border-[color:var(--sidebar-edge)]" />
-            <button
-              onClick={() => { onLogout(); setOpen(false); }}
-              type="button"
-              className="flex items-center gap-3 w-full px-2.5 py-2 rounded-xl text-sm text-red-500 hover:bg-red-500/10 cursor-pointer transition-colors"
-            >
-              <span className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-red-500/10">
-                <LogOut size={16} />
-              </span>
-              <span className="flex-1 text-left">Logout</span>
-            </button>
+            <div className="flex items-center gap-3 px-3.5 py-3 border-b border-slate-100 dark:border-white/[0.06] bg-gradient-to-br from-slate-50 to-blue-50/60 dark:from-white/[0.03] dark:to-blue-500/[0.06]">
+              <div className={clsx(`w-10 h-10 rounded-full bg-gradient-to-br ${roleAccent} flex items-center justify-center text-white text-sm font-bold shadow-sm flex-shrink-0`)}>
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate text-slate-900 dark:text-white">
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-xs truncate text-slate-500 dark:text-slate-400">{user?.email}</p>
+                {roleLabel && (
+                  <span className="mt-1 inline-flex items-center px-1.5 py-px rounded-md text-[10px] font-semibold uppercase tracking-wide bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+                    {roleLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-1.5 space-y-0.5">
+              <button onClick={() => { onOpenSearch(); setOpen(false); }} type="button" className={itemClass}>
+                <span className={clsx(iconTileClass, 'bg-indigo-50 text-indigo-600 ring-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:ring-indigo-400/15')}>
+                  <Search size={16} />
+                </span>
+                <span className="flex-1 text-left">Search</span>
+                <kbd className="inline-flex items-center justify-center min-w-[20px] px-1.5 h-5 rounded-md text-[10px] font-semibold border border-slate-200 bg-slate-50 text-slate-500 shadow-[0_1px_0_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:shadow-none">
+                  /
+                </kbd>
+              </button>
+              <button onClick={() => { navigate('/profile'); setOpen(false); }} type="button" className={itemClass}>
+                <span className={clsx(iconTileClass, 'bg-violet-50 text-violet-600 ring-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-400/15')}>
+                  <UserIcon size={16} />
+                </span>
+                <span className="flex-1 text-left">My Profile</span>
+              </button>
+              {/* Stays open on toggle so you see the switch flip; role="switch" exposes state to AT. */}
+              <button onClick={onToggleTheme} type="button" role="switch" aria-checked={dark} className={itemClass}>
+                <span className={clsx(iconTileClass, dark
+                  ? 'bg-slate-700/60 text-slate-200 ring-white/10'
+                  : 'bg-amber-50 text-amber-600 ring-amber-100')}>
+                  {dark ? <Moon size={16} /> : <Sun size={16} />}
+                </span>
+                <span className="flex-1 text-left">
+                  Appearance
+                  <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">{dark ? 'Dark' : 'Light'}</span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className={clsx(
+                    'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors',
+                    dark ? 'bg-indigo-500' : 'bg-slate-300',
+                  )}
+                >
+                  <span className={clsx('inline-block h-4 w-4 rounded-full bg-white shadow transition-transform', dark ? 'translate-x-[18px]' : 'translate-x-0.5')} />
+                </span>
+              </button>
+            </div>
+
+            <div className="p-1.5 border-t border-slate-100 dark:border-white/[0.06]">
+              <button
+                onClick={() => { onLogout(); setOpen(false); }}
+                type="button"
+                className="flex items-center gap-3 w-full px-2 py-1.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+              >
+                <span className={clsx(iconTileClass, 'bg-red-50 text-red-600 ring-red-100 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-400/15')}>
+                  <LogOut size={16} />
+                </span>
+                <span className="flex-1 text-left">Logout</span>
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
