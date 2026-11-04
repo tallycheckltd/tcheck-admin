@@ -1,19 +1,63 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
+import type { ElementType, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Can } from '../../components/shared/Can';
 import { useApi, useMutation } from '../../hooks/useApi';
+import { usePagination } from '../../hooks/usePagination';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { SearchInput } from '../../components/ui/SearchInput';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination, RowNumberHead, RowNumberCell } from '../../components/ui/Pagination';
 import {
-  Link2, Search, BookOpen, Users, GraduationCap, UserCheck, Edit2, Trash2, Sparkles,
-  School as SchoolIcon, Calendar, Settings, UserCog,
+  Link2, Search, BookOpen, Users, GraduationCap, Edit2, Trash2, Sparkles,
+  School as SchoolIcon, Settings, UserCog, ChevronRight, ArrowUpRight, AlertCircle,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { clsx } from 'clsx';
 import type { Beacon, Course, User } from '../../types';
 import { CourseCemAssignment } from '../../components/admin/CourseCemAssignment';
+
+/** Quick filters — each one is a setup gap an admin usually wants to close. */
+type GapFilter = 'all' | 'noCem' | 'noSensor' | 'noStudents';
+const GAP_LABEL: Record<GapFilter, string> = {
+  all: 'All courses', noCem: 'No CEM', noSensor: 'No sensor', noStudents: 'No students',
+};
+const hasCem = (c: Course) => (c.staffAssignments?.length ?? 0) > 0;
+const matchesGap = (c: Course, f: GapFilter) =>
+  f === 'all' ? true
+    : f === 'noCem' ? !hasCem(c)
+      : f === 'noSensor' ? !c.beacon
+        : (c._count?.enrollments ?? 0) === 0;
+
+const thClass = 'px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400';
+
+/** One small labelled value in a row's expanded detail panel. */
+function DetailItem({ label, icon: Icon, children }: { label: string; icon: ElementType; children: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        <Icon size={12} /> {label}
+      </p>
+      <div className="mt-1 text-sm text-gray-800 dark:text-gray-200">{children}</div>
+    </div>
+  );
+}
+
+/** "Unassigned" placeholder that doubles as the shortcut to assign it. */
+function Unassigned({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="inline-flex items-center gap-1 rounded-md border border-dashed border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-400 hover:border-blue-400 hover:text-blue-600 dark:border-white/15 dark:hover:border-blue-400/60 dark:hover:text-blue-300 transition-colors cursor-pointer"
+    >
+      Unassigned
+    </button>
+  );
+}
 
 export function CourseAssignmentsPage() {
   const navigate = useNavigate();
@@ -150,7 +194,19 @@ export function CourseAssignmentsPage() {
     setAssigningBeacon(false);
   };
 
-  const filtered = courses?.filter((c) => {
+  const [gap, setGap] = useState<GapFilter>('all');
+  const [schoolFilter, setSchoolFilter] = useState('');
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  // One school list built from the courses themselves — the filter only appears when there's
+  // actually more than one to choose between.
+  const schoolOptions = Array.from(
+    new Map((courses ?? []).filter((c) => c.school).map((c) => [c.school!.id, c.school!.name])).entries(),
+  ).sort((x, y) => x[1].localeCompare(y[1]));
+  const multiSchool = schoolOptions.length > 1;
+
+  const searched = courses?.filter((c) => {
+    if (schoolFilter && c.school?.id !== schoolFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -159,6 +215,13 @@ export function CourseAssignmentsPage() {
       `${c.lecturer?.firstName} ${c.lecturer?.lastName}`.toLowerCase().includes(q)
     );
   }) || [];
+  const gapCount = (f: GapFilter) => searched.filter((c) => matchesGap(c, f)).length;
+  // Sorted by school then name so the school group rows below stay contiguous across pages.
+  const filtered = searched
+    .filter((c) => matchesGap(c, gap))
+    .sort((x, y) => (x.school?.name ?? '').localeCompare(y.school?.name ?? '') || x.name.localeCompare(y.name));
+  const pager = usePagination(filtered, { initialPageSize: 25, resetKey: `${search}|${gap}|${schoolFilter}` });
+  const colCount = 8;
 
   const enrolledStudentIds = new Set(enrollCourseDetail?.enrollments?.map((e) => e.user.id) || []);
   const filteredStudents = students?.filter((s) => {
@@ -168,197 +231,220 @@ export function CourseAssignmentsPage() {
     return name.includes(studentSearch.toLowerCase()) || s.studentId?.toLowerCase().includes(studentSearch.toLowerCase());
   }) || [];
 
+  const actionBtn = 'p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/10 dark:hover:text-white transition-colors cursor-pointer';
+  const totalCourses = courses?.length ?? 0;
+  const missingCem = courses?.filter((c) => !hasCem(c)).length ?? 0;
+  const missingSensor = courses?.filter((c) => !c.beacon).length ?? 0;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header — one line of context; the counts that matter live in the filter chips below */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Course Assignments</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage course-lecturer assignments and student enrollments</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Who teaches each course, who looks after it, which sensor it uses, and who is enrolled.</p>
         </div>
-        <div className="flex items-center gap-3 text-sm text-gray-500">
-          <span className="flex items-center gap-1.5"><BookOpen size={14} /> {courses?.length || 0} courses</span>
-          <span className="flex items-center gap-1.5"><GraduationCap size={14} /> {lecturers?.length || 0} lecturers</span>
+        <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1.5"><BookOpen size={14} /> <strong className="font-semibold text-gray-900 dark:text-white tabular-nums">{totalCourses}</strong> courses</span>
+          <span className="flex items-center gap-1.5"><GraduationCap size={14} /> <strong className="font-semibold text-gray-900 dark:text-white tabular-nums">{lecturers?.length || 0}</strong> lecturers</span>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search courses, codes, or lecturers..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        />
-      </div>
-
-      {/* Course cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filtered.map((course) => (
-          <div
-            key={course.id}
-            onClick={() => navigate(`/admin/courses/${course.id}`)}
-            className="glass-card p-6 flex flex-col group hover:border-blue-500/20 transition-all cursor-pointer"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{course.name}</h3>
-                  <Badge color="blue">{course.code}</Badge>
-                </div>
-                {course.school && (
-                  <p className="text-xs text-gray-400 font-medium flex items-center gap-1">
-                    <SchoolIcon size={12} /> {course.school.name}
-                  </p>
-                )}
-              </div>
-              <Can perm="MANAGE_COURSES">
-              <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => openEdit(course)}
-                  className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-amber-50 dark:hover:bg-amber-500/10 text-gray-400 hover:text-amber-600 transition-all border border-transparent hover:border-amber-100"
-                  title="Edit course details"
-                >
-                  <Settings size={16} />
-                </button>
-                <button
-                  onClick={() => openBeaconModal(course)}
-                  className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-purple-50 dark:hover:bg-purple-500/10 text-gray-400 hover:text-purple-600 transition-all border border-transparent hover:border-purple-100"
-                  title="Assign Aura Sensor"
-                >
-                  <Sparkles size={16} />
-                </button>
-                <button
-                  onClick={() => openReassign(course)}
-                  className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-gray-400 hover:text-blue-600 transition-all border border-transparent hover:border-blue-100"
-                  title="Reassign lecturer"
-                >
-                  <Edit2 size={16} />
-                </button>
-                <button
-                  onClick={() => openCemModal(course)}
-                  className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-gray-400 hover:text-indigo-600 transition-all border border-transparent hover:border-indigo-100"
-                  title="Assign Client Experience Manager"
-                >
-                  <UserCog size={16} />
-                </button>
-                <button
-                  onClick={() => openEnroll(course)}
-                  className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-green-50 dark:hover:bg-green-500/10 text-gray-400 hover:text-green-600 transition-all border border-transparent hover:border-green-100"
-                  title="Manage students"
-                >
-                  <Users size={16} />
-                </button>
-              </div>
-              </Can>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
-              {/* Lecturer */}
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100/50 dark:border-blue-500/10">
-                <div className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                  <UserCheck size={16} />
-                </div>
-                <div className="overflow-hidden">
-                  <p className="text-[10px] uppercase font-bold text-blue-500/70 tracking-wider">Lecturer</p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-blue-100 truncate">
-                    {course.lecturer?.firstName} {course.lecturer?.lastName}
-                  </p>
-                </div>
-              </div>
-
-              {/* Client Experience Manager */}
-              <div className={clsx(
-                'flex items-center gap-3 p-3 rounded-xl border transition-colors',
-                course.staffAssignments && course.staffAssignments.length > 0
-                  ? 'bg-indigo-50/50 dark:bg-indigo-500/5 border-indigo-100/50 dark:border-indigo-500/10'
-                  : 'bg-gray-50/50 dark:bg-white/5 border-gray-100 dark:border-white/10 border-dashed hover:border-indigo-300'
-              )}>
-                <div className={clsx(
-                  'w-8 h-8 rounded-lg flex items-center justify-center shadow-md flex-shrink-0',
-                  course.staffAssignments && course.staffAssignments.length > 0 ? 'bg-indigo-500 text-white shadow-indigo-500/20' : 'bg-gray-200 dark:bg-white/10 text-gray-400 shadow-none'
-                )}>
-                  <UserCog size={16} />
-                </div>
-                <div className="overflow-hidden flex-1">
-                  <p className={clsx(
-                    'text-[10px] uppercase font-bold tracking-wider',
-                    course.staffAssignments && course.staffAssignments.length > 0 ? 'text-indigo-500/70' : 'text-gray-400'
-                  )}>CEM</p>
-                  {course.staffAssignments && course.staffAssignments.length > 0 ? (
-                    <p className="text-sm font-bold text-gray-900 dark:text-indigo-100 truncate">
-                      {course.staffAssignments.map((a) => `${a.user.firstName} ${a.user.lastName}`).join(', ')}
-                    </p>
-                  ) : (
-                    <button onClick={(e) => { e.stopPropagation(); openCemModal(course); }} className="text-sm font-bold text-gray-400 hover:text-indigo-500 transition-colors cursor-pointer">
-                      Unassigned
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Beacon */}
-              <div className={clsx(
-                'flex items-center gap-3 p-3 rounded-xl border transition-colors',
-                course.beacon
-                  ? 'bg-purple-50/50 dark:bg-purple-500/5 border-purple-100/50 dark:border-purple-500/10'
-                  : 'bg-gray-50/50 dark:bg-white/5 border-gray-100 dark:border-white/10 border-dashed hover:border-purple-300'
-              )}>
-                <div className={clsx(
-                  'w-8 h-8 rounded-lg flex items-center justify-center shadow-md',
-                  course.beacon ? 'bg-purple-500 text-white shadow-purple-500/20' : 'bg-gray-200 dark:bg-white/10 text-gray-400 shadow-none'
-                )}>
-                  <Sparkles size={16} />
-                </div>
-                <div className="overflow-hidden flex-1">
-                  <p className={clsx(
-                    'text-[10px] uppercase font-bold tracking-wider',
-                    course.beacon ? 'text-purple-500/70' : 'text-gray-400'
-                  )}>Hardware</p>
-                  {course.beacon ? (
-                    <p className="text-sm font-bold text-gray-900 dark:text-purple-100 truncate">
-                      {course.beacon.name}
-                    </p>
-                  ) : (
-                    <button onClick={(e) => { e.stopPropagation(); openBeaconModal(course); }} className="text-sm font-bold text-gray-400 hover:text-purple-500 transition-colors">
-                      Unassigned
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Stats Footer */}
-            <div className="mt-auto pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
-                  <Users size={14} className="text-gray-400" />
-                  <span className="text-gray-900 dark:text-gray-300">{course._count?.enrollments || 0}</span>
-                  <span>Students</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
-                  <BookOpen size={14} className="text-gray-400" />
-                  <span className="text-gray-900 dark:text-gray-300">{course._count?.classes || 0}</span>
-                  <span>Sessions</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium bg-gray-50 dark:bg-white/5 px-2 py-1 rounded-lg border border-gray-100 dark:border-white/5">
-                <Calendar size={12} className="text-gray-400" />
-                <span>Room {course.room || 'TBD'}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filtered.length === 0 && (
-        <div className="glass-card p-12 text-center">
-          <Link2 size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-          <p className="text-sm text-gray-500">No courses found</p>
+      {(missingCem > 0 || missingSensor > 0) && totalCourses > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <p>
+            {missingCem > 0 && <><strong>{missingCem}</strong> {missingCem === 1 ? 'course has' : 'courses have'} no CEM</>}
+            {missingCem > 0 && missingSensor > 0 && ' · '}
+            {missingSensor > 0 && <><strong>{missingSensor}</strong> {missingSensor === 1 ? 'course has' : 'courses have'} no sensor</>}
+            . Use the filters below to find them.
+          </p>
         </div>
       )}
+
+      <div className="glass-card overflow-hidden">
+        {/* Toolbar — search, school, and setup-gap filters in one row */}
+        <div className="flex flex-col gap-3 border-b border-gray-100 dark:border-white/5 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            <div className="min-w-[240px] flex-1 lg:max-w-sm">
+              <SearchInput
+                placeholder="Search courses, codes, or lecturers..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            {multiSchool && (
+              <select
+                value={schoolFilter}
+                onChange={(e) => setSchoolFilter(e.target.value)}
+                className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm text-gray-900 dark:text-white cursor-pointer"
+              >
+                <option value="">All schools</option>
+                {schoolOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+              </select>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100/70 p-1 dark:bg-white/5">
+            {(Object.keys(GAP_LABEL) as GapFilter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setGap(f)}
+                className={clsx(
+                  'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap',
+                  gap === f
+                    ? 'bg-white text-blue-600 shadow-sm dark:bg-blue-500 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200',
+                )}
+              >
+                {GAP_LABEL[f]}
+                <span className={clsx('tabular-nums rounded-full px-1.5 text-[10px]', gap === f ? 'bg-blue-50 dark:bg-white/20' : 'bg-gray-200/70 dark:bg-white/10')}>
+                  {gapCount(f)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          totalCourses === 0 ? (
+            <EmptyState icon={Link2} title="No courses yet" description="Courses created for this school will appear here, ready to assign lecturers, CEMs and sensors." />
+          ) : (
+            <EmptyState
+              icon={Search}
+              title="No courses match these filters"
+              description="Try a different search, school or filter."
+              action={
+                <Button variant="secondary" size="sm" onClick={() => { setSearch(''); setGap('all'); setSchoolFilter(''); }}>
+                  Clear filters
+                </Button>
+              }
+            />
+          )
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50/60 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/5">
+                  <tr>
+                    <th className="w-8 px-2" aria-label="Expand" />
+                    <RowNumberHead className="pl-0" />
+                    <th className={thClass}>Course</th>
+                    <th className={thClass}>Lecturer</th>
+                    <th className={thClass}>CEM</th>
+                    <th className={thClass}>Sensor</th>
+                    <th className={clsx(thClass, 'text-right')}>Students</th>
+                    <th className={clsx(thClass, 'text-right')}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                  {pager.rows.map((course, i) => {
+                    const prevSchool = i > 0 ? pager.rows[i - 1].school?.id : undefined;
+                    const showSchoolRow = multiSchool && !schoolFilter && (i === 0 || prevSchool !== course.school?.id);
+                    const isOpen = expanded === course.id;
+                    return (
+                      <Fragment key={course.id}>
+                        {showSchoolRow && (
+                          <tr className="bg-gray-50/80 dark:bg-white/[0.03]">
+                            <td colSpan={colCount} className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                              <span className="inline-flex items-center gap-1.5"><SchoolIcon size={13} className="text-gray-400" /> {course.school?.name ?? 'No school'}</span>
+                            </td>
+                          </tr>
+                        )}
+                        <tr
+                          onClick={() => setExpanded(isOpen ? null : course.id)}
+                          className={clsx('group cursor-pointer transition-colors', isOpen ? 'bg-blue-50/40 dark:bg-blue-500/[0.04]' : 'hover:bg-gray-50/60 dark:hover:bg-white/[0.03]')}
+                        >
+                          <td className="w-8 px-2 py-3 text-gray-400">
+                            <ChevronRight size={15} className={clsx('transition-transform', isOpen && 'rotate-90')} aria-label={isOpen ? 'Collapse' : 'Expand'} />
+                          </td>
+                          <RowNumberCell n={pager.offset + i + 1} className="pl-0" />
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); navigate(`/admin/courses/${course.id}`); }}
+                                className="truncate font-semibold text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 cursor-pointer text-left"
+                                title="Open course"
+                              >
+                                {course.name}
+                              </button>
+                              <Badge color="blue">{course.code}</Badge>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                            {course.lecturer ? `${course.lecturer.firstName} ${course.lecturer.lastName}` : <span className="text-gray-400">—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-[200px]">
+                            {hasCem(course)
+                              ? <span className="block truncate">{course.staffAssignments!.map((a) => `${a.user.firstName} ${a.user.lastName}`).join(', ')}</span>
+                              : <Unassigned onClick={() => openCemModal(course)} />}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                            {course.beacon ? course.beacon.name : <Unassigned onClick={() => openBeaconModal(course)} />}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-gray-300">{course._count?.enrollments || 0}</td>
+                          <td className="px-4 py-3">
+                            <Can perm="MANAGE_COURSES">
+                              <div className="flex justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+                                <button type="button" onClick={() => openEnroll(course)} className={clsx(actionBtn, 'hover:text-green-600 dark:hover:text-green-400')} title="Manage students"><Users size={16} /></button>
+                                <button type="button" onClick={() => openReassign(course)} className={clsx(actionBtn, 'hover:text-blue-600 dark:hover:text-blue-400')} title="Reassign lecturer"><Edit2 size={16} /></button>
+                                <button type="button" onClick={() => openCemModal(course)} className={clsx(actionBtn, 'hover:text-indigo-600 dark:hover:text-indigo-400')} title="Assign Client Experience Manager"><UserCog size={16} /></button>
+                                <button type="button" onClick={() => openBeaconModal(course)} className={clsx(actionBtn, 'hover:text-purple-600 dark:hover:text-purple-400')} title="Assign Aura Sensor"><Sparkles size={16} /></button>
+                                <button type="button" onClick={() => openEdit(course)} className={clsx(actionBtn, 'hover:text-amber-600 dark:hover:text-amber-400')} title="Edit course details"><Settings size={16} /></button>
+                              </div>
+                            </Can>
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr className="bg-blue-50/20 dark:bg-white/[0.015]">
+                            <td colSpan={colCount} className="px-6 pb-5 pt-2">
+                              <div className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl border border-gray-100 bg-white/70 p-4 dark:border-white/5 dark:bg-white/[0.02] md:grid-cols-5">
+                                <DetailItem label="Lecturer" icon={GraduationCap}>
+                                  {course.lecturer ? (
+<p className="font-medium">{course.lecturer.firstName} {course.lecturer.lastName}</p>
+                                  ) : '—'}
+                                </DetailItem>
+                                <DetailItem label="CEM" icon={UserCog}>
+                                  {hasCem(course) ? course.staffAssignments!.map((a) => (
+                                    <p key={a.user.id} className="font-medium">{a.user.firstName} {a.user.lastName}</p>
+                                  )) : <Unassigned onClick={() => openCemModal(course)} />}
+                                </DetailItem>
+                                <DetailItem label="Sensor" icon={Sparkles}>
+                                  {course.beacon ? (
+                                    <>
+                                      <p className="font-medium">{course.beacon.name}</p>
+                                      <p className="text-xs font-mono text-gray-500 dark:text-gray-400">{course.beacon.uuid.slice(0, 8)}…</p>
+                                    </>
+                                  ) : <Unassigned onClick={() => openBeaconModal(course)} />}
+                                </DetailItem>
+                                <DetailItem label="Enrolment" icon={Users}>
+                                  <p><span className="font-medium tabular-nums">{course._count?.enrollments || 0}</span> students</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400"><span className="tabular-nums">{course._count?.classes || 0}</span> sessions</p>
+                                </DetailItem>
+                                <DetailItem label="Room" icon={BookOpen}>
+                                  <p className="font-medium">{course.room || 'TBD'}</p>
+                                  {course.school && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{course.school.name}</p>}
+                                </DetailItem>
+                              </div>
+                              <div className="mt-3 flex justify-end">
+                                <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/courses/${course.id}`)}>
+                                  Open course <ArrowUpRight size={14} className="ml-1" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <Pagination {...pager.props} />
+          </>
+        )}
+      </div>
 
       {/* Reassign Lecturer Modal */}
       <Modal open={reassignModal} onClose={() => setReassignModal(false)} title="Reassign Lecturer">
