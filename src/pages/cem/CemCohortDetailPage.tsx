@@ -20,7 +20,7 @@ export function CemCohortDetailPage() {
   const backLabel = from?.backLabel ?? (user?.role === 'CEM_MANAGER' ? 'CEM Team' : 'My programmes');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Link to={back} className="inline-flex items-center gap-1.5 text-sm text-blue-500 hover:underline">
           <ArrowLeft size={14} /> Back to {backLabel}

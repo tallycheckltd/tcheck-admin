@@ -43,7 +43,7 @@ export function ProfilePage() {
   };
 
   return (
-    <div className="space-y-6 max-w-xl">
+    <div className="space-y-5 max-w-xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Profile</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your account details and password.</p>

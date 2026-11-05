@@ -50,7 +50,7 @@ export function AnnouncementsPage() {
   const [view, setView] = useState<'received' | 'send'>(presetCohortId ? 'send' : 'received');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Megaphone size={22} className="text-blue-500" />
@@ -153,7 +153,7 @@ function ReceivedFeed() {
       })}
 
       {broadcasts && days.length === 0 && months.length === 0 && (
-        <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-8">{searching ? 'Nothing matches your search.' : 'No announcements yet.'}</p>
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-6">{searching ? 'Nothing matches your search.' : 'No announcements yet.'}</p>
       )}
     </div>
   );

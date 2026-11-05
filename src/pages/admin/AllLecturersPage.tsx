@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { UserDirectoryTabs } from '../../components/admin/UserDirectoryTabs';
 import { Search, CheckCircle, XCircle, Trash2, Presentation } from 'lucide-react';
 import { clsx } from 'clsx';
+import { TablePager } from '../../components/ui/TablePager';
 import type { User } from '../../types';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
@@ -32,6 +33,16 @@ export function AllLecturersPage() {
     );
   });
 
+  // Pagination (11-05): "#" numbers continue across pages; a new search or filter starts on page 1.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = filtered?.length ?? 0;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = filtered?.slice(offset, offset + pageSize);
+  const allCount = users?.filter((u) => u.status !== 'DELETED').length ?? 0;
+  const isNarrowed = !!search || filter !== 'all';
+
   const approve = async (id: string) => {
     await patch(`/users/${id}/status`, { status: 'APPROVED' });
     refetch();
@@ -51,7 +62,7 @@ export function AllLecturersPage() {
   const pendingCount = users?.filter((u) => u.status === 'PENDING').length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Lecturers</h1>
@@ -70,7 +81,7 @@ export function AllLecturersPage() {
             type="text"
             placeholder="Search by name or email..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             className="w-full pl-10 pr-4 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400"
           />
         </div>
@@ -78,7 +89,7 @@ export function AllLecturersPage() {
           {(['all', 'PENDING', 'APPROVED', 'REJECTED'] as const).map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => { setFilter(f); setPage(0); }}
               className={clsx(
                 'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer',
                 filter === f
@@ -91,12 +102,16 @@ export function AllLecturersPage() {
             </button>
           ))}
         </div>
+        <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap tabular-nums">
+          {isNarrowed ? `${total.toLocaleString()} of ${allCount.toLocaleString()}` : total.toLocaleString()} lecturer{(isNarrowed ? allCount : total) !== 1 ? 's' : ''}
+        </span>
       </div>
 
       <div className="glass-card overflow-hidden">
         <table className="w-full text-sm gradient-table">
           <thead>
             <tr>
+              <th className="w-12">#</th>
               <th>Name</th>
               <th>Email</th>
               <th>Institution</th>
@@ -105,12 +120,13 @@ export function AllLecturersPage() {
             </tr>
           </thead>
           <tbody className="text-gray-700 dark:text-gray-300">
-            {filtered?.map((u) => (
+            {pageRows?.map((u, i) => (
               <tr
                 key={u.id}
                 onClick={() => navigate(`/admin/users/${u.id}`)}
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
               >
+                <td className="text-xs tabular-nums text-gray-400">{offset + i + 1}</td>
                 <td className="font-medium text-gray-900 dark:text-white">
                   {u.firstName} {u.lastName}
                 </td>
@@ -152,7 +168,7 @@ export function AllLecturersPage() {
             ))}
             {filtered?.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-center py-12">
+                <td colSpan={6} className="text-center py-12">
                   <div className="flex flex-col items-center">
                     <Presentation size={40} className="text-gray-300 dark:text-gray-600 mb-2" />
                     <p className="text-gray-400">No lecturers found matching filters</p>
@@ -162,6 +178,7 @@ export function AllLecturersPage() {
             )}
           </tbody>
         </table>
+        <TablePager page={current} pageSize={pageSize} total={total} noun="lecturers" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
       </div>
     </div>
   );

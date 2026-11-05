@@ -115,11 +115,11 @@ export function GlobalSearchBar({ open, onClose }: { open: boolean; onClose: () 
             </button>
           ))}
           {loading ? (
-            <div className="p-6 text-sm text-center text-[var(--app-text-muted)]">Searching…</div>
+            <div className="p-5 text-sm text-center text-[var(--app-text-muted)]">Searching…</div>
           ) : query.trim().length < 2 ? (
-            <div className="p-6 text-sm text-center text-[var(--app-text-muted)]">Type at least 2 characters to search</div>
+            <div className="p-5 text-sm text-center text-[var(--app-text-muted)]">Type at least 2 characters to search</div>
           ) : results.length === 0 ? (
-            pages.length ? null : <div className="p-6 text-sm text-center text-[var(--app-text-muted)]">No students found</div>
+            pages.length ? null : <div className="p-5 text-sm text-center text-[var(--app-text-muted)]">No students found</div>
           ) : (
             results.map((r) => (
               <button

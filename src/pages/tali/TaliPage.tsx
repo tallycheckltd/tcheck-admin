@@ -114,7 +114,7 @@ function AskTab() {
   const floor = isPct && chart.length ? Math.max(0, Math.floor((Math.min(...chart.map((c) => c.value)) - 10) / 10) * 10) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* 10-21: typed questions go to the conversational Ask (report library, one-sentence answers, 10 a day). */}
       <AskConversation />
       <GlassCard>
@@ -200,7 +200,7 @@ function StudentsAskTab({ canSetUp }: { canSetUp: boolean }) {
   const max = Math.max(1, ...q.rows.map((r) => r.asks));
   const missed = q.rows.find((r) => r.intent === 'unknown');
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Tile icon={<Users size={18} />} label="Students who asked TALI" value={q.students ?? 0} sub={`In the last ${q.period.days} days`} />
         <Tile icon={<MessageCircleQuestion size={18} />} label="Questions asked" value={q.asks ?? 0} tone="green" />
@@ -256,7 +256,7 @@ export function TaliPage() {
   const current = tab && tabs.some((t) => t.key === tab) ? tab : tabs[0]?.key ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className={clsx('text-2xl font-bold flex items-center gap-2', strong)}><Sparkles size={22} className="text-blue-500" /> TALI</h1>

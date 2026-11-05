@@ -28,8 +28,8 @@ export class RouteErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--app-bg)]">
-          <div className="max-w-sm w-full text-center bg-[var(--app-elevated-solid)] border border-[var(--app-border-soft)] rounded-2xl p-8 shadow-sm">
+        <div className="min-h-screen flex items-center justify-center p-5 bg-[var(--app-bg)]">
+          <div className="max-w-sm w-full text-center bg-[var(--app-elevated-solid)] border border-[var(--app-border-soft)] rounded-2xl p-6 shadow-sm">
             <AlertTriangle className="mx-auto text-amber-500 mb-3" size={36} />
             <h2 className="text-base font-semibold text-[var(--app-text)]">Something went wrong loading this page</h2>
             <p className="text-sm text-[var(--app-text-muted)] mt-2">

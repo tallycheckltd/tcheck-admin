@@ -23,7 +23,7 @@ export function PlatformAuditPage() {
   const ranked = [...(schools ?? [])].sort((a, b) => b.last30Days - a.last30Days || a.name.localeCompare(b.name));
 
   return (
-    <div className="space-y-6 max-w-7xl" data-testid="platform-audit">
+    <div className="space-y-5 max-w-7xl" data-testid="platform-audit">
       <PageHeader
         title={school ? `Audit log — ${school.name}` : 'Audit log'}
         subtitle="Who changed what in each school, and when. Pick a school to see its trail."

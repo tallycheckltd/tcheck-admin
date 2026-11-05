@@ -94,7 +94,7 @@ export function CemCompletionPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Link to={`/cem/cohorts/${cohortId}`} state={fromState} className="inline-flex items-center gap-1.5 text-sm text-blue-500 hover:underline">
         <ArrowLeft size={14} /> Back to {data.programme.name}
       </Link>
@@ -125,7 +125,7 @@ export function CemCompletionPage() {
 
       <section className="glass-card p-2 sm:p-4">
         {rows.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">{data.delegates.length ? 'Nobody here.' : 'No delegates in this programme yet.'}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">{data.delegates.length ? 'Nobody here.' : 'No delegates in this programme yet.'}</p>
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-white/5">
             {rows.map((r) => {

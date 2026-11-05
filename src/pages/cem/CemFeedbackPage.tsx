@@ -82,7 +82,7 @@ export function CemFeedbackPage() {
   const showCem = !!data?.cems.length && !cemId;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2"><MessageSquareHeart size={22} className="text-blue-500" /> Programme feedback</h1>

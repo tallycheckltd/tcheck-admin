@@ -186,7 +186,7 @@ export function CampaignHistory({ requests, onChanged, compact = false }: { requ
   const [openId, setOpenId] = useState<string | null>(null);
   const { mutate: post, loading: closing } = useMutation('post');
 
-  if (!requests) return <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">Loading campaigns…</p>;
+  if (!requests) return <p className="text-sm text-slate-500 dark:text-slate-400 py-5 text-center">Loading campaigns…</p>;
   if (requests.length === 0) {
     return (
       <div className="py-10 text-center">
@@ -230,7 +230,7 @@ export function CampaignHistory({ requests, onChanged, compact = false }: { requ
                 </p>
               </div>
               {!compact && (
-                <div className="hidden sm:grid grid-cols-3 gap-6 text-right shrink-0">
+                <div className="hidden sm:grid grid-cols-3 gap-5 text-right shrink-0">
                   <Figure label="Audience" value={String(r.recipientCount)} />
                   <Figure label="Responses" value={String(r.responseCount)} />
                   <Figure label="Rate" value={rateText(r.responseRate)} />
@@ -322,7 +322,7 @@ export function CampaignResults({ requestId }: { requestId: string }) {
           Results appear once at least 3 delegates have responded, so no individual answer can be singled out.
         </p>
       ) : (
-        <div className="space-y-6 border-t border-gray-200 dark:border-white/10 pt-4">
+        <div className="space-y-5 border-t border-gray-200 dark:border-white/10 pt-4">
           {r.questions.map((q) => <QuestionResult key={q.id} q={q} total={q.answered} />)}
         </div>
       )}
@@ -510,7 +510,7 @@ export function RequestFeedbackWorkspace({ cohortId, showHeader = true }: { coho
   );
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-6 max-w-5xl">
       <div>
         {showHeader && (
           <>
@@ -524,7 +524,7 @@ export function RequestFeedbackWorkspace({ cohortId, showHeader = true }: { coho
         {scopeLine && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{scopeLine}</p>}
       </div>
 
-      <section className="glass-card p-6">
+      <section className="glass-card p-5">
         <h2 className="text-base font-semibold text-slate-950 dark:text-white mb-4">New campaign</h2>
         {isSuperAdmin && !schoolId ? (
           <div className="space-y-3">{audiencePicker}</div>
@@ -553,7 +553,7 @@ export function RequestFeedbackWorkspace({ cohortId, showHeader = true }: { coho
             ? 'Campaigns you sent, plus any that reached your programmes (view only).'
             : 'Every campaign sent at your school.'}
         </p>
-        <div className="glass-card px-6">
+        <div className="glass-card px-5">
           <CampaignHistory requests={requests ?? null} onChanged={() => refetch({ silent: true })} />
         </div>
       </section>
@@ -636,7 +636,7 @@ export function AutomaticQuestionsSection({ schoolId }: { schoolId?: string }) {
   const { data, error } = useApi<FeedbackQuestionSets>(`/feedback/question-sets${schoolId ? `?schoolId=${schoolId}` : ''}`);
   if (error || !data) return null;
   return (
-    <section className="glass-card p-6 space-y-6">
+    <section className="glass-card p-5 space-y-5">
       <div>
         <h2 className="text-base font-semibold text-slate-950 dark:text-white">Automatic feedback questions</h2>
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">

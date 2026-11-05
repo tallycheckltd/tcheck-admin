@@ -290,7 +290,7 @@ export function MessagesPage() {
       {mode === 'rooms' ? (
         <RoomChatPanel />
       ) : (
-    <div className="flex gap-6 h-[calc(100vh-8rem)]">
+    <div className="flex gap-5 h-[calc(100vh-8rem)]">
       <GlassCard className="w-80 flex flex-col overflow-hidden">
         {/* Tab toggle */}
         <div className="flex mb-3 border-b border-gray-200 dark:border-white/10">
@@ -340,7 +340,7 @@ export function MessagesPage() {
               </button>
             ))}
             {(!conversations || conversations.length === 0) && (
-              <p className="text-center text-slate-600 dark:text-slate-400 py-8 text-sm">No conversations yet</p>
+              <p className="text-center text-slate-600 dark:text-slate-400 py-6 text-sm">No conversations yet</p>
             )}
           </div>
         ) : (

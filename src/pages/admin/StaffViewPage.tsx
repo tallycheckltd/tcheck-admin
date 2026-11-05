@@ -65,14 +65,14 @@ function Panel({ id, title, icon: Icon, children, defaultOpen = false }: { id?: 
     <div id={id} ref={ref} className="glass-card overflow-hidden scroll-mt-4">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 p-6 text-left cursor-pointer"
+        className="w-full flex items-center justify-between gap-2 p-5 text-left cursor-pointer"
       >
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Icon size={18} className="text-blue-500" /> {title}
         </h2>
         <ChevronDown size={18} className={`text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && <div className="px-6 pb-6 -mt-2">{children}</div>}
+      {open && <div className="px-5 pb-6 -mt-2">{children}</div>}
     </div>
   );
 }
@@ -105,7 +105,7 @@ export function StaffPanelsGrid({ cohortId, only }: { cohortId?: string; only?: 
 
   if (!hasAny) {
     return (
-      <div className="glass-card p-8 text-center">
+      <div className="glass-card p-6 text-center">
         <Info size={28} className="mx-auto text-gray-400 mb-3" />
         <p className="text-sm text-gray-500 dark:text-gray-400">
           You don&apos;t have any permissions yet. Once your School Admin assigns you a role, the panels you&apos;re granted will appear here.
@@ -128,7 +128,7 @@ export function StaffPanelsGrid({ cohortId, only }: { cohortId?: string; only?: 
 
   if (only && !granted[only]) {
     return (
-      <div className="glass-card p-8 text-center">
+      <div className="glass-card p-6 text-center">
         <Info size={28} className="mx-auto text-gray-400 mb-3" />
         <p className="text-sm text-gray-500 dark:text-gray-400">You don&apos;t have the {STAFF_PANEL_LABEL[only]} permission.</p>
       </div>
@@ -136,7 +136,7 @@ export function StaffPanelsGrid({ cohortId, only }: { cohortId?: string; only?: 
   }
 
   return (
-    <div className={only ? '' : 'grid gap-6 lg:grid-cols-2'}>
+    <div className={only ? '' : 'grid gap-5 lg:grid-cols-2'}>
       {show('checkins') && granted.checkins && (
         <CombinedCheckInsPanel canManual={perms.has('VIEW_MANUAL_CHECKINS')} canOnSite={perms.has('VIEW_BLE_CHECKINS')} cohortId={cohortId} open={!!only} />
       )}
@@ -165,7 +165,7 @@ export function StaffViewPage() {
   const { user } = useAuth();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Staff View</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -820,7 +820,7 @@ function AnalyticsPanel({ showDemographics, cohortId }: { showDemographics: bool
   const byCourseChartData = (analytics?.byCourse ?? []).map((c) => ({ label: c.code, count: c.attendanceRate }));
 
   return (
-    <div className="glass-card p-6">
+    <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <BarChart3 size={18} className="text-blue-500" /> Analytics
@@ -845,7 +845,7 @@ function AnalyticsPanel({ showDemographics, cohortId }: { showDemographics: bool
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-2">
         <div>
           <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Attendance rate by {w.course}</p>
           <BreakdownChart mode={mode} data={byCourseChartData} />

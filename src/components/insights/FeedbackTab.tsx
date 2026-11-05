@@ -27,7 +27,7 @@ export function FeedbackView({ data, days, campaigns, canCreateCampaign, onCampa
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {!hasData ? (
         <Card title="No session feedback in this period">
           <Empty title="Nothing to show yet">
@@ -54,7 +54,7 @@ export function FeedbackView({ data, days, campaigns, canCreateCampaign, onCampa
             )}
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-5 xl:items-start">
+          <div className="grid gap-5 xl:grid-cols-5 xl:items-start">
             <Card className="xl:col-span-3" title="Overall rating by week" subtitle="Average of the 0–10 overall score · hover for the number of responses">
               {weeks.filter((w) => w.value != null).length >= 2
                 ? <WeeklyBars data={weeks} max={10} unit="" name="Overall" />

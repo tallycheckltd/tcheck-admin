@@ -32,13 +32,13 @@ export function Modal({ open, onClose, title, children }: Props) {
             {/* Header stays put; only the body below scrolls — tall content (e.g. the school
                 settings form) used to just overflow past the viewport with no way to reach the
                 submit button. */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
+            <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h2>
               <button onClick={onClose} aria-label="Close" className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-500 cursor-pointer">
                 <X size={20} />
               </button>
             </div>
-            <div className="px-6 pb-6 overflow-y-auto min-h-0">
+            <div className="px-5 pb-6 overflow-y-auto min-h-0">
               {children}
             </div>
           </motion.div>

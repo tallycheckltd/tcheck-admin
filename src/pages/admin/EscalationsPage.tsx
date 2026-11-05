@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Can } from '../../components/shared/Can';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { TablePager } from '../../components/ui/TablePager';
 import { LifeBuoy, Clock, CheckCircle2, AlertTriangle, GraduationCap, BookOpen, Search, Camera, Fingerprint, UserCheck } from 'lucide-react';
 import type { Escalation } from '../../types';
 
@@ -39,6 +40,9 @@ export function EscalationsPage() {
   const [statusFilter, setStatusFilter] = useState<'OPEN' | 'RESOLVED' | 'ALL'>('OPEN');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState('');
+  // Pagination (11-05): a new search or filter starts on page 1.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
 
   const { data: escalations, refetch } = useApi<Escalation[]>(
     statusFilter === 'ALL' ? '/escalations' : `/escalations?status=${statusFilter}`,
@@ -58,6 +62,12 @@ export function EscalationsPage() {
       (e.class?.course.name || '').toLowerCase().includes(q) ||
       e.reason.toLowerCase().includes(q));
   }, [escalations, search]);
+
+  const allCount = escalations?.length ?? 0;
+  const total = filtered.length;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = filtered.slice(offset, offset + pageSize);
 
   const openCount = (escalations || []).filter((e) => e.status === 'OPEN').length;
   const staleCount = (escalations || []).filter((e) => e.status === 'OPEN' && urgency(e).label === 'Stale').length;
@@ -85,7 +95,7 @@ export function EscalationsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Escalations</h1>
@@ -128,7 +138,7 @@ export function EscalationsPage() {
         </div>
       </div>
 
-      <div className="flex gap-6 h-[calc(100vh-22rem)]">
+      <div className="flex gap-5 h-[calc(100vh-22rem)]">
         <div className="w-96 flex flex-col">
           <div className="relative mb-2">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
@@ -136,7 +146,7 @@ export function EscalationsPage() {
               type="text"
               placeholder="Search student, course, reason..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
           </div>
@@ -145,7 +155,7 @@ export function EscalationsPage() {
             {(['OPEN', 'RESOLVED', 'ALL'] as const).map((s) => (
               <button
                 key={s}
-                onClick={() => setStatusFilter(s)}
+                onClick={() => { setStatusFilter(s); setPage(0); }}
                 className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   statusFilter === s
                     ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
@@ -157,8 +167,11 @@ export function EscalationsPage() {
             ))}
           </div>
 
+          <p className="mb-2 text-xs tabular-nums text-slate-500 dark:text-slate-400" data-testid="escalation-count">
+            {total === allCount ? `${allCount.toLocaleString()} ${allCount === 1 ? 'escalation' : 'escalations'}` : `${total.toLocaleString()} of ${allCount.toLocaleString()} escalations`}
+          </p>
           <div className="glass-card flex-1 overflow-y-auto p-2 space-y-1">
-            {filtered.map((e) => {
+            {pageRows.map((e, i) => {
               const u = urgency(e);
               return (
                 <button
@@ -171,6 +184,7 @@ export function EscalationsPage() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs tabular-nums text-gray-400 pt-0.5">{offset + i + 1}</span>
                     <p className="text-sm font-medium text-slate-950 dark:text-white truncate flex-1">
                       {e.student?.firstName} {e.student?.lastName}
                     </p>
@@ -193,11 +207,15 @@ export function EscalationsPage() {
               </div>
             )}
           </div>
+          {/* Narrow column: stack the pager's two halves. */}
+          <div className="[&>div]:flex-col [&>div]:items-start [&>div]:px-1">
+            <TablePager page={current} pageSize={pageSize} total={total} noun="escalations" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
+          </div>
         </div>
 
         <div className="flex-1 glass-card flex flex-col overflow-hidden">
           {selected ? (
-            <div className="p-6 space-y-5 overflow-y-auto">
+            <div className="p-5 space-y-5 overflow-y-auto">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">

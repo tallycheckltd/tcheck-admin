@@ -80,7 +80,7 @@ export function CemDashboardPage() {
   const totalPendingWelcomes = cohorts.reduce((sum, c) => sum + c.pendingWelcomeCount, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back, {user?.firstName}</h1>
@@ -89,7 +89,7 @@ export function CemDashboardPage() {
         <NewProgrammeButton />
       </div>
 
-      <section className="glass-card p-6">
+      <section className="glass-card p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <BarChart3 size={18} className="text-blue-500" /> Overview — all programmes

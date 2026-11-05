@@ -68,7 +68,7 @@ function progressText(r: MoodleSyncRun): string {
 function Confirm({ title, body, action, onCancel, onConfirm, busy }: { title: string; body: React.ReactNode; action: string; onCancel: () => void; onConfirm: () => void; busy: boolean }) {
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="moodle-confirm" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 space-y-4 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-5 space-y-4 shadow-xl">
         <h3 id="moodle-confirm" className="text-lg font-semibold text-slate-950 dark:text-white">{title}</h3>
         <div className="text-sm text-slate-700 dark:text-slate-300 space-y-2">{body}</div>
         <div className="flex justify-end gap-2">
@@ -219,7 +219,7 @@ export function MoodleCentre({ connectionId, courses, onChanged }: { connectionI
 
   const lastRoster = o.roster.lastSuccessful;
   return (
-    <section aria-labelledby="moodle-centre" className="glass-card p-6 space-y-8">
+    <section aria-labelledby="moodle-centre" className="glass-card p-5 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-3">
           <p id="moodle-centre" className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Moodle · {host(o.baseUrl)}</p>
@@ -239,7 +239,7 @@ export function MoodleCentre({ connectionId, courses, onChanged }: { connectionI
       </div>
       {msg && <p role="status" className={clsx('text-sm', msg.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600')}>{msg.text}</p>}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
         <Stat label="Linked courses" value={o.totals.mappedCourses} />
         <Stat label="Linked delegates" value={o.totals.linkedDelegates} />
         <Stat label="Enrolments in linked courses" value={o.totals.enrolmentsInMappedCourses} />
@@ -247,7 +247,7 @@ export function MoodleCentre({ connectionId, courses, onChanged }: { connectionI
         {o.materialsSync && <Stat label="Materials from eLearning" value={o.totals.materialsFromElearning ?? 0} />}
       </div>
 
-      <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2 text-sm">
+      <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
         <div><dt className="text-slate-500 dark:text-slate-400">Last successful roster sync</dt><dd className="text-slate-900 dark:text-slate-100">{when(lastRoster?.finishedAt)}{lastRoster ? ` · ${runSummary(lastRoster)}` : ''}</dd></div>
         <div><dt className="text-slate-500 dark:text-slate-400">Last attempted</dt><dd className="text-slate-900 dark:text-slate-100">{o.roster.lastAttempted ? `${when(o.roster.lastAttempted.startedAt)} · ${RUN_STATUS[o.roster.lastAttempted.status]}` : '—'}</dd></div>
         <div><dt className="text-slate-500 dark:text-slate-400">Schedule</dt><dd className="text-slate-900 dark:text-slate-100">Roster every 6 hours{o.attendanceWriteBack ? ' · attendance daily' : ''}, plus manual syncs</dd></div>

@@ -40,7 +40,7 @@ export function LecturerDashboard() {
   }) || [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Dashboard</h1>
         <p className="text-slate-600 dark:text-slate-400 mt-1">Welcome back, {user?.firstName}</p>
@@ -62,7 +62,7 @@ export function LecturerDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <BarChartCard title="Avg Attendance by Course (%)" data={courseData} />
 
         <div className="glass-card p-5">
@@ -85,7 +85,7 @@ export function LecturerDashboard() {
               </div>
             ))}
             {myClasses.length === 0 && (
-              <p className="text-sm text-slate-600 dark:text-slate-400 text-center py-6">No classes scheduled today</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 text-center py-5">No classes scheduled today</p>
             )}
           </div>
         </div>

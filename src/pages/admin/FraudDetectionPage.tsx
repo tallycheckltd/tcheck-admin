@@ -93,7 +93,7 @@ export function FraudDetectionPage() {
   const suspiciousPairs = sharing?.suspiciousPairs ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -125,11 +125,11 @@ export function FraudDetectionPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
 
         {/* Visual Flagged Check-ins */}
         <div className="xl:col-span-2 glass-card overflow-hidden">
-          <div className="p-6 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+          <div className="p-5 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                <Fingerprint size={20} className="text-red-500" />
                Flagged Check-ins
@@ -139,17 +139,17 @@ export function FraudDetectionPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-white/5">
-                  <th className="px-6 py-4">Photo</th>
-                  <th className="px-6 py-4">Student</th>
-                  <th className="px-6 py-4">Class/Course</th>
-                  <th className="px-6 py-4">Reason</th>
-                  <th className="px-6 py-4">Time</th>
+                  <th className="px-5 py-4">Photo</th>
+                  <th className="px-5 py-4">Student</th>
+                  <th className="px-5 py-4">Class/Course</th>
+                  <th className="px-5 py-4">Reason</th>
+                  <th className="px-5 py-4">Time</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                 {flags.map((f) => (
                   <tr key={f.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       <button
                         type="button"
                         onClick={() => openReview(f)}
@@ -159,20 +159,20 @@ export function FraudDetectionPage() {
                         <ImageOff size={16} />
                       </button>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       <div className="font-medium text-gray-900 dark:text-white">{f.user.firstName} {f.user.lastName}</div>
                       <div className="text-xs text-gray-400 font-mono">{f.user.studentId}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm">
+                    <td className="px-5 py-4 text-sm">
                       <div className="text-blue-600 dark:text-blue-400 font-medium">{f.class.course.code}</div>
                       <div className="text-xs text-gray-400 truncate max-w-[150px]">{f.class.title}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       {f.stage === 'CHECK_OUT' && <div className="mb-1"><Badge color="purple">Checkout</Badge></div>}
                       <Badge color="red">{f.reason}</Badge>
                       {f.tamperDetected && <div className="mt-1"><Badge color="yellow">Tamper detected</Badge></div>}
                     </td>
-                    <td className="px-6 py-4 text-xs text-gray-400">
+                    <td className="px-5 py-4 text-xs text-gray-400">
                       {format(new Date(f.stage === 'CHECK_OUT' && f.checkOutAt ? f.checkOutAt : f.checkInAt), 'MMM d, HH:mm')}
                     </td>
                   </tr>
@@ -193,7 +193,7 @@ export function FraudDetectionPage() {
         </div>
 
         {/* Device Sharing Patterns */}
-        <div className="glass-card p-6">
+        <div className="glass-card p-5">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
              <Users size={20} className="text-orange-500" />
              Device Sharing Patterns
@@ -286,7 +286,7 @@ export function FraudDetectionPage() {
               ) : reviewPhoto ? (
                 <img src={`data:image/jpeg;base64,${reviewPhoto}`} alt="Flagged check-in selfie" className="w-full h-full object-cover" />
               ) : (
-                <div className="text-center text-gray-400 p-6">
+                <div className="text-center text-gray-400 p-5">
                   <ImageOff size={28} className="mx-auto mb-2" />
                   <p className="text-xs">No photo captured for this check-in.</p>
                 </div>

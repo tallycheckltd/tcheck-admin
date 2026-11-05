@@ -169,7 +169,7 @@ export function CourseAssignmentsPage() {
   }) || [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -195,12 +195,12 @@ export function CourseAssignmentsPage() {
       </div>
 
       {/* Course cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {filtered.map((course) => (
           <div
             key={course.id}
             onClick={() => navigate(`/admin/courses/${course.id}`)}
-            className="glass-card p-6 flex flex-col group hover:border-blue-500/20 transition-all cursor-pointer"
+            className="glass-card p-5 flex flex-col group hover:border-blue-500/20 transition-all cursor-pointer"
           >
             <div className="flex items-start justify-between mb-4">
               <div>

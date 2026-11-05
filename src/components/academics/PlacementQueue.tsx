@@ -46,7 +46,7 @@ export function PlacementQueue({ schoolId }: { schoolId?: string }) {
                 </td>
               </tr>
             ))}
-            {!requests?.length && <tr><td colSpan={4} className="py-6 text-center text-slate-500">Nobody is waiting to be placed.</td></tr>}
+            {!requests?.length && <tr><td colSpan={4} className="py-5 text-center text-slate-500">Nobody is waiting to be placed.</td></tr>}
           </tbody>
         </table>
       </GlassCard>

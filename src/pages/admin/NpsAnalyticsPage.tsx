@@ -178,8 +178,8 @@ export function NpsAnalyticsPage() {
   const error = npsError ?? partError;
 
   return (
-    <div className="mx-auto max-w-[1680px] space-y-8 text-[color:var(--app-text)]">
-      <header className="relative overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 via-white to-fuchsia-50/80 p-6 shadow-lg shadow-indigo-500/10 dark:border-white/10 dark:from-indigo-950/40 dark:via-slate-950/80 dark:to-fuchsia-950/30 md:p-8">
+    <div className="mx-auto max-w-[1680px] space-y-6 text-[color:var(--app-text)]">
+      <header className="relative overflow-hidden rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 via-white to-fuchsia-50/80 p-5 shadow-lg shadow-indigo-500/10 dark:border-white/10 dark:from-indigo-950/40 dark:via-slate-950/80 dark:to-fuchsia-950/30 md:p-6">
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-3xl dark:bg-fuchsia-500/15" />
         <div className="relative flex flex-col justify-between gap-4 md:flex-row md:items-start">
           <div>
@@ -295,7 +295,7 @@ export function NpsAnalyticsPage() {
       )}
 
       {canQuery && (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <div className={clsx(cardShell, 'min-h-[320px]')}>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">Average NPS by course</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">Weighted by response count, 0–10 scale</p>
@@ -411,7 +411,7 @@ export function NpsAnalyticsPage() {
                   ))}
                   {filteredNps.length === 0 && !error && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={6} className="px-5 py-16 text-center text-slate-500 dark:text-slate-400">
                         <Star className="mx-auto mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
                         {nps.length === 0 ? 'No sessions rated yet.' : 'Nothing matches your search.'}
                       </td>

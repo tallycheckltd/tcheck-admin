@@ -18,6 +18,7 @@ import { CUSTOM_ROLE_HOLDERS, ROLE_TABLE, SWITCHABLE_ROLES } from '../../shared/
 import { InviteSentNotice, InviteStateBadge, type InviteInfo, type InviteState } from '../../components/admin/InviteSent';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
+import { TablePager } from '../../components/ui/TablePager';
 import { LEVEL_LABEL, ORG_LEVEL_FOR_ROLE, SCOPE_FOR_ROLE, roleHasOrgUnit, roleRequiresOrgUnit } from '../../lib/hierarchyRoles';
 
 /** The full catalog — grouped for the checklist UI. Mirrors server/prisma/schema.prisma's
@@ -473,6 +474,13 @@ export function PeopleOrganizationPage() {
     if (customRoleFilter !== 'ALL' && customRoleFilter !== 'NONE' && u.customRoleId !== customRoleFilter) return false;
     return true;
   });
+  // Pagination (11-05): "#" numbers continue across pages; a new filter starts on page 1.
+  const [staffPage, setStaffPage] = useState(0);
+  const [staffPageSize, setStaffPageSize] = useState(25);
+  const staffTotal = filteredStaff.length;
+  const staffCurrent = Math.min(staffPage, Math.max(0, Math.ceil(staffTotal / staffPageSize) - 1));
+  const staffOffset = staffCurrent * staffPageSize;
+  const staffRows = filteredStaff.slice(staffOffset, staffOffset + staffPageSize);
 
   const openCreateRole = () => {
     setEditingRole(null);
@@ -605,7 +613,7 @@ export function PeopleOrganizationPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <ShieldCheck size={24} className="text-blue-500" /> People &amp; Organization
@@ -634,7 +642,7 @@ export function PeopleOrganizationPage() {
 
       {/* Roles — hidden for now (SHOW_ROLES_CARD) */}
       {SHOW_ROLES_CARD && (
-      <div className="glass-card p-6">
+      <div className="glass-card p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <button onClick={() => setRolesCollapsed((c) => !c)} className="flex items-center gap-2 text-left cursor-pointer">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -646,7 +654,7 @@ export function PeopleOrganizationPage() {
           <Button onClick={openCreateRole} size="sm"><Plus size={16} className="mr-1.5" /> New Role</Button>
         </div>
         {rolesCollapsed ? null : !roles?.length ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400 py-5 text-center">
             No roles yet — create one (e.g. &quot;Client Experience Manager&quot;) and pick its permissions.
           </p>
         ) : (
@@ -662,7 +670,7 @@ export function PeopleOrganizationPage() {
               />
             </div>
             {!filteredRoles.length ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No roles match &quot;{roleSearch}&quot;.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 py-5 text-center">No roles match &quot;{roleSearch}&quot;.</p>
             ) : (
               <div className="max-h-96 overflow-y-auto rounded-xl border border-gray-100 dark:border-white/5 divide-y divide-gray-100 dark:divide-white/5">
                 {filteredRoles.map((role) => (
@@ -698,15 +706,16 @@ export function PeopleOrganizationPage() {
       )}
 
       {/* Users */}
-      <div className="glass-card p-6">
+      <div className="glass-card p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Users size={18} /> Staff Users
+            <span className="text-xs font-normal text-gray-400">({staffOnly.length})</span>
           </h2>
           <Button onClick={openCreateUser} size="sm"><UserPlus size={16} className="mr-1.5" /> New User</Button>
         </div>
         {!staffOnly.length ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400 py-5 text-center">
             No staff accounts yet — use New User to add a Lecturer, Client Experience Manager, or any leadership account.
           </p>
         ) : (
@@ -716,7 +725,7 @@ export function PeopleOrganizationPage() {
                 <button
                   key={opt}
                   type="button"
-                  onClick={() => setAccountTypeFilter(opt)}
+                  onClick={() => { setAccountTypeFilter(opt); setStaffPage(0); }}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer transition-colors ${
                     accountTypeFilter === opt
                       ? 'bg-blue-500 text-white border-blue-500'
@@ -728,18 +737,18 @@ export function PeopleOrganizationPage() {
               ))}
               <select
                 value={customRoleFilter}
-                onChange={(e) => setCustomRoleFilter(e.target.value)}
+                onChange={(e) => { setCustomRoleFilter(e.target.value); setStaffPage(0); }}
                 className="text-xs font-medium rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1.5 text-gray-600 dark:text-gray-300"
               >
                 <option value="ALL">Any custom role</option>
                 <option value="NONE">No custom role</option>
                 {(roles ?? []).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
-              <span className="text-xs text-gray-400 ml-auto">{filteredStaff.length} of {staffOnly.length}</span>
+              <span className="text-xs text-gray-400 ml-auto tabular-nums">{filteredStaff.length === staffOnly.length ? `${staffOnly.length.toLocaleString()} staff` : `${filteredStaff.length.toLocaleString()} of ${staffOnly.length.toLocaleString()} staff`}</span>
             </div>
 
             {!filteredStaff.length ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No staff match this filter.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 py-5 text-center">No staff match this filter.</p>
             ) : (
               <div className="overflow-x-auto">
                 {switchError && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{switchError}</p>}
@@ -751,6 +760,7 @@ export function PeopleOrganizationPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-white/10">
+                      <th className="w-10 py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">#</th>
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Account Type</th>
                       <th className="py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Org Unit</th>
@@ -759,8 +769,9 @@ export function PeopleOrganizationPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                    {filteredStaff.map((u) => (
+                    {staffRows.map((u, i) => (
                       <tr key={u.id}>
+                        <td className="py-3 pr-2 align-top text-xs tabular-nums text-gray-400">{staffOffset + i + 1}</td>
                         <td className="py-3 text-sm text-gray-900 dark:text-white">{u.firstName} {u.lastName}<br /><span className="text-xs text-gray-400">{u.email}</span>
                           <div className="mt-1"><InviteStateBadge userId={u.id} invite={(u as User & { invite?: InviteState }).invite} /></div></td>
                         <td className="py-3">
@@ -881,6 +892,7 @@ export function PeopleOrganizationPage() {
                     ))}
                   </tbody>
                 </table>
+                <TablePager page={staffCurrent} pageSize={staffPageSize} total={staffTotal} noun="staff" onPage={setStaffPage} onPageSize={(n) => { setStaffPageSize(n); setStaffPage(0); }} />
               </div>
             )}
           </>

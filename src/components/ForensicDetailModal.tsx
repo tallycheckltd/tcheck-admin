@@ -54,7 +54,7 @@ export function ForensicDetailModal({ attendanceId, onClose }: { attendanceId: s
 
   return (
     <Modal open={!!attendanceId} onClose={onClose} title="Check-In Forensic Detail">
-      {loading && <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">Loading…</div>}
+      {loading && <div className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">Loading…</div>}
       {error && !loading && <p className="text-sm text-red-500 text-center py-4">Could not load verification detail.</p>}
       {data && !loading && (
         <div className="space-y-4">

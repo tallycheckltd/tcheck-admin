@@ -242,7 +242,7 @@ export function ClassesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           {selectedCourseId ? <CourseDrilldownBackLink onClick={() => setSelectedCourseId(null)} /> : null}
@@ -339,7 +339,7 @@ export function ClassesPage() {
               </tr>
             ))}
             {sessionsForSelectedCourse.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-8 text-slate-600 dark:text-slate-400">No classes found</td></tr>
+              <tr><td colSpan={8} className="text-center py-6 text-slate-600 dark:text-slate-400">No classes found</td></tr>
             )}
           </tbody>
         </table>

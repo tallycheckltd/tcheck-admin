@@ -62,7 +62,7 @@ export function BeaconHealthPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <Radar className="text-blue-500" /> Aura Health
@@ -91,22 +91,22 @@ export function BeaconHealthPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
                 <tr>
-                  <th className="text-left py-3 px-6">Room Assignment</th>
-                  <th className="text-left py-3 px-6">Sensor ID</th>
-                  <th className="text-left py-3 px-6">Battery Level</th>
-                  <th className="text-left py-3 px-6">Last Sync</th>
-                  <th className="text-left py-3 px-6">Status</th>
+                  <th className="text-left py-3 px-5">Room Assignment</th>
+                  <th className="text-left py-3 px-5">Sensor ID</th>
+                  <th className="text-left py-3 px-5">Battery Level</th>
+                  <th className="text-left py-3 px-5">Last Sync</th>
+                  <th className="text-left py-3 px-5">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                 {rows.map((b) => (
                   <tr key={b.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-5">
                       <p className="font-medium text-gray-900 dark:text-white">{b.location || b.name}</p>
                       <p className="text-xs text-gray-400">{b.name}</p>
                     </td>
-                    <td className="py-4 px-6 font-mono text-xs text-gray-500 truncate max-w-[160px]">{b.uuid}</td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-5 font-mono text-xs text-gray-500 truncate max-w-[160px]">{b.uuid}</td>
+                    <td className="py-4 px-5">
                       <div className="flex items-center gap-2">
                         {b.tier === 'critical' ? <BatteryWarning size={16} className={TIER_COLOR[b.tier]} />
                           : b.tier === 'warning' ? <BatteryLow size={16} className={TIER_COLOR[b.tier]} />
@@ -116,10 +116,10 @@ export function BeaconHealthPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-xs text-gray-500">
+                    <td className="py-4 px-5 text-xs text-gray-500">
                       {b.lastSeenAt ? format(new Date(b.lastSeenAt), 'MMM d, h:mm a') : 'Never'}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-5">
                       {b.offline ? (
                         <Badge color="red"><span className="flex items-center gap-1"><WifiOff size={11} /> Offline</span></Badge>
                       ) : (

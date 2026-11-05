@@ -86,7 +86,7 @@ export function ClassroomsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Classrooms</h1>
@@ -129,7 +129,7 @@ export function ClassroomsPage() {
             ))}
             {classrooms?.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">No classrooms yet.</td>
+                <td colSpan={6} className="py-6 text-center text-slate-500 dark:text-slate-400">No classrooms yet.</td>
               </tr>
             )}
           </tbody>

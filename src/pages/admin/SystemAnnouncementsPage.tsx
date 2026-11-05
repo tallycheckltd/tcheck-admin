@@ -463,7 +463,7 @@ export function SystemAnnouncementsPage({ embedded = false, presetCohortId = '' 
   const scheduleOk = !!d.scheduledFor && new Date(d.scheduledFor).getTime() > Date.now();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {!embedded && (
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Announcements</h1>
@@ -487,7 +487,7 @@ export function SystemAnnouncementsPage({ embedded = false, presetCohortId = '' 
       )}
 
       {/* Compose / edit */}
-      <div className="glass-card p-6 space-y-4">
+      <div className="glass-card p-5 space-y-4">
         <div className="flex items-center justify-between gap-2 mb-1">
           <div className="flex items-center gap-2">
             <Megaphone size={18} className="text-blue-500" />
@@ -701,7 +701,7 @@ export function SystemAnnouncementsPage({ embedded = false, presetCohortId = '' 
             );
           })}
           {!listLoading && rows?.length === 0 && (
-            <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-8">
+            <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-6">
               {tab === 'DRAFT' ? 'No drafts.' : tab === 'SCHEDULED' ? 'Nothing scheduled.' : tab === 'PUBLISHED' ? 'No live announcements.' : 'No withdrawn or expired announcements.'}
             </p>
           )}

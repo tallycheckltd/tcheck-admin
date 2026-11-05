@@ -41,7 +41,7 @@ export function CemCohortPanelPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Link to={`/cem/cohorts/${cohortId}`} className="inline-flex items-center gap-1.5 text-sm text-blue-500 hover:underline">
         <ArrowLeft size={14} /> Back to {cohort?.name ?? 'programme'}
       </Link>

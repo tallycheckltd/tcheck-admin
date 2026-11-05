@@ -53,7 +53,7 @@ function ExecutiveOverview({ user, greeting }: { user: { firstName: string } | n
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{greeting}, {user?.firstName}</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">Institutional overview across the university</p>
@@ -129,16 +129,16 @@ export function OverviewPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* A platform operator (Tallycheck itself) monitoring every tenant is a fundamentally
           different vantage point from a single school's own admin looking at their own data —
           reusing the exact same plain greeting header for both read as "this is just one more
           school's dashboard," which is the opposite of what SUPER_ADMIN should feel like. */}
       {isSuperAdmin ? (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-6 py-7 sm:px-8 sm:py-8">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-5 py-7 sm:px-6 sm:py-6">
           <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl" />
           <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-indigo-500/10 blur-3xl" />
-          <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+          <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
             <div>
               <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-blue-300/80 bg-blue-400/10 px-2.5 py-1 rounded-full border border-blue-400/20">
                 <Globe2 size={12} /> Platform Console
@@ -255,7 +255,7 @@ export function OverviewPage() {
                   </tr>
                 ))}
                 {(!schoolStats || schoolStats.length === 0) && (
-                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">No institutions yet</td></tr>
+                  <tr><td colSpan={8} className="text-center py-6 text-gray-400">No institutions yet</td></tr>
                 )}
               </tbody>
             </table>
@@ -300,14 +300,14 @@ export function OverviewPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <BarChartCard title="Attendance (Last 7 Days)" data={weekData} />
 
         <div className="glass-card overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-transparent">
+          <div className="p-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-transparent">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Check-ins</h3>
           </div>
-          <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto flex-1">
+          <div className="p-5 space-y-4 max-h-[400px] overflow-y-auto flex-1">
             {stats?.recentAttendances?.slice(0, 10).map((a) => (
               <div key={a.id} className="flex items-center justify-between py-1 group">
                 <div className="flex items-center gap-4">
@@ -338,7 +338,7 @@ export function OverviewPage() {
               </div>
             ))}
             {(!stats?.recentAttendances || stats.recentAttendances.length === 0) && (
-              <p className="text-sm text-gray-400 text-center py-8">No recent check-ins</p>
+              <p className="text-sm text-gray-400 text-center py-6">No recent check-ins</p>
             )}
           </div>
         </div>
@@ -407,7 +407,7 @@ function PulseLeaderboard() {
             <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums w-10 text-right">{s.checkIns}</span>
           </div>
         ))}
-        {top.length === 0 && <p className="text-sm text-gray-400 text-center py-6">No check-ins {RANGE_LABEL[range].toLowerCase()}.</p>}
+        {top.length === 0 && <p className="text-sm text-gray-400 text-center py-5">No check-ins {RANGE_LABEL[range].toLowerCase()}.</p>}
       </div>
     </div>
   );

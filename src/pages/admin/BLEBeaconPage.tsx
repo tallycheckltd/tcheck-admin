@@ -92,7 +92,7 @@ export function BLEBeaconPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Aura Sensors</h1>
@@ -160,7 +160,7 @@ export function BLEBeaconPage() {
               </tr>
             ))}
             {(!beacons || beacons.length === 0) && (
-              <tr><td colSpan={isSuperAdmin ? 10 : 9} className="text-center py-8 text-slate-600 dark:text-slate-400">No beacons configured yet</td></tr>
+              <tr><td colSpan={isSuperAdmin ? 10 : 9} className="text-center py-6 text-slate-600 dark:text-slate-400">No beacons configured yet</td></tr>
             )}
           </tbody>
         </table>

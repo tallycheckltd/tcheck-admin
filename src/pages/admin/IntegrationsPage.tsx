@@ -260,7 +260,7 @@ export function IntegrationsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white flex items-center gap-2">
@@ -295,7 +295,7 @@ export function IntegrationsPage() {
               <SectionTitle title={`Your integrations${connected.length ? ` · ${connected.length}` : ''}`} hint={totalToReview ? `${totalToReview} item${totalToReview === 1 ? '' : 's'} waiting for your review` : undefined} />
             </div>
             {connected.length === 0 ? (
-              <div className="glass-card p-8 text-center space-y-2">
+              <div className="glass-card p-6 text-center space-y-2">
                 <Plug size={26} className="mx-auto text-slate-400" />
                 <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Nothing connected yet</p>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">Pick the system your institution already uses below. Nothing in TCheck changes until you review and approve what comes in.</p>

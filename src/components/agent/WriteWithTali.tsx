@@ -89,7 +89,7 @@ export function WriteWithTali({ onDrafted }: { onDrafted: (broadcastId: string) 
   const p = created?.preview;
   const more = p ? p.count - p.sample.length : 0;
   return (
-    <div className="glass-card p-6 space-y-3">
+    <div className="glass-card p-5 space-y-3">
       <div className="flex items-center gap-2">
         <Sparkles size={18} className="text-blue-500" />
         <h2 className="text-base font-semibold text-slate-950 dark:text-white">Write with TALI</h2>

@@ -19,12 +19,12 @@ export function CourseAttendanceDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-slate-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer">
         <ArrowLeft size={16} /> Back to Profile
       </button>
 
-      <div className="glass-card p-6">
+      <div className="glass-card p-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{data.course.name}</h1>

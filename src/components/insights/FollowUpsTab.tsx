@@ -112,7 +112,7 @@ export function FollowUpsView({ r, scopeLabel, canMessage }: { r: FollowUpsRepor
   const t = r.totals;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Tile label="To follow up" icon={<Users size={18} />} color="blue" value={String(t.delegates)} basis="delegates who didn't attend a session" />
         <Tile label="Need a check-in" icon={<HeartHandshake size={18} />} color="amber" value={String(t.patterns)} basis={`${r.threshold}+ sessions missed in one programme`}

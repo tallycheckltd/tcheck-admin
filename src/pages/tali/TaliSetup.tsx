@@ -73,7 +73,7 @@ export function TaliSchoolText() {
           ))}
         </ul>
       </GlassCard>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <GlassCard>
           <h2 className="font-semibold text-slate-950 dark:text-white mb-3">Documents</h2>
           {docs.data?.docs.length ? (

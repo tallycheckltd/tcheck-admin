@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { EXEC_ED_NAV_LABEL } from '../../hooks/useTerms';
+import { createPortal } from 'react-dom';
 import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -257,7 +258,8 @@ function NavSection({
                 to={hasChildren ? collapsedParentTarget : link.to}
                 end={link.to === '/admin' || link.to === '/lecturer' || link.to === '/platform'}
                 onClick={onNavigate}
-                title={collapsed ? link.label : undefined}
+                data-rail-label={collapsed ? link.label : undefined}
+                aria-label={collapsed ? link.label : undefined}
                 className={({ isActive }) =>
                   clsx(
                     'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all relative',
@@ -413,7 +415,7 @@ function ProfileMenu({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        title={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}
+        data-rail-label={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}
         className={clsx(
           'flex items-center gap-2 w-full p-2 rounded-2xl border transition-colors cursor-pointer',
           open
@@ -443,11 +445,48 @@ function ProfileMenu({
   );
 }
 
+/**
+ * Collapsed rail: the page name pops out beside the icon the moment the pointer (or keyboard focus)
+ * is on it — no waiting for the browser's slow native tooltip, no need to expand the sidebar.
+ * One delegated listener on the <aside> reads `data-rail-label`; the label is portalled to <body>
+ * so the nav's scroll container and the aside's transform can't clip or offset it.
+ */
+function useRailLabel(collapsed: boolean) {
+  const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null);
+  const show = (target: EventTarget | null) => {
+    if (!collapsed || !window.matchMedia('(min-width: 1024px)').matches) return;
+    const el = (target as HTMLElement | null)?.closest?.<HTMLElement>('[data-rail-label]');
+    const label = el?.dataset.railLabel;
+    if (!el || !label) { setTip(null); return; }
+    const r = el.getBoundingClientRect();
+    setTip({ label, top: r.top + r.height / 2, left: r.right + 10 });
+  };
+  const handlers = {
+    onMouseOver: (e: React.MouseEvent) => show(e.target),
+    onMouseLeave: () => setTip(null),
+    onFocus: (e: React.FocusEvent) => show(e.target),
+    onBlur: () => setTip(null),
+    onScrollCapture: () => setTip(null),
+  };
+  const label = collapsed && tip && createPortal(
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-slate-900"
+      style={{ top: tip.top, left: tip.left }}
+    >
+      {tip.label}
+    </div>,
+    document.body,
+  );
+  return { handlers, label };
+}
+
 export function Sidebar({
   open, onClose, collapsed, onToggleCollapse, onOpenSearch,
 }: {
   open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void; onOpenSearch: () => void;
 }) {
+  const rail = useRailLabel(collapsed);
   const [navQuery, setNavQuery] = useState('');
   const navSearchRef = useRef<HTMLInputElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -634,7 +673,7 @@ export function Sidebar({
           aria-hidden="true"
         />
       )}
-      <aside
+      <aside {...rail.handlers}
         className={clsx(
           // Floats clear of the viewport edges on desktop (lg:) — a rounded, fully-bordered card
           // with an ambient shadow instead of a flush panel glued to the browser chrome. The
@@ -682,7 +721,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => { onToggleCollapse(); setTimeout(() => navSearchRef.current?.focus(), 50); }}
-            title="Search pages"
+            data-rail-label="Search pages"
             aria-label="Search pages"
             className="hidden lg:flex mx-auto w-11 h-9 items-center justify-center rounded-lg text-[color:var(--app-text-muted)] hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
           >
@@ -771,7 +810,8 @@ export function Sidebar({
             to={link.to}
             end={link.to === '/admin'}
             onClick={onClose}
-            title={collapsed ? link.label : undefined}
+            data-rail-label={collapsed ? link.label : undefined}
+            aria-label={collapsed ? link.label : undefined}
             className={({ isActive }) =>
               clsx(
                 'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
@@ -792,7 +832,8 @@ export function Sidebar({
             to={link.to}
             end={link.to === '/lecturer'}
             onClick={onClose}
-            title={collapsed ? link.label : undefined}
+            data-rail-label={collapsed ? link.label : undefined}
+            aria-label={collapsed ? link.label : undefined}
             className={({ isActive }) =>
               clsx(
                 'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
@@ -812,7 +853,8 @@ export function Sidebar({
             key={link.to}
             to={link.to}
             onClick={onClose}
-            title={collapsed ? link.label : undefined}
+            data-rail-label={collapsed ? link.label : undefined}
+            aria-label={collapsed ? link.label : undefined}
             className={({ isActive }) =>
               clsx(
                 'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
@@ -833,7 +875,8 @@ export function Sidebar({
             to={link.to}
             end={link.to === '/staff'}
             onClick={onClose}
-            title={collapsed ? link.label : undefined}
+            data-rail-label={collapsed ? link.label : undefined}
+            aria-label={collapsed ? link.label : undefined}
             className={({ isActive }) =>
               clsx(
                 'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
@@ -864,7 +907,8 @@ export function Sidebar({
               to={link.to}
               end={isOverview}
               onClick={onClose}
-              title={collapsed ? link.label : undefined}
+              data-rail-label={collapsed ? link.label : undefined}
+              aria-label={collapsed ? link.label : undefined}
               className={clsx(
                 'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
                 collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
@@ -887,7 +931,8 @@ export function Sidebar({
             // "Programmes" (/cem) is only active on itself, not under /cem/facilities or /cem/performance.
             end={link.to === '/cem'}
             onClick={onClose}
-            title={collapsed ? link.label : undefined}
+            data-rail-label={collapsed ? link.label : undefined}
+            aria-label={collapsed ? link.label : undefined}
             className={({ isActive }) =>
               clsx(
                 'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
@@ -903,7 +948,7 @@ export function Sidebar({
           </NavLink>
         ))}
         {navNoMatch && (
-          <p className="px-3 py-6 text-sm text-center text-[color:var(--app-text-muted)]">No pages match “{navQuery.trim()}”</p>
+          <p className="px-3 py-5 text-sm text-center text-[color:var(--app-text-muted)]">No pages match “{navQuery.trim()}”</p>
         )}
       </nav>
       </NavQuery.Provider>
@@ -920,6 +965,7 @@ export function Sidebar({
         />
       </div>
       </aside>
+      {rail.label}
     </>
   );
 }

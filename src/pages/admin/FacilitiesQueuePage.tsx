@@ -2,7 +2,7 @@ import { FacilitiesQueue } from '../../components/facilities/FacilitiesQueue';
 
 export function FacilitiesQueuePage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Facilities</h1>

@@ -47,7 +47,7 @@ export function AcademicsPage() {
   const { data: attention } = useApi<Attention>(school ? `/academic/attention?schoolId=${school.id}` : null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-slate-950 dark:text-white flex items-center gap-2"><GraduationCap size={24} className="text-blue-500" /> Academics</h1>
         <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">Calendar, programmes, cohorts and how courses link to them — set up once, then mostly read-only.</p>

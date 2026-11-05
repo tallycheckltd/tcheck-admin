@@ -10,6 +10,7 @@ import { formatCheckInType } from '../../utils/checkInTypeLabel';
 import { exportStudentReportPdf } from '../../lib/adminPdfExport';
 import { downloadCsv } from '../../lib/csv';
 import { CareTeamCard } from '../../components/academics/CareTeamCard';
+import { StudentAttendanceAnalytics } from '../../components/academics/StudentAttendanceAnalytics';
 import { useAuth } from '../../context/AuthContext';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
@@ -208,7 +209,7 @@ export function UserDetailPage() {
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-slate-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer">
           <ArrowLeft size={16} /> Back to Users
@@ -226,8 +227,8 @@ export function UserDetailPage() {
       </div>
 
       {/* Profile Header */}
-      <div className="glass-card p-6">
-        <div className="flex items-start gap-6">
+      <div className="glass-card p-5">
+        <div className="flex items-start gap-5">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
             {user.firstName[0]}{user.lastName[0]}
           </div>
@@ -237,7 +238,7 @@ export function UserDetailPage() {
               <Badge color={statusColor[user.status]}>{user.status}</Badge>
               <Badge color={user.role === 'LECTURER' ? 'blue' : 'gray'}>{user.role.replace('_', ' ')}</Badge>
             </div>
-            <div className="flex items-center gap-6 mt-3 text-sm text-slate-600 dark:text-slate-400">
+            <div className="flex items-center gap-5 mt-3 text-sm text-slate-600 dark:text-slate-400">
               <span className="flex items-center gap-1.5"><Mail size={14} /> {user.email}</span>
               {user.school && <span className="flex items-center gap-1.5"><School size={14} /> {user.school.name}</span>}
               {user.studentId && <span className="font-mono">{user.studentId}</span>}
@@ -647,6 +648,9 @@ export function UserDetailPage() {
           </table>
         </div>
       )}
+
+      {/* 11-05 — every expected session, filtered by year/course, grouped by week or month. */}
+      {user.role === 'STUDENT' && <StudentAttendanceAnalytics student={user} history={history} />}
 
       {/* Lecturer's Courses — grouped by term, only the active term expanded by default. */}
       {user.role === 'LECTURER' && user.taughtCourses && user.taughtCourses.length > 0 && (

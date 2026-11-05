@@ -190,7 +190,7 @@ export function OverviewView({ r, scopeLabel, onProgramme, onSession, onFeedback
   const fc = r.feedback.current;
   const weeks = weekPoints(r.trend);
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AttendanceTiles a={r.attendance} prev={r.previousAttendance} days={r.period.days}
         feedback={fc ? { value: fc.overall.average, responses: fc.responses, rate: fc.responseRate } : { value: null, responses: 0, rate: null }}
         onFeedback={onFeedback} />
@@ -210,7 +210,7 @@ export function OverviewView({ r, scopeLabel, onProgramme, onSession, onFeedback
 
       <NeedsAttention r={r} onSession={onSession} />
 
-      <div className="grid gap-6 xl:grid-cols-5 xl:items-start">
+      <div className="grid gap-5 xl:grid-cols-5 xl:items-start">
         <Card className="xl:col-span-3" title="Attendance by week" subtitle={`Attended ÷ expected, per week · dashed line = ${r.attendanceThreshold}% threshold`}>
           {weeks.filter((w) => w.value != null).length >= 2
             ? <WeeklyBars data={weeks} max={100} threshold={r.attendanceThreshold} unit="%" name="Attendance" />
@@ -237,11 +237,11 @@ export function ProgrammeView({ r, scopeLabel, onSession, onFeedback }: { r: Pro
   const fc = r.feedback.current;
   const weeks = weekPoints(r.trend);
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AttendanceTiles a={r.attendance}
         feedback={fc ? { value: fc.overall.average, responses: fc.responses, rate: fc.responseRate } : { value: null, responses: 0, rate: null }}
         onFeedback={onFeedback} />
-      <div className="grid gap-6 xl:grid-cols-5">
+      <div className="grid gap-5 xl:grid-cols-5">
         <Card className="xl:col-span-3" title="Attendance by week" subtitle={`Dashed line = ${r.attendanceThreshold}% threshold`}>
           {weeks.filter((w) => w.value != null).length >= 2
             ? <WeeklyBars data={weeks} max={100} threshold={r.attendanceThreshold} unit="%" name="Attendance" />
@@ -269,7 +269,7 @@ export function SessionView({ r, canSeeRoster }: { r: SessionReport; canSeeRoste
   const a = r.attendance;
   const f = r.feedback;
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Card title={`${r.session.courseName} — ${r.session.title}`}
         subtitle={`${dayLabel(r.session.date)}${r.session.room ? ` · ${r.session.room}` : ''}${r.session.facilitatorName ? ` · ${r.session.facilitatorName}` : ''}`}
         action={canSeeRoster ? <Link to={`/attendance/${r.session.classId}`} className="text-xs font-medium text-blue-600 dark:text-blue-400">Open the roster →</Link> : undefined}>

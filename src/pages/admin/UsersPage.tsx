@@ -9,6 +9,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { UserDirectoryTabs } from '../../components/admin/UserDirectoryTabs';
+import { TablePager } from '../../components/ui/TablePager';
 import { Plus, CheckCircle, XCircle, Eye, UserPlus, Trash2, ShieldPlus, Search, ScanEye } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { User, School } from '../../types';
@@ -55,6 +56,14 @@ export function UsersPage() {
       (u.studentId?.toLowerCase().includes(q))
     );
   });
+
+  // Pagination (11-05): the list can run to thousands; a new search or filter starts on page 1.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = filtered?.length ?? 0;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = filtered?.slice(offset, offset + pageSize);
 
   const approve = async (id: string) => { await patch(`/users/${id}/status`, { status: 'APPROVED' }); refetch(); };
   const reject = async (id: string) => { await patch(`/users/${id}/status`, { status: 'REJECTED' }); refetch(); };
@@ -113,7 +122,7 @@ export function UsersPage() {
   const isReadOnlyUsers = currentUser?.role === 'VC' || currentUser?.role === 'DVC';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
@@ -148,7 +157,7 @@ export function UsersPage() {
           <SearchInput
             placeholder="Search by name, email, or student ID..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             className="!py-3 shadow-sm"
           />
         </div>
@@ -156,7 +165,7 @@ export function UsersPage() {
           {(['all', 'PENDING', 'STUDENT', 'LECTURER'] as const).map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => { setFilter(f); setPage(0); }}
               className={clsx(
                 'px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
                 filter === f
@@ -178,17 +187,19 @@ export function UsersPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-white/10">
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">User Profile</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Organization</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Status</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                <th className="w-12 py-4 pl-6 pr-0 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">#</th>
+                <th className="px-5 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">User Profile</th>
+                <th className="px-5 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                <th className="px-5 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Organization</th>
+                <th className="px-5 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Status</th>
+                <th className="px-5 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-              {filtered?.map((u) => (
+              {pageRows?.map((u, i) => (
                 <tr key={u.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors group">
-                  <td className="px-6 py-4">
+                  <td className="py-4 pl-6 pr-0 text-xs tabular-nums text-gray-400">{offset + i + 1}</td>
+                  <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-white/10 dark:to-white/5 flex items-center justify-center text-slate-500 dark:text-gray-400 font-bold text-xs ring-2 ring-white dark:ring-slate-800">
                         {u.firstName[0]}{u.lastName[0]}
@@ -199,18 +210,18 @@ export function UsersPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-4">
                     <div className="text-sm text-gray-600 dark:text-gray-300">{u.email}</div>
                     <div className="text-xs text-gray-400 font-mono mt-0.5">{u.studentId || '-'}</div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-4">
                     <div className="text-sm text-gray-600 dark:text-gray-300 font-medium">{u.school?.name || 'Unassigned'}</div>
                     <div className="text-[10px] text-gray-400 uppercase font-bold tracking-tight mt-0.5">{u.school?.code || 'NO_SCHOOL'}</div>
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-5 py-4 text-center">
                     <Badge color={statusColor[u.status]}>{u.status}</Badge>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => navigate(`/admin/users/${u.id}`)} className="p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 text-gray-400 hover:text-blue-500 transition-all shadow-sm border border-transparent hover:border-blue-100 dark:hover:border-white/10" title="View Details">
                         <Eye size={18} />
@@ -236,7 +247,7 @@ export function UsersPage() {
               ))}
               {filtered?.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-16">
+                  <td colSpan={6} className="text-center py-16">
                     <div className="w-16 h-16 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Search className="text-gray-300" size={32} />
                     </div>
@@ -247,6 +258,7 @@ export function UsersPage() {
             </tbody>
           </table>
         </div>
+        <TablePager page={current} pageSize={pageSize} total={total} noun="users" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
       </div>
 
       <Modal open={modal} onClose={() => setModal(false)} title={`Create ${createTypeLabel[createType]}`}>

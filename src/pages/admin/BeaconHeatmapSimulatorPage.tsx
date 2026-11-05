@@ -158,7 +158,7 @@ export function BeaconHeatmapSimulatorPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-950 dark:text-white">
           <Radar size={22} className="text-blue-500" /> Aura Heatmap Simulator
@@ -168,7 +168,7 @@ export function BeaconHeatmapSimulatorPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[300px_1fr_300px]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[300px_1fr_300px]">
         {/* Control panel */}
         <GlassCard className="space-y-5">
           <div>

@@ -14,6 +14,7 @@ import { PickerLogoField } from '../../components/platform/PickerLogoField';
 import { defaultFeatures, defaultSettings, type SchoolSettingsValue } from '../../components/platform/tenantSettings';
 import type { School, User } from '../../types';
 import { GrantRequestForm, GrantsTable, type PlatformGrant } from '../../components/support/PlatformGrants';
+import { TablePager } from '../../components/ui/TablePager';
 
 interface Tenant {
   id: string; name: string; code: string; color?: string; attendanceMode: string; features: Record<string, boolean>; deployment: 'SHARED' | 'ISOLATED'; apiBaseUrl: string | null;
@@ -39,18 +40,29 @@ export function PlatformInstitutionsPage() {
   const [wizard, setWizard] = useState<{ open: boolean; presetGroup?: string; branchOf?: Tenant }>({ open: false });
   const [access, setAccess] = useState<{ id: string; name: string } | null>(null);
   const groups = (data?.groups ?? []).map((g) => g.institution).filter(Boolean) as { id: string; name: string }[];
+  // Counts + paging (11-05): institutions are paged as cards; campus rows are numbered across all pages.
+  const allGroups = data?.groups ?? [];
+  const tenantTotal = allGroups.reduce((n, g) => n + g.tenants.length, 0);
+  const startAt: number[] = [];
+  allGroups.reduce((n, g, i) => { startAt[i] = n; return n + g.tenants.length; }, 0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const current = Math.min(page, Math.max(0, Math.ceil(allGroups.length / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageGroups = allGroups.slice(offset, offset + pageSize);
 
   return (
-    <div className="space-y-6" data-testid="platform-institutions">
+    <div className="space-y-5" data-testid="platform-institutions">
       <div className="flex justify-between items-start gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Institutions</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Each institution and its campuses / schools. Click one to see and change everything about it.</p>
+          {data && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 tabular-nums" data-testid="institutions-total">{allGroups.length.toLocaleString()} {allGroups.length === 1 ? 'institution' : 'institutions'} · {tenantTotal.toLocaleString()} {tenantTotal === 1 ? 'campus / school' : 'campuses / schools'}</p>}
         </div>
         <Button onClick={() => setWizard({ open: true })} data-testid="new-institution"><Plus size={16} className="inline mr-1" />New institution</Button>
       </div>
 
-      {(data?.groups ?? []).map((g) => {
+      {pageGroups.map((g, gi) => {
         const solo = !g.institution;
         const title = g.institution?.name ?? g.tenants[0]?.name ?? '';
         return (
@@ -68,10 +80,11 @@ export function PlatformInstitutionsPage() {
               </div>
             </header>
             <table className={table}>
-              <thead><tr><th className={th}>Campus / school</th><th className={th}>Type</th><th className={th}>Deployment</th><th className={th}>Data shared</th><th className={th}>Onboarding</th><th className={th}>Integrations</th><th className={th}>Accounts</th><th className={th} /></tr></thead>
+              <thead><tr><th className={`${th} w-12`}>#</th><th className={th}>Campus / school</th><th className={th}>Type</th><th className={th}>Deployment</th><th className={th}>Data shared</th><th className={th}>Onboarding</th><th className={th}>Integrations</th><th className={th}>Accounts</th><th className={th} /></tr></thead>
               <tbody>
-                {g.tenants.map((t) => (
+                {g.tenants.map((t, i) => (
                   <tr key={t.id} data-testid="tenant-row" className="hover:bg-gray-50 dark:hover:bg-white/5">
+                    <td className={`${td} text-xs tabular-nums text-gray-400`}>{(startAt[offset + gi] ?? 0) + i + 1}</td>
                     <td className={td}><Link to={`/platform/institutions/${t.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">{t.name}</Link><p className="text-xs text-gray-500">{t.code}</p></td>
                     <td className={td}>{t.features?.execEdSuite ? <Badge color="purple">Executive Education</Badge> : typeOf(t)}</td>
                     <td className={td}>{t.deployment === 'ISOLATED' ? <Badge color="yellow">Isolated — not connected</Badge> : 'Shared'}</td>
@@ -87,6 +100,7 @@ export function PlatformInstitutionsPage() {
           </section>
         );
       })}
+      {allGroups.length > 0 && <div className="glass-card"><TablePager page={current} pageSize={pageSize} total={allGroups.length} noun="institutions" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} /></div>}
       {wizard.open && (
         // Mounted per opening, so each run starts blank.
         <TenantWizard open groups={groups} presetGroup={wizard.presetGroup} branchOf={wizard.branchOf}
@@ -271,10 +285,10 @@ export function PlatformTenantPage() {
   const group = data?.groups.find((g) => g.tenants.some((t) => t.id === id));
   const tenant = group?.tenants.find((t) => t.id === id);
   if (!data) return <p className="text-sm text-gray-500">Loading…</p>;
-  if (!tenant || !group) return <p className="glass-card p-6 text-sm text-gray-500">Not found. <Link to="/platform/institutions" className="text-blue-600">Back to Institutions</Link></p>;
+  if (!tenant || !group) return <p className="glass-card p-5 text-sm text-gray-500">Not found. <Link to="/platform/institutions" className="text-blue-600">Back to Institutions</Link></p>;
   const tabs: [Tab, string][] = [['overview', 'Overview'], ['settings', 'Settings'], ['admins', 'School Admins'], ['access', 'Support access'], ['analytics', 'Analytics']];
   return (
-    <div className="space-y-6" data-testid="platform-tenant">
+    <div className="space-y-5" data-testid="platform-tenant">
       <Link to="/platform/institutions" className="inline-flex items-center gap-1.5 text-sm text-blue-500 hover:underline"><ArrowLeft size={14} /> Institutions</Link>
       <div>
         <p className="text-xs uppercase tracking-widest text-gray-500">{group.institution?.name ?? tenant.name}</p>
@@ -412,17 +426,24 @@ function AdminsTab({ tenantId }: { tenantId: string }) {
     try { await api.post('/users/school-admin', { ...form, schoolId: tenantId }); setForm({ firstName: '', lastName: '', email: '' }); setNotice('Invited.'); refetch(); } catch (e) { setNotice(e instanceof Error ? e.message : 'Could not invite'); }
   };
   const reinvite = async (u: User) => { try { await api.post(`/users/${u.id}/invite`, {}); setNotice(`Invite re-sent to ${u.email}.`); } catch (e) { setNotice(e instanceof Error ? e.message : 'Could not re-send'); } };
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = admins?.length ?? 0;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
   return (
     <div className="space-y-4 max-w-2xl">
       <div className="glass-card overflow-x-auto">
+        {admins && <p className="px-3 pt-3 text-xs text-gray-500 dark:text-gray-400 tabular-nums">{total.toLocaleString()} {total === 1 ? 'school admin' : 'school admins'}</p>}
         <table className={table}>
-          <thead><tr><th className={th}>School Admin</th><th className={th}>Email</th><th className={th}>Status</th><th className={th} /></tr></thead>
-          <tbody>{(admins ?? []).map((u) => (
-            <tr key={u.id}><td className={td}>{u.firstName} {u.lastName}</td><td className={td}>{u.email}</td><td className={td}>{u.status}</td>
+          <thead><tr><th className={`${th} w-12`}>#</th><th className={th}>School Admin</th><th className={th}>Email</th><th className={th}>Status</th><th className={th} /></tr></thead>
+          <tbody>{(admins ?? []).slice(offset, offset + pageSize).map((u, i) => (
+            <tr key={u.id}><td className={`${td} text-xs tabular-nums text-gray-400`}>{offset + i + 1}</td><td className={td}>{u.firstName} {u.lastName}</td><td className={td}>{u.email}</td><td className={td}>{u.status}</td>
               <td className={td}><button onClick={() => void reinvite(u)} className="text-xs text-blue-600 hover:underline cursor-pointer inline-flex items-center gap-1"><Mail size={12} />Re-send invite</button></td></tr>
           ))}</tbody>
         </table>
         {admins && !admins.length && <p className="p-4 text-sm text-gray-500">No School Admin yet.</p>}
+        <TablePager page={current} pageSize={pageSize} total={total} noun="school admins" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
       </div>
       <div className="glass-card p-5 space-y-2">
         <p className="font-semibold text-sm">Add a School Admin</p>
@@ -451,7 +472,7 @@ function AccessTab({ tenantId }: { tenantId: string }) {
 function AnalyticsTab({ tenantId, isolated }: { tenantId: string; isolated: boolean }) {
   const { data, loading } = useApi<{ metrics?: Metric[]; status?: string }>(`/platform/analytics/tenants/${tenantId}`);
   if (loading && !data) return <p className="text-sm text-gray-500">Loading…</p>;
-  if (!data?.metrics) return <p className="glass-card p-6 text-sm text-gray-500">{isolated ? 'Isolated deployment — not connected to the platform yet.' : "This school's numbers could not be loaded."}</p>;
+  if (!data?.metrics) return <p className="glass-card p-5 text-sm text-gray-500">{isolated ? 'Isolated deployment — not connected to the platform yet.' : "This school's numbers could not be loaded."}</p>;
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-500">Last 30 days. The full charts for this school are on <Link to={`/platform/analytics?school=${tenantId}`} className="text-blue-600 hover:underline">Analytics</Link>.</p>

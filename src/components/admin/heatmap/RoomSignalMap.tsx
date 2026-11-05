@@ -23,7 +23,7 @@ const STUDENT_PHONE_HEIGHT_M = 1.0;
 export function RoomSignalMap({ beacon, attendances }: Props) {
   if (!beacon) {
     return (
-      <div className="glass-card p-6 text-center text-sm text-slate-600 dark:text-slate-400">
+      <div className="glass-card p-5 text-center text-sm text-slate-600 dark:text-slate-400">
         No beacon is linked to this class's room — nothing to map yet.
       </div>
     );
@@ -35,7 +35,7 @@ export function RoomSignalMap({ beacon, attendances }: Props) {
 
   if (!isPlaced) {
     return (
-      <div className="glass-card p-6 text-center space-y-3">
+      <div className="glass-card p-5 text-center space-y-3">
         <p className="text-sm text-slate-600 dark:text-slate-400">
           "{beacon.name}" hasn't been physically placed in a room yet, so there's no real layout to show here.
         </p>

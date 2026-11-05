@@ -8,6 +8,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Plus, Pencil, Trash2, Archive, RotateCcw } from 'lucide-react';
 import type { AwardLevel, LastChanged, Major, OrgUnit } from '../../types';
 import { LastChangedLine } from '../../components/academics/LastChangedLine';
+import { TablePager } from '../../components/ui/TablePager';
 
 export const AWARD_LABEL: Record<AwardLevel, string> = {
   CERTIFICATE: 'Certificate', DIPLOMA: 'Diploma', BACHELOR: "Bachelor's", POSTGRAD_DIPLOMA: 'Postgraduate diploma',
@@ -38,6 +39,14 @@ export function MajorsPage({ schoolId }: { schoolId?: string }) {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
   const owningUnits = (units ?? []).filter((u) => ['FACULTY', 'DEPARTMENT', 'SUB_DEPARTMENT'].includes(u.level));
+
+  // Pagination (11-05): # numbers continue across pages.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = majors?.length ?? 0;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = majors?.slice(offset, offset + pageSize);
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setError(''); setModal(true); };
   const openEdit = (m: Major) => {
@@ -74,7 +83,10 @@ export function MajorsPage({ schoolId }: { schoolId?: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-600 dark:text-gray-400">Programmes are owned by a department so Deans and HODs see them. Retire one instead of deleting it once it has history.</p>
+        <div>
+          <p className="text-sm text-slate-600 dark:text-gray-400">Programmes are owned by a department so Deans and HODs see them. Retire one instead of deleting it once it has history.</p>
+          {majors && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 tabular-nums">{total.toLocaleString()} {total === 1 ? 'programme' : 'programmes'}</p>}
+        </div>
         <Button onClick={openCreate} disabled={!schoolId}><Plus size={16} className="mr-1" /> Add programme</Button>
       </div>
 
@@ -83,6 +95,7 @@ export function MajorsPage({ schoolId }: { schoolId?: string }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-white/10 text-left text-slate-600 dark:text-slate-400">
+                <th className="w-12 py-3 pl-4 pr-0 font-medium">#</th>
                 <th className="py-3 px-4 font-medium">Programme</th>
                 <th className="py-3 px-4 font-medium">Owning department</th>
                 <th className="py-3 px-4 font-medium">Award</th>
@@ -91,8 +104,9 @@ export function MajorsPage({ schoolId }: { schoolId?: string }) {
               </tr>
             </thead>
             <tbody>
-              {majors?.map((m) => (
+              {pageRows?.map((m, i) => (
                 <tr key={m.id} className="border-b border-gray-100 dark:border-white/5 align-top">
+                  <td className="py-3 pl-4 pr-0 text-xs tabular-nums text-gray-400">{offset + i + 1}</td>
                   <td className="py-3 px-4">
                     <p className="text-slate-950 dark:text-white font-medium flex items-center gap-2">{m.name} <span className="text-xs text-slate-500">{m.code}</span>{m.isActive === false && <Badge color="gray">Retired</Badge>}</p>
                     <LastChangedLine value={last?.[m.id]} />
@@ -109,10 +123,11 @@ export function MajorsPage({ schoolId }: { schoolId?: string }) {
                   </td>
                 </tr>
               ))}
-              {!majors?.length && <tr><td colSpan={5} className="py-6 text-center text-slate-500">No programmes yet.</td></tr>}
+              {!majors?.length && <tr><td colSpan={6} className="py-5 text-center text-slate-500">No programmes yet.</td></tr>}
             </tbody>
           </table>
         </div>
+        <TablePager page={current} pageSize={pageSize} total={total} noun="programmes" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
       </GlassCard>
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit programme' : 'Add programme'}>

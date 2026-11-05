@@ -220,7 +220,7 @@ export function FollowUpsPage() {
   const { data, loading, error, refetch } = useApi<ListResponse>(`/follow-ups?${qs}`);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-start gap-3">
         <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500"><LifeBuoy size={22} /></div>
         <div>
@@ -255,7 +255,7 @@ export function FollowUpsPage() {
             <div className="sm:ml-auto sm:w-72"><SearchInput aria-label="Search by student" placeholder="Search by student" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           </div>
           <GlassCard className="!p-0 overflow-hidden">
-            {error ? <p className="text-sm text-red-600 p-6">{error}</p> : loading && !data ? (
+            {error ? <p className="text-sm text-red-600 p-5">{error}</p> : loading && !data ? (
               <div className="p-4 space-y-3" aria-label="Loading">{[0, 1, 2].map((i) => <div key={i} className="h-12 rounded-xl bg-gray-100 dark:bg-white/5 animate-pulse" />)}</div>
             ) : !data?.cases?.length ? (
               <EmptyState icon={search.trim() ? Users : CheckCircle2} title={search.trim() ? 'No students match that search.' : tab === 'mine' ? 'No cases for you right now.' : tab === 'unassigned' ? 'Nothing waiting to be assigned.' : 'No cases here.'}
@@ -360,7 +360,7 @@ function CasePanel({ id, onClose, onChanged }: { id: string; onClose: () => void
     <motion.div className="fixed inset-0 z-50 flex justify-end bg-slate-950/30 backdrop-blur-[2px]" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <motion.div role="dialog" aria-label={`Follow-up for ${c.student.name}`} className="w-full max-w-xl h-full overflow-y-auto bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}
         initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 34 }}>
-        <div className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-gray-100 dark:border-white/10 px-6 py-4 flex items-start justify-between gap-3">
+        <div className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-gray-100 dark:border-white/10 px-5 py-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Avatar name={c.student.name} size="lg" />
             <div className="min-w-0">
@@ -371,7 +371,7 @@ function CasePanel({ id, onClose, onChanged }: { id: string; onClose: () => void
           <div className="flex items-center gap-2 shrink-0"><StatusChip status={c.status} /><button type="button" aria-label="Close" onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer"><X size={18} /></button></div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-5 space-y-5">
           {c.recoveredAt && (
             <p className="text-sm rounded-xl px-3 py-2.5 bg-green-50 dark:bg-green-500/10 text-green-800 dark:text-green-300 flex gap-2">
               <TrendingUp size={16} className="mt-0.5 shrink-0" />

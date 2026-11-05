@@ -4,6 +4,7 @@ import { useApi, useMutation } from '../../hooks/useApi';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Can } from '../shared/Can';
+import { TablePager } from '../ui/TablePager';
 import {
   Wrench, Clock, CheckCircle2, AlertTriangle, Search, Send, Siren,
   ThermometerSnowflake, Tv, Coffee, Wifi, ShieldAlert, HelpCircle, MapPin,
@@ -87,6 +88,9 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
   const selectedId = searchParams.get('ticket') ?? '';
   const setSelectedId = (id: string) => setSearchParams(id ? { ticket: id } : {}, { replace: false });
   const [replyText, setReplyText] = useState('');
+  // Pagination (11-05): a new search or filter starts on page 1.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
 
   const { data: tickets, refetch } = useApi<FacilityTicket[]>(
     // UAT F21 — the live queue is today's; anything left at midnight expires into the History below.
@@ -113,6 +117,12 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
       (t.class?.title || '').toLowerCase().includes(q) ||
       `${t.createdBy?.firstName} ${t.createdBy?.lastName}`.toLowerCase().includes(q));
   }, [tickets, search]);
+
+  const allCount = tickets?.length ?? 0;
+  const total = filtered.length;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = filtered.slice(offset, offset + pageSize);
 
   const openCount = (tickets || []).filter((t) => t.status === 'OPEN').length;
   const breachedCount = (tickets || []).filter((t) => t.status !== 'RESOLVED' && t.slaBreachedAt).length;
@@ -159,7 +169,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="glass-card p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
@@ -190,7 +200,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
         </div>
       </div>
 
-      <div className="flex gap-6 h-[calc(100vh-22rem)]">
+      <div className="flex gap-5 h-[calc(100vh-22rem)]">
         <div className="w-96 flex flex-col">
           <div className="relative mb-2">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
@@ -198,7 +208,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
               type="text"
               placeholder="Search issue, session, delegate..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
           </div>
@@ -207,7 +217,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
             {(['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'ALL'] as const).map((s) => (
               <button
                 key={s}
-                onClick={() => setStatusFilter(s)}
+                onClick={() => { setStatusFilter(s); setPage(0); }}
                 className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   statusFilter === s
                     ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
@@ -219,8 +229,11 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
             ))}
           </div>
 
+          <p className="mb-2 text-xs tabular-nums text-slate-500 dark:text-slate-400" data-testid="facility-ticket-count">
+            {total === allCount ? `${allCount.toLocaleString()} ${allCount === 1 ? 'ticket' : 'tickets'}` : `${total.toLocaleString()} of ${allCount.toLocaleString()} tickets`}
+          </p>
           <div className="glass-card flex-1 overflow-y-auto p-2 space-y-1">
-            {filtered.map((t) => {
+            {pageRows.map((t, i) => {
               const u = urgency(t);
               const meta = presetMeta(t.presetType);
               const Icon = meta.icon;
@@ -235,6 +248,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs tabular-nums text-gray-400 pt-0.5">{offset + i + 1}</span>
                     <p className="text-sm font-medium text-slate-950 dark:text-white truncate flex-1 flex items-center gap-1.5">
                       <Icon size={14} className="flex-shrink-0 text-slate-500 dark:text-slate-400" /> {meta.label}
                     </p>
@@ -258,6 +272,10 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
               </div>
             )}
           </div>
+          {/* Narrow column: stack the pager's two halves. */}
+          <div className="[&>div]:flex-col [&>div]:items-start [&>div]:px-1">
+            <TablePager page={current} pageSize={pageSize} total={total} noun="tickets" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
+          </div>
         </div>
 
         <div className="flex-1 glass-card flex flex-col overflow-hidden">
@@ -265,7 +283,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
             // Previously silent: a 403/404/500 on the detail fetch just left `selected` null,
             // which fell straight through to the generic "select a ticket" placeholder below —
             // indistinguishable from a click that did nothing at all.
-            <div className="flex-1 flex items-center justify-center p-6">
+            <div className="flex-1 flex items-center justify-center p-5">
               <div className="text-center max-w-sm">
                 <AlertTriangle size={40} className="mx-auto mb-3 text-rose-400" />
                 <p className="text-sm font-medium text-slate-950 dark:text-white">Couldn't load this ticket</p>
@@ -276,7 +294,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
               </div>
             </div>
           ) : selected ? (
-            <div className="p-6 flex flex-col h-full overflow-hidden">
+            <div className="p-5 flex flex-col h-full overflow-hidden">
               <div className="space-y-5 overflow-y-auto flex-1">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3">

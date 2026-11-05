@@ -50,7 +50,7 @@ export function LecturerPresencePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Lecturer Presence</h1>
@@ -63,7 +63,7 @@ export function LecturerPresencePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* Status Breakdown Side */}
         <div className="space-y-4">
           <div className="glass-card p-5">
@@ -130,7 +130,7 @@ export function LecturerPresencePage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-5">
                     <div className="text-right">
                       <p className="text-xs font-bold text-gray-900 dark:text-white italic">
                         {c.course.lecturer.firstName} {c.course.lecturer.lastName}
@@ -209,7 +209,7 @@ export function LecturerPresencePage() {
                   </tr>
                 ))}
                 {(!punctuality || punctuality.length === 0) && (
-                  <tr><td colSpan={5} className="text-center py-8 text-slate-500 dark:text-slate-400">No session activity in this window.</td></tr>
+                  <tr><td colSpan={5} className="text-center py-6 text-slate-500 dark:text-slate-400">No session activity in this window.</td></tr>
                 )}
               </tbody>
             </table>
@@ -220,7 +220,7 @@ export function LecturerPresencePage() {
       {/* QR Modal */}
       {selectedQRClass && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-white/10 relative">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-white/10 relative">
             <button 
               onClick={() => setSelectedQRClass(null)}
               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-400 transition-colors"
@@ -235,7 +235,7 @@ export function LecturerPresencePage() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Attendance QR</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{selectedQRClass.course.name}</p>
               
-              <div className="bg-white p-6 rounded-3xl inline-block shadow-inner mb-6">
+              <div className="bg-white p-5 rounded-2xl inline-block shadow-inner mb-6">
                 <QRCodeSVG 
                   value={selectedQRClass.id}
                   size={200}

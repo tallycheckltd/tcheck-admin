@@ -145,7 +145,7 @@ export function SetupWizardPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-5 max-w-3xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -191,7 +191,7 @@ export function SetupWizardPage() {
           </div>
 
           {!done ? (
-            <div className="glass-card p-6 space-y-5">
+            <div className="glass-card p-5 space-y-5">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center flex-shrink-0">
                   <step.icon size={20} />
@@ -232,7 +232,7 @@ export function SetupWizardPage() {
                   onClick={() => fileInputRef.current?.click()}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); }}
-                  className="rounded-xl border-2 border-dashed border-gray-200 dark:border-white/10 p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
+                  className="rounded-xl border-2 border-dashed border-gray-200 dark:border-white/10 p-5 text-center cursor-pointer hover:border-blue-400 transition-colors"
                 >
                   <UploadCloud size={24} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">Click to upload a .csv file, or drag one here</p>

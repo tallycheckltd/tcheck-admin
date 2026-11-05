@@ -183,7 +183,7 @@ export function AdminMessagesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -233,7 +233,7 @@ export function AdminMessagesPage() {
 
       {/* Conversations Tab */}
       {tab === 'conversations' && (
-        <div className="flex gap-6 h-[calc(100vh-16rem)]">
+        <div className="flex gap-5 h-[calc(100vh-16rem)]">
           {/* Conversation list */}
           <div className="w-96 flex flex-col">
             {broadcasts && broadcasts.length > 0 && (
@@ -447,7 +447,7 @@ export function AdminMessagesPage() {
 
       {/* Flags / Escalations Tab */}
       {tab === 'flags' && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* Pending escalations */}
           {pendingFlags.length > 0 && (
             <div>

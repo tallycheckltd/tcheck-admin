@@ -130,7 +130,7 @@ export function DeviceVerificationPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Device Verification</h1>
@@ -183,7 +183,7 @@ export function DeviceVerificationPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Main Enrollment List */}
         <div className="lg:col-span-2 glass-card overflow-hidden">
           <div className="p-4 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02] flex justify-between items-center">
@@ -201,17 +201,17 @@ export function DeviceVerificationPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
                 <tr>
-                  <th className="text-left py-3 px-6">Student</th>
-                  <th className="text-left py-3 px-6">Device</th>
-                  <th className="text-left py-3 px-6">Reason</th>
-                  <th className="text-left py-3 px-6">Requested</th>
-                  <th className="text-right py-3 px-6">Actions</th>
+                  <th className="text-left py-3 px-5">Student</th>
+                  <th className="text-left py-3 px-5">Device</th>
+                  <th className="text-left py-3 px-5">Reason</th>
+                  <th className="text-left py-3 px-5">Requested</th>
+                  <th className="text-right py-3 px-5">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                 {filtered.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors align-top">
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-xs">
                           {p.firstName[0]}{p.lastName[0]}
@@ -222,7 +222,7 @@ export function DeviceVerificationPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-5">
                       <div className="flex flex-col">
                         <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1.5 font-medium">
                           <Smartphone size={14} className="text-gray-400" />
@@ -236,7 +236,7 @@ export function DeviceVerificationPage() {
                         </code>
                       </div>
                     </td>
-                    <td className="py-4 px-6 max-w-[220px]">
+                    <td className="py-4 px-5 max-w-[220px]">
                       {p.reason ? (
                         <div className="space-y-1">
                           <Badge color={REASON_COLOR[p.reason]}>{REASON_LABEL[p.reason]}</Badge>
@@ -251,10 +251,10 @@ export function DeviceVerificationPage() {
                         <span className="text-xs text-gray-400">First-time bind</span>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-gray-500 text-xs">
+                    <td className="py-4 px-5 text-gray-500 text-xs">
                       {format(new Date(p.createdAt), 'MMM d, h:mm a')}
                     </td>
-                    <td className="py-4 px-6 text-right">
+                    <td className="py-4 px-5 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Can perm="MANAGE_DEVICE_VERIFICATION">
                         <button
@@ -288,8 +288,8 @@ export function DeviceVerificationPage() {
         </div>
 
         {/* Info Sidebar */}
-        <div className="space-y-6">
-          <div className="glass-card p-6 bg-blue-500/5 border-blue-500/10">
+        <div className="space-y-5">
+          <div className="glass-card p-5 bg-blue-500/5 border-blue-500/10">
             <h3 className="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2 mb-3">
               <ShieldCheck size={18} />
               About Device Binding
@@ -344,7 +344,7 @@ export function DeviceVerificationPage() {
                 );
               })}
               {(!securityLog || securityLog.length === 0) && (
-                <p className="text-xs text-gray-400 text-center py-6">No device security events yet.</p>
+                <p className="text-xs text-gray-400 text-center py-5">No device security events yet.</p>
               )}
             </div>
           </div>
@@ -375,7 +375,7 @@ export function DeviceVerificationPage() {
                   <button
                     type="button"
                     onClick={() => setExpandedGroup(isOpen ? `__closed_${group.key}` : group.key)}
-                    className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors text-left cursor-pointer"
                   >
                     <span className="text-sm font-semibold text-gray-900 dark:text-white">{group.label}</span>
                     <span className="flex items-center gap-2 text-xs text-gray-400">
@@ -387,16 +387,16 @@ export function DeviceVerificationPage() {
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 uppercase text-[10px] tracking-wider">
                         <tr>
-                          <th className="text-left py-2 px-6">Student</th>
-                          <th className="text-left py-2 px-6">Device</th>
-                          <th className="text-left py-2 px-6">Bound Since</th>
-                          <th className="text-right py-2 px-6">Actions</th>
+                          <th className="text-left py-2 px-5">Student</th>
+                          <th className="text-left py-2 px-5">Device</th>
+                          <th className="text-left py-2 px-5">Bound Since</th>
+                          <th className="text-right py-2 px-5">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                         {group.rows.map((p) => (
                           <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors">
-                            <td className="py-4 px-6">
+                            <td className="py-4 px-5">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center font-bold text-xs">
                                   {p.firstName[0]}{p.lastName[0]}
@@ -407,7 +407,7 @@ export function DeviceVerificationPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="py-4 px-6">
+                            <td className="py-4 px-5">
                               <div className="flex flex-col">
                                 <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1.5 font-medium">
                                   <Smartphone size={14} className="text-gray-400" />
@@ -418,10 +418,10 @@ export function DeviceVerificationPage() {
                                 </code>
                               </div>
                             </td>
-                            <td className="py-4 px-6 text-gray-500 text-xs">
+                            <td className="py-4 px-5 text-gray-500 text-xs">
                               {p.createdAt ? format(new Date(p.createdAt), 'MMM d, h:mm a') : '-'}
                             </td>
-                            <td className="py-4 px-6 text-right">
+                            <td className="py-4 px-5 text-right">
                               <Can perm="MANAGE_DEVICE_VERIFICATION">
                               <button
                                 onClick={() => handleReset(p.id, true)}

@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { TablePager } from '../../components/ui/TablePager';
 import { Plus, CalendarRange, CheckCircle2 } from 'lucide-react';
 import type { Term, School } from '../../types';
 
@@ -30,6 +31,14 @@ export function TermsPage() {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
+  // Pagination (11-05): # numbers continue across pages; changing the institution filter starts on page 1.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = terms?.length ?? 0;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = terms?.slice(offset, offset + pageSize);
+
   const handleCreate = async () => {
     await create('/terms', {
       name: form.name,
@@ -49,19 +58,20 @@ export function TermsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Terms</h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             The active term scopes new course enrollments, contacts, and course chat rooms — rolling over archives the previous term's rooms.
           </p>
+          {terms && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 tabular-nums">{total.toLocaleString()} {total === 1 ? 'term' : 'terms'}</p>}
         </div>
         <div className="flex items-center gap-2">
           {isSuperAdmin && (
             <select
               value={schoolFilter}
-              onChange={(e) => setSchoolFilter(e.target.value)}
+              onChange={(e) => { setSchoolFilter(e.target.value); setPage(0); }}
               className="rounded-xl px-3 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
             >
               <option value="">All institutions</option>
@@ -76,6 +86,7 @@ export function TermsPage() {
         <table className="w-full text-sm gradient-table">
           <thead>
             <tr>
+              <th className="w-12">#</th>
               <th>Name</th>
               {isSuperAdmin && !schoolFilter && <th>Institution</th>}
               <th>Start</th>
@@ -85,8 +96,9 @@ export function TermsPage() {
             </tr>
           </thead>
           <tbody className="text-slate-800 dark:text-gray-300">
-            {terms?.map((t) => (
+            {pageRows?.map((t, i) => (
               <tr key={t.id}>
+                <td className="text-xs tabular-nums text-gray-400">{offset + i + 1}</td>
                 <td className="font-medium text-slate-950 dark:text-white flex items-center gap-2">
                   <CalendarRange size={14} className="text-blue-500" />
                   {t.name}
@@ -113,6 +125,7 @@ export function TermsPage() {
             ))}
           </tbody>
         </table>
+        <TablePager page={current} pageSize={pageSize} total={total} noun="terms" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
         {(!terms || terms.length === 0) && (
           <EmptyState icon={CalendarRange} title="No terms yet" description="Create one to start scoping enrollments and course chat rooms by term." size="md" />
         )}

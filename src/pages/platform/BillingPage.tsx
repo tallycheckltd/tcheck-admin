@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { Download, Pencil, Printer, TrendingDown, TrendingUp, Minus, Building2, Plus, Trash2 } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
+import { TablePager } from '../../components/ui/TablePager';
 import { api } from '../../lib/api';
 import { API_BASE } from '../../lib/apiBase';
 import { Badge } from '../../components/ui/Badge';
@@ -75,6 +76,12 @@ export function PlatformBillingPage() {
   const { data, refetch } = useApi<Invoices>(`/platform/billing/invoices?period=${period}`);
   const [edit, setEdit] = useState<Row | null>(null);
   const [print, setPrint] = useState<Row | null>(null);
+  // Card numbers + paging (11-05).
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const allRows = data?.rows ?? [];
+  const current = Math.min(page, Math.max(0, Math.ceil(allRows.length / pageSize) - 1));
+  const offset = current * pageSize;
 
   const kpis = useMemo(() => {
     const billed = (data?.rows ?? []).filter((r) => r.invoice);
@@ -91,7 +98,7 @@ export function PlatformBillingPage() {
   };
 
   return (
-    <div className="space-y-6" data-testid="platform-billing">
+    <div className="space-y-5" data-testid="platform-billing">
       <div className="flex justify-between items-start gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Billing</h1>
@@ -113,14 +120,15 @@ export function PlatformBillingPage() {
           <div key={label} className="glass-card p-4"><p className="text-xs text-gray-500">{label}</p><p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{value}</p></div>
         ))}
       </div>
+      {data && <p className="text-xs text-gray-500 dark:text-gray-400 tabular-nums" data-testid="billing-total">{allRows.length.toLocaleString()} {allRows.length === 1 ? 'institution' : 'institutions'}</p>}
       {data?.rows.some((r) => r.partial) && <p className="text-xs text-gray-500">{monthLabel(period)} is still running — its numbers are "so far".</p>}
 
       <div className="grid gap-4 xl:grid-cols-2">
-        {(data?.rows ?? []).map((r) => (
+        {allRows.slice(offset, offset + pageSize).map((r, i) => (
           <article key={r.id} className="glass-card p-5 space-y-4" data-testid="billing-card">
             <header className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2"><Building2 size={15} className="text-blue-500" /> {r.name}</p>
+                <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2"><span className="text-xs font-normal tabular-nums text-gray-400">{offset + i + 1}.</span><Building2 size={15} className="text-blue-500" /> {r.name}</p>
                 {(r.schools.length > 1 || r.schools[0]?.name !== r.name) && <p className="text-xs text-gray-500">{r.schools.map((s) => s.name).join(' · ')}</p>}
               </div>
               {r.plan
@@ -156,6 +164,7 @@ export function PlatformBillingPage() {
           </article>
         ))}
       </div>
+      {allRows.length > 0 && <div className="glass-card"><TablePager page={current} pageSize={pageSize} total={allRows.length} noun="institutions" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} /></div>}
       {edit && <PlanEditor row={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); refetch(); }} />}
       {print && <PrintInvoice row={print} onClose={() => setPrint(null)} />}
     </div>

@@ -146,7 +146,7 @@ export function WeeklyBars({ data, max, threshold, unit, name }: { data: WeekPoi
 /** Empty state inside a card. */
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="py-8 text-center">
+    <div className="py-6 text-center">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{title}</p>
       {children && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">{children}</p>}
     </div>

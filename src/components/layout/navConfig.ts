@@ -35,12 +35,16 @@ export const superAdminGeneral: NavLinkDef[] = [
   { to: '/platform/grants', icon: 'ShieldCheck', label: 'Support access' },
   { to: '/platform/fleet', icon: 'Battery', label: 'Fleet health' },
   { to: '/platform/analytics', icon: 'BarChart3', label: 'Analytics' },
+  // 11-05 — one school's analytics in detail (the Moi pilot page), numbers only.
+  { to: '/platform/school-analytics', icon: 'FileBarChart', label: 'School analytics' },
   // 11-02 — per-school audit trail (names shown; each view recorded in that school's trail).
   { to: '/platform/audit', icon: 'ScrollText', label: 'Audit log' },
 ];
 
 export const hodOverview: NavLinkDef[] = [
   { to: '/admin', icon: 'LayoutDashboard', label: 'Dashboard' },
+  // 11-05 — the detailed Analytics page (ported from the Moi pilot); Attendance → Analytics stays as it is.
+  { to: '/admin/analytics', icon: 'FileBarChart', label: 'School analytics' },
 ];
 
 export const hodAdmin: NavLinkDef[] = [
@@ -334,6 +338,8 @@ export const NAV_PAGE_API: Record<string, string> = {
   '/platform/fleet': 'GET /platform/fleet',
   '/platform/analytics': 'GET /platform/home',
   '/platform/audit': 'GET /platform/audit/schools',
+  '/platform/school-analytics': 'GET /platform/school-analytics',
+  '/admin/analytics': 'GET /school-analytics',
   '/admin/audit': 'GET /audit/events',
   '/admin/attendance-analytics': 'GET /attendance/campus-analytics',
   '/admin/attendance-overview': 'GET /attendance/dashboard-stats',

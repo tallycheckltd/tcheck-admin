@@ -95,7 +95,7 @@ export function SettingsPage() {
   const { data: tali } = useApi<TaliAccess>(user?.role === 'SCHOOL_ADMIN' ? '/insights/access' : null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -103,7 +103,7 @@ export function SettingsPage() {
         </p>
       </div>
 
-      <div className="max-w-xl space-y-6">
+      <div className="max-w-xl space-y-5">
         {tali?.switches && <SwitchesCard initial={tali.switches} />}
         {/* Action Engine F7 — Settings > TALI agents: switches, limits and the activity log. */}
         {user?.role === 'SCHOOL_ADMIN' && (
@@ -210,7 +210,7 @@ export function SettingsPage() {
 
         {isSuperAdmin && !schoolId && (
           <GlassCard>
-            <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
               <SchoolIcon size={32} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
               Select an institution above to configure its settings.
             </div>

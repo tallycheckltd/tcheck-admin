@@ -89,7 +89,7 @@ export function AttendanceOverviewPage() {
   const rateDelta = todayRate - yesterdayRate;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance Overview</h1>
@@ -166,8 +166,8 @@ export function AttendanceOverviewPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 glass-card p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 glass-card p-5">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -197,7 +197,7 @@ export function AttendanceOverviewPage() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-5">
                 {hasWeeklyActivity ? (
                   <>
                     <h3 className="text-base font-semibold text-gray-900 dark:text-white">Course breakdown not available yet</h3>
@@ -226,7 +226,7 @@ export function AttendanceOverviewPage() {
           </div>
         </div>
 
-        <div className="glass-card p-6">
+        <div className="glass-card p-5">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <AlertTriangle size={20} className="text-amber-500" />
             Needs attention

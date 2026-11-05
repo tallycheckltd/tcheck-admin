@@ -106,7 +106,7 @@ export function CemPerformancePage() {
   const shown = own ?? rows.find((r) => r.cem.id === pick) ?? rows[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2"><Gauge size={22} className="text-blue-500" /> {own ? 'My performance' : 'CEM performance'}</h1>
@@ -132,7 +132,7 @@ export function CemPerformancePage() {
         </div>
       )}
       {loading && !data ? <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
-        : !shown ? <p className="glass-card p-6 text-sm text-gray-500 dark:text-gray-400 text-center">No CEMs to show yet.</p>
+        : !shown ? <p className="glass-card p-5 text-sm text-gray-500 dark:text-gray-400 text-center">No CEMs to show yet.</p>
           : <Scorecard r={shown} minTickets={data!.minTickets} own={!!own} />}
     </div>
   );

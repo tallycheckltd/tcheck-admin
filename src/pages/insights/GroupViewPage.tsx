@@ -10,12 +10,12 @@ export function GroupViewPage() {
   const id = picked || groups?.[0]?.id || '';
   const { data } = useApi<{ institution: string; floor: number; tenantsData: ({ tenant: string; metrics: Metric[] } | { tenant: string; status: string })[] }>(id ? `/institutions/${id}/summary` : null);
   return (
-    <div className="space-y-6" data-testid="group-view">
+    <div className="space-y-5" data-testid="group-view">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Institution group</h1>
         <p className="text-gray-500 mt-1">Aggregates across the tenants of your institution group — numbers only; groups under {data?.floor ?? 5} people show "insufficient data".</p>
       </div>
-      {!groups?.length ? <p className="glass-card p-6 text-sm text-gray-500">No group view has been granted to you.</p> : (
+      {!groups?.length ? <p className="glass-card p-5 text-sm text-gray-500">No group view has been granted to you.</p> : (
         <>
           {groups.length > 1 && (
             <select aria-label="Group" className="rounded-lg border px-2 py-2 dark:bg-white/5" value={id} onChange={(e) => setPicked(e.target.value)}>

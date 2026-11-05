@@ -5,6 +5,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { TablePager } from '../../components/ui/TablePager';
 import { Plus, Users, Layers } from 'lucide-react';
 import type { Course, Program, ProgramTemplate, School, User } from '../../types';
 
@@ -51,6 +52,14 @@ export function ProgramsPage() {
     enrollModal ? `/users?role=STUDENT&schoolId=${enrollModal.schoolId}` : null,
   );
 
+  // Pagination (11-05): # numbers continue across pages; changing the institution filter starts on page 1.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = programs?.length ?? 0;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = programs?.slice(offset, offset + pageSize);
+
   const openCreate = () => {
     setForm({ ...emptyForm, schoolId: activeSchoolId || '' });
     setModal(true);
@@ -89,13 +98,14 @@ export function ProgramsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Training pipelines</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Manage degree tracks and student cohort assignments.
           </p>
+          {programs && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 tabular-nums">{total.toLocaleString()} {total === 1 ? 'training pipeline' : 'training pipelines'}</p>}
         </div>
         {canCreate && <Button onClick={openCreate}><Plus size={16} className="mr-1" /> Add training pipeline</Button>}
       </div>
@@ -106,7 +116,7 @@ export function ProgramsPage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Institution</label>
             <select
               value={schoolFilter}
-              onChange={(e) => setSchoolFilter(e.target.value)}
+              onChange={(e) => { setSchoolFilter(e.target.value); setPage(0); }}
               className="w-full rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
             >
               <option value="">All institutions</option>
@@ -120,6 +130,7 @@ export function ProgramsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-white/10">
+              <th className="w-12 text-left py-3 pl-4 pr-0 font-medium text-slate-600 dark:text-slate-400">#</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
               <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Template</th>
               {isSuperAdmin && <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Institution</th>}
@@ -128,8 +139,9 @@ export function ProgramsPage() {
             </tr>
           </thead>
           <tbody>
-            {programs?.map((p) => (
+            {pageRows?.map((p, i) => (
               <tr key={p.id} className="border-b border-gray-100 dark:border-white/5">
+                <td className="py-3 pl-4 pr-0 text-xs tabular-nums text-gray-400">{offset + i + 1}</td>
                 <td className="py-3 px-4 text-slate-950 dark:text-white font-medium">
                   <span className="flex items-center gap-2">
                     <Layers size={14} className="text-blue-500" />
@@ -155,13 +167,14 @@ export function ProgramsPage() {
             ))}
             {programs?.length === 0 && (
               <tr>
-                <td colSpan={isSuperAdmin ? 5 : 4} className="py-8 px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={isSuperAdmin ? 6 : 5} className="py-6 px-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   No training pipelines yet.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        <TablePager page={current} pageSize={pageSize} total={total} noun="training pipelines" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
       </GlassCard>
 
       <Modal open={modal} onClose={() => setModal(false)} title="Add training pipeline">

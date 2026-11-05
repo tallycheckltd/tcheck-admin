@@ -8,6 +8,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Plus, Pencil, Trash2, Users, Users2, History, MapPin, ArrowRightLeft } from 'lucide-react';
 import type { AuditEvent, Campus, Cohort, CohortMember, CohortMemberStatus, CohortMode, CohortStatus, LastChanged, Major, School, User } from '../../types';
 import { AuditTimeline, LastChangedLine } from '../../components/academics/LastChangedLine';
+import { TablePager } from '../../components/ui/TablePager';
 
 const MODE_LABEL: Record<CohortMode, string> = { FULL_TIME: 'Full time', PART_TIME: 'Part time', EVENING: 'Evening', WEEKEND: 'Weekend', DISTANCE: 'Distance', EXECUTIVE: 'Executive' };
 const STATUS_LABEL: Record<CohortStatus, string> = { PLANNED: 'Planned', ACTIVE: 'Active', COMPLETED: 'Completed', CANCELLED: 'Cancelled' };
@@ -50,6 +51,14 @@ export function CohortsPage({ school }: { school?: School | null }) {
   const [moveFrom, setMoveFrom] = useState<Cohort | null>(null);
   const [timelineOf, setTimelineOf] = useState<Cohort | null>(null);
   const [campusName, setCampusName] = useState('');
+
+  // Pagination (11-05): # numbers continue across pages.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = cohorts?.length ?? 0;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = cohorts?.slice(offset, offset + pageSize);
 
   const reload = () => { refetch(); refetchLast(); };
   const openCreate = () => { setEditing(null); setForm(emptyForm); setError(''); setModal(true); };
@@ -95,7 +104,10 @@ export function CohortsPage({ school }: { school?: School | null }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm text-slate-600 dark:text-gray-400">Each intake belongs to a programme. Dates set here are used before any inferred from the timetable.</p>
+        <div>
+          <p className="text-sm text-slate-600 dark:text-gray-400">Each intake belongs to a programme. Dates set here are used before any inferred from the timetable.</p>
+          {cohorts && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 tabular-nums">{total.toLocaleString()} {total === 1 ? 'cohort' : 'cohorts'}</p>}
+        </div>
         <Button onClick={openCreate} disabled={!schoolId}><Plus size={16} className="mr-1" /> Add cohort</Button>
       </div>
 
@@ -104,6 +116,7 @@ export function CohortsPage({ school }: { school?: School | null }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-white/10 text-left text-slate-600 dark:text-slate-400">
+                <th className="w-12 py-3 pl-4 pr-0 font-medium">#</th>
                 <th className="py-3 px-4 font-medium">Cohort</th>
                 <th className="py-3 px-4 font-medium">Programme</th>
                 <th className="py-3 px-4 font-medium">Dates</th>
@@ -113,8 +126,9 @@ export function CohortsPage({ school }: { school?: School | null }) {
               </tr>
             </thead>
             <tbody>
-              {cohorts?.map((c) => (
+              {pageRows?.map((c, i) => (
                 <tr key={c.id} className="border-b border-gray-100 dark:border-white/5 align-top">
+                  <td className="py-3 pl-4 pr-0 text-xs tabular-nums text-gray-400">{offset + i + 1}</td>
                   <td className="py-3 px-4">
                     <p className="text-slate-950 dark:text-white font-medium">{c.name} <span className="text-xs text-slate-500">{c.year}</span></p>
                     <p className="text-xs text-slate-500">{[c.mode ? MODE_LABEL[c.mode] : null, c.campus?.name, c.clientOrganisation, cohortMovesOn && c.currentMembers !== undefined && c.currentMembers !== (c._count?.members ?? 0) ? `${c.currentMembers} current · ${(c._count?.members ?? 0) - c.currentMembers} completed or left` : `${c._count?.members ?? 0} students`].filter(Boolean).join(' · ')}</p>
@@ -138,10 +152,11 @@ export function CohortsPage({ school }: { school?: School | null }) {
                   </td>
                 </tr>
               ))}
-              {!cohorts?.length && <tr><td colSpan={6} className="py-6 text-center text-slate-500">No cohorts yet.</td></tr>}
+              {!cohorts?.length && <tr><td colSpan={7} className="py-5 text-center text-slate-500">No cohorts yet.</td></tr>}
             </tbody>
           </table>
         </div>
+        <TablePager page={current} pageSize={pageSize} total={total} noun="cohorts" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
       </GlassCard>
 
       <GlassCard className="p-4">

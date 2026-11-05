@@ -11,6 +11,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { TablePager } from '../../components/ui/TablePager';
 import { LifeBuoy, Plus, Send, School as SchoolIcon, Search } from 'lucide-react';
 import type { Ticket, School } from '../../types';
 
@@ -90,6 +91,10 @@ export function SupportPage() {
   const [replyText, setReplyText] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Pagination (11-05): a new search or filter starts on page 1.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ subject: '', message: '', priority: 'NORMAL' as Ticket['priority'] });
 
@@ -166,9 +171,14 @@ export function SupportPage() {
     const q = search.toLowerCase();
     return t.subject.toLowerCase().includes(q) || (t.school?.name || '').toLowerCase().includes(q);
   });
+  const allCount = tickets?.length ?? 0;
+  const total = filtered.length;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = filtered.slice(offset, offset + pageSize);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Support</h1>
@@ -185,7 +195,7 @@ export function SupportPage() {
 
       {user?.role === 'SCHOOL_ADMIN' && <PlatformAccessCard />}
 
-      <div className="flex gap-6 h-[calc(100vh-16rem)]">
+      <div className="flex gap-5 h-[calc(100vh-16rem)]">
         <div className="w-96 flex flex-col">
           <div className="relative mb-2">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
@@ -193,14 +203,14 @@ export function SupportPage() {
               type="text"
               placeholder="Search tickets..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
           </div>
           {isSuperAdmin && (
             <select
               value={schoolFilter}
-              onChange={(e) => setSchoolFilter(e.target.value)}
+              onChange={(e) => { setSchoolFilter(e.target.value); setPage(0); }}
               className="w-full mb-4 rounded-xl px-3 py-2 text-xs bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
             >
               <option value="">All institutions</option>
@@ -209,18 +219,21 @@ export function SupportPage() {
           )}
           <div className="flex flex-wrap gap-1.5 mb-3 text-xs">
             {([['ACTIVE', 'Open & in progress'], ['ALL', 'All'], ['RESOLVED', 'Resolved'], ['CLOSED', 'Closed']] as const).map(([k, l]) => (
-              <button key={k} onClick={() => setStatusF(k)} className={`px-2.5 py-1 rounded-full border cursor-pointer ${statusF === k ? 'bg-blue-500 text-white border-blue-500' : 'border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-300'}`}>{l}</button>
+              <button key={k} onClick={() => { setStatusF(k); setPage(0); }} className={`px-2.5 py-1 rounded-full border cursor-pointer ${statusF === k ? 'bg-blue-500 text-white border-blue-500' : 'border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-300'}`}>{l}</button>
             ))}
-            <select value={categoryF} onChange={(e) => setCategoryF(e.target.value as typeof categoryF)} aria-label="Category" className="rounded-full px-2 py-1 border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
+            <select value={categoryF} onChange={(e) => { setCategoryF(e.target.value as typeof categoryF); setPage(0); }} aria-label="Category" className="rounded-full px-2 py-1 border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
               <option value="ALL">Every category</option><option value="GENERAL">General</option><option value="BEACON_HEALTH">Beacon health</option>
             </select>
-            <select value={priorityF} onChange={(e) => setPriorityF(e.target.value as typeof priorityF)} aria-label="Priority" className="rounded-full px-2 py-1 border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
+            <select value={priorityF} onChange={(e) => { setPriorityF(e.target.value as typeof priorityF); setPage(0); }} aria-label="Priority" className="rounded-full px-2 py-1 border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
               <option value="ALL">Any priority</option>{(['URGENT', 'HIGH', 'NORMAL', 'LOW'] as const).map((p) => <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>)}
             </select>
           </div>
 
+          <p className="mb-2 text-xs tabular-nums text-slate-500 dark:text-slate-400" data-testid="ticket-count">
+            {total === allCount ? `${allCount.toLocaleString()} ${allCount === 1 ? 'ticket' : 'tickets'}` : `${total.toLocaleString()} of ${allCount.toLocaleString()} tickets`}
+          </p>
           <div className="glass-card flex-1 overflow-y-auto p-2 space-y-1">
-            {filtered.map((t) => (
+            {pageRows.map((t, i) => (
               <button
                 key={t.id}
                 onClick={() => loadDetail(t.id)}
@@ -231,6 +244,7 @@ export function SupportPage() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
+                  <span className="text-xs tabular-nums text-gray-400 pt-0.5">{offset + i + 1}</span>
                   <p className="text-sm font-medium text-slate-950 dark:text-white truncate flex-1">{t.subject}</p>
                   <span className="text-xs text-slate-600 dark:text-slate-400 flex-shrink-0">{timeAgo(t.updatedAt)}</span>
                 </div>
@@ -252,6 +266,10 @@ export function SupportPage() {
                 <p className="text-sm text-slate-600 dark:text-slate-400">No tickets yet</p>
               </div>
             )}
+          </div>
+          {/* Narrow column: stack the pager's two halves. */}
+          <div className="[&>div]:flex-col [&>div]:items-start [&>div]:px-1">
+            <TablePager page={current} pageSize={pageSize} total={total} noun="tickets" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
           </div>
         </div>
 

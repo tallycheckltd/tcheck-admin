@@ -183,7 +183,7 @@ export function ProgrammeDelegates({ cohortId }: { cohortId: string }) {
   const signedIn = delegates.filter((d) => d.signedIn).length;
 
   return (
-    <section className="glass-card p-6 space-y-4">
+    <section className="glass-card p-5 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2"><Users size={18} className="text-blue-500" /> Delegates</h2>

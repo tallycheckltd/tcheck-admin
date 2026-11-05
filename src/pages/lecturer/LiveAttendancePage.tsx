@@ -295,7 +295,7 @@ export function LiveAttendancePage() {
     : 'Socket disconnected — roster updates every 10s automatically. Reconnect Wi‑Fi/VPN or refresh if this stays red.';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
           <Radio size={24} className="text-green-500 animate-pulse shrink-0" />
@@ -550,7 +550,7 @@ export function LiveAttendancePage() {
                     </tbody>
                   </table>
                   {rosterRows.length === 0 && (
-                    <p className="text-center text-gray-400 py-8">Waiting for students to check in…</p>
+                    <p className="text-center text-gray-400 py-6">Waiting for students to check in…</p>
                   )}
                 </div>
 
@@ -606,7 +606,7 @@ export function LiveAttendancePage() {
                     </div>
                   ))}
                   {rosterRows.length === 0 && (
-                    <p className="text-center text-gray-400 py-8">Waiting for students to check in…</p>
+                    <p className="text-center text-gray-400 py-6">Waiting for students to check in…</p>
                   )}
                 </div>
               </div>

@@ -28,12 +28,12 @@ export function CourseDetailPage() {
   const enrollments = course.enrollments ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <button onClick={() => navigate('/admin/course-assignments')} className="flex items-center gap-2 text-sm text-slate-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer">
         <ArrowLeft size={16} /> Back to Course Assignments
       </button>
 
-      <div className="glass-card p-6">
+      <div className="glass-card p-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
@@ -83,8 +83,8 @@ export function CourseDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="glass-card p-5">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <Users size={18} className="text-blue-500" /> Enrolled Students
           </h2>
@@ -102,7 +102,7 @@ export function CourseDetailPage() {
           )}
         </div>
 
-        <div className="glass-card p-6">
+        <div className="glass-card p-5">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <Calendar size={18} className="text-blue-500" /> Sessions
           </h2>

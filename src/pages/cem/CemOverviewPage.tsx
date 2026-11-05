@@ -61,8 +61,8 @@ export function CemOverviewPage() {
     </Link>
   );
 
-  if (loading && !data) return <div className="space-y-6">{back}<p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p></div>;
-  if (error || !data) return <div className="space-y-6">{back}<p className="glass-card p-6 text-sm text-gray-500 dark:text-gray-400 text-center">This CEM isn't in your team (or doesn't exist).</p></div>;
+  if (loading && !data) return <div className="space-y-5">{back}<p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p></div>;
+  if (error || !data) return <div className="space-y-5">{back}<p className="glass-card p-5 text-sm text-gray-500 dark:text-gray-400 text-center">This CEM isn't in your team (or doesn't exist).</p></div>;
 
   const { cem, programmes, openTickets, announcements, numbers } = data;
   const running = programmes.filter((p) => !p.finished);
@@ -72,7 +72,7 @@ export function CemOverviewPage() {
   const backState = { back: `/cem-team/cems/${cemId}`, backLabel: `${cem.firstName} ${cem.lastName}` };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {back}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{cem.firstName} {cem.lastName}</h1>
@@ -113,7 +113,7 @@ export function CemOverviewPage() {
         )}
       </section>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-5">
         <section className={card}>
           <h3 className={heading}><Wrench size={18} className="text-blue-500" /> Open facility tickets</h3>
           {openTickets.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400">Nothing open right now.</p> : (

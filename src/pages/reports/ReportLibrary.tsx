@@ -137,7 +137,7 @@ export function ReportLibrary({ classic, classicLabel, classicOpen }: { classic?
 
   const featured = cat.featured.map(byKey).filter(Boolean) as Entry[];
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="space-y-3">
       {/* Its own row above the numbers, so nothing overlaps at any width. */}
       <div className="flex items-center justify-between gap-3">
@@ -244,7 +244,7 @@ function AllReports({ cat, onOpen }: { cat: Catalogue; onOpen: (e: Entry) => voi
             </li>
           );
         })}
-        {!shown.length && <li className={clsx('px-4 py-6 text-sm text-center', muted)}>No reports match that search.</li>}
+        {!shown.length && <li className={clsx('px-4 py-5 text-sm text-center', muted)}>No reports match that search.</li>}
       </ul>
     </section>
   );
@@ -357,7 +357,7 @@ function AskBox({ reports, asks, onReport, onOpen }: { reports: Entry[]; asks?: 
   const out = remaining === 0 && !inConversation;
 
   return (
-    <section className="rounded-2xl p-5 sm:p-6 border border-blue-500/20 bg-gradient-to-br from-blue-500/[0.08] to-transparent space-y-4">
+    <section className="rounded-2xl p-5 sm:p-5 border border-blue-500/20 bg-gradient-to-br from-blue-500/[0.08] to-transparent space-y-4">
       {remaining !== null && <span className={clsx('float-right text-xs px-2.5 py-1 rounded-full', remaining <= 2 ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300' : 'bg-blue-500/10 text-blue-700 dark:text-blue-300')}>{remaining} of {limit} questions left today</span>}
       <div>
         <h2 className={clsx('text-lg font-semibold flex items-center gap-2', strong)}><Sparkles size={18} className="text-blue-600" /> Describe the report you need</h2>

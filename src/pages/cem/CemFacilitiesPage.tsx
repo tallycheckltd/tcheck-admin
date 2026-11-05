@@ -15,7 +15,7 @@ import { FacilitiesQueue } from '../../components/facilities/FacilitiesQueue';
  */
 export function CemFacilitiesPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Link to="/cem" className="inline-flex items-center gap-1.5 text-sm text-blue-500 hover:underline">
         <ArrowLeft size={14} /> Back to My programmes
       </Link>

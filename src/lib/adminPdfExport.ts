@@ -463,6 +463,82 @@ export async function exportStudentReportPdf(
   doc.save(`${safe}.pdf`);
 }
 
+/** Student profile course-attendance analytics (11-05) — the filtered selection on screen: summary,
+ * per-course, per-week/month and every record. Same header/table look as exportStudentReportPdf. */
+export async function exportStudentAttendanceAnalyticsPdf(opts: {
+  student: Pick<UserDetail, 'firstName' | 'lastName' | 'studentId' | 'id'>;
+  filterLine: string;
+  ratesKnown: boolean;
+  summary: { expected: number; attended: number; incomplete: number; absent: number; late: number; checkedOut: number; missingCheckOut: number; rate: number | null };
+  courses: { courseName: string; courseCode: string; expected: number; attended: number; incomplete: number; absent: number; late: number; rate: number | null }[];
+  periodHeading: string;
+  periods: { label: string; expected: number; attended: number; incomplete: number; absent: number; late: number; rate: number | null }[];
+  records: { date: string; courseCode: string; title: string; checkIn: string; checkOut: string; status: string }[];
+  fileBase: string;
+}) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const { student } = opts;
+  let y = await addTcheckHeader(
+    doc,
+    'Tcheck — Student course attendance',
+    `${student.firstName} ${student.lastName}${student.studentId ? ` · ${student.studentId}` : ''} · Generated ${format(new Date(), 'PPpp')}`,
+  );
+  const rate = (r: number | null) => (opts.ratesKnown ? (r == null ? '—' : `${r}%`) : 'n/a');
+  const table = { styles: { fontSize: 8, cellPadding: 3 }, headStyles: { fillColor: [51, 65, 85] as [number, number, number], textColor: 255 }, alternateRowStyles: { fillColor: [248, 250, 252] as [number, number, number] }, margin: { left: 40, right: 40 } };
+  const heading = (text: string) => {
+    if (y > doc.internal.pageSize.getHeight() - 80) { doc.addPage(); y = 40; }
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(text, 40, y);
+    y += 8;
+  };
+
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(opts.filterLine, 40, y);
+  y += 14;
+  if (!opts.ratesKnown) {
+    doc.text('Expected sessions were not available from the server; only check-ins are listed.', 40, y);
+    y += 14;
+  }
+  const s = opts.summary;
+  autoTable(doc, {
+    startY: y,
+    head: [['Attendance rate', 'Expected', 'Attended', 'Incomplete', 'Absent', 'Late arrivals', 'Checked out']],
+    body: [[rate(s.rate), String(s.expected), String(s.attended), String(s.incomplete), String(s.absent), String(s.late), `${s.checkedOut} of ${s.checkedOut + s.missingCheckOut}`]],
+    ...table,
+  });
+  y = afterTableY(doc, y + 40) + 24;
+
+  heading('By course');
+  autoTable(doc, {
+    startY: y,
+    head: [['Course', 'Code', 'Expected', 'Attended', 'Incomplete', 'Absent', 'Late', 'Rate']],
+    body: opts.courses.map((c) => [c.courseName, c.courseCode, String(c.expected), String(c.attended), String(c.incomplete), String(c.absent), String(c.late), rate(c.rate)]),
+    ...table,
+  });
+  y = afterTableY(doc, y + 40) + 24;
+
+  heading(opts.periodHeading);
+  autoTable(doc, {
+    startY: y,
+    head: [[opts.periodHeading.replace(/^By /, '').replace(/^./, (c) => c.toUpperCase()), 'Expected', 'Attended', 'Incomplete', 'Absent', 'Late', 'Rate']],
+    body: opts.periods.map((p) => [p.label, String(p.expected), String(p.attended), String(p.incomplete), String(p.absent), String(p.late), rate(p.rate)]),
+    ...table,
+  });
+  y = afterTableY(doc, y + 40) + 24;
+
+  heading(`Records (${opts.records.length})`);
+  autoTable(doc, {
+    startY: y,
+    head: [['#', 'Date', 'Course', 'Class', 'Check-in', 'Check-out', 'Status']],
+    body: opts.records.map((r, i) => [String(i + 1), r.date, r.courseCode, r.title, r.checkIn || '—', r.checkOut || '—', r.status]),
+    ...table,
+  });
+
+  doc.save(`${opts.fileBase.replace(/[^\w-]/g, '')}.pdf`);
+}
+
 /** Executive Ed Phase 9 — NPS engine analytics bundle (session-level averages + gender
  * participation), same two-table layout exportSessionLedgerPdf/exportHodRosterPdf use. */
 export async function exportNpsAnalyticsPdf(

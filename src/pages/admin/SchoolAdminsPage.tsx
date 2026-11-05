@@ -8,6 +8,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Users, Mail, School, Search, Plus } from 'lucide-react';
 import { UserDirectoryTabs } from '../../components/admin/UserDirectoryTabs';
 import { InviteSentNotice, InviteStateBadge, type InviteInfo, type InviteState } from '../../components/admin/InviteSent';
+import { TablePager } from '../../components/ui/TablePager';
 import type { User, School as SchoolType } from '../../types';
 
 const emptyForm = { firstName: '', lastName: '', email: '', schoolId: '' };
@@ -43,6 +44,15 @@ export function SchoolAdminsPage() {
     );
   });
 
+  // Pagination (11-05): "#" numbers continue across pages; a new search or filter starts on page 1.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = filtered.length;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = filtered.slice(offset, offset + pageSize);
+  const isNarrowed = !!search || !!schoolFilterId;
+
   const handleCreate = async () => {
     // A Super Admin names the school (the first admin there becomes its primary); a School Admin
     // adds another School Admin to their own school — the server forces the school either way.
@@ -59,7 +69,7 @@ export function SchoolAdminsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">School Admins</h1>
@@ -81,14 +91,14 @@ export function SchoolAdminsPage() {
             type="text"
             placeholder="Search admins..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             className="w-full pl-9 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
         </div>
         {isSuperAdmin && (
           <select
             value={schoolFilterId}
-            onChange={(e) => setSchoolFilterId(e.target.value)}
+            onChange={(e) => { setSchoolFilterId(e.target.value); setPage(0); }}
             className="rounded-xl px-3 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white"
           >
             <option value="">All Institutions</option>
@@ -96,7 +106,7 @@ export function SchoolAdminsPage() {
           </select>
         )}
         <span className="text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
-          {filtered.length} admin{filtered.length !== 1 ? 's' : ''}
+          {isNarrowed ? `${total.toLocaleString()} of ${admins.length.toLocaleString()}` : total.toLocaleString()} school admin{(isNarrowed ? admins.length : total) !== 1 ? 's' : ''}
         </span>
       </div>
 
@@ -109,6 +119,7 @@ export function SchoolAdminsPage() {
           <table className="w-full text-sm gradient-table">
             <thead>
               <tr>
+                <th className="w-12">#</th>
                 <th>Name</th>
                 <th>Email</th>
                 <th>University</th>
@@ -117,8 +128,9 @@ export function SchoolAdminsPage() {
               </tr>
             </thead>
             <tbody className="text-slate-800 dark:text-gray-300">
-              {filtered.map((admin) => (
+              {pageRows.map((admin, i) => (
                 <tr key={admin.id}>
+                  <td className="text-xs tabular-nums text-slate-400">{offset + i + 1}</td>
                   <td>
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
@@ -157,7 +169,7 @@ export function SchoolAdminsPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-12">
+                  <td colSpan={6} className="text-center py-12">
                     <Users size={40} className="mx-auto text-slate-400 dark:text-gray-600 mb-3" />
                     <p className="text-sm text-slate-600 dark:text-slate-400">No school admins found.</p>
                   </td>
@@ -165,6 +177,9 @@ export function SchoolAdminsPage() {
               )}
             </tbody>
           </table>
+        )}
+        {!loading && (
+          <TablePager page={current} pageSize={pageSize} total={total} noun="school admins" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
         )}
       </div>
 

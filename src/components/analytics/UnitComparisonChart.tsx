@@ -52,7 +52,7 @@ export function UnitComparisonChart() {
 
   if (error) {
     return (
-      <section aria-label={`Attendance by ${unitWord}`} className="rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+      <section aria-label={`Attendance by ${unitWord}`} className="rounded-2xl border border-slate-200/70 bg-white/80 p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Attendance by {level === 'FACULTY' ? 'faculty' : 'department'}</h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           Couldn't load the comparison right now. Try again shortly.
@@ -65,7 +65,7 @@ export function UnitComparisonChart() {
 
   if (data.units.length === 0) {
     return (
-      <section aria-label={`Attendance by ${unitWord}`} className="rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+      <section aria-label={`Attendance by ${unitWord}`} className="rounded-2xl border border-slate-200/70 bg-white/80 p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Attendance by {level === 'FACULTY' ? 'faculty' : 'department'}</h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           No courses are tagged to a {level === 'FACULTY' ? 'faculty' : 'department'} yet, so there's nothing to
@@ -76,7 +76,7 @@ export function UnitComparisonChart() {
   }
 
   return (
-    <section aria-label={`Attendance by ${unitWord}`} className="rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+    <section aria-label={`Attendance by ${unitWord}`} className="rounded-2xl border border-slate-200/70 bg-white/80 p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Attendance by {level === 'FACULTY' ? 'faculty' : 'department'}</h2>

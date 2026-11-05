@@ -66,7 +66,7 @@ export function RoomBookingsTab() {
   const tabs: { key: View; label: string }[] = [{ key: 'UPCOMING', label: 'Booked' }, ...(waitingCount || view === 'PENDING' ? [{ key: 'PENDING' as View, label: `Waiting${waitingCount ? ` (${waitingCount})` : ''}` }] : []), { key: 'ALL', label: 'Last 30 days' }];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <GlassCard>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div>

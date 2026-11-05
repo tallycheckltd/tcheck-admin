@@ -119,7 +119,7 @@ export function CemTeamPage() {
   ];
 
   return (
-    <div className="space-y-6" data-testid="cem-team-page">
+    <div className="space-y-5" data-testid="cem-team-page">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">CEM Team</h1>
@@ -160,7 +160,7 @@ export function CemTeamPage() {
 function TicketTable({ rows, loading, empty, escalated, roster, canManage, onChanged, ...rest }: { rows?: BoardTicket[]; loading: boolean; empty: string; escalated?: boolean; roster?: Roster | null; canManage?: boolean; onChanged?: () => void; 'data-testid'?: string }) {
   const [reassign, setReassign] = useState<BoardTicket | null>(null);
   if (loading && !rows) return <p className="text-sm text-gray-500">Loading…</p>;
-  if (!rows?.length) return <p className="glass-card p-6 text-sm text-gray-500 text-center">{empty}</p>;
+  if (!rows?.length) return <p className="glass-card p-5 text-sm text-gray-500 text-center">{empty}</p>;
   return (
     <div className="glass-card overflow-x-auto" data-testid={rest['data-testid'] ?? 'escalated-list'}>
       <table className="w-full text-sm">
@@ -267,7 +267,7 @@ function TeamTable({ data, loading, from, to }: { data: { team: TeamRow[]; minTi
     return [head, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   }, [data]);
   if (loading && !data) return <p className="text-sm text-gray-500">Loading…</p>;
-  if (!data?.team.length) return <p className="glass-card p-6 text-sm text-gray-500 text-center">No CEMs in this team yet.</p>;
+  if (!data?.team.length) return <p className="glass-card p-5 text-sm text-gray-500 text-center">No CEMs in this team yet.</p>;
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center text-xs text-gray-500">

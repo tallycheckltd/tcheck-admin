@@ -7,6 +7,7 @@ import { startSupportSession } from '../../lib/supportSession';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { TablePager } from '../ui/TablePager';
 import type { Ticket } from '../../types';
 
 export interface PlatformGrant {
@@ -73,17 +74,26 @@ export function GrantRequestForm({ schoolId: fixedSchool, onDone }: { schoolId?:
 export function GrantsTable({ grants, onChanged }: { grants: PlatformGrant[]; onChanged: () => void }) {
   const navigate = useNavigate();
   const [activityFor, setActivityFor] = useState<PlatformGrant | null>(null);
+  // Pagination (11-05).
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = grants.length;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = grants.slice(offset, offset + pageSize);
   const use = (g: PlatformGrant) => {
     startSupportSession({ grantId: g.id, schoolId: g.school.id, schoolName: g.school.name, scope: g.scope, targetUserId: g.targetUserId, expiresAt: g.expiresAt! });
     navigate(g.scope === 'SETUP' ? `/platform/setup/${g.school.id}` : '/platform/support-session');
   };
-  if (!grants.length) return <p className="glass-card p-6 text-sm text-gray-500 text-center">No support access requests yet.</p>;
+  if (!grants.length) return <p className="glass-card p-5 text-sm text-gray-500 text-center">No support access requests yet.</p>;
   return (
     <div className="glass-card overflow-x-auto">
+      <p className="px-3 pt-3 text-xs tabular-nums text-gray-500" data-testid="grant-count">{total.toLocaleString()} {total === 1 ? 'request' : 'requests'}</p>
       <table className={table}>
-        <thead><tr><th className={th}>Institution</th><th className={th}>Covers</th><th className={th}>Why</th><th className={th}>State</th><th className={th}>Ends</th><th className={th} /></tr></thead>
-        <tbody>{grants.map((g) => (
+        <thead><tr><th className={`${th} w-12`}>#</th><th className={th}>Institution</th><th className={th}>Covers</th><th className={th}>Why</th><th className={th}>State</th><th className={th}>Ends</th><th className={th} /></tr></thead>
+        <tbody>{pageRows.map((g, i) => (
           <tr key={g.id} data-testid="grant-row">
+            <td className={`${td} text-xs tabular-nums text-gray-400`}>{offset + i + 1}</td>
             <td className={td}>{g.school.name}</td>
             <td className={td}>{g.scope === 'ACCOUNT' ? 'One account' : 'Institution Setup'}</td>
             <td className={td}>{g.reason}</td>
@@ -99,6 +109,7 @@ export function GrantsTable({ grants, onChanged }: { grants: PlatformGrant[]; on
           </tr>
         ))}</tbody>
       </table>
+      <TablePager page={current} pageSize={pageSize} total={total} noun="requests" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
       {activityFor && <GrantActivityModal path={`/platform/support-grants/${activityFor.id}/activity`} title={`${activityFor.school.name} — what was done`} onClose={() => setActivityFor(null)} />}
     </div>
   );

@@ -48,7 +48,7 @@ export function InstitutionSetupPage() {
   const { data: tali } = useApi<TaliAccess>(!isSuperAdmin && user?.schoolId ? '/insights/access' : null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-slate-950 dark:text-white flex items-center gap-2"><UploadCloud size={24} className="text-blue-500" /> Institution Setup</h1>
         <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">Set the institution up once: the calendar, then the eight template files. Every upload is checked first — nothing changes until you press Apply, and re-uploading the same files changes nothing.</p>

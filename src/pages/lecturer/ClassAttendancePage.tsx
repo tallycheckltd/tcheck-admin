@@ -54,7 +54,7 @@ function CourseAttendanceListView({ lecturerId }: { lecturerId?: string }) {
   ).sort((a, b) => a.course.code.localeCompare(b.course.code));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Session attendance</h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{courseGroups.length} courses with scheduled sessions</p>
@@ -120,7 +120,7 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-[200px]">
           {courseId && <CourseDrilldownBackLink onClick={() => navigate('/attendance')} />}
@@ -293,7 +293,7 @@ function ClassStatsListView({ lecturerId, courseId }: { lecturerId?: string; cou
             ))}
             {(!filtered || filtered.length === 0) && (
               <tr>
-                <td colSpan={10} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
+                <td colSpan={10} className="px-5 py-16 text-center text-slate-500 dark:text-slate-400">
                   No sessions found for this roster.
                 </td>
               </tr>
@@ -357,7 +357,7 @@ function ClassDetailView({ classId }: { classId: string }) {
     && Date.now() >= classStartMs && Date.now() - classEndMs <= 14 * 86_400_000;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <CorrectionModal classId={classId} student={correcting} kind={correcting?.kind ?? 'ADD'} asLecturer={!canEditClasses}
         onClose={() => setCorrecting(null)} onDone={(m) => { setCorrecting(null); setCorrectionFlash(m); refetch(); }} />
       {correctionFlash && (
@@ -371,7 +371,7 @@ function ClassDetailView({ classId }: { classId: string }) {
       </a>
 
       {/* Class Info Header */}
-      <div className="glass-card p-6">
+      <div className="glass-card p-5">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{data.classInfo.title}</h1>
@@ -496,7 +496,7 @@ function ClassDetailView({ classId }: { classId: string }) {
               </tr>
             ))}
             {data.attendances.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-8 text-slate-600 dark:text-slate-400">No check-ins yet</td></tr>
+              <tr><td colSpan={8} className="text-center py-6 text-slate-600 dark:text-slate-400">No check-ins yet</td></tr>
             )}
           </tbody>
         </table>

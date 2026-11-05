@@ -70,6 +70,8 @@ const NOUN: Record<string, string> = {
 const SPECIAL: Record<string, string> = {
   'support.action': 'Platform acted under support access',
   'platform.auditViewed': 'Platform viewed the audit log',
+  'account.pinUnlocked': 'PIN unlocked',
+  'school.analyticsEmailed': 'Analytics report emailed',
   'cohort.cemAssigned': 'CEM assigned to cohort',
   'cohort.cemUnassigned': 'CEM removed from cohort',
   'account.passwordSet': 'Password set',
@@ -200,7 +202,7 @@ export function AuditLogView({ base, schoolId, schoolName }: {
   const top = facets?.actions[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Tile label="Events" value={facets ? facets.total.toLocaleString() : '—'} icon={<Activity size={18} />} color="blue" basis={PERIODS.find((p) => p.key === period)?.label} />
         <Tile label="People who made changes" value={facets ? String(facets.actors.length) : '—'} icon={<Users size={18} />} color="green" basis="Signed-in accounts; automatic jobs not counted" />

@@ -64,7 +64,7 @@ export function PlatformHomePage() {
   if (!data) return <p className="text-sm text-gray-500">Loading…</p>;
   const failing = data.jobs.filter((j) => j.ok === false || j.late);
   return (
-    <div className="space-y-6" data-testid="platform-home">
+    <div className="space-y-5" data-testid="platform-home">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Watchtower</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">Health across every institution — counts only, never a person's record.</p>

@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Search, CheckCircle, XCircle, Trash2, GraduationCap } from 'lucide-react';
 import { UserDirectoryTabs } from '../../components/admin/UserDirectoryTabs';
+import { TablePager } from '../../components/ui/TablePager';
 import type { User } from '../../types';
 
 const statusColor = { PENDING: 'yellow' as const, APPROVED: 'green' as const, REJECTED: 'red' as const, DEACTIVATED: 'gray' as const, DELETED: 'gray' as const };
@@ -41,6 +42,16 @@ export function AllStudentsPage() {
     );
   });
 
+  // Pagination (11-05): "#" numbers continue across pages; a new search or filter starts on page 1.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const total = filtered?.length ?? 0;
+  const current = Math.min(page, Math.max(0, Math.ceil(total / pageSize) - 1));
+  const offset = current * pageSize;
+  const pageRows = filtered?.slice(offset, offset + pageSize);
+  const allCount = users?.filter((u) => u.status !== 'DELETED').length ?? 0;
+  const isNarrowed = !!search || filter !== 'all';
+
   const approve = async (id: string) => {
     await patch(`/users/${id}/status`, { status: 'APPROVED' });
     refetch();
@@ -60,7 +71,7 @@ export function AllStudentsPage() {
   const pendingCount = users?.filter((u) => u.status === 'PENDING').length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Students</h1>
@@ -79,7 +90,7 @@ export function AllStudentsPage() {
             type="text"
             placeholder="Search by name, email, or student ID..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             className="w-full pl-10 pr-4 py-2 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder:text-gray-400"
           />
         </div>
@@ -89,19 +100,23 @@ export function AllStudentsPage() {
               key={f}
               variant={filter === f ? 'primary' : 'secondary'}
               size="sm"
-              onClick={() => setFilter(f)}
+              onClick={() => { setFilter(f); setPage(0); }}
             >
               {f === 'all' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
               {f === 'PENDING' && pendingCount > 0 ? ` (${pendingCount})` : f === 'PENDING' ? ' (0)' : ''}
             </Button>
           ))}
         </div>
+        <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap tabular-nums">
+          {isNarrowed ? `${total.toLocaleString()} of ${allCount.toLocaleString()}` : total.toLocaleString()} student{(isNarrowed ? allCount : total) !== 1 ? 's' : ''}
+        </span>
       </div>
 
       <div className="glass-card overflow-hidden">
         <table className="w-full text-sm gradient-table">
           <thead>
             <tr>
+              <th className="w-12">#</th>
               <th>Name</th>
               <th>Email</th>
               <th>Student ID</th>
@@ -115,12 +130,13 @@ export function AllStudentsPage() {
             </tr>
           </thead>
           <tbody className="text-gray-700 dark:text-gray-300">
-            {filtered?.map((u) => (
+            {pageRows?.map((u, i) => (
               <tr
                 key={u.id}
                 onClick={() => navigate(`/admin/users/${u.id}`)}
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
               >
+                <td className="text-xs tabular-nums text-gray-400">{offset + i + 1}</td>
                 <td className="font-medium text-gray-900 dark:text-white">
                   {u.firstName} {u.lastName}
                 </td>
@@ -187,7 +203,7 @@ export function AllStudentsPage() {
             ))}
             {filtered?.length === 0 && (
               <tr>
-                <td colSpan={(execEdSuite ? 9 : 6) + (onboardingJourney ? 1 : 0)} className="text-center py-12">
+                <td colSpan={(execEdSuite ? 10 : 7) + (onboardingJourney ? 1 : 0)} className="text-center py-12">
                   <div className="flex flex-col items-center">
                     <GraduationCap size={40} className="text-gray-300 dark:text-gray-600 mb-2" />
                     <p className="text-gray-400">No students found matching filters</p>
@@ -197,6 +213,7 @@ export function AllStudentsPage() {
             )}
           </tbody>
         </table>
+        <TablePager page={current} pageSize={pageSize} total={total} noun="students" onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(0); }} />
       </div>
     </div>
   );

@@ -188,7 +188,7 @@ export function PlatformAnalyticsPage() {
 
   const select = 'rounded-lg border border-gray-200 dark:border-white/10 px-2 py-1.5 text-sm bg-white dark:bg-white/5';
   return (
-    <div className="space-y-6" data-testid="platform-analytics">
+    <div className="space-y-5" data-testid="platform-analytics">
       <div className="flex justify-between items-start gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Analytics</h1>
@@ -228,7 +228,7 @@ export function PlatformAnalyticsPage() {
 
       {view === 'platform' && <PlatformView range={range} prev={prev} gran={gran === 'term' ? 'month' : gran} colors={colors} dark={dark} onOpen={(id) => { pickSchool(id); setView('school'); }} />}
       {view === 'institution' && activeInstitution && <InstitutionView id={activeInstitution} name={groups.find((g) => g.institution?.id === activeInstitution)?.institution?.name ?? ''} range={range} prev={prev} gran={gran === 'term' ? 'month' : gran} colors={colors} dark={dark} />}
-      {view === 'institution' && !groups.some((g) => g.institution) && <p className="glass-card p-6 text-sm text-gray-500">No institution has more than one campus yet — use the School view.</p>}
+      {view === 'institution' && !groups.some((g) => g.institution) && <p className="glass-card p-5 text-sm text-gray-500">No institution has more than one campus yet — use the School view.</p>}
       {view === 'school' && activeSchool && <SchoolView id={activeSchool} range={range} prev={prev} gran={gran} colors={colors} dark={dark} />}
       {view === 'compare' && <CompareView all={shared} selected={compareIds} setSelected={setCompareIds} range={range} colors={colors} dark={dark} />}
     </div>
@@ -268,7 +268,7 @@ function PlatformView({ range, prev, gran, colors, dark, onOpen }: { range: { fr
   const th = (k: string, l: string) => <th className="p-2 text-left text-xs uppercase text-gray-500"><button className="cursor-pointer" onClick={() => setSort({ key: k, dir: sort.key === k ? (-sort.dir as 1 | -1) : -1 })}>{l}{sort.key === k ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}</button></th>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {cards.map(([k, l, u]) => <Kpi key={k} label={l} unit={u} value={roll(data, k)?.value ?? null} delta={change(roll(data, k)?.value, roll(before, k)?.value)} spark={spark?.series[k]} color={colors[0]!} />)}
       </div>
@@ -379,7 +379,7 @@ function SchoolView({ id, range, prev, gran, colors }: { id: string; range: { fr
   const { data, loading } = useApi<TenantAgg>(`/platform/analytics/tenants/${id}?${qs(range)}`);
   const { data: before } = useApi<TenantAgg>(prev ? `/platform/analytics/tenants/${id}?${qs(prev)}` : null);
   if (loading && !data) return <p className="text-sm text-gray-500">Loading…</p>;
-  if (!data?.metrics) return <p className="glass-card p-6 text-sm text-gray-500">{data?.status === 'unreachable' ? 'Isolated — not connected yet.' : 'No data.'}</p>;
+  if (!data?.metrics) return <p className="glass-card p-5 text-sm text-gray-500">{data?.status === 'unreachable' ? 'Isolated — not connected yet.' : 'No data.'}</p>;
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500"><strong className="text-gray-900 dark:text-white">{data.tenant}</strong> · shares T0{data.tiers.t1 ? ' · T1' : ''}{data.tiers.t2 ? ' · T2' : ''}{data.tiers.t3 ? ' · T3' : ''}</p>
@@ -489,7 +489,7 @@ function CompareView({ all, selected, setSelected, range, colors }: { all: { id:
           })}
         </div>
       </Card>
-      {selected.length < 2 ? <p className="glass-card p-6 text-sm text-gray-500 text-center">Pick at least two schools.</p> : (
+      {selected.length < 2 ? <p className="glass-card p-5 text-sm text-gray-500 text-center">Pick at least two schools.</p> : (
         <>
           <div className="flex justify-end"><Button size="sm" variant="secondary" onClick={() => setAsTable(!asTable)}>{asTable ? <><LineIcon size={13} className="mr-1.5" />Charts</> : <><Table2 size={13} className="mr-1.5" />Table</>}</Button></div>
           {asTable ? (

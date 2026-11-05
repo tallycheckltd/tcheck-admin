@@ -245,9 +245,9 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
     previewRows?.filter((r) => r.overallAttendancePct < attendanceThreshold).length ?? 0;
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 max-w-6xl">
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 max-w-6xl">
       <div className="xl:col-span-5 space-y-4">
-        <div className={clsx(cardBase, 'p-6 space-y-5')}>
+        <div className={clsx(cardBase, 'p-5 space-y-5')}>
           <div>
             <h2 className="text-sm font-bold text-[var(--app-text)] flex items-center gap-2">
               <ClipboardList size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
@@ -391,7 +391,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
             )}
 
             {reportType === 'course-attendance' && (
-              <div className="rounded-xl border border-dashed border-[var(--app-border)] dark:border-white/15 p-6 text-center">
+              <div className="rounded-xl border border-dashed border-[var(--app-border)] dark:border-white/15 p-5 text-center">
                 <Building2 className="mx-auto text-[var(--app-text-muted)] mb-2" size={28} />
                 <p className="text-sm text-[var(--app-text-secondary)]">
                   Select a course and range, then <strong>Download PDF</strong>. Opens in your browser viewer or Preview.
@@ -408,7 +408,7 @@ function HodReportsView({ canUseSemesterRoster, coursesFetchPath, title, subtitl
                   </div>
                 )}
                 {previewError && !previewLoading && (
-                  <p className="text-sm text-red-600 dark:text-red-400 text-center py-8">{previewError}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400 text-center py-6">{previewError}</p>
                 )}
                 {!previewLoading && !previewError && previewRows && (
                   <div className="space-y-4">
@@ -553,7 +553,7 @@ function LecturerReportsView() {
     detail && detail.totalEnrolled > 0 ? Math.round((detail.totalCheckedIn / detail.totalEnrolled) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 max-w-6xl">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 max-w-6xl">
       <aside className="lg:col-span-4 xl:col-span-3 space-y-3">
         <div className={clsx(cardBase, 'p-4')}>
           <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-muted)] mb-3">Sessions</h3>
@@ -575,7 +575,7 @@ function LecturerReportsView() {
             </div>
           )}
           {(coursesLoading || classesLoading) && (
-            <div className="flex items-center gap-2 text-xs text-[var(--app-text-muted)] py-6 justify-center">
+            <div className="flex items-center gap-2 text-xs text-[var(--app-text-muted)] py-5 justify-center">
               <Loader2 className="animate-spin" size={16} />
               Loading…
             </div>
@@ -651,7 +651,7 @@ function LecturerReportsView() {
           </div>
         )}
         {!detailLoading && detailError && (
-          <div className={clsx(cardBase, 'p-8 text-center')}>
+          <div className={clsx(cardBase, 'p-6 text-center')}>
             <AlertCircle className="mx-auto text-red-500 mb-3" size={36} />
             <p className="text-sm text-red-700 dark:text-red-300">{detailError}</p>
             <Button variant="secondary" className="mt-4" onClick={() => selectedClassId && loadRecords(selectedClassId)}>
@@ -816,7 +816,7 @@ function CourseReportPanel({ courseId, onSession }: { courseId: string; onSessio
   }
   if (error || !r) {
     return (
-      <div className={clsx(cardBase, 'p-8 text-center')}>
+      <div className={clsx(cardBase, 'p-6 text-center')}>
         <AlertCircle className="mx-auto text-red-500 mb-3" size={36} />
         <p className="text-sm text-red-700 dark:text-red-300">Could not load this course report. {error}</p>
       </div>
@@ -937,7 +937,7 @@ export function ReportsPage() {
   else if (seesOrgWide && user?.schoolId) hodCoursesFetchPath = `/courses?schoolId=${user.schoolId}`;
 
   const classicExports = (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {seesOrgWide && !isSuperAdmin && !user?.schoolId && (
         <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 flex gap-2">
           <AlertCircle className="shrink-0" size={18} />
@@ -963,7 +963,7 @@ export function ReportsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6">
+    <div className="mx-auto max-w-[1600px] space-y-5">
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight text-[var(--app-text)]">Reports</h1>
         <p className="text-sm text-[var(--app-text-muted)] max-w-2xl">

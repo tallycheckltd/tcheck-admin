@@ -54,7 +54,7 @@ export function PlatformOnboardingPage() {
   };
 
   return (
-    <div className="space-y-6" data-testid="platform-onboarding">
+    <div className="space-y-5" data-testid="platform-onboarding">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Onboarding</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">Each tenant's setup and how its students are taking it up. The platform can open a tenant's Institution Setup only during its first 30 days; after that, the School Admin approves a setup access request.</p>
@@ -125,7 +125,7 @@ export function PlatformOnboardingPage() {
           </div>
         </section>
       ))}
-      {data && !data.rows.length && <p className="glass-card p-6 text-sm text-gray-500 text-center">No tenants yet.</p>}
+      {data && !data.rows.length && <p className="glass-card p-5 text-sm text-gray-500 text-center">No tenants yet.</p>}
       {grantFor && <SetupGrantModal row={grantFor} onClose={() => setGrantFor(null)} onDone={(m) => { setGrantFor(null); setNotice(m); refetch(); }} />}
     </div>
   );

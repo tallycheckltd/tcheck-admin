@@ -91,7 +91,7 @@ export function InvigilationPage() {
   const ineligibleCount = (cards?.length ?? 0) - eligibleCount;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <ScanEye className="text-blue-500" /> Invigilation
@@ -154,7 +154,7 @@ export function InvigilationPage() {
               {singleCourseRows.map(({ student, course }) => {
                 const eligible = course.percentage >= attendanceThreshold;
                 return (
-                  <div key={student.id} className="flex items-center justify-between gap-4 px-6 py-4">
+                  <div key={student.id} className="flex items-center justify-between gap-4 px-5 py-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-white/10 dark:to-white/5 flex items-center justify-center text-slate-500 dark:text-gray-400 font-bold text-xs flex-shrink-0">
                         {student.firstName[0]}{student.lastName[0]}
@@ -187,7 +187,7 @@ export function InvigilationPage() {
                   <button
                     type="button"
                     onClick={() => setExpanded(isOpen ? null : group.courseId)}
-                    className="w-full flex items-center justify-between gap-4 px-6 py-4 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors text-left cursor-pointer"
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{group.courseName}</p>
@@ -201,7 +201,7 @@ export function InvigilationPage() {
                     </div>
                   </button>
                   {isOpen && (
-                    <div className="px-6 pb-4 bg-gray-50/50 dark:bg-white/[0.02]">
+                    <div className="px-5 pb-4 bg-gray-50/50 dark:bg-white/[0.02]">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
                         {group.rows.map(({ student, course }) => {
                           const eligible = course.percentage >= attendanceThreshold;

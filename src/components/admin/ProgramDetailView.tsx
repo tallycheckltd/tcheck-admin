@@ -120,7 +120,7 @@ export function ProgramDetailView({ cohortId, showFacilities = true, children }:
   if (loading) return <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>;
   if (!program) {
     return (
-      <div className="glass-card p-8 text-center">
+      <div className="glass-card p-6 text-center">
         <GraduationCap size={28} className="mx-auto text-gray-400 mb-3" />
         <p className="text-sm text-gray-500 dark:text-gray-400">This programme isn&apos;t available to you (or doesn&apos;t exist).</p>
       </div>

@@ -22,6 +22,7 @@ import { SettingsPage } from './pages/admin/SettingsPage';
 import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { CourseAttendanceDetailPage } from './pages/admin/CourseAttendanceDetailPage';
 import { AttendanceAnalyticsPage } from './pages/admin/AttendanceAnalyticsPage';
+import { SchoolAnalyticsPage } from './pages/admin/SchoolAnalyticsPage';
 import { NpsAnalyticsPage } from './pages/admin/NpsAnalyticsPage';
 import { InsightsPage, LegacyInsightsRedirect } from './pages/shared/InsightsPage';
 import { AllStudentsPage } from './pages/admin/AllStudentsPage';
@@ -117,6 +118,8 @@ export default function App() {
                 <Route path="/platform/support-session" element={<PlatformSupportSessionPage />} />
                 <Route path="/platform/fleet" element={<PlatformFleetPage />} />
                 <Route path="/platform/analytics" element={<PlatformAnalyticsPage />} />
+                {/* 11-05 — any school's analytics, numbers only (GET /platform/school-analytics). */}
+                <Route path="/platform/school-analytics" element={<SchoolAnalyticsPage />} />
                 <Route path="/platform/audit" element={<PlatformAuditPage />} />
               </Route>
               <Route path="/admin/users" element={<UsersPage />} />
@@ -143,6 +146,8 @@ export default function App() {
                 <Route path="/admin/settings" element={<SettingsPage />} />
                 {/* 11-02 — this school's whole audit trail (GET /audit/events is School Admin only). */}
                 <Route path="/admin/audit" element={<AuditLogPage />} />
+                {/* 11-05 — the Moi-style Analytics page for this school (GET /school-analytics is School Admin only). */}
+                <Route path="/admin/analytics" element={<SchoolAnalyticsPage />} />
               </Route>
               <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               <Route path="/follow-ups" element={<FollowUpsPage />} />

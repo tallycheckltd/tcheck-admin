@@ -56,7 +56,7 @@ export function LineChartCard({ title, data, color = '#3B82F6' }: Props) {
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-5">
             <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mb-3">
               <TrendingUp className="text-gray-400" size={24} />
             </div>

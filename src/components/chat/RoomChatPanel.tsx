@@ -81,7 +81,7 @@ export function RoomChatPanel() {
   };
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-8rem)]">
+    <div className="flex gap-5 h-[calc(100vh-8rem)]">
       <GlassCard className="w-80 flex flex-col overflow-hidden">
         <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 px-1">Rooms</p>
         <div className="flex-1 overflow-y-auto space-y-1">
@@ -109,7 +109,7 @@ export function RoomChatPanel() {
             </button>
           ))}
           {targets && !targets.schoolId && targets.courses.length === 0 && (
-            <p className="text-center text-slate-600 dark:text-slate-400 py-8 text-sm">No rooms available</p>
+            <p className="text-center text-slate-600 dark:text-slate-400 py-6 text-sm">No rooms available</p>
           )}
         </div>
       </GlassCard>
