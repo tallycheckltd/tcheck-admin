@@ -476,6 +476,10 @@ interface StaffMaterial {
   createdAt?: string;
   /** SBS (11-06): brought in from the school's eLearning (Moodle). */
   fromElearning?: boolean;
+  /** The eLearning section it sits in ("Day 1: Strategy"); eLearning items only. */
+  section?: string | null;
+  /** Its place in the eLearning course, so the group follows the course's order. */
+  position?: number | null;
   openedCount?: number;
   audienceCount?: number | null;
 }
@@ -487,8 +491,28 @@ const KIND_META: Record<string, { label: string; hint: string; cls: string }> = 
   LIBRARY: { label: 'Course library', hint: 'Course-wide — not tied to one session.', cls: 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300' },
 };
 
+/** eLearning resources, collapsed by default and grouped by the course's own sections, so a module
+ * with twenty Moodle items doesn't push everything else out of view. */
+function ElearningGroup({ items, onRemove }: { items: StaffMaterial[]; onRemove: () => void }) {
+  const ordered = [...items].sort((a, b) => (a.position ?? 1e9) - (b.position ?? 1e9));
+  const sections = [...new Set(ordered.map((m) => m.section ?? ''))];
+  return (
+    <details className="mb-2 group">
+      <summary className="cursor-pointer list-none flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+        <span className="transition-transform group-open:rotate-90">›</span> From eLearning · {items.length} item{items.length === 1 ? '' : 's'}
+      </summary>
+      {sections.map((sec) => (
+        <div key={sec || 'none'} className="mb-1.5">
+          {sections.length > 1 && <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 ml-1">{sec || 'Other'}</p>}
+          <ul className="space-y-1.5">{ordered.filter((m) => (m.section ?? '') === sec).map((m) => <MaterialItem key={m.id} m={m} onRemove={onRemove} inGroup />)}</ul>
+        </div>
+      ))}
+    </details>
+  );
+}
+
 const fmtWhen = (d?: string | null) => (d ? new Date(d).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
-function MaterialItem({ m, onRemove }: { m: StaffMaterial; onRemove: () => void }) {
+function MaterialItem({ m, onRemove, inGroup = false }: { m: StaffMaterial; onRemove: () => void; inGroup?: boolean }) {
   return (
     <li className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
       <div className="flex items-start justify-between gap-2">
@@ -499,13 +523,16 @@ function MaterialItem({ m, onRemove }: { m: StaffMaterial; onRemove: () => void 
             {m.class && <span>{m.class.title} · {fmtWhen(m.class.startTime)}</span>}
             {m.kind === 'AFTER' && m.dueAt && <span>· due {fmtWhen(m.dueAt)}</span>}
             {m.fromElearning && <span className="rounded-full px-2 py-0.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">eLearning</span>}
+            {m.fromElearning && m.section && !inGroup && <span>{m.section}</span>}
           </p>
-          {m.description && <p className="text-xs text-gray-500 mt-1">{m.description}</p>}
+          {m.description && !m.fromElearning && <p className="text-xs text-gray-500 mt-1">{m.description}</p>}
           {m.url && <a href={m.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">{m.fromElearning ? 'Open in eLearning' : 'Open link'}</a>}
         </div>
         <div className="text-right shrink-0">
           {m.audienceCount != null && <p className="text-xs text-gray-500">{m.openedCount ?? 0} / {m.audienceCount} opened</p>}
-          <button onClick={onRemove} className="text-xs text-rose-500 hover:underline cursor-pointer">Remove</button>
+          {m.fromElearning
+            ? <p className="text-[11px] text-gray-400">Managed in eLearning</p>
+            : <button onClick={onRemove} className="text-xs text-rose-500 hover:underline cursor-pointer">Remove</button>}
         </div>
       </div>
     </li>
@@ -626,7 +653,8 @@ function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: 
               <section key={g.course?.id ?? 'general'}>
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1.5">{g.course?.name ?? 'General (whole school)'}</h3>
                 {g.upcoming.length > 0 && (<><p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1">Upcoming</p><ul className="space-y-1.5 mb-2">{g.upcoming.map((m) => <MaterialItem key={m.id} m={m} onRemove={async () => { await remove(`/staff/materials/${m.id}`); refetch(); }} />)}</ul></>)}
-                {g.library.length > 0 && (<><p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1">Library</p><ul className="space-y-1.5 mb-2">{g.library.map((m) => <MaterialItem key={m.id} m={m} onRemove={async () => { await remove(`/staff/materials/${m.id}`); refetch(); }} />)}</ul></>)}
+                {g.library.some((m) => !m.fromElearning) && (<><p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1">Library</p><ul className="space-y-1.5 mb-2">{g.library.filter((m) => !m.fromElearning).map((m) => <MaterialItem key={m.id} m={m} onRemove={async () => { await remove(`/staff/materials/${m.id}`); refetch(); }} />)}</ul></>)}
+                {g.library.some((m) => m.fromElearning) && <ElearningGroup items={g.library.filter((m) => m.fromElearning)} onRemove={async () => undefined} />}
                 {g.past.length > 0 && (<><p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1">Past</p><ul className="space-y-1.5 opacity-75">{g.past.map((m) => <MaterialItem key={m.id} m={m} onRemove={async () => { await remove(`/staff/materials/${m.id}`); refetch(); }} />)}</ul></>)}
               </section>
             ))}
