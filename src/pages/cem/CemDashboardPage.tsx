@@ -4,6 +4,7 @@ import { useApi } from '../../hooks/useApi';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StatCard } from '../../components/ui/StatCard';
+import { NewProgrammeButton } from '../../components/cem/ProgrammeTools';
 import { useAuth } from '../../context/AuthContext';
 import { Users, GraduationCap, Wrench, MessageSquareHeart, CheckCircle2, Clock, BarChart3, ChevronRight } from 'lucide-react';
 import type { FacilityTicket, FacilityTicketPreset } from '../../types';
@@ -80,9 +81,12 @@ export function CemDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back, {user?.firstName}</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Aggregate analytics across every programme you manage, plus what needs your attention.</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back, {user?.firstName}</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Aggregate analytics across every programme you manage, plus what needs your attention.</p>
+        </div>
+        <NewProgrammeButton />
       </div>
 
       <section className="glass-card p-6">
@@ -131,7 +135,7 @@ export function CemDashboardPage() {
             </div>
             {analytics.byCourse.length > 0 && (
               <div>
-                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Attendance rate by course</p>
+                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Attendance rate by module</p>
                 <div className="space-y-2">
                   {analytics.byCourse.map((c) => (
                     <div key={c.courseId} className="flex items-center gap-3 text-sm">
@@ -172,7 +176,7 @@ export function CemDashboardPage() {
                 <h3 className="font-bold text-gray-900 dark:text-white">{c.name}</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{dateRange(c.startDate, c.endDate)}</p>
                 <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <Users size={14} className="text-blue-500" /> {c.studentCount} student{c.studentCount === 1 ? '' : 's'}
+                  <Users size={14} className="text-blue-500" /> {c.studentCount} delegate{c.studentCount === 1 ? '' : 's'}
                 </div>
                 {c.pendingWelcomeCount > 0 && (
                   <Badge color="yellow">{c.pendingWelcomeCount} welcome DM{c.pendingWelcomeCount === 1 ? '' : 's'} pending</Badge>
@@ -194,7 +198,7 @@ export function CemDashboardPage() {
             {unacknowledgedTickets.map((t) => (
               <li key={t.id} className="p-3 flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
-                  <Clock size={14} className="text-amber-500" /> Unacknowledged ticket — {presetLabel(t.presetType)} · {t.class?.title ?? 'a class'}
+                  <Clock size={14} className="text-amber-500" /> Unacknowledged ticket — {presetLabel(t.presetType)} · {t.class?.title ?? 'a session'}
                 </span>
                 <Link to={`/admin/facilities?ticket=${t.id}`} className="text-blue-500 hover:underline">Open</Link>
               </li>
@@ -202,7 +206,7 @@ export function CemDashboardPage() {
             {totalPendingWelcomes > 0 && (
               <li className="p-3 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
                 <MessageSquareHeart size={14} className="text-purple-500" />
-                {totalPendingWelcomes} student{totalPendingWelcomes === 1 ? '' : 's'} not yet welcomed — sent automatically once they finish onboarding.
+                {totalPendingWelcomes} delegate{totalPendingWelcomes === 1 ? '' : 's'} not yet welcomed — sent automatically once they finish onboarding.
               </li>
             )}
           </ul>
@@ -216,14 +220,14 @@ export function CemDashboardPage() {
         {ticketsLoading ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
         ) : (tickets ?? []).length === 0 ? (
-          <EmptyState icon={Wrench} title="No tickets" description="Nothing raised for your classes yet." size="md" />
+          <EmptyState icon={Wrench} title="No tickets" description="Nothing raised for your sessions yet." size="md" />
         ) : (
           <div className="glass-card overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 <tr>
                   <th className="text-left py-2 px-4">Issue</th>
-                  <th className="text-left py-2 px-4">Class</th>
+                  <th className="text-left py-2 px-4">Session</th>
                   <th className="text-left py-2 px-4">Raised by</th>
                   <th className="text-left py-2 px-4">Status</th>
                   <th className="text-left py-2 px-4">Raised</th>

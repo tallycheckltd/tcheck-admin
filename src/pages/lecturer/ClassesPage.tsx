@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTerms } from '../../hooks/useTerms';
 import { useNavigate } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
@@ -31,6 +32,7 @@ function isWeekendYmd(ymd: string): boolean {
 const MAX_QUICK_CREATE_DAYS = 14;
 
 export function ClassesPage() {
+  const w = useTerms();
   const { user } = useAuth();
   // QA plan B1: SCHOOL_ADMIN and every hierarchy role were previously filtered down to "courses I
   // teach" here too (empty for a non-lecturer) — see LiveAttendancePage.tsx for the full story.
@@ -245,13 +247,13 @@ export function ClassesPage() {
         <div>
           {selectedCourseId ? <CourseDrilldownBackLink onClick={() => setSelectedCourseId(null)} /> : null}
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
-            {selectedCourse ? `${selectedCourse.code} — ${selectedCourse.name}` : 'Classes'}
+            {selectedCourse ? `${selectedCourse.code} — ${selectedCourse.name}` : w.Classes}
           </h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            {selectedCourseId ? `${sessionsForSelectedCourse.length} sessions` : `${courseGroups.length} courses, ${myClasses.length} classes`}
+            {selectedCourseId ? `${sessionsForSelectedCourse.length} sessions` : `${courseGroups.length} ${courseGroups.length === 1 ? w.course : w.courses}, ${myClasses.length} ${myClasses.length === 1 ? w.class : w.classes}`}
           </p>
         </div>
-        {canManage && <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Class</Button>}
+        {canManage && <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New {w.Class}</Button>}
       </div>
 
       {flash && (
@@ -268,9 +270,9 @@ export function ClassesPage() {
         <CourseDrilldown
           groups={courseGroups}
           onSelect={(courseId) => setSelectedCourseId(courseId)}
-          countNoun="class"
-          countNounPlural="classes"
-          emptyTitle="No classes found — none scheduled yet, or none tagged to your school/department"
+          countNoun={w.class}
+          countNounPlural={w.classes}
+          emptyTitle={`No ${w.classes} found — none scheduled yet, or none tagged to your school/department`}
         />
       ) : (
       /* Level 2: sessions for the selected course — same table as before, pre-filtered */
@@ -344,7 +346,7 @@ export function ClassesPage() {
       </div>
       )}
 
-      <Modal open={modal} onClose={() => setModal(false)} title="Create Class">
+      <Modal open={modal} onClose={() => setModal(false)} title={`Create ${w.Class}`}>
         <div className="space-y-4">
           <div className="space-y-1">
             <label className="block text-sm font-medium text-slate-800 dark:text-gray-300">Course</label>
@@ -498,7 +500,7 @@ export function ClassesPage() {
             <p className="text-xs text-slate-600 dark:text-slate-400">Auto-assigned from the course's beacons — edit the course to change this.</p>
           </div>
           <Button onClick={handleCreate} className="w-full" disabled={creating}>
-            {creating ? 'Creating…' : isExecEd && parseInt(form.days) > 1 ? `Create ${Math.min(parseInt(form.days), MAX_QUICK_CREATE_DAYS)} Classes` : 'Create Class'}
+            {creating ? 'Creating…' : isExecEd && parseInt(form.days) > 1 ? `Create ${Math.min(parseInt(form.days), MAX_QUICK_CREATE_DAYS)} ${w.Classes}` : `Create ${w.Class}`}
           </Button>
         </div>
       </Modal>

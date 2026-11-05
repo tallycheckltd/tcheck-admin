@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTerms } from '../../hooks/useTerms';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { useCan } from '../../hooks/useCan';
@@ -13,6 +14,7 @@ import { CourseDataGrid } from '../../components/admin/CourseDataGrid';
 import { CourseCemAssignment } from '../../components/admin/CourseCemAssignment';
 
 export function CoursesPage() {
+  const w = useTerms();
   const { user } = useAuth();
   const execEd = !!user?.school?.features?.execEdSuite; // P9: module blocks are an Executive Education label
   // Everyone except a lecturer sees the school's (or, for leadership roles, their unit's) courses — the
@@ -111,9 +113,9 @@ export function CoursesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
-            {isAdmin ? 'All Courses' : 'My Courses'}
+            {isAdmin ? `All ${w.Courses}` : `My ${w.Courses}`}
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{courses?.length || 0} courses</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{courses?.length || 0} {courses?.length === 1 ? w.course : w.courses}</p>
         </div>
         <div className="flex items-center gap-2">
           {isAdmin && (
@@ -126,7 +128,7 @@ export function CoursesPage() {
               </button>
             </div>
           )}
-          {canManage && <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New Course</Button>}
+          {canManage && <Button onClick={() => setModal(true)}><Plus size={16} className="mr-1" /> New {w.Course}</Button>}
         </div>
       </div>
 
@@ -189,7 +191,7 @@ export function CoursesPage() {
               <div className="flex items-center gap-1">
                 {canManage && (
                   <>
-                    <button onClick={() => openEdit(course)} className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer" title="Edit course">
+                    <button onClick={() => openEdit(course)} className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer" title={`Edit ${w.course}`}>
                       <Edit2 size={14} className="text-blue-400" />
                     </button>
                     <button onClick={() => setEnrollModal(course.id)} className="text-xs text-blue-500 hover:text-blue-600 font-medium cursor-pointer px-2 py-1">
@@ -209,7 +211,7 @@ export function CoursesPage() {
       </div>
 
       {/* Create Course Modal */}
-      <Modal open={modal} onClose={() => setModal(false)} title="Create Course">
+      <Modal open={modal} onClose={() => setModal(false)} title={`Create ${w.Course}`}>
         <div className="space-y-4">
           <Input label="Course Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="Course Code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="e.g. CS101" />
@@ -267,12 +269,12 @@ export function CoursesPage() {
             </div>
           )}
           {execEd && <Input label="Module block (optional)" placeholder="e.g. Module 2 — Strategy" value={form.moduleBlock} onChange={(e) => setForm({ ...form, moduleBlock: e.target.value })} />}
-          <Button onClick={handleCreate} className="w-full">Create Course</Button>
+          <Button onClick={handleCreate} className="w-full">Create {w.Course}</Button>
         </div>
       </Modal>
 
       {/* Edit Course Modal */}
-      <Modal open={editModal} onClose={() => setEditModal(false)} title="Edit Course">
+      <Modal open={editModal} onClose={() => setEditModal(false)} title={`Edit ${w.Course}`}>
         <div className="space-y-4">
           <Input label="Course Name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
           <Input label="Course Code" value={editForm.code} onChange={(e) => setEditForm({ ...editForm, code: e.target.value })} placeholder="e.g. CS101" />

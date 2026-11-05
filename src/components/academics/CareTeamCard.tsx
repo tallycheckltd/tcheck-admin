@@ -17,7 +17,7 @@ export function CareTeamCard({ studentId }: { studentId: string }) {
           <dt className="text-slate-500">Programme</dt><dd>{c.programme?.name ?? '—'}</dd>
           <dt className="text-slate-500">Cohort</dt><dd>{c.cohort.name}</dd>
           <dt className="text-slate-500">CEM</dt><dd>{n(c.cem)}</dd>
-          <dt className="text-slate-500">CEM Manager</dt><dd>{n(c.manager)}</dd>
+          <dt className="text-slate-500">Head of CEM</dt><dd>{n(c.manager)}</dd>
           <dt className="text-slate-500">HOD</dt><dd>{c.hods.length ? c.hods.map(n).join(', ') : '—'}</dd>
           <dt className="text-slate-500">Dean</dt><dd>{c.deans.length ? c.deans.map(n).join(', ') : '—'}</dd>
         </dl>

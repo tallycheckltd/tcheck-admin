@@ -60,8 +60,8 @@ export function FeedbackView({ data, days, campaigns, canCreateCampaign, onCampa
                 ? <WeeklyBars data={weeks} max={10} unit="" name="Overall" />
                 : <Empty title="Not enough weeks yet">The weekly view appears once feedback has come in over two or more weeks.</Empty>}
             </Card>
-            <Card className="xl:col-span-2" title="By course" subtitle={`Overall score per course · withheld below ${data.minResponses} responses`}>
-              {data.courses.length === 0 ? <Empty title="No courses with feedback" /> : (
+            <Card className="xl:col-span-2" title="By module" subtitle={`Overall score per module · withheld below ${data.minResponses} responses`}>
+              {data.courses.length === 0 ? <Empty title="No modules with feedback" /> : (
                 <ul className="divide-y divide-gray-100 dark:divide-white/10">
                   {data.courses.map((c) => (
                     <li key={c.courseId} className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1.5 py-3">

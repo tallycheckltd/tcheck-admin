@@ -110,10 +110,10 @@ const PERMISSION_GROUPS: { title: string; hint?: string; items: PermItem[] }[] =
   },
   {
     title: 'Executive Education',
-    hint: 'For CEM Managers: a team is the CEMs who report to them.',
+    hint: 'For a Head of CEM: a team is the CEMs who report to them.',
     items: [
       { key: 'VIEW_CEM_TEAM', label: "See the CEM team board: live tickets, escalations, each CEM's numbers, coverage", icon: Radio },
-      { key: 'MANAGE_CEM_ASSIGNMENTS', label: "Assign or reassign a cohort's CEM (a CEM Manager: only within their own team)", icon: Users },
+      { key: 'MANAGE_CEM_ASSIGNMENTS', label: "Assign or reassign a cohort's CEM (a Head of CEM: only within their own team)", icon: Users },
     ],
   },
 ];

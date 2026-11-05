@@ -99,7 +99,7 @@ export function FacilitiesHistory({ cohortId, showOwners = false }: { cohortId?:
             <table className="w-full text-sm">
               <thead className="text-left text-[11px] uppercase text-slate-500">
                 <tr>
-                  <th className="py-2 pr-3">Issue</th><th className="py-2 pr-3">Class · room</th><th className="py-2 pr-3">Raised by</th>
+                  <th className="py-2 pr-3">Issue</th><th className="py-2 pr-3">Session · room</th><th className="py-2 pr-3">Raised by</th>
                   <th className="py-2 pr-3">Raised</th><th className="py-2 pr-3">Acknowledged</th><th className="py-2 pr-3">Closed</th>
                   {showOwners && <><th className="py-2 pr-3">Programme · CEM</th><th className="py-2 pr-3">From CEM</th><th className="py-2 pr-3">Breached by</th></>}
                   <th className="py-2">Outcome</th>

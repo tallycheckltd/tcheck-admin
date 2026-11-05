@@ -5,6 +5,8 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { RequireSuperAdmin } from './components/guards/RequireSuperAdmin';
 import { RequireRole } from './components/guards/RequireRole';
 import { CemTeamPage } from './pages/cem/CemTeamPage';
+import { PlatformAuditPage } from './pages/platform/AuditPage';
+import { AuditLogPage } from './pages/admin/AuditLogPage';
 import { PlatformHomePage, PlatformInstitutionsPage, PlatformTenantPage, PlatformOnboardingPage, PlatformBillingPage, PlatformGrantsPage, PlatformSupportSessionPage, PlatformFleetPage, PlatformAnalyticsPage } from './pages/platform/PlatformPages';
 import { GroupViewPage } from './pages/insights/GroupViewPage';
 import { LoginPage } from './pages/auth/LoginPage';
@@ -67,6 +69,10 @@ import { IntegrationsPage } from './pages/admin/IntegrationsPage';
 import { TaliPage } from './pages/tali/TaliPage';
 import { StaffViewPage } from './pages/admin/StaffViewPage';
 import { CemReportsPage } from './pages/admin/CemReportsPage';
+import { CemCompletionPage } from './pages/cem/CemCompletionPage';
+import { CemPerformancePage } from './pages/cem/CemPerformancePage';
+import { CemOverviewPage } from './pages/cem/CemOverviewPage';
+import { CemFeedbackPage } from './pages/cem/CemFeedbackPage';
 import { AdminProgramDetailPage } from './pages/admin/AdminProgramDetailPage';
 import { LegalPage } from './pages/LegalPage';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
@@ -111,6 +117,7 @@ export default function App() {
                 <Route path="/platform/support-session" element={<PlatformSupportSessionPage />} />
                 <Route path="/platform/fleet" element={<PlatformFleetPage />} />
                 <Route path="/platform/analytics" element={<PlatformAnalyticsPage />} />
+                <Route path="/platform/audit" element={<PlatformAuditPage />} />
               </Route>
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/users/:id" element={<UserDetailPage />} />
@@ -134,6 +141,8 @@ export default function App() {
               {/* UAT (09-29): school-wide rules are the School Admin's alone (PUT /schools/:id refuses others). */}
               <Route element={<RequireRole roles={['SCHOOL_ADMIN']} />}>
                 <Route path="/admin/settings" element={<SettingsPage />} />
+                {/* 11-02 — this school's whole audit trail (GET /audit/events is School Admin only). */}
+                <Route path="/admin/audit" element={<AuditLogPage />} />
               </Route>
               <Route path="/admin/system-announcements" element={<SystemAnnouncementsPage />} />
               <Route path="/follow-ups" element={<FollowUpsPage />} />
@@ -199,10 +208,15 @@ export default function App() {
               <Route path="/cem" element={<CemDashboardPage />} />
               <Route path="/cem/facilities" element={<CemFacilitiesPage />} />
               <Route path="/cem/cohorts/:cohortId" element={<CemCohortDetailPage />} />
+              <Route path="/cem/performance" element={<CemPerformancePage />} />
+              <Route path="/cem/feedback" element={<CemFeedbackPage />} />
+              <Route path="/cem/cohorts/:cohortId/completion" element={<CemCompletionPage />} />
               <Route path="/cem/cohorts/:cohortId/:panel" element={<CemCohortPanelPage />} />
               {/* P9 (D-11.8) — CEM Manager board; cemTeam.routes.ts admits exactly these roles */}
               <Route element={<RequireRole roles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CEM_MANAGER']} />}>
                 <Route path="/cem-team" element={<CemTeamPage />} />
+                {/* SBS (5 Nov) — one CEM at a glance for their Head of CEM. */}
+                <Route path="/cem-team/cems/:cemId" element={<CemOverviewPage />} />
               </Route>
               <Route path="/announcements" element={<AnnouncementsPage />} />
 

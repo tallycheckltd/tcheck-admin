@@ -106,7 +106,7 @@ export function CemReportsPage() {
                           </Link>
                         </div>
                         <div className="flex items-center gap-4 text-sm">
-                          <span className="text-gray-600 dark:text-gray-300">{c.studentCount} students</span>
+                          <span className="text-gray-600 dark:text-gray-300">{c.studentCount} delegates</span>
                           <span className="text-blue-600 dark:text-blue-400 font-medium">{c.attendanceRate}% attendance</span>
                           {c.openTickets > 0 && <Badge color="yellow">{c.openTickets} open ticket{c.openTickets === 1 ? '' : 's'}</Badge>}
                           <ChevronDown size={16} className={`text-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -115,7 +115,7 @@ export function CemReportsPage() {
                       {isOpen && (
                         <div className="px-4 pb-4">
                           {!c.students.length ? (
-                            <p className="text-xs text-gray-400 py-2">No students enrolled yet.</p>
+                            <p className="text-xs text-gray-400 py-2">No delegates enrolled yet.</p>
                           ) : (
                             <div className="rounded-xl border border-gray-100 dark:border-white/5 overflow-x-auto">
                               <table className="w-full text-xs">

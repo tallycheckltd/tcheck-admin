@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import type React from 'react';
+import { useTerms } from '../../hooks/useTerms';
+import { useEffect, useState } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
@@ -104,8 +106,16 @@ function Collapsible({ title, icon: Icon, count, defaultOpen = false, children }
  */
 /** `showFacilities` — false on the CEM's programme overview (UAT F15): the CEM has a top-level
  * Facilities page, so the overview is stats, courses and students only. */
-export function ProgramDetailView({ cohortId, showFacilities = true }: { cohortId: string; showFacilities?: boolean }) {
-  const { data: program, loading } = useApi<ProgramDetail>(`/cem/programs/${cohortId}`);
+/** `children` renders under the headline numbers (the CEM's Delegates & sessions box). */
+export function ProgramDetailView({ cohortId, showFacilities = true, children }: { cohortId: string; showFacilities?: boolean; children?: React.ReactNode }) {
+  const t = useTerms();
+  const { data: program, loading, refetch } = useApi<ProgramDetail>(`/cem/programs/${cohortId}`);
+  // The CEM's Delegates & sessions box says when it added something, so the numbers here catch up.
+  useEffect(() => {
+    const onChange = (e: Event) => { if ((e as CustomEvent<string>).detail === cohortId) refetch(); };
+    window.addEventListener('tcheck:programme-changed', onChange);
+    return () => window.removeEventListener('tcheck:programme-changed', onChange);
+  }, [cohortId, refetch]);
 
   if (loading) return <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>;
   if (!program) {
@@ -123,8 +133,8 @@ export function ProgramDetailView({ cohortId, showFacilities = true }: { cohortI
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{program.name}</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">{dateRange(program.startDate, program.endDate)} · {program.year}</p>
         <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-700 dark:text-gray-300">
-          <span className="flex items-center gap-1.5"><Users size={14} className="text-blue-500" /> {program.studentCount} student{program.studentCount === 1 ? '' : 's'}</span>
-          <span className="flex items-center gap-1.5"><BookOpen size={14} className="text-blue-500" /> {program.courses.length} course{program.courses.length === 1 ? '' : 's'}</span>
+          <span className="flex items-center gap-1.5"><Users size={14} className="text-blue-500" /> {program.studentCount} {program.studentCount === 1 ? t.student : t.students}</span>
+          <span className="flex items-center gap-1.5"><BookOpen size={14} className="text-blue-500" /> {program.courses.length} {program.courses.length === 1 ? t.course : t.courses}</span>
           {program.cem && (
             <span className="flex items-center gap-1.5">
               <Mail size={14} className="text-blue-500" /> CEM: {program.cem.firstName} {program.cem.lastName} (
@@ -169,17 +179,19 @@ export function ProgramDetailView({ cohortId, showFacilities = true }: { cohortI
         </Collapsible>
       )}
 
+      {children}
+
       {/* Check-Ins — explicit request: see who actually checked in/out, not just a percentage. */}
       <Collapsible title="Check-Ins" icon={ClipboardCheck} count={program.checkIns.length}>
         {!program.checkIns.length ? (
-          <EmptyState icon={ClipboardCheck} title="No check-ins yet" description="Check-ins across every course in this programme will appear here." size="sm" />
+          <EmptyState icon={ClipboardCheck} title="No check-ins yet" description={`Check-ins across every ${t.course} in this programme will appear here.`} size="sm" />
         ) : (
           <div className="rounded-xl border border-gray-100 dark:border-white/5 overflow-x-auto max-h-96 overflow-y-auto">
             <table className="w-full text-sm">
               <thead className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 sticky top-0">
                 <tr>
-                  <th className="text-left py-2 px-3">Student</th>
-                  <th className="text-left py-2 px-3">Course / Session</th>
+                  <th className="text-left py-2 px-3">{t.Student}</th>
+                  <th className="text-left py-2 px-3">{t.Course} / Session</th>
                   <th className="text-left py-2 px-3"><LogIn size={12} className="inline mr-1" />Check-in</th>
                   <th className="text-left py-2 px-3"><LogOut size={12} className="inline mr-1" />Check-out</th>
                   <th className="text-left py-2 px-3">Type</th>
@@ -219,16 +231,16 @@ export function ProgramDetailView({ cohortId, showFacilities = true }: { cohortI
       </Collapsible>
 
       {/* Courses in this programme — the thing that was missing */}
-      <Collapsible title="Courses in this programme" icon={BookOpen} count={program.courses.length}>
+      <Collapsible title={`${t.Courses} in this programme`} icon={BookOpen} count={program.courses.length}>
         {!program.courses.length ? (
-          <EmptyState icon={BookOpen} title="No courses yet" description="Courses tagged into this programme will appear here." size="sm" />
+          <EmptyState icon={BookOpen} title={`No ${t.courses} yet`} description={`${t.Courses} in this programme will appear here.`} size="sm" />
         ) : (
           <div className="rounded-xl border border-gray-100 dark:border-white/5 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5">
                 <tr>
-                  <th className="text-left py-2.5 px-4">Course</th>
-                  <th className="text-left py-2.5 px-4">Lecturer</th>
+                  <th className="text-left py-2.5 px-4">{t.Course}</th>
+                  <th className="text-left py-2.5 px-4">{t.Lecturer}</th>
                   <th className="text-right py-2.5 px-4">Enrolled</th>
                   <th className="text-right py-2.5 px-4">Sessions</th>
                   <th className="text-right py-2.5 px-4">Attendance</th>
@@ -266,7 +278,7 @@ export function ProgramDetailView({ cohortId, showFacilities = true }: { cohortI
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="font-medium text-gray-800 dark:text-gray-200">{row.majorName}</span>
                   <span className="text-gray-500 dark:text-gray-400">
-                    {row.insufficientData ? 'Too few students to show' : `${row.totalStudents} student${row.totalStudents === 1 ? '' : 's'}`}
+                    {row.insufficientData ? `Too few ${t.students} to show` : `${row.totalStudents} ${row.totalStudents === 1 ? t.student : t.students}`}
                   </span>
                 </div>
                 {!row.insufficientData && row.genderCounts && row.totalStudents && (
@@ -288,9 +300,9 @@ export function ProgramDetailView({ cohortId, showFacilities = true }: { cohortI
       )}
 
       {/* Roster */}
-      <Collapsible title="Students" icon={Users} count={program.students.length}>
+      <Collapsible title={t.Students} icon={Users} count={program.students.length}>
         {!program.students.length ? (
-          <EmptyState icon={Users} title="No students yet" description="Enrolled students for this programme will appear here." size="sm" />
+          <EmptyState icon={Users} title={`No ${t.students} yet`} description={`Enrolled ${t.students} for this programme will appear here.`} size="sm" />
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-white/5 max-h-80 overflow-y-auto">
             {program.students.map((s) => (

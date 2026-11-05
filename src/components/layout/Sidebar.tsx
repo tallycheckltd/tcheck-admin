@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { EXEC_ED_NAV_LABEL } from '../../hooks/useTerms';
 import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,7 +11,7 @@ import {
   LayoutDashboard, School, Users, Users2, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star, MessageSquareQuote, Presentation,
-  ShieldAlert, ShieldCheck, ChevronDown, ChevronRight, ChevronLeft, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, Search, Radar, Layers, Siren, CalendarClock, Battery, Network, UploadCloud,
+  ShieldAlert, ShieldCheck, ChevronDown, ChevronRight, ChevronLeft, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, ScrollText, Search, Radar, Layers, Siren, CalendarClock, Battery, Network, UploadCloud,
   User as UserIcon, Plug, Wrench, DoorOpen, FileBarChart, Eye, MailCheck, Building2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation, FacilityTicket, User } from '../../types';
@@ -20,7 +21,7 @@ import type { IconName, NavLinkDef } from './navConfig';
 import { roleDef, ROLE_TABLE, homeRouteFor, type RoleName } from '../../shared/roles';
 
 // P2: nav items live in navConfig.ts as plain data (icon names); this maps the names to components.
-const ICONS: Record<IconName, React.ComponentType<{ size?: number }>> = { ShieldCheck, BarChart3, Battery, BookOpen, Calendar, CalendarClock, ClipboardList, DoorOpen, Eye, FileBarChart, FileText, GraduationCap, Layers, LayoutDashboard, LifeBuoy, Link2, MailCheck, Megaphone, MessageSquare, MessageSquareQuote, Network, Plug, Presentation, Radar, Radio, ScanEye, School, Settings, ShieldAlert, Siren, Smartphone, Sparkles, Star, Tags, UploadCloud, UserCheck, Users, Users2, Wrench };
+const ICONS: Record<IconName, React.ComponentType<{ size?: number }>> = { ShieldCheck, BarChart3, Battery, BookOpen, Calendar, CalendarClock, ClipboardList, DoorOpen, Eye, FileBarChart, FileText, GraduationCap, Layers, LayoutDashboard, LifeBuoy, Link2, MailCheck, Megaphone, MessageSquare, MessageSquareQuote, Network, Plug, Presentation, Radar, Radio, ScanEye, ScrollText, School, Settings, ShieldAlert, Siren, Smartphone, Sparkles, Star, Tags, UploadCloud, UserCheck, Users, Users2, Wrench };
 function withIcons(links: NavLinkDef[]): NavItem[] {
   return links.map((l) => ({ ...l, icon: ICONS[l.icon], children: l.children ? withIcons(l.children) : undefined }));
 }
@@ -82,6 +83,8 @@ function buildCxmCohortLinks(cohortId: string): NavItem[] {
     // UAT F17 — Broadcast replaced by the one Announcements page, this programme pre-picked.
     { to: `/announcements?cohortId=${cohortId}`, icon: Megaphone, label: 'Announcements' },
     { to: `${base}/materials`, icon: FileText, label: 'Materials' },
+    // SBS (5 Nov) — who passed the attendance threshold; the CEM approves completion.
+    { to: `${base}/completion`, icon: GraduationCap, label: 'Completion' },
     { to: `${base}/feedback`, icon: Star, label: 'Request Feedback' },
     { to: `${base}/birthdays`, icon: Sparkles, label: 'Birthdays' },
   ];
@@ -592,10 +595,14 @@ export function Sidebar({
   }
   // P2: links the role table's nav set has but the backend refuses this role (navConfig NAV_HIDE).
   const roleHidden = new Set(user?.role ? NAV.NAV_HIDE[user.role] ?? [] : []);
+  // SBS (5 Nov) — exec-ed wording on the labels people see (delegates, modules, sessions, faculty).
+  const execEdWords = !!user?.school?.features?.execEdSuite;
+  const say = <T extends { label: string }>(l: T): T => (execEdWords && EXEC_ED_NAV_LABEL[l.label] ? { ...l, label: EXEC_ED_NAV_LABEL[l.label] } : l);
   const filterBySchoolConfig = (links: NavItem[]): NavItem[] =>
     links
       .filter((l) => !hiddenNavLabels.has(l.label) && !roleHidden.has(l.to))
-      .map((l) => (l.children ? { ...l, children: l.children.filter((c) => !roleHidden.has(c.to)) } : l));
+      .map((l) => (l.children ? { ...l, children: l.children.filter((c) => !roleHidden.has(c.to)).map(say) } : l))
+      .map(say);
 
   // Links gated by a permission (NAV_REQUIRED_PERMISSION) show only when the viewer holds it.
   // `user.permissions` is already the *effective* set (preset ± Adjust-Access differences,
@@ -877,6 +884,8 @@ export function Sidebar({
           <NavLink
             key={link.to}
             to={link.to}
+            // "Programmes" (/cem) is only active on itself, not under /cem/facilities or /cem/performance.
+            end={link.to === '/cem'}
             onClick={onClose}
             title={collapsed ? link.label : undefined}
             className={({ isActive }) =>

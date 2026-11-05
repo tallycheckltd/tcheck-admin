@@ -1,4 +1,6 @@
+import { NewProgrammeButton } from '../../components/cem/ProgrammeTools';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useApi, useMutation } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { createSocket } from '../../lib/socket';
@@ -6,7 +8,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { FacilitiesHistory } from '../../components/facilities/FacilitiesHistory';
-import { Radio, Siren, Users2, ShieldCheck, Settings2, Download, History } from 'lucide-react';
+import { Radio, Siren, Users2, ShieldCheck, Settings2, Download, History, LayoutGrid, ChevronRight } from 'lucide-react';
 
 /**
  * P9 (A8.6, D-11.8) — the CEM Manager board. A CEM Manager sees their own team (the CEMs who report
@@ -34,6 +36,12 @@ interface TeamRow {
   programmes: number; students: number; tickets: number; openTickets: number; urgentTickets: number; enoughData: boolean;
   acknowledge: Timing | null; resolve: Timing | null; slaBreachRate: number | null; escalationsReceived: number; escalationsRaised: number;
   onboardingCompletion: number | null; dmAwaitingReply: number; dmOldestWaitingSeconds: number | null; dmResponseMedianSeconds: number | null;
+  /** SBS (5 Nov) — the programmes' own results (cemPerformance.service). */
+  quality: ProgrammeQuality | null;
+}
+export interface ProgrammeQuality {
+  programmesLive: number; programmesDelivered: number; delegates: number; completionRate: number | null; sessionsHeld: number;
+  attendanceRate: number | null; onTimeRate: number | null; ratingsCount: number; averageRating: number | null; averageFacilitatorScore: number | null; nps: number | null;
 }
 interface CohortLite { id: string; name: string; status?: string; major?: { id: string; name: string } | null; _count?: { members: number } }
 interface Coverage {
@@ -66,13 +74,13 @@ const stateText = (t: BoardTicket) =>
     : t.status === 'ACKNOWLEDGED' ? `Acknowledged by ${name(t.acknowledgedBy)}${t.acknowledgedAt ? ` · ${new Date(t.acknowledgedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`
       : 'Open — not acknowledged';
 
-type Tab = 'board' | 'escalated' | 'history' | 'team' | 'coverage' | 'setup';
+type Tab = 'cems' | 'board' | 'escalated' | 'history' | 'team' | 'coverage' | 'setup';
 
 export function CemTeamPage() {
   const { user } = useAuth();
   const isManager = user?.role === 'CEM_MANAGER';
   const canManage = !isManager || (user?.permissions ?? []).includes('MANAGE_CEM_ASSIGNMENTS');
-  const [tab, setTab] = useState<Tab>('board');
+  const [tab, setTab] = useState<Tab>('cems');
   const [from, setFrom] = useState(() => new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10));
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
   const rangeQs = `from=${from}&to=${to}T23:59:59`;
@@ -81,6 +89,8 @@ export function CemTeamPage() {
   // UAT F21: the Escalated tab is today's (the server's default); earlier days live in History.
   const escalated = useApi<{ tickets: BoardTicket[] }>('/cem-team/escalated', { refetchIntervalMs: 60_000, refetchWhenVisible: true });
   const team = useApi<{ team: TeamRow[]; minTickets: number }>(tab === 'team' ? `/cem-team/metrics?${rangeQs}` : null);
+  // SBS (5 Nov) — the CEMs tab: one card per CEM, last 30 days.
+  const cards = useApi<{ team: TeamRow[] }>(tab === 'cems' ? '/cem-team/metrics' : null);
   const coverage = useApi<Coverage>(tab === 'coverage' || tab === 'setup' ? '/cem-team/coverage' : null);
   const roster = useApi<Roster>(tab === 'setup' || tab === 'coverage' || tab === 'board' ? '/cem-team/roster' : null);
 
@@ -98,6 +108,7 @@ export function CemTeamPage() {
   }, [refetchBoard, refetchEscalated]);
 
   const tabs: { key: Tab; label: string; icon: typeof Radio; count?: number }[] = [
+    { key: 'cems', label: isManager ? 'My CEMs' : 'CEMs', icon: LayoutGrid },
     { key: 'board', label: 'Live board', icon: Radio, count: board.data?.tickets.length },
     { key: 'escalated', label: 'Escalated today', icon: Siren, count: escalated.data?.tickets.filter((t) => t.status !== 'RESOLVED').length },
     // UAT F21 — every earlier day, folded by day this month and by month before that.
@@ -109,11 +120,14 @@ export function CemTeamPage() {
 
   return (
     <div className="space-y-6" data-testid="cem-team-page">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">CEM Team</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {isManager ? 'Your CEMs and their programmes' : 'Every CEM and programme in this institution'} — tickets as they are acknowledged and resolved, escalations, and each CEM's numbers.
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">CEM Team</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            {isManager ? 'Your CEMs and their programmes' : 'Every CEM and programme in this institution'} — tickets as they are acknowledged and resolved, escalations, and each CEM's numbers.
+          </p>
+        </div>
+        {isManager && <NewProgrammeButton />}
       </div>
 
       <div className="flex gap-1 p-1 rounded-xl bg-gray-100 dark:bg-white/5 text-sm w-fit flex-wrap">
@@ -132,6 +146,7 @@ export function CemTeamPage() {
         </div>
       )}
 
+      {tab === 'cems' && <CemCards rows={cards.data?.team} loading={cards.loading} isManager={isManager} />}
       {tab === 'board' && <TicketTable data-testid="live-board" rows={board.data?.tickets} loading={board.loading} empty="No open tickets under this team right now." roster={roster.data} canManage={canManage} onChanged={() => refetchBoard({ silent: true })} />}
       {tab === 'escalated' && <TicketTable rows={escalated.data?.tickets} loading={escalated.loading} empty="Nothing escalated today." escalated />}
       {tab === 'history' && <FacilitiesHistory showOwners />}
@@ -151,7 +166,7 @@ function TicketTable({ rows, loading, empty, escalated, roster, canManage, onCha
       <table className="w-full text-sm">
         <thead className="text-left text-xs uppercase text-gray-500">
           <tr>
-            <th className="p-3">Ticket</th><th className="p-3">Student</th><th className="p-3">Programme / cohort</th><th className="p-3">Class</th>
+            <th className="p-3">Ticket</th><th className="p-3">Delegate</th><th className="p-3">Programme</th><th className="p-3">Session</th>
             <th className="p-3">CEM</th><th className="p-3">State</th><th className="p-3">Age</th><th className="p-3">SLA</th>
             <th className="p-3">From CEM</th><th className="p-3">Breached by</th>
             {escalated && <th className="p-3">Escalations</th>}
@@ -209,13 +224,46 @@ function ReassignTicketModal({ ticket, roster, onClose, onDone }: { ticket: Boar
   );
 }
 
+/** SBS (5 Nov) — a card per CEM; each opens that CEM's page (programmes, tickets, announcements). */
+function CemCards({ rows, loading, isManager }: { rows?: TeamRow[]; loading: boolean; isManager: boolean }) {
+  if (loading && !rows) return <p className="text-sm text-gray-500">Loading…</p>;
+  if (!rows?.length) return <p className="glass-card p-6 text-sm text-gray-500 text-center">{isManager ? 'No CEMs in your team yet. Add them under Team setup.' : 'No CEMs yet.'}</p>;
+  const stat = (v: string, l: string, warn = false) => (
+    <div><p className={`text-lg font-semibold ${warn ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>{v}</p><p className="text-xs text-gray-500 dark:text-gray-400">{l}</p></div>
+  );
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-gray-500 dark:text-gray-400">Programmes and delegates now; attendance, NPS and messages over the last 30 days. Open a CEM to see their programmes, tickets and announcements.</p>
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="cem-cards">
+        {rows.map((r) => (
+          <Link key={r.cem.id} to={`/cem-team/cems/${r.cem.id}`} className="glass-card p-5 block hover:ring-2 hover:ring-blue-500/30 transition">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-semibold text-gray-900 dark:text-white truncate">{r.cem.firstName} {r.cem.lastName}</p>
+              <ChevronRight size={18} className="text-gray-400 shrink-0" />
+            </div>
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {stat(String(r.quality?.programmesLive ?? r.programmes), 'Programmes')}
+              {stat(String(r.quality?.delegates ?? r.students), 'Delegates')}
+              {stat(String(r.openTickets), 'Open tickets', r.openTickets > 0)}
+              {stat(r.quality?.attendanceRate == null ? '—' : `${r.quality.attendanceRate}%`, 'Attendance')}
+              {stat(r.quality?.nps == null ? '—' : String(r.quality.nps), 'NPS')}
+              {stat(String(r.dmAwaitingReply), 'Messages waiting', r.dmAwaitingReply > 0)}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TeamTable({ data, loading, from, to }: { data: { team: TeamRow[]; minTickets: number } | null; loading: boolean; from: string; to: string }) {
   const csv = useMemo(() => {
     if (!data) return '';
-    const head = ['CEM', 'Programmes', 'Students', 'Tickets', 'Open', 'Urgent', 'Ack median (s)', 'Ack p90 (s)', 'Resolve median (s)', 'Resolve p90 (s)', 'SLA breach %', 'Escalations received', 'Escalations raised', 'DMs awaiting reply', 'Oldest waiting (s)', 'DM response median (s)', 'Onboarding %'];
+    const head = ['CEM', 'Programmes', 'Delegates', 'Tickets', 'Open', 'Urgent', 'Ack median (s)', 'Ack p90 (s)', 'Resolve median (s)', 'Resolve p90 (s)', 'SLA breach %', 'Escalations received', 'Escalations raised', 'DMs awaiting reply', 'Oldest waiting (s)', 'DM response median (s)', 'Onboarding %', 'Attendance %', 'On time %', 'Average rating (0-10)', 'NPS', 'Ratings', 'Completion %'];
     const rows = data.team.map((r) => [`${r.cem.firstName} ${r.cem.lastName}`, r.programmes, r.students, r.tickets, r.openTickets, r.urgentTickets,
       r.acknowledge?.medianSeconds ?? '', r.acknowledge?.p90Seconds ?? '', r.resolve?.medianSeconds ?? '', r.resolve?.p90Seconds ?? '', r.slaBreachRate ?? '',
-      r.escalationsReceived, r.escalationsRaised, r.dmAwaitingReply, r.dmOldestWaitingSeconds ?? '', r.dmResponseMedianSeconds ?? '', r.onboardingCompletion ?? '']);
+      r.escalationsReceived, r.escalationsRaised, r.dmAwaitingReply, r.dmOldestWaitingSeconds ?? '', r.dmResponseMedianSeconds ?? '', r.onboardingCompletion ?? '',
+      r.quality?.attendanceRate ?? '', r.quality?.onTimeRate ?? '', r.quality?.averageRating ?? '', r.quality?.nps ?? '', r.quality?.ratingsCount ?? '', r.quality?.completionRate ?? '']);
     return [head, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   }, [data]);
   if (loading && !data) return <p className="text-sm text-gray-500">Loading…</p>;
@@ -232,12 +280,12 @@ function TeamTable({ data, loading, from, to }: { data: { team: TeamRow[]; minTi
       <div className="glass-card overflow-x-auto" data-testid="team-table">
         <table className="w-full text-sm">
           <thead className="text-left text-xs uppercase text-gray-500">
-            <tr><th className="p-3">CEM</th><th className="p-3">Programmes</th><th className="p-3">Students</th><th className="p-3">Open</th><th className="p-3">Acknowledge (median / p90)</th><th className="p-3">Resolve (median / p90)</th><th className="p-3">SLA breach</th><th className="p-3">Escalations in / raised</th><th className="p-3">DM backlog</th><th className="p-3">Onboarding</th></tr>
+            <tr><th className="p-3">CEM</th><th className="p-3">Programmes</th><th className="p-3">Delegates</th><th className="p-3">Open</th><th className="p-3">Acknowledge (median / p90)</th><th className="p-3">Resolve (median / p90)</th><th className="p-3">SLA breach</th><th className="p-3">Escalations in / raised</th><th className="p-3">DM backlog</th><th className="p-3">Onboarding</th><th className="p-3">Attendance</th><th className="p-3">Rating / NPS</th><th className="p-3">Completion</th></tr>
           </thead>
           <tbody>
             {data.team.map((r) => (
               <tr key={r.cem.id} className="border-t border-gray-100 dark:border-white/5">
-                <td className="p-3 font-medium">{r.cem.firstName} {r.cem.lastName}</td>
+                <td className="p-3 font-medium"><Link to={`/cem-team/cems/${r.cem.id}`} className="hover:text-blue-600 hover:underline">{r.cem.firstName} {r.cem.lastName}</Link></td>
                 <td className="p-3">{r.programmes}</td>
                 <td className="p-3">{r.students}</td>
                 <td className="p-3">{r.openTickets}{r.urgentTickets ? <span className="text-red-600"> ({r.urgentTickets} urgent)</span> : null}</td>
@@ -251,6 +299,9 @@ function TeamTable({ data, loading, from, to }: { data: { team: TeamRow[]; minTi
                 <td className="p-3">{r.escalationsReceived} / {r.escalationsRaised}</td>
                 <td className="p-3">{r.dmAwaitingReply} awaiting{r.dmOldestWaitingSeconds !== null ? `, oldest ${dur(r.dmOldestWaitingSeconds)}` : ''}<div className="text-xs text-gray-500">reply median {dur(r.dmResponseMedianSeconds)}</div></td>
                 <td className="p-3">{r.onboardingCompletion === null ? '—' : `${r.onboardingCompletion}%`}</td>
+                <td className="p-3">{r.quality?.attendanceRate == null ? '—' : `${r.quality.attendanceRate}%`}{r.quality?.onTimeRate != null && <div className="text-xs text-gray-500">{r.quality.onTimeRate}% on time</div>}</td>
+                <td className="p-3">{r.quality?.averageRating == null ? '—' : `${r.quality.averageRating}/10`}{r.quality?.nps != null && <div className="text-xs text-gray-500">NPS {r.quality.nps} · {r.quality.ratingsCount} ratings</div>}</td>
+                <td className="p-3">{r.quality?.completionRate == null ? '—' : `${r.quality.completionRate}%`}<div className="text-xs text-gray-500">{r.quality?.programmesDelivered ?? 0} delivered</div></td>
               </tr>
             ))}
           </tbody>
@@ -313,7 +364,7 @@ function LoadLimit({ limits, onChanged }: { limits: { maxProgrammes: number; max
   return (
     <div className="mb-2 space-y-1.5 text-xs">
       <label className="flex items-center gap-2">Programmes <input type="number" min={1} value={p} onChange={(e) => setP(e.target.value)} className="w-20 rounded-lg border px-2 py-1 dark:bg-white/5" /></label>
-      <label className="flex items-center gap-2">Students <input type="number" min={1} value={st} onChange={(e) => setSt(e.target.value)} className="w-20 rounded-lg border px-2 py-1 dark:bg-white/5" /></label>
+      <label className="flex items-center gap-2">Delegates <input type="number" min={1} value={st} onChange={(e) => setSt(e.target.value)} className="w-20 rounded-lg border px-2 py-1 dark:bg-white/5" /></label>
       {error && <p className="text-rose-600">{error}</p>}
       <div className="flex gap-2">
         <Button size="sm" disabled={!valid || loading} onClick={async () => { if (await mutate(`/schools/${user!.schoolId}`, { cemMaxProgrammes: Number(p), cemMaxStudents: Number(st) })) { setEditing(false); onChanged(); } }}>Save</Button>
@@ -344,7 +395,7 @@ function CoverageView({ data, roster, canManage, onChanged }: { data: Coverage |
       <section className="glass-card p-4">
         <h3 className="font-semibold mb-2">Over the load limit</h3>
         <LoadLimit limits={data.limits} onChanged={onChanged} />
-        {data.overloaded.length === 0 ? <p className="text-sm text-gray-500">Nobody.</p> : data.overloaded.map((o) => <p key={o.cem.id} className="text-sm">{o.cem.firstName} {o.cem.lastName} — {o.programmes} programmes, {o.students} students</p>)}
+        {data.overloaded.length === 0 ? <p className="text-sm text-gray-500">Nobody.</p> : data.overloaded.map((o) => <p key={o.cem.id} className="text-sm">{o.cem.firstName} {o.cem.lastName} — {o.programmes} programmes, {o.students} delegates</p>)}
       </section>
       <section className="glass-card p-4">
         <h3 className="font-semibold mb-2">CEMs without a manager</h3>
@@ -368,7 +419,7 @@ function SetupView({ roster, isManager, meId, canManage, onChanged }: { roster?:
         <tbody>
           {roster.cems.map((c) => (
             <tr key={c.id} className="border-t border-gray-100 dark:border-white/5 align-top" data-testid="setup-row">
-              <td className="p-3 font-medium">{c.firstName} {c.lastName}<div className="text-xs text-gray-500">{c.email}</div></td>
+              <td className="p-3 font-medium"><Link to={`/cem-team/cems/${c.id}`} className="hover:text-blue-600 hover:underline">{c.firstName} {c.lastName}</Link><div className="text-xs text-gray-500">{c.email}</div></td>
               <td className="p-3">
                 {!canManage ? name(roster.managers.find((m) => m.id === c.managerId) ?? null) : isManager ? (
                   c.managerId === meId

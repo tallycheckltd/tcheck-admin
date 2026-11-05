@@ -24,7 +24,7 @@ export function ResponsibilityMatrix({ schoolId }: { schoolId?: string }) {
     <div className="glass-card overflow-x-auto" data-testid="responsibility-matrix">
       <table className="w-full text-sm">
         <thead className="text-left text-xs uppercase text-slate-500">
-          <tr><th className="p-3">Programme / cohort</th><th className="p-3">Department</th><th className="p-3">HOD</th><th className="p-3">CEM</th><th className="p-3">CEM Manager</th><th className="p-3">Lecturers</th><th className="p-3">Students</th><th className="p-3">Status</th></tr>
+          <tr><th className="p-3">Programme / cohort</th><th className="p-3">Department</th><th className="p-3">HOD</th><th className="p-3">CEM</th><th className="p-3">Head of CEM</th><th className="p-3">Lecturers</th><th className="p-3">Students</th><th className="p-3">Status</th></tr>
         </thead>
         <tbody>
           {data.rows.map((r) => (

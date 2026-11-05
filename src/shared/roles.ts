@@ -160,7 +160,7 @@ export const ROLE_TABLE: Record<RoleName, RoleDefinition> = {
   CEM_MANAGER: {
     // P9 (A8.6, D-11.3) — leads a team of CEMs. Dashboard-first (D-15.7); on mobile the apps show
     // their plain staff shell (an unknown role decodes as a String and never crashes).
-    label: 'CEM Manager', tier: 'EXEC_ED', capability: 'strict', scope: 'team',
+    label: 'Head of CEM', tier: 'EXEC_ED', capability: 'strict', scope: 'team',
     orgScoped: false, hierarchy: false, schoolFloor: false, scopeLevel: 'INDIVIDUAL',
     requiresOrgUnit: false, canHoldCustomRole: true, switchable: true, dashboard: true, mobile: true, homeRoute: '/cem-team', nav: 'cemManager',
   },

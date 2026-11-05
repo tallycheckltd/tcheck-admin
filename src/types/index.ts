@@ -1420,8 +1420,10 @@ export interface MoodleOverview {
   baseUrl: string;
   state: MoodleConnectionState;
   attendanceWriteBack: boolean;
+  /** SBS (11-06) — assignments and resources come in as materials. */
+  materialsSync: boolean;
   attendanceActivities: { courseId: string; code: string; name: string; moodleCourseId: number; attendanceId: number | null }[];
-  totals: { mappedCourses: number; linkedDelegates: number; enrolmentsInMappedCourses: number; attendanceMarksWritten: number };
+  totals: { mappedCourses: number; linkedDelegates: number; enrolmentsInMappedCourses: number; attendanceMarksWritten: number; materialsFromElearning?: number };
   running: MoodleSyncRun | null;
   roster: { lastAttempted: MoodleSyncRun | null; lastSuccessful: MoodleSyncRun | null; review: { runId: string; finishedAt: string | null; issues: MoodleSyncIssue[]; total: number } | null };
   attendance: { lastAttempted: MoodleSyncRun | null; lastSuccessful: MoodleSyncRun | null; review: { runId: string; finishedAt: string | null; issues: MoodleSyncIssue[]; total: number } | null };

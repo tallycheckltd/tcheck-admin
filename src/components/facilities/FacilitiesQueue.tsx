@@ -196,7 +196,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
             <input
               type="text"
-              placeholder="Search issue, class, student..."
+              placeholder="Search issue, session, delegate..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-950 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
@@ -241,7 +241,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
                     <span className="text-xs text-slate-600 dark:text-slate-400 flex-shrink-0">{timeAgo(t.createdAt)}</span>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 flex items-center gap-1 truncate">
-                    <MapPin size={11} className="flex-shrink-0" /> {t.class?.title || 'No class linked'}
+                    <MapPin size={11} className="flex-shrink-0" /> {t.class?.title || 'No session linked'}
                     {t.class?.room ? ` — ${t.class.room}` : ''}
                   </p>
                   {t.detail && <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 line-clamp-1">{t.detail}</p>}
@@ -296,9 +296,9 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
                 </div>
 
                 <div className="rounded-xl bg-gray-50 dark:bg-white/5 p-4 space-y-2">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Class</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Session</p>
                   <p className="text-sm text-slate-950 dark:text-white">
-                    {selected.class?.title || 'No class linked'}{selected.class?.room ? ` — ${selected.class.room}` : ''}
+                    {selected.class?.title || 'No session linked'}{selected.class?.room ? ` — ${selected.class.room}` : ''}
                   </p>
                   <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
                     <Clock size={11} /> Raised {timeAgo(selected.createdAt)}
@@ -307,7 +307,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
 
                 {selected.detail && (
                   <div className="rounded-xl bg-amber-50/60 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 p-4 space-y-1.5">
-                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Detail from the student</p>
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Detail from the delegate</p>
                     <p className="text-sm text-slate-950 dark:text-white">{selected.detail}</p>
                   </div>
                 )}
@@ -358,7 +358,7 @@ export function FacilitiesQueue({ cohortId, showHistory = true, showOwners = fal
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Reply to the student..."
+                    placeholder="Reply to the delegate..."
                     value={replyText}
                     onChange={(e) => { setReplyText(e.target.value); if (replyError) setReplyError(''); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleReply(); }}

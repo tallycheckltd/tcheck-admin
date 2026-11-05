@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTerms } from '../../hooks/useTerms';
 import { useLocation } from 'react-router-dom';
 import { Cake, ClipboardCheck, Info, Star, BarChart3, PieChart as PieChartIcon, Table as TableIcon, ChevronDown, Folder, Wrench } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -194,6 +195,7 @@ function BirthdayHeading({ children }: { children: React.ReactNode }) {
  * Coming up this month ("in 3 days", with the weekday), Earlier this month, then later months folded.
  */
 function BirthdaysPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
+  const w = useTerms();
   const { data } = useApi<StaffBirthday[]>(withCohort('/staff/birthdays?all=1', cohortId));
   const [openMonths, setOpenMonths] = useState<Record<number, boolean>>({});
   const now = new Date();
@@ -209,7 +211,7 @@ function BirthdaysPanel({ cohortId, open = false }: { cohortId?: string; open?: 
   return (
     <Panel id="panel-birthdays" title="Birthdays" icon={Cake} defaultOpen={open}>
       {!rows.length ? (
-        <p className="text-sm text-gray-400 py-4 text-center">No birthdays recorded in your assigned courses.</p>
+        <p className="text-sm text-gray-400 py-4 text-center">No birthdays recorded in your assigned {w.courses}.</p>
       ) : (
         <div className="max-h-[70vh] overflow-y-auto">
           {today.length > 0 && (
@@ -269,6 +271,7 @@ const OUT: Record<string, { label: string; cls: string }> = {
  * the same two permission-gated endpoints as before and are merged here.
  */
 function CombinedCheckInsPanel({ canManual, canOnSite, cohortId, open = false }: { canManual: boolean; canOnSite: boolean; cohortId?: string; open?: boolean }) {
+  const w = useTerms();
   const { data: manual } = useApi<StaffCheckIn[]>(canManual ? withCohort('/staff/checkins?type=manual', cohortId) : null);
   const { data: aura } = useApi<StaffCheckIn[]>(canOnSite ? withCohort('/staff/checkins?type=ble', cohortId) : null);
   const [search, setSearch] = useState('');
@@ -313,9 +316,9 @@ function CombinedCheckInsPanel({ canManual, canOnSite, cohortId, open = false }:
   return (
     <Panel id="panel-checkins" title="Check-Ins" icon={ClipboardCheck} defaultOpen={open}>
       <div className="flex flex-wrap gap-2 mb-3">
-        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a student…" className={`${inputCls} flex-1 min-w-[160px]`} />
-        <select value={course} onChange={(e) => setCourse(e.target.value)} aria-label="Course" className={inputCls}>
-          <option value="">All my courses</option>
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search a ${w.student}…`} className={`${inputCls} flex-1 min-w-[160px]`} />
+        <select value={course} onChange={(e) => setCourse(e.target.value)} aria-label={w.Course} className={inputCls}>
+          <option value="">All my {w.courses}</option>
           {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <input type="date" value={day} onChange={(e) => setDay(e.target.value)} aria-label="Day" className={inputCls} />
@@ -331,7 +334,7 @@ function CombinedCheckInsPanel({ canManual, canOnSite, cohortId, open = false }:
         <div className="space-y-4 max-h-[70vh] overflow-y-auto">
           {groups.map((g) => (
             <section key={g.id}>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">{g.course?.name ?? 'Course'} <span className="font-normal text-gray-400">{g.course?.code}</span></h3>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">{g.course?.name ?? w.Course} <span className="font-normal text-gray-400">{g.course?.code}</span></h3>
               <div className="space-y-2">
                 {g.sessions.map((sess, idx) => {
                   const isOpen = openSessions[sess.key] ?? (idx === 0 || !!search.trim());
@@ -349,7 +352,7 @@ function CombinedCheckInsPanel({ canManual, canOnSite, cohortId, open = false }:
                       {isOpen && (
                         <table className="w-full text-sm">
                           <thead className="text-left text-[11px] uppercase text-gray-400">
-                            <tr><th className="px-3 py-1.5">Student</th><th className="px-3 py-1.5">In</th><th className="px-3 py-1.5">Out</th><th className="px-3 py-1.5">How</th><th className="px-3 py-1.5">Status</th></tr>
+                            <tr><th className="px-3 py-1.5">{w.Student}</th><th className="px-3 py-1.5">In</th><th className="px-3 py-1.5">Out</th><th className="px-3 py-1.5">How</th><th className="px-3 py-1.5">Status</th></tr>
                           </thead>
                           <tbody>
                             {sess.rows.map((r) => (
@@ -387,6 +390,7 @@ interface StaffStudent {
 }
 
 function ManualCheckInPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
+  const w = useTerms();
   const { data: courses, refetch } = useApi<StaffCourse[]>(withCohort('/staff/courses', cohortId));
   const { mutate: checkIn, loading } = useMutation('post');
   const [classId, setClassId] = useState('');
@@ -421,7 +425,7 @@ function ManualCheckInPanel({ cohortId, open = false }: { cohortId?: string; ope
           onFocus={() => refetch({ silent: true })}
           className="w-full text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5 text-gray-900 dark:text-white"
         >
-          <option value="">Select a class…</option>
+          <option value="">Select a {w.class}…</option>
           {allClasses.map((cls) => (
             <option key={cls.id} value={cls.id}>{cls.courseName} — {cls.title} ({new Date(cls.date).toLocaleDateString()})</option>
           ))}
@@ -433,7 +437,7 @@ function ManualCheckInPanel({ cohortId, open = false }: { cohortId?: string; ope
           </div>
         ) : (
           <div className="relative">
-            <Input placeholder="Search by name or student ID…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input placeholder={`Search by name or ${w.student} ID…`} value={search} onChange={(e) => setSearch(e.target.value)} />
             {results && results.length > 0 && (
               <div className="absolute z-10 mt-1 w-full max-h-40 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-lg">
                 {results.map((r) => (
@@ -470,6 +474,8 @@ interface StaffMaterial {
   class?: { id: string; title: string; startTime: string } | null;
   dueAt?: string | null;
   createdAt?: string;
+  /** SBS (11-06): brought in from the school's eLearning (Moodle). */
+  fromElearning?: boolean;
   openedCount?: number;
   audienceCount?: number | null;
 }
@@ -492,9 +498,10 @@ function MaterialItem({ m, onRemove }: { m: StaffMaterial; onRemove: () => void 
             {m.kind && <span className={`rounded-full px-2 py-0.5 ${KIND_META[m.kind]?.cls ?? ''}`}>{KIND_META[m.kind]?.label ?? m.kind}</span>}
             {m.class && <span>{m.class.title} · {fmtWhen(m.class.startTime)}</span>}
             {m.kind === 'AFTER' && m.dueAt && <span>· due {fmtWhen(m.dueAt)}</span>}
+            {m.fromElearning && <span className="rounded-full px-2 py-0.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">eLearning</span>}
           </p>
           {m.description && <p className="text-xs text-gray-500 mt-1">{m.description}</p>}
-          {m.url && <a href={m.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">Open link</a>}
+          {m.url && <a href={m.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">{m.fromElearning ? 'Open in eLearning' : 'Open link'}</a>}
         </div>
         <div className="text-right shrink-0">
           {m.audienceCount != null && <p className="text-xs text-gray-500">{m.openedCount ?? 0} / {m.audienceCount} opened</p>}
@@ -513,6 +520,7 @@ function MaterialItem({ m, onRemove }: { m: StaffMaterial; onRemove: () => void 
  * course as Upcoming, Past and Library.
  */
 function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
+  const w = useTerms();
   const { data: materials, refetch } = useApi<StaffMaterial[]>(withCohort('/staff/materials', cohortId));
   const { data: courses } = useApi<StaffCourse[]>(withCohort('/staff/courses', cohortId));
   const { mutate: create, loading, error } = useMutation('post');
@@ -573,8 +581,8 @@ function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: 
       <div className="space-y-3">
         {isAdding ? (
           <div className="space-y-2 p-3 rounded-xl bg-gray-50 dark:bg-white/5">
-            <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setClassId(''); }} className={selectCls} aria-label="Course">
-              <option value="">Pick a course…</option>
+            <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setClassId(''); }} className={selectCls} aria-label={w.Course}>
+              <option value="">Pick a {w.course}…</option>
               {(courses ?? []).map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
             </select>
             <div role="radiogroup" aria-label="When is it for" className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -588,7 +596,7 @@ function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: 
             <p className="text-xs text-gray-500">{KIND_META[kind].hint}</p>
             {needsSession && (
               <select value={classId} onChange={(e) => setClassId(e.target.value)} disabled={!courseId} className={selectCls} aria-label="Session">
-                <option value="">{courseId ? 'Pick the session…' : 'Pick a course first'}</option>
+                <option value="">{courseId ? 'Pick the session…' : `Pick a ${w.course} first`}</option>
                 {sessions.map((c) => <option key={c.id} value={c.id}>{new Date(c.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} — {c.title}{c.room ? ` · ${c.room}` : ''}</option>)}
               </select>
             )}
@@ -598,11 +606,11 @@ function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: 
               </label>
             )}
             <Input placeholder="Title — e.g. Read chapter 3" value={title} onChange={(e) => setTitle(e.target.value)} />
-            <Input placeholder="Note for students (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Input placeholder={`Note for ${w.students} (optional)`} value={description} onChange={(e) => setDescription(e.target.value)} />
             <Input placeholder="Link (optional) — https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
             {error && <p className="text-xs text-rose-600">{error}</p>}
             <div className="flex gap-2">
-              <Button onClick={() => void submit()} disabled={loading || !canSave} size="sm">Share with students</Button>
+              <Button onClick={() => void submit()} disabled={loading || !canSave} size="sm">Share with {w.students}</Button>
               <Button onClick={reset} size="sm" variant="secondary">Cancel</Button>
             </div>
           </div>
@@ -635,6 +643,7 @@ function MaterialsPanel({ cohortId, open = false }: { cohortId?: string; open?: 
  * still happens on the full Facilities Queue page (linked below) — this is "what's open for this
  * programme at a glance", not a second copy of that page's whole workflow. */
 function FacilitiesPanel({ cohortId, open = false }: { cohortId?: string; open?: boolean }) {
+  const w = useTerms();
   const { data: tickets } = useApi<FacilityTicket[]>(withCohort('/facility-tickets', cohortId));
   const openTickets = (tickets ?? []).filter((t) => t.status !== 'RESOLVED');
 
@@ -647,7 +656,7 @@ function FacilitiesPanel({ cohortId, open = false }: { cohortId?: string; open?:
           {tickets.map((t) => (
             <li key={t.id} className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{t.class?.title ?? 'a class'}</span>
+                <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{t.class?.title ?? `a ${w.class}`}</span>
                 <Badge color={t.status === 'RESOLVED' ? 'green' : t.priority === 'URGENT' ? 'red' : t.status === 'ACKNOWLEDGED' ? 'blue' : 'yellow'}>
                   {t.status === 'RESOLVED' ? 'Resolved' : t.priority === 'URGENT' ? 'Escalated' : t.status === 'ACKNOWLEDGED' ? 'Being handled' : 'Open'}
                 </Badge>
@@ -775,6 +784,7 @@ function BreakdownChart({ mode, data }: { mode: ChartMode; data: { label: string
 }
 
 function AnalyticsPanel({ showDemographics, cohortId }: { showDemographics: boolean; cohortId?: string }) {
+  const w = useTerms();
   const [mode, setMode] = useChartMode();
   const { data: analytics } = useApi<StaffAnalytics>(withCohort('/staff/analytics', cohortId));
   const { data: demographics } = useApi<StaffDemographics>(showDemographics ? withCohort('/staff/analytics/demographics', cohortId) : null);
@@ -809,7 +819,7 @@ function AnalyticsPanel({ showDemographics, cohortId }: { showDemographics: bool
 
       <div className="grid gap-6 md:grid-cols-2">
         <div>
-          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Attendance rate by course</p>
+          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Attendance rate by {w.course}</p>
           <BreakdownChart mode={mode} data={byCourseChartData} />
         </div>
         {showDemographics && demographics && (

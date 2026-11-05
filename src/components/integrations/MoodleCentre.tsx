@@ -244,17 +244,29 @@ export function MoodleCentre({ connectionId, courses, onChanged }: { connectionI
         <Stat label="Linked delegates" value={o.totals.linkedDelegates} />
         <Stat label="Enrolments in linked courses" value={o.totals.enrolmentsInMappedCourses} />
         <Stat label="Attendance marks written" value={o.totals.attendanceMarksWritten} />
+        {o.materialsSync && <Stat label="Materials from eLearning" value={o.totals.materialsFromElearning ?? 0} />}
       </div>
 
       <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2 text-sm">
         <div><dt className="text-slate-500 dark:text-slate-400">Last successful roster sync</dt><dd className="text-slate-900 dark:text-slate-100">{when(lastRoster?.finishedAt)}{lastRoster ? ` · ${runSummary(lastRoster)}` : ''}</dd></div>
         <div><dt className="text-slate-500 dark:text-slate-400">Last attempted</dt><dd className="text-slate-900 dark:text-slate-100">{o.roster.lastAttempted ? `${when(o.roster.lastAttempted.startedAt)} · ${RUN_STATUS[o.roster.lastAttempted.status]}` : '—'}</dd></div>
         <div><dt className="text-slate-500 dark:text-slate-400">Schedule</dt><dd className="text-slate-900 dark:text-slate-100">Roster every 6 hours{o.attendanceWriteBack ? ' · attendance daily' : ''}, plus manual syncs</dd></div>
-        <div><dt className="text-slate-500 dark:text-slate-400">Direction</dt><dd className="text-slate-900 dark:text-slate-100">Enrolments Moodle → Tcheck (added only, never removed){o.attendanceWriteBack ? ' · attendance Tcheck → Moodle' : ''}</dd></div>
+        <div><dt className="text-slate-500 dark:text-slate-400">Direction</dt><dd className="text-slate-900 dark:text-slate-100">Enrolments Moodle → Tcheck (added only, never removed){o.materialsSync ? ' · assignments and resources Moodle → Tcheck' : ''}{o.attendanceWriteBack ? ' · attendance Tcheck → Moodle' : ''}</dd></div>
       </dl>
 
       <Review title="Roster" review={o.roster.review} connectionId={connectionId} courses={courseList} onChanged={() => void refetch({ silent: true })} />
       <Review title="Attendance write-back" review={o.attendance.review} connectionId={connectionId} courses={courseList} onChanged={() => void refetch({ silent: true })} />
+
+      {/* SBS (11-06): assignments and resources as Tcheck materials, linked back to eLearning. */}
+      <section aria-labelledby="moodle-materials" className="space-y-3">
+        <h3 id="moodle-materials" className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Assignments and resources</h3>
+        <label className="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200">
+          <input type="checkbox" checked={o.materialsSync} disabled={saving}
+            onChange={(e) => void saveSettings({ materialsSync: e.target.checked }, e.target.checked ? 'Assignments and resources will come in with the next roster sync.' : 'Assignments and resources are no longer brought in. Ones already here stay.')}
+            className="mt-0.5 rounded border-gray-300 dark:border-white/20" />
+          <span>Show linked courses' assignments and resources as materials<span className="block text-xs text-slate-500 dark:text-slate-400">Delegates see them in the app with an "Open in eLearning" link; files and submissions stay in Moodle. Anything with a due date is homework, with a reminder the day before. Renamed or re-dated items update; hidden or deleted ones are removed. Runs with each roster sync.</span></span>
+        </label>
+      </section>
 
       <section aria-labelledby="writeback" className="space-y-3">
         <h3 id="writeback" className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Attendance write-back</h3>

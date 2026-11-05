@@ -8,7 +8,7 @@ import type { NavSet, RoleName } from '../../shared/roles';
 import { ROLE_TABLE } from '../../shared/roles';
 import type { Permission } from '../../types';
 
-export type IconName = 'ShieldCheck' | 'BarChart3' | 'Battery' | 'BookOpen' | 'Calendar' | 'CalendarClock' | 'ClipboardList' | 'DoorOpen' | 'Eye' | 'FileBarChart' | 'FileText' | 'GraduationCap' | 'Layers' | 'LayoutDashboard' | 'LifeBuoy' | 'Link2' | 'MailCheck' | 'Megaphone' | 'MessageSquare' | 'MessageSquareQuote' | 'Network' | 'Plug' | 'Presentation' | 'Radar' | 'Radio' | 'ScanEye' | 'School' | 'Settings' | 'ShieldAlert' | 'Siren' | 'Smartphone' | 'Sparkles' | 'Star' | 'Tags' | 'UploadCloud' | 'UserCheck' | 'Users' | 'Users2' | 'Wrench';
+export type IconName = 'ShieldCheck' | 'BarChart3' | 'Battery' | 'BookOpen' | 'Calendar' | 'CalendarClock' | 'ClipboardList' | 'DoorOpen' | 'Eye' | 'FileBarChart' | 'FileText' | 'GraduationCap' | 'Layers' | 'LayoutDashboard' | 'LifeBuoy' | 'Link2' | 'MailCheck' | 'Megaphone' | 'MessageSquare' | 'MessageSquareQuote' | 'Network' | 'Plug' | 'Presentation' | 'Radar' | 'Radio' | 'ScanEye' | 'ScrollText' | 'School' | 'Settings' | 'ShieldAlert' | 'Siren' | 'Smartphone' | 'Sparkles' | 'Star' | 'Tags' | 'UploadCloud' | 'UserCheck' | 'Users' | 'Users2' | 'Wrench';
 
 export interface NavLinkDef {
   to: string;
@@ -35,6 +35,8 @@ export const superAdminGeneral: NavLinkDef[] = [
   { to: '/platform/grants', icon: 'ShieldCheck', label: 'Support access' },
   { to: '/platform/fleet', icon: 'Battery', label: 'Fleet health' },
   { to: '/platform/analytics', icon: 'BarChart3', label: 'Analytics' },
+  // 11-02 — per-school audit trail (names shown; each view recorded in that school's trail).
+  { to: '/platform/audit', icon: 'ScrollText', label: 'Audit log' },
 ];
 
 export const hodOverview: NavLinkDef[] = [
@@ -50,6 +52,8 @@ export const hodAdmin: NavLinkDef[] = [
   { to: '/admin/people', icon: 'Network', label: 'People & Organization' },
   { to: '/admin/integrations', icon: 'Plug', label: 'Integrations' },
   { to: '/admin/email-activity', icon: 'MailCheck', label: 'Email Activity' },
+  // 11-02 — everything changed in this school, by whom (and when the platform looked).
+  { to: '/admin/audit', icon: 'ScrollText', label: 'Audit log' },
   // P6 (A5.1): the ordered Institution Setup (dry run + apply) replaces the old 4-step wizard.
   { to: '/admin/setup', icon: 'UploadCloud', label: 'Institution Setup' },
   // P5 (A4): one Academics entry (Calendar, Programmes, Cohorts, Levels, Course links, Training
@@ -132,6 +136,12 @@ export const cxmLinks: NavLinkDef[] = [
   { to: '/cem', icon: 'Layers', label: 'Programmes' },
   { to: '/follow-ups', icon: 'LifeBuoy', label: 'Follow-ups' },
   { to: '/cem/facilities', icon: 'Wrench', label: 'Facilities' },
+  // SBS (5 Nov) — the CEM's own scorecard (cemPerformance.service).
+  { to: '/cem/performance', icon: 'BarChart3', label: 'My performance' },
+  // SBS (5 Nov) — NPS and ratings per programme (cemFeedback.service).
+  { to: '/cem/feedback', icon: 'Star', label: 'Programme feedback' },
+  // Reports + "Describe a report" (TALI): REPORT_ROLES already includes CEMs; the link was missing (was PR #48).
+  { to: '/reports', icon: 'FileText', label: 'Reports' },
   { to: '/insights', icon: 'Presentation', label: 'Insights' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
   // UAT F17 — the one Announcements page (send to own courses / programmes).
@@ -141,6 +151,9 @@ export const cxmLinks: NavLinkDef[] = [
 /* ---- CEM_MANAGER (P9, A8.6) — the team board first; the facilities queue is the team's tickets. ---- */
 export const cemManagerLinks: NavLinkDef[] = [
   { to: '/cem-team', icon: 'Users2', label: 'CEM Team' },
+  // SBS (5 Nov) — each CEM's scorecard.
+  { to: '/cem/performance', icon: 'BarChart3', label: 'CEM performance' },
+  { to: '/cem/feedback', icon: 'Star', label: 'Programme feedback' },
   { to: '/admin/facilities', icon: 'Wrench', label: 'Facilities' },
   // UAT F24 — read-only oversight of the manager's own CEMs' direct chats.
   { to: '/admin/messages', icon: 'Eye', label: 'Message Oversight' },
@@ -320,6 +333,8 @@ export const NAV_PAGE_API: Record<string, string> = {
   '/platform/grants': 'GET /platform/support-grants',
   '/platform/fleet': 'GET /platform/fleet',
   '/platform/analytics': 'GET /platform/home',
+  '/platform/audit': 'GET /platform/audit/schools',
+  '/admin/audit': 'GET /audit/events',
   '/admin/attendance-analytics': 'GET /attendance/campus-analytics',
   '/admin/attendance-overview': 'GET /attendance/dashboard-stats',
   '/admin/beacon-health': 'GET /beacons',
@@ -359,6 +374,8 @@ export const NAV_PAGE_API: Record<string, string> = {
   '/attendance': 'GET /attendance/class-stats',
   '/cem': 'GET /cem/dashboard',
   '/cem/facilities': 'GET /facility-tickets',
+  '/cem/performance': 'GET /cem/performance',
+  '/cem/feedback': 'GET /cem/feedback',
   '/cem-team': 'GET /cem-team/board',
   '/classes': 'GET /classes',
   '/class-changes': 'GET /class-changes',
