@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { takeMicrosoftResult } from '../../lib/microsoft';
 import type { AuthResponse } from '../../types';
+import { AuthShell, AuthBrand, AuthAlert } from '../../components/auth/AuthShell';
+import { auth } from '../../components/auth/authStyles';
 
 /** Where Microsoft sends the person back: finish a sign-in, or a School Admin's Microsoft 365 connect. */
 export function MicrosoftCallbackPage() {
@@ -31,20 +33,21 @@ export function MicrosoftCallbackPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      <div className="max-w-sm w-full text-center space-y-4">
+    <AuthShell>
+      <div className="text-center space-y-4 py-2">
+        <div className="flex justify-center mb-2"><AuthBrand /></div>
         {error ? (
           <>
-            <p className="text-sm text-red-400" role="alert">{error}</p>
-            <Link to="/login" className="text-sm text-blue-400 hover:text-blue-300">Back to sign in</Link>
+            <AuthAlert>{error}</AuthAlert>
+            <Link to="/login" className={`inline-block text-sm ${auth.link}`}>Back to sign in</Link>
           </>
         ) : (
           <>
-            <div className="w-8 h-8 mx-auto border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            <p className="text-sm text-slate-400">Finishing Microsoft sign-in…</p>
+            <div className="w-7 h-7 mx-auto border-2 border-slate-300 border-t-blue-600 dark:border-white/20 dark:border-t-white rounded-full animate-spin" role="status" aria-label="Loading" />
+            <p className={auth.subtitle}>Finishing Microsoft sign-in…</p>
           </>
         )}
       </div>
-    </div>
+    </AuthShell>
   );
 }

@@ -3,6 +3,8 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { Lock, ArrowRight, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { AuthShell, AuthBrand, AuthAlert } from '../../components/auth/AuthShell';
+import { auth } from '../../components/auth/authStyles';
 
 /** `mode="invite"` (P1 A3.3) is the /accept-invite page: same form, invite copy, and the single-use
  * invite endpoints instead of the reset ones. Nobody else ever chose this person's password. */
@@ -58,39 +60,56 @@ export function ResetPasswordPage({ mode = 'reset' }: { mode?: 'reset' | 'invite
     }
   };
 
-  return (
-    <div className="min-h-screen flex relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
+  const passwordField = (id: string, label: string, value: string, set: (v: string) => void, shown: boolean, toggleShown: () => void) => (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className={auth.label}>{label}</label>
+      <div className="relative group">
+        <Lock size={17} className={auth.inputIcon} aria-hidden="true" />
+        <input
+          id={id}
+          type={shown ? 'text' : 'password'}
+          autoComplete="new-password"
+          value={value}
+          onChange={(e) => set(e.target.value)}
+          required
+          className={`${auth.input} pl-11 pr-11`}
+        />
+        <button
+          type="button"
+          onClick={toggleShown}
+          aria-label={shown ? 'Hide password' : 'Show password'}
+          className={auth.inputButton}
+        >
+          {shown ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>
+      </div>
+    </div>
+  );
 
-      <div className="flex-1 flex items-center justify-center relative px-6 py-12">
-        <div className="w-full max-w-[420px]">
-          <div className="flex items-center gap-3 mb-10 justify-center">
-            <img src="/logo.svg" alt="Tcheck" className="w-10 h-10" />
-            <span className="text-xl font-bold text-white tracking-tight">Tcheck</span>
+  return (
+    <AuthShell>
+          <div className="flex justify-center mb-7">
+            <AuthBrand />
           </div>
 
           {success ? (
             <div className="text-center space-y-6">
-              <CheckCircle2 size={48} className="mx-auto text-emerald-400" />
+              <CheckCircle2 size={44} className="mx-auto text-emerald-500 dark:text-emerald-400" />
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2">{invite ? "You're all set" : 'Password Updated'}</h2>
-                <p className="text-slate-400 text-sm">{invite ? 'Sign in with the email and password you just chose.' : 'Sign in with your new password.'}</p>
+                <h2 className={`${auth.title} mb-1.5`}>{invite ? "You're all set" : 'Password updated'}</h2>
+                <p className={auth.subtitle}>{invite ? 'Sign in with the email and password you just chose.' : 'Sign in with your new password.'}</p>
               </div>
-              <button
-                onClick={() => navigate('/login')}
-                className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 transition-all cursor-pointer"
-              >
+              <button onClick={() => navigate('/login')} className={auth.primaryButton}>
                 {invite ? 'Go to Sign In' : 'Back to Sign In'}
               </button>
             </div>
           ) : (
             <>
-              <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold text-white mb-2">{invite ? (schoolName ? `Welcome to ${schoolName}` : 'Set your password') : 'Set new password'}</h2>
-                <p className="text-slate-400 text-sm">
+              <div className="mb-7 text-center">
+                <h2 className={`${auth.title} mb-1.5`}>{invite ? (schoolName ? `Welcome to ${schoolName}` : 'Set your password') : 'Set new password'}</h2>
+                <p className={auth.subtitle}>
                   {email ? (
-                    <>{invite ? 'Choose your password for ' : 'Choose a new password for '}<span className="text-slate-200 font-medium">{email}</span>.</>
+                    <>{invite ? 'Choose your password for ' : 'Choose a new password for '}<span className="font-medium text-slate-800 dark:text-slate-200">{email}</span>.</>
                   ) : (
                     invite ? 'Choose your password to finish setting up your account.' : 'Choose a new password for your account.'
                   )}
@@ -99,83 +118,34 @@ export function ResetPasswordPage({ mode = 'reset' }: { mode?: 'reset' | 'invite
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 {!searchParams.get('token') && (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-slate-300">{invite ? 'Invite code' : 'Reset code'}</label>
+                  <div className="space-y-1.5">
+                    <label htmlFor="reset-token" className={auth.label}>{invite ? 'Invite code' : 'Reset code'}</label>
                     <input
+                      id="reset-token"
                       type="text"
                       value={token}
                       onChange={(e) => setToken(e.target.value)}
                       required
-                      className="w-full px-4 py-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all font-mono"
+                      className={`${auth.input} px-4 font-mono`}
                     />
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-300">{invite ? 'Password' : 'New password'}</label>
-                  <div className="relative group">
-                    <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                      className="w-full pl-12 pr-11 py-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-300">{invite ? 'Confirm password' : 'Confirm new password'}</label>
-                  <div className="relative group">
-                    <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      className="w-full pl-12 pr-11 py-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword((v) => !v)}
-                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-                    >
-                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
+                {passwordField('reset-new', invite ? 'Password' : 'New password', newPassword, setNewPassword, showPassword, () => setShowPassword((v) => !v))}
+                {passwordField('reset-confirm', invite ? 'Confirm password' : 'Confirm new password', confirmPassword, setConfirmPassword, showConfirmPassword, () => setShowConfirmPassword((v) => !v))}
 
                 {newPassword.length > 0 && newPassword.length < minLength && (
-                  <p className="text-xs text-amber-400">Password must be at least {minLength} characters</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400">Password must be at least {minLength} characters</p>
                 )}
                 {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-                  <p className="text-xs text-amber-400">Passwords don't match</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400">Passwords don&apos;t match</p>
                 )}
 
-                {error && (
-                  <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-                    <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-                    <p className="text-sm text-red-400">{error}</p>
-                  </div>
-                )}
+                {error && <AuthAlert>{error}</AuthAlert>}
 
-                <button
-                  type="submit"
-                  disabled={loading || !canSubmit}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group"
-                >
+                <button type="submit" disabled={loading || !canSubmit} className={auth.primaryButton}>
                   {loading ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className={auth.spinner} />
                   ) : (
                     <>
                       {invite ? 'Set password' : 'Update Password'}
@@ -184,14 +154,12 @@ export function ResetPasswordPage({ mode = 'reset' }: { mode?: 'reset' | 'invite
                   )}
                 </button>
 
-                <Link to="/login" className="block text-center text-sm text-slate-400 hover:text-slate-300 transition-colors">
+                <Link to="/login" className={`block text-center text-sm ${auth.mutedLink}`}>
                   Back to Sign In
                 </Link>
               </form>
             </>
           )}
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

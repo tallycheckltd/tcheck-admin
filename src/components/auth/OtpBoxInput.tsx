@@ -77,7 +77,7 @@ export function OtpBoxInput({ length = 6, value, onChange, onComplete, shakeKey,
   };
 
   return (
-    <div className={`flex justify-center gap-2.5 ${shake ? 'animate-shake' : ''}`}>
+    <div className={`flex justify-center gap-2 sm:gap-2.5 ${shake ? 'animate-shake' : ''}`}>
       {digits.map((digit, index) => (
         <input
           key={index}
@@ -93,9 +93,14 @@ export function OtpBoxInput({ length = 6, value, onChange, onComplete, shakeKey,
           onKeyDown={(e) => handleKeyDown(index, e)}
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
-          className={`w-11 h-14 text-center text-xl font-bold rounded-xl bg-white/5 border text-white
-            focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all
-            ${digit ? 'border-blue-500/40 bg-blue-500/10' : 'border-white/10'}`}
+          aria-label={`Digit ${index + 1} of ${length}`}
+          className={`w-10 h-12 sm:w-12 sm:h-14 text-center text-xl font-semibold tabular-nums rounded-xl border
+            text-slate-900 dark:text-white shadow-sm dark:shadow-none
+            focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all
+            disabled:opacity-60
+            ${digit
+              ? 'border-blue-400 bg-blue-50 dark:border-blue-500/40 dark:bg-blue-500/10'
+              : 'border-slate-300 bg-white dark:border-white/10 dark:bg-white/5'}`}
         />
       ))}
     </div>

@@ -7,6 +7,8 @@ import { Eye, EyeOff, Lock, Mail, ArrowRight, MailCheck, RotateCw } from 'lucide
 import { OtpBoxInput } from '../../components/auth/OtpBoxInput';
 import { homeRouteFor } from '../../lib/rbac';
 import { getMicrosoftConfig, startMicrosoft } from '../../lib/microsoft';
+import { AuthShell, AuthBrand, AuthAlert } from '../../components/auth/AuthShell';
+import { auth } from '../../components/auth/authStyles';
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -100,85 +102,64 @@ export function LoginPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(99,102,241,0.1),transparent_50%)]" />
+  const brandPanel = (
+    <div className="hidden lg:flex flex-1 flex-col justify-center items-center relative px-16">
+      <div className="max-w-lg">
+        <div className="mb-8"><AuthBrand size="lg" /></div>
 
-      {/* Subtle grid pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-        backgroundSize: '64px 64px',
-      }} />
+        <h1 className="text-4xl xl:text-[2.75rem] font-semibold tracking-tight leading-[1.1] text-slate-900 dark:text-white mb-5">
+          Enterprise<br />
+          <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+            Attendance
+          </span>
+        </h1>
 
-      {/* Floating orbs */}
-      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed mb-10">
+          Hardware-verified presence, AI-powered identity checks, and real-time campus analytics — all managed from one unified platform.
+        </p>
 
-      {/* Left panel - Branding */}
-      <div className="hidden lg:flex flex-1 flex-col justify-center items-center relative px-16">
-        <div className="max-w-lg">
-          <div className="flex items-center gap-3 mb-8">
-            <img src="/logo.svg" alt="Tcheck" className="w-12 h-12" />
-            <span className="text-2xl font-bold text-white tracking-tight">Tcheck</span>
-          </div>
-
-          <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
-            Enterprise<br />
-            <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-              Attendance
-            </span>
-          </h1>
-
-          <p className="text-lg text-slate-400 leading-relaxed mb-10">
-            Hardware-verified presence, AI-powered identity checks, and real-time campus analytics — all managed from one unified platform.
-          </p>
-
-          <div className="space-y-4">
-            {[
-              { label: 'Hardware-Verified Presence', desc: 'Automated Tcheck beacon tracking ensures students are physically inside the lecture hall.' },
-              { label: 'Biometric Anti-Cheat', desc: 'AI-powered liveness and identity verification stops buddy-punching and proxy check-ins instantly.' },
-              { label: 'Live Campus Analytics', desc: 'Real-time dashboards, role-based access, and forensic audit trails for complete administrative control.' },
-            ].map((feature, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-200">{feature.label}</p>
-                  <p className="text-xs text-slate-500">{feature.desc}</p>
-                </div>
+        <ul className="space-y-4">
+          {[
+            { label: 'Hardware-Verified Presence', desc: 'Automated Tcheck beacon tracking ensures students are physically inside the lecture hall.' },
+            { label: 'Biometric Anti-Cheat', desc: 'AI-powered liveness and identity verification stops buddy-punching and proxy check-ins instantly.' },
+            { label: 'Live Campus Analytics', desc: 'Real-time dashboards, role-based access, and forensic audit trails for complete administrative control.' },
+          ].map((feature) => (
+            <li key={feature.label} className="flex items-center gap-4">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+                <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400" />
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="absolute bottom-8 left-16 text-xs text-slate-600">
-          &copy; {new Date().getFullYear()} Tcheck. All rights reserved.
-        </div>
+              <div>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{feature.label}</p>
+                <p className="text-xs leading-5 text-slate-500">{feature.desc}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* Right panel - Login form */}
-      <div className="flex-1 flex items-center justify-center relative px-6 py-12">
-        <div className="w-full max-w-[420px]">
+      <div className="absolute bottom-8 left-16 text-xs text-slate-500">
+        &copy; {new Date().getFullYear()} Tcheck. All rights reserved.
+      </div>
+    </div>
+  );
+
+  return (
+    <AuthShell aside={brandPanel}>
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
-            <img src="/logo.svg" alt="Tcheck" className="w-10 h-10" />
-            <span className="text-xl font-bold text-white tracking-tight">Tcheck</span>
+          <div className="lg:hidden flex justify-center mb-8">
+            <AuthBrand />
           </div>
 
           {otpStage ? (
             <div className="space-y-6">
               <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5">
-                  <MailCheck size={28} className="text-blue-400" />
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20 flex items-center justify-center mb-5">
+                  <MailCheck size={26} className="text-blue-600 dark:text-blue-400" />
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2">Verify It's You</h2>
-                <p className="text-slate-400 text-sm">
+                <h2 className={`${auth.title} mb-2`}>Verify it&apos;s you</h2>
+                <p className={auth.subtitle}>
                   Enter the 6-digit code we sent to<br />
-                  <span className="text-slate-200 font-medium">{email}</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200">{email}</span>
                 </p>
               </div>
 
@@ -190,16 +171,11 @@ export function LoginPage() {
                 disabled={loading}
               />
 
-              {error && (
-                <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in">
-                  <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-400">{error}</p>
-                </div>
-              )}
+              {error && <AuthAlert>{error}</AuthAlert>}
 
               {loading && (
-                <div className="flex justify-center">
-                  <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                <div className="flex justify-center" role="status" aria-label="Verifying">
+                  <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 dark:border-blue-400/30 dark:border-t-blue-400 rounded-full animate-spin" />
                 </div>
               )}
 
@@ -208,7 +184,7 @@ export function LoginPage() {
                   type="button"
                   onClick={handleResend}
                   disabled={resendCooldown > 0 || resending}
-                  className="flex items-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className={`flex items-center gap-2 text-sm ${auth.link} font-semibold disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed cursor-pointer`}
                 >
                   <RotateCw size={14} className={resending ? 'animate-spin' : ''} />
                   {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
@@ -216,7 +192,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => { setOtpStage(false); setCode(''); setError(''); }}
-                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                  className={`text-sm ${auth.mutedLink} cursor-pointer`}
                 >
                   Use a different account
                 </button>
@@ -224,73 +200,68 @@ export function LoginPage() {
             </div>
           ) : (
           <>
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
-            <p className="text-slate-400 text-sm">Sign in to your dashboard</p>
+          <div className="mb-7">
+            <h2 className={`${auth.title} mb-1.5`}>Welcome back</h2>
+            <p className={auth.subtitle}>Sign in to your dashboard</p>
           </div>
 
           <form onSubmit={handlePasswordSubmit} className="space-y-5">
             {/* Email field */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-300">Email</label>
+            <div className="space-y-1.5">
+              <label htmlFor="login-email" className={auth.label}>Email</label>
               <div className="relative group">
-                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                <Mail size={17} className={auth.inputIcon} aria-hidden="true" />
                 <input
+                  id="login-email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@tcheck.app"
                   required
-                  className="w-full pl-12 pr-4 py-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
+                  className={`${auth.input} pl-11 pr-4`}
                 />
               </div>
             </div>
 
             {/* Password field */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-slate-300">Password</label>
-                <Link to="/forgot-password" className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                <label htmlFor="login-password" className={auth.label}>Password</label>
+                <Link to="/forgot-password" className={`text-xs ${auth.link}`}>
                   Forgot password?
                 </Link>
               </div>
               <div className="relative group">
-                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                <Lock size={17} className={auth.inputIcon} aria-hidden="true" />
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
-                  className="w-full pl-12 pr-12 py-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
+                  className={`${auth.input} pl-11 pr-11`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className={auth.inputButton}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
             </div>
 
-            {/* Error */}
-            {error && (
-              <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in">
-                <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
+            {error && <AuthAlert>{error}</AuthAlert>}
 
             {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group"
-            >
+            <button type="submit" disabled={loading} className={auth.primaryButton}>
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className={auth.spinner} />
                   Signing in...
                 </>
               ) : (
@@ -304,41 +275,39 @@ export function LoginPage() {
           {microsoftReady && (
             <>
               <div className="flex items-center gap-3 my-5">
-                <div className="flex-1 h-px bg-white/10" />
-                <span className="text-[11px] uppercase tracking-wider text-slate-500">or</span>
-                <div className="flex-1 h-px bg-white/10" />
+                <div className={auth.divider} />
+                <span className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">or</span>
+                <div className={auth.divider} />
               </div>
               <button
                 type="button"
                 onClick={() => void signInWithMicrosoft()}
                 disabled={microsoftBusy}
-                className="w-full flex items-center justify-center gap-3 py-3 px-6 rounded-xl text-sm font-semibold text-slate-900 bg-white hover:bg-slate-100 border border-white/20 transition-colors disabled:opacity-60 cursor-pointer"
+                className={auth.secondaryButton}
               >
                 <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022" /><rect x="11" y="1" width="9" height="9" fill="#7fba00" /><rect x="1" y="11" width="9" height="9" fill="#00a4ef" /><rect x="11" y="11" width="9" height="9" fill="#ffb900" /></svg>
                 {microsoftBusy ? 'Opening Microsoft…' : 'Sign in with Microsoft'}
               </button>
-              <p className="mt-2 text-center text-[11px] text-slate-500">For staff of schools that use Microsoft 365.</p>
+              <p className={`mt-2 text-center text-[11px] ${auth.fine}`}>For staff of schools that use Microsoft 365.</p>
             </>
           )}
           </>
           )}
 
-          <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
-            <p className="text-center text-xs text-slate-600">
-              Admin & Lecturer access only. Students use the mobile app.
+          <div className="mt-7 pt-5 border-t border-slate-200 dark:border-white/[0.06] space-y-2.5">
+            <p className={`text-center ${auth.fine}`}>
+              Admin &amp; Lecturer access only. Students use the mobile app.
             </p>
-            <p className="text-center text-xs text-slate-600">
-              <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+            <p className={`text-center ${auth.fine}`}>
+              <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className={auth.mutedLink}>
                 Privacy Policy
               </a>
-              <span className="mx-2">·</span>
-              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+              <span className="mx-2" aria-hidden="true">·</span>
+              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className={auth.mutedLink}>
                 Legal agreement
               </a>
             </p>
           </div>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

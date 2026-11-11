@@ -4,7 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Inter (variable, with optical sizing) — the one UI typeface for the whole dashboard. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,400..600&display=swap"
+    />
     <title>Tcheck</title>
+    <script>
+      // Paint the right theme before React mounts (no light/dark flash): the saved choice if there
+      // is one (ThemeContext writes 'theme'), otherwise the system preference.
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e) { /* storage blocked: React applies the theme on mount */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

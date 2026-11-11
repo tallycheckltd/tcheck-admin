@@ -340,23 +340,27 @@ export function AuditLogView({ base, schoolId, schoolName }: {
   );
 }
 
-function AuditDetail({ row: r }: { row: AuditRow }) {
-  const ch = changes(r);
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+/** One label/value line of a detail panel. */
+export function DetailField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
     <div className="grid grid-cols-3 gap-3 py-2 border-b border-gray-100 dark:border-white/5 text-sm">
       <dt className="text-slate-500">{label}</dt><dd className="col-span-2 text-slate-900 dark:text-white break-words">{children}</dd>
     </div>
   );
+}
+
+export function AuditDetail({ row: r }: { row: AuditRow }) {
+  const ch = changes(r);
   return (
     <div className="space-y-5" data-testid="audit-detail">
       <dl>
-        <Field label="When">{new Date(r.at).toLocaleString([], { dateStyle: 'full', timeStyle: 'medium' })}</Field>
-        <Field label="Who">{r.actorName ?? (r.actorId ? 'Deleted account' : 'System')} <span className="text-slate-500">· {roleLabel(r.actorRole)}</span></Field>
-        <Field label="Category">{CATEGORY[r.category].label}</Field>
-        <Field label="On">{r.entityLabel ?? '—'} <span className="text-slate-500">· {words(r.entityType)}</span></Field>
-        {r.subjectName && <Field label="Person affected">{r.subjectName}</Field>}
-        {r.cohortName && <Field label="Cohort">{r.cohortName}</Field>}
-        {r.reason && <Field label="Reason">{r.reason}</Field>}
+        <DetailField label="When">{new Date(r.at).toLocaleString([], { dateStyle: 'full', timeStyle: 'medium' })}</DetailField>
+        <DetailField label="Who">{r.actorName ?? (r.actorId ? 'Deleted account' : 'System')} <span className="text-slate-500">· {roleLabel(r.actorRole)}</span></DetailField>
+        <DetailField label="Category">{CATEGORY[r.category].label}</DetailField>
+        <DetailField label="On">{r.entityLabel ?? '—'} <span className="text-slate-500">· {words(r.entityType)}</span></DetailField>
+        {r.subjectName && <DetailField label="Person affected">{r.subjectName}</DetailField>}
+        {r.cohortName && <DetailField label="Cohort">{r.cohortName}</DetailField>}
+        {r.reason && <DetailField label="Reason">{r.reason}</DetailField>}
       </dl>
 
       <div>

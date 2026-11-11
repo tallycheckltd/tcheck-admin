@@ -3,7 +3,7 @@ import { clsx } from 'clsx';
 
 export function GlassCard({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={clsx('glass-light dark:glass rounded-2xl p-5 dark:text-inherit', className)}>
+    <div className={clsx('glass-light dark:glass rounded-2xl p-4 dark:text-inherit', className)}>
       {children}
     </div>
   );

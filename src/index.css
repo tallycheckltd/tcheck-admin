@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Inter (variable, optical sizing) is loaded by a <link> in index.html — faster than @import here. */
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -11,6 +11,8 @@
   --color-primary: #3B82F6;
   --color-primary-dark: #2563EB;
   --color-accent: #8B5CF6;
+  /* One UI typeface everywhere: Tailwind's font-sans (and the base layer) resolve to Inter. */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* OTP box input's wrong-code tell — see components/auth/OtpBoxInput.tsx */
@@ -71,28 +73,38 @@ html.dark {
   --sidebar-edge: rgba(255, 255, 255, 0.06);
 }
 
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-family: var(--font-sans);
+  /* Inter: optical sizing on, tabular-friendly digits off by default (pages opt in with
+     tabular-nums), cv11 = single-storey a, ss03 = rounder quotes, cv05 = lowercase l with tail
+     (tells l/I/1 apart in emails and codes). */
+  font-optical-sizing: auto;
+  font-feature-settings: 'cv05', 'cv11', 'ss03';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--app-bg);
   color: var(--app-text);
 }
 
-/* One type ramp in light mode — avoids mixed system-ui vs Inter clashes */
-html:not(.dark) main {
-  color: var(--app-text);
-  font-family: 'Inter', system-ui, sans-serif;
+/* Headings: slight negative tracking reads crisper at admin sizes. In the base layer so a page's
+   own tracking-* utility still wins. */
+@layer base {
+  .app-shell :is(h1, h2, h3, h4),
+  html.admin-ui :is(h1, h2, h3, h4) {
+    letter-spacing: -0.011em;
+  }
 }
 
 html:not(.dark) main h1,
 html:not(.dark) main h2,
 html:not(.dark) main h3 {
   color: var(--app-text);
-  font-weight: 700;
-  letter-spacing: -0.02em;
 }
 
 /* Native selects: explicit light-mode colors (avoids washed-out text on some OS/browser combos) */
@@ -207,7 +219,7 @@ html:not(.dark) option {
   position: relative;
   overflow: hidden;
   border-radius: 1rem;
-  padding: 1.5rem;
+  padding: 1.125rem;
   background: var(--app-elevated-solid);
   border: 1px solid var(--app-border-soft);
   box-shadow: var(--app-shadow);
@@ -251,11 +263,11 @@ html:not(.dark) option {
 .gradient-table thead th {
   color: white;
   font-weight: 600;
-  padding: 0.875rem 1rem;
+  padding: 0.625rem 0.875rem;
   text-align: left;
-  font-size: 0.8rem;
+  font-size: 0.6875rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .gradient-table thead th:first-child {
@@ -279,9 +291,9 @@ html:not(.dark) option {
 }
 
 .gradient-table tbody td {
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 0.875rem;
   border-bottom: 1px solid var(--app-border-soft);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--app-text-secondary);
 }
 
@@ -336,18 +348,58 @@ textarea:focus {
 .app-shell {
   background: var(--app-bg);
   color: var(--app-text);
-  /* 11-06 — admin pages read too big: one step down for headings and headline numbers inside
-     the dashboard (login and public pages keep Tailwind's defaults). */
-  --text-lg: 1rem;
-  --text-lg--line-height: 1.5;
-  --text-xl: 1.0625rem;
-  --text-xl--line-height: 1.5;
+}
+
+/*
+ * Admin type scale (11-11 — owner: "things feel very amplified"). One refined ramp for everything
+ * inside the dashboard: Tailwind v4 utilities read these variables, so re-pointing them here resizes
+ * every page without touching each one. Scoped to the dashboard (DashboardLayout adds `admin-ui`
+ * to <html> while mounted, so portalled modals/tooltips get it too); login and public pages keep
+ * Tailwind's defaults.
+ *   labels / badges   text-xs   11.5px      body / table   text-sm   13px
+ *   emphasised body   text-base 14px        card titles    text-lg   15px
+ *   section titles    text-xl   16px        page titles    text-2xl  20px
+ *   headline numbers  text-3xl  22px, 4xl 26px, 5xl 30px
+ * Bold is a touch lighter (650) — Inter's 700 at these sizes is what made tiles shout.
+ */
+.app-shell,
+html.admin-ui {
+  --text-xs: 0.71875rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.375rem;
+  --text-lg: 0.9375rem;
+  --text-lg--line-height: 1.4;
+  --text-xl: 1rem;
+  --text-xl--line-height: 1.4;
   --text-2xl: 1.25rem;
-  --text-2xl--line-height: 1.4;
-  --text-3xl: 1.5rem;
-  --text-3xl--line-height: 1.3;
-  --text-4xl: 1.875rem;
+  --text-2xl--line-height: 1.35;
+  --text-3xl: 1.375rem;
+  --text-3xl--line-height: 1.25;
+  --text-4xl: 1.625rem;
   --text-4xl--line-height: 1.2;
+  --text-5xl: 1.875rem;
+  --text-5xl--line-height: 1.15;
+  --font-weight-bold: 650;
+  --font-weight-extrabold: 700;
+  --font-weight-black: 750;
+}
+
+/* Base text size for the dashboard (never on <html> itself — that would rescale every rem). */
+.app-shell,
+html.admin-ui body {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+/* Content offset beside the floating desktop sidebar: 12px inset + sidebar width + 12px gap.
+   Sidebar.tsx sets data-collapsed / data-density on the <aside>; widths are 232 / 208 / 60px. */
+@media (min-width: 1024px) {
+  .app-main { margin-left: 256px; }
+  .app-sidebar[data-density="few"] ~ .app-main { margin-left: 232px; }
+  .app-sidebar[data-collapsed="true"] ~ .app-main { margin-left: 84px; }
 }
 
 /* Sidebar navigation — theme tokens (light + dark) */

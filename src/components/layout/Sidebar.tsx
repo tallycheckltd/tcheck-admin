@@ -34,6 +34,10 @@ interface NavItem {
   badge?: number;
   children?: NavItem[];
   superAdminOnly?: boolean;
+  /** Active only on this exact path (not on pages below it). */
+  end?: boolean;
+  /** Overrides path-based highlighting (e.g. a link that carries a query string). */
+  active?: boolean;
 }
 
 /* ---- SUPER_ADMIN (Tallycheck Global) ---- */
@@ -122,25 +126,24 @@ const registrarGeneral = withIcons(NAV.registrarGeneral);
 /* ---- ICT Admin — infrastructure only ---- */
 const ictAdminLinks = withIcons(NAV.ictAdminLinks);
 
-/** Live clock under the brand header — ticks every second so the glow reads as "live" rather
- * than a static timestamp that happens to be right once. */
+/** Live clock under the brand header (hours and minutes — seconds made the line too long for the
+ * compact sidebar); refreshes every 10s. */
 function LiveClock({ collapsed }: { collapsed: boolean }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
+    const id = window.setInterval(() => setNow(new Date()), 10_000);
     return () => window.clearInterval(id);
   }, []);
 
-  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const date = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
   return (
     <p
       className={clsx(
-        'mt-1 flex items-center gap-1.5 text-[10px] font-mono tabular-nums tracking-tight text-blue-500 dark:text-blue-400 truncate',
+        'mt-0.5 flex items-center gap-1.5 text-[10.5px] leading-4 tabular-nums text-[color:var(--app-text-muted)] truncate',
         collapsed && 'lg:hidden',
       )}
-      style={{ textShadow: '0 0 8px rgba(59,130,246,0.6)' }}
     >
       <span className="relative flex h-1.5 w-1.5 shrink-0">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
@@ -151,17 +154,20 @@ function LiveClock({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-function NavIcon({ Icon, active }: { Icon: React.ComponentType<{ size?: number }>; active: boolean }) {
-  return (
-    <span
-      className={clsx(
-        'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-colors',
-        active ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400' : 'text-inherit',
-      )}
-    >
-      <Icon size={18} />
-    </span>
-  );
+/** Routes that are only "active" on themselves, not on every page below them. */
+const END_PATHS = new Set(['/admin', '/lecturer', '/platform', '/staff', '/cem']);
+
+/** Same rule NavLink uses (prefix match on path segments, exact for END_PATHS / `end`). */
+function isPathActive(link: Pick<NavItem, 'to' | 'end'>, pathname: string): boolean {
+  const base = link.to.split('?')[0];
+  if (link.end || END_PATHS.has(base)) return pathname === base;
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
+function isLinkActive(link: NavItem, pathname: string): boolean {
+  if (link.active !== undefined) return link.active;
+  if (link.children?.length) return link.children.some((c) => isPathActive(c, pathname));
+  return isPathActive(link, pathname);
 }
 
 function NavBadge({ count, collapsed }: { count?: number; collapsed: boolean }) {
@@ -169,20 +175,20 @@ function NavBadge({ count, collapsed }: { count?: number; collapsed: boolean }) 
   if (collapsed) {
     return (
       <span
-        className="hidden lg:block absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-[color:var(--app-elevated-solid)]"
+        className="hidden lg:block absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[color:var(--app-elevated-solid)]"
         aria-hidden="true"
       />
     );
   }
   return (
-    <span className="text-[10px] font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+    <span className="ml-auto shrink-0 text-[10px] font-semibold tabular-nums bg-blue-500 text-white px-1.5 h-[18px] leading-[18px] rounded-full min-w-[18px] text-center">
       {count > 99 ? '99+' : count}
     </span>
   );
 }
 
 // Sidebar page search: what the person typed in the box above the nav. Every list of links below
-// (the sectioned ones and the flat per-role ones) is filtered through matchLinks.
+// is filtered through matchLinks.
 const NavQuery = React.createContext('');
 
 /** Links whose label (or a child's label, or parent + child together) contains every typed word. */
@@ -199,111 +205,161 @@ function matchLinks<T extends { label: string; children?: T[] }>(links: T[], que
   return out;
 }
 
-function NavSection({
-  title, links, isSuperAdmin, onNavigate, collapsed,
-}: {
-  title: string; links: NavItem[]; isSuperAdmin: boolean; onNavigate: () => void; collapsed: boolean;
-}) {
+/* Shared row geometry (11-11 compact pass): 32px rows, 13px type, 16px icons. */
+const ROW = 'group/row relative flex items-center gap-2.5 h-8 px-2 rounded-lg text-[13px] leading-none font-medium transition-colors';
+const ROW_RAIL = 'lg:justify-center lg:px-0 lg:w-10 lg:mx-auto';
+
+function NavRow({ link, collapsed, onNavigate }: { link: NavItem; collapsed: boolean; onNavigate: () => void }) {
+  const location = useLocation();
+  const [open, setOpen] = useState<boolean | null>(null);
   const query = React.useContext(NavQuery);
-  const visibleLinks = matchLinks(links.filter((l) => !l.superAdminOnly || isSuperAdmin), query);
-  const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
-  const location = window.location;
+  const hasChildren = !!link.children?.length;
+  const active = isLinkActive(link, location.pathname);
+  const Icon = link.icon;
 
-  if (visibleLinks.length === 0) return null;
-
-  const toggleExpand = (label: string) => {
-    setExpandedItems(prev =>
-      prev.includes(label) ? prev.filter(i => i !== label) : [...prev, label]
-    );
-  };
-
-  return (
-    <>
-      <p
-        className={clsx(
-          'px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest first:pt-2 whitespace-nowrap overflow-hidden transition-opacity',
-          collapsed && 'lg:hidden',
-        )}
-        style={{ color: 'var(--nav-section)' }}
-      >
-        {title}
-      </p>
-      {visibleLinks.map((link) => {
-        const hasChildren = link.children && link.children.length > 0;
-        const isExpanded = expandedItems.includes(link.label) || (query.trim() !== '' && !!hasChildren);
-        const isChildActive = hasChildren && link.children?.some(child => location.pathname.startsWith(child.to));
-
-        // In collapsed rail mode there's no room for a flyout submenu — the parent becomes a
-        // direct link to its first child instead of an expand toggle.
-        const collapsedParentTarget = hasChildren ? link.children![0].to : link.to;
-
-        return (
-          <div key={link.label} className="space-y-1 relative">
-            {hasChildren && !collapsed ? (
-              <button
-                onClick={() => toggleExpand(link.label)}
-                className={clsx(
-                  'flex items-center gap-3 w-full px-2 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer',
-                  isChildActive
-                    ? 'nav-link-active font-semibold'
-                    : 'nav-link-idle hover:bg-slate-100 dark:hover:bg-white/5',
-                )}
-              >
-                <NavIcon Icon={link.icon} active={!!isChildActive} />
-                <span className="flex-1 text-left whitespace-nowrap overflow-hidden">{link.label}</span>
-                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-            ) : (
+  // A parent with children: an expand toggle (expanded rail = link to its first child instead,
+  // since there's no room for a submenu).
+  if (hasChildren && !collapsed) {
+    const expanded = query.trim() !== '' || (open ?? active);
+    const listId = `nav-sub-${link.to.replace(/\W+/g, '-')}`;
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setOpen(!expanded)}
+          aria-expanded={expanded}
+          aria-controls={listId}
+          className={clsx(ROW, 'w-full cursor-pointer', active ? 'nav-link-active' : 'nav-link-idle')}
+        >
+          <Icon size={16} />
+          <span className="flex-1 text-left truncate">{link.label}</span>
+          <ChevronRight size={14} className={clsx('shrink-0 opacity-60 transition-transform', expanded && 'rotate-90')} />
+        </button>
+        {expanded && (
+          <div id={listId} className="mt-0.5 ml-[17px] pl-2.5 border-l border-[color:var(--sidebar-edge)] space-y-0.5">
+            {link.children!.map((child) => (
               <NavLink
-                to={hasChildren ? collapsedParentTarget : link.to}
-                end={link.to === '/admin' || link.to === '/lecturer' || link.to === '/platform'}
+                key={child.to}
+                to={child.to}
                 onClick={onNavigate}
-                data-rail-label={collapsed ? link.label : undefined}
-                aria-label={collapsed ? link.label : undefined}
                 className={({ isActive }) =>
                   clsx(
-                    'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all relative',
-                    collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
-                    (isActive || isChildActive) ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
+                    'flex items-center gap-2 h-7 px-2 rounded-md text-[12.5px] leading-none font-medium transition-colors',
+                    isActive ? 'nav-link-active' : 'nav-link-idle',
                   )
                 }
               >
-                <NavIcon Icon={link.icon} active={!!isChildActive} />
-                <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>
-                  {link.label}
-                </span>
-                {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
-                {collapsed && <NavBadge count={link.badge} collapsed />}
+                <span className="truncate">{child.label}</span>
               </NavLink>
-            )}
-
-            {hasChildren && isExpanded && !collapsed && (
-              <div className="pl-9 space-y-1 animate-in slide-in-from-top-1 duration-200">
-                {link.children?.map((child) => (
-                  <NavLink
-                    key={child.to}
-                    to={child.to}
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      clsx(
-                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                        isActive
-                          ? 'nav-link-active border-l-2 border-blue-500'
-                          : 'text-slate-500 dark:text-gray-500 hover:text-slate-700 dark:hover:text-gray-300',
-                      )
-                    }
-                  >
-                    <child.icon size={16} />
-                    <span>{child.label}</span>
-                  </NavLink>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
-        );
-      })}
-    </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <NavLink
+      to={hasChildren ? link.children![0].to : link.to}
+      end={link.end || END_PATHS.has(link.to)}
+      onClick={onNavigate}
+      data-rail-label={collapsed ? link.label : undefined}
+      aria-label={collapsed ? link.label : undefined}
+      className={clsx(ROW, collapsed && ROW_RAIL, active ? 'nav-link-active' : 'nav-link-idle')}
+    >
+      <Icon size={16} />
+      <span className={clsx('flex-1 truncate', collapsed && 'lg:hidden')} title={collapsed ? undefined : link.label}>{link.label}</span>
+      {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
+      {collapsed && <NavBadge count={link.badge} collapsed />}
+    </NavLink>
   );
+}
+
+/**
+ * One titled section of the nav. Titled sections fold (the header is the toggle) so a long nav
+ * like the School Admin's doesn't run down the whole screen; while searching every section is
+ * open, and in the icon rail they're always open (headers become thin dividers).
+ */
+function NavGroup({
+  title, links, collapsed, open, onToggle, onNavigate, first,
+}: {
+  title?: string; links: NavItem[]; collapsed: boolean; open: boolean; onToggle: () => void; onNavigate: () => void; first: boolean;
+}) {
+  const query = React.useContext(NavQuery);
+  const visible = matchLinks(links, query);
+  if (visible.length === 0) return null;
+  const searching = query.trim() !== '';
+  const expanded = !title || open || searching;
+  const listId = title ? `nav-group-${title.toLowerCase().replace(/\W+/g, '-')}` : undefined;
+  const hiddenBadges = expanded ? 0 : visible.reduce((n, l) => n + (l.badge ?? 0), 0);
+
+  return (
+    <div className={clsx(!first && title && 'pt-2', !first && collapsed && 'lg:pt-0')}>
+      {title && (
+        <>
+          {!first && collapsed && <div className="hidden lg:block mx-3 my-2 border-t border-[color:var(--sidebar-edge)]" aria-hidden="true" />}
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={searching}
+            aria-expanded={expanded}
+            aria-controls={listId}
+            className={clsx(
+              'flex w-full items-center gap-1.5 h-7 px-2 rounded-md text-[10.5px] font-semibold uppercase tracking-[0.08em] transition-colors cursor-pointer disabled:cursor-default hover:bg-[color:var(--nav-hover-bg)] disabled:hover:bg-transparent',
+              collapsed && 'lg:hidden',
+            )}
+            style={{ color: 'var(--nav-section)' }}
+          >
+            <span className="flex-1 text-left truncate">{title}</span>
+            {!expanded && hiddenBadges > 0 && (
+              <span className="text-[10px] font-semibold tabular-nums normal-case tracking-normal bg-blue-500 text-white px-1.5 h-4 leading-4 rounded-full">
+                {hiddenBadges > 99 ? '99+' : hiddenBadges}
+              </span>
+            )}
+            {!expanded && <span className="text-[10.5px] font-medium tabular-nums normal-case tracking-normal opacity-70">{visible.length}</span>}
+            <ChevronDown size={13} className={clsx('shrink-0 transition-transform', !expanded && '-rotate-90')} />
+          </button>
+        </>
+      )}
+      {/* A folded group still shows its icons in the desktop rail. */}
+      {(expanded || collapsed) && (
+        <div id={listId} className={clsx('space-y-0.5', title && 'mt-0.5', !expanded && 'hidden lg:block')}>
+          {visible.map((link) => (
+            <NavRow key={link.to + link.label} link={link} collapsed={collapsed} onNavigate={onNavigate} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Which titled groups are open, remembered per user in localStorage. A group with no saved choice
+ * starts open only if it's "Overview" or holds the page you're on; the group holding the current
+ * page is always open unless you folded it while on this page.
+ */
+function useNavGroups(userId: string | undefined, activeTitle: string | undefined, pathname: string) {
+  const key = `tcheck:sidebarGroups:${userId ?? 'anon'}`;
+  const read = (k: string): Record<string, boolean> => {
+    try { return JSON.parse(localStorage.getItem(k) || '{}') as Record<string, boolean>; } catch { return {}; }
+  };
+  const [stored, setStored] = useState<{ key: string; groups: Record<string, boolean> }>(() => ({ key, groups: read(key) }));
+  // Another user signed in on this browser: load their saved groups (adjust-state-on-change pattern).
+  if (stored.key !== key) setStored({ key, groups: read(key) });
+  const [foldedActiveAt, setFoldedActiveAt] = useState<string | null>(null);
+
+  const isOpen = (title: string) => {
+    if (title === activeTitle) return foldedActiveAt !== pathname;
+    return stored.groups[title] ?? title === 'Overview';
+  };
+  const toggle = (title: string) => {
+    const next = !isOpen(title);
+    if (title === activeTitle) setFoldedActiveAt(next ? null : pathname);
+    const groups = { ...stored.groups, [title]: next };
+    setStored({ key, groups });
+    try { localStorage.setItem(key, JSON.stringify(groups)); } catch { /* storage blocked */ }
+  };
+  return { isOpen, toggle };
 }
 
 /** Collapses Search/Theme/Logout behind one avatar trigger instead of three permanently-visible
@@ -342,8 +398,8 @@ function ProfileMenu({
     };
   }, [open]);
 
-  const itemClass = 'flex items-center gap-3 w-full px-2.5 py-2 rounded-xl text-sm cursor-pointer transition-colors nav-link-idle';
-  const iconBadgeClass = 'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-black/[0.03] dark:bg-white/5';
+  const itemClass = 'flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg text-[13px] cursor-pointer transition-colors nav-link-idle';
+  const iconBadgeClass = 'flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 bg-black/[0.03] dark:bg-white/5';
 
   return (
     <div ref={ref} className="relative">
@@ -358,18 +414,18 @@ function ProfileMenu({
             // variant — this dropdown sits directly over other content in the same panel (nav
             // items, or the page behind it when the rail is collapsed), and a solid hex here
             // guarantees full coverage regardless of any compositing/paint-order quirk.
-            className="absolute bottom-full left-0 z-50 isolate mb-2 w-64 rounded-2xl border border-[color:var(--sidebar-edge)] shadow-xl overflow-hidden p-1.5 space-y-0.5 origin-bottom-left"
+            className="absolute bottom-full left-0 z-50 isolate mb-2 w-60 rounded-xl border border-[color:var(--sidebar-edge)] shadow-xl overflow-hidden p-1.5 space-y-0.5 origin-bottom-left"
             style={{ backgroundColor: dark ? '#0f172a' : '#ffffff' }}
           >
             <button onClick={() => { onOpenSearch(); setOpen(false); }} type="button" className={itemClass}>
-              <span className={iconBadgeClass}><Search size={16} /></span>
+              <span className={iconBadgeClass}><Search size={15} /></span>
               <span className="flex-1 text-left">Search</span>
               <kbd className="inline-flex items-center justify-center px-1.5 h-5 rounded-md text-[10px] font-medium border border-[color:var(--sidebar-edge)] text-[color:var(--app-text-muted)]">
                 /
               </kbd>
             </button>
             <button onClick={() => { navigate('/profile'); setOpen(false); }} type="button" className={itemClass}>
-              <span className={iconBadgeClass}><UserIcon size={16} /></span>
+              <span className={iconBadgeClass}><UserIcon size={15} /></span>
               <span className="flex-1 text-left">My Profile</span>
             </button>
             {(user?.memberships?.length ?? 0) > 1 && (
@@ -383,7 +439,7 @@ function ProfileMenu({
                     onClick={() => { setOpen(false); void switchTenant(m.schoolId).then((u) => { navigate(homeRouteFor(u.role as RoleName)); }); }}
                     className={`${itemClass} ${m.schoolId === user!.schoolId ? 'opacity-60 cursor-default' : ''}`}
                   >
-                    <span className={iconBadgeClass}><Building2 size={16} /></span>
+                    <span className={iconBadgeClass}><Building2 size={15} /></span>
                     <span className="flex-1 text-left min-w-0">
                       <span className="block truncate">{m.schoolName}</span>
                       <span className="block text-[11px] text-[color:var(--app-text-muted)]">{ROLE_TABLE[m.role as RoleName]?.label ?? m.role}{m.schoolId === user!.schoolId ? ' · current' : ''}</span>
@@ -394,17 +450,17 @@ function ProfileMenu({
               </div>
             )}
             <button onClick={() => { onToggleTheme(); setOpen(false); }} type="button" className={itemClass}>
-              <span className={iconBadgeClass}>{dark ? <Sun size={16} /> : <Moon size={16} />}</span>
+              <span className={iconBadgeClass}>{dark ? <Sun size={15} /> : <Moon size={15} />}</span>
               <span className="flex-1 text-left">{dark ? 'Light Mode' : 'Dark Mode'}</span>
             </button>
             <div className="my-1 border-t border-[color:var(--sidebar-edge)]" />
             <button
               onClick={() => { onLogout(); setOpen(false); }}
               type="button"
-              className="flex items-center gap-3 w-full px-2.5 py-2 rounded-xl text-sm text-red-500 hover:bg-red-500/10 cursor-pointer transition-colors"
+              className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg text-[13px] text-red-500 hover:bg-red-500/10 cursor-pointer transition-colors"
             >
-              <span className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-red-500/10">
-                <LogOut size={16} />
+              <span className="flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 bg-red-500/10">
+                <LogOut size={15} />
               </span>
               <span className="flex-1 text-left">Logout</span>
             </button>
@@ -416,8 +472,11 @@ function ProfileMenu({
         type="button"
         onClick={() => setOpen((o) => !o)}
         data-rail-label={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}
+        aria-label={collapsed ? `Account menu for ${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() : undefined}
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={clsx(
-          'flex items-center gap-2 w-full p-2 rounded-2xl border transition-colors cursor-pointer',
+          'flex items-center gap-2 w-full p-1.5 rounded-xl border transition-colors cursor-pointer',
           open
             ? 'bg-black/[0.04] dark:bg-white/[0.07] border-black/5 dark:border-white/5'
             : 'bg-black/[0.03] dark:bg-white/[0.05] border-black/5 dark:border-white/5 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]',
@@ -425,19 +484,19 @@ function ProfileMenu({
         )}
       >
         <div className="relative flex-shrink-0">
-          <div className={clsx(`w-9 h-9 rounded-full bg-gradient-to-br ${roleAccent} flex items-center justify-center text-white text-xs font-bold ring-2 ring-[color:var(--app-elevated-solid)] shadow-sm`)}>
+          <div className={clsx(`w-7 h-7 rounded-full bg-gradient-to-br ${roleAccent} flex items-center justify-center text-white text-[10.5px] font-semibold ring-2 ring-[color:var(--app-elevated-solid)] shadow-sm`)}>
             {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
-          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[color:var(--app-elevated-solid)]" aria-hidden="true" />
+          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[color:var(--app-elevated-solid)]" aria-hidden="true" />
         </div>
         <div className={clsx('flex-1 min-w-0 text-left', collapsed && 'lg:hidden')}>
-          <p className="text-sm font-semibold truncate text-[color:var(--app-text)] dark:text-white">
+          <p className="text-[12.5px] leading-4 font-semibold truncate text-[color:var(--app-text)] dark:text-white">
             {user?.firstName} {user?.lastName}
           </p>
-          <p className="text-[11px] truncate text-[color:var(--app-text-muted)] dark:text-slate-500">{user?.email}</p>
+          <p className="text-[11px] leading-4 truncate text-[color:var(--app-text-muted)] dark:text-slate-400">{user?.email}</p>
         </div>
         <ChevronDown
-          size={14}
+          size={13}
           className={clsx('shrink-0 transition-transform text-[color:var(--app-text-muted)]', open && 'rotate-180', collapsed && 'lg:hidden')}
         />
       </button>
@@ -663,6 +722,79 @@ export function Sidebar({
     });
   };
 
+  // Every role's nav as sections: titled ones fold, a single untitled one is a flat list.
+  const sections: { title?: string; links: NavItem[] }[] = [];
+  if (isSuperAdmin) {
+    sections.push(
+      { title: 'Overview', links: superAdminOverview },
+      { title: 'Administration', links: superAdminAdmin },
+      { title: 'General', links: addFacilitiesBadge(addEscalationBadge(addTicketBadge(superAdminGeneral))) },
+    );
+  } else if (isAdmin) {
+    sections.push(
+      { title: 'Overview', links: [...hodOverview, ...taliLinks] },
+      { title: 'Administration', links: filterBySchoolConfig(addPendingBadge(hodAdmin)) },
+      { title: 'Operations', links: filterBySchoolConfig(addFacilitiesBadge(addEscalationBadge(hodOperations))) },
+      { title: 'General', links: filterBySchoolConfig(addTicketBadge(hodGeneral)) },
+    );
+  } else if (isExecutive) {
+    sections.push(
+      { title: 'Overview', links: [...hierarchyOverview, ...taliLinks] },
+      { title: 'Operations', links: filterBySchoolConfig(execOperations) },
+      { title: 'General', links: execGeneral },
+    );
+  } else if (isHierarchyOps) {
+    const deputy = user?.role === 'DEPUTY_HOD';
+    sections.push(
+      { title: 'Overview', links: [...hierarchyOverview, ...taliLinks] },
+      { title: 'Administration', links: filterBySchoolConfig(deputy ? hierarchyAdmin.filter((l) => l.label === 'Users') : hierarchyAdmin) },
+      {
+        title: 'Operations',
+        links: filterBySchoolConfig(addFacilitiesBadge(addEscalationBadge(
+          deputy
+            ? hierarchyOperations.filter((l) => l.label !== 'Fraud Detection' && l.label !== 'Escalations' && l.label !== 'Facilities')
+            : hierarchyOperations,
+        ))),
+      },
+      { title: 'General', links: filterBySchoolConfig(addTicketBadge(hierarchyGeneral)) },
+    );
+  } else if (isRegistrar) {
+    sections.push(
+      { title: 'Overview', links: [...hierarchyOverview, ...taliLinks] },
+      { title: 'Administration', links: filterBySchoolConfig(registrarAdmin) },
+      { title: 'General', links: filterBySchoolConfig(registrarGeneral) },
+    );
+  } else if (isIctAdmin) {
+    sections.push({ links: addEscalationBadge(ictAdminLinks) });
+  } else if (isLecturer) {
+    sections.push({ links: addFacilitiesBadge(addEscalationBadge(filterByPermission(filterBySchoolConfig(lecturerNavLinks)))) });
+  } else if (isCemManager) {
+    sections.push({ links: addFacilitiesBadge(filterByPermission(filterBySchoolConfig(cemManagerNavLinks))) });
+  } else if (isStaff) {
+    sections.push({ links: filterByPermission(filterBySchoolConfig(staffNavLinks)) });
+  } else if (isCxm && cxmCohortId) {
+    // Every panel is its own route; the overview (`/cem/cohorts/:id`) is a prefix of the others so
+    // it's exact-match, and Announcements carries `?cohortId=` so it's never lit by path alone.
+    sections.push({
+      links: buildCxmCohortLinks(cxmCohortId).map((l) => ({
+        ...l,
+        end: l.to === `/cem/cohorts/${cxmCohortId}` || l.to === '/cem',
+        active: l.to.includes('?') ? false : undefined,
+      })),
+    });
+  } else if (isCxm) {
+    // Deliberately skips filterBySchoolConfig — its Terms/Programs rule (keyed on the label
+    // "Training pipelines") must never touch a CEM's own "Programmes" link.
+    sections.push({ links: addFacilitiesBadge(filterByPermission(cxmLinks)) });
+  }
+  for (const s of sections) s.links = s.links.filter((l) => !l.superAdminOnly || isSuperAdmin);
+
+  // Few pages (say a Staff account's 3): a narrower card, so it reads in proportion to its content.
+  const pageCount = sections.reduce((n, s) => n + s.links.reduce((m, l) => m + (l.children?.length || 1), 0), 0);
+  const few = pageCount <= 6;
+  const activeTitle = sections.find((s) => s.title && s.links.some((l) => isLinkActive(l, location.pathname)))?.title;
+  const groups = useNavGroups(user?.id, activeTitle, location.pathname);
+
   return (
     <>
       {/* Backdrop — mobile only, closes the drawer on tap */}
@@ -674,15 +806,19 @@ export function Sidebar({
         />
       )}
       <aside {...rail.handlers}
+        data-collapsed={collapsed ? 'true' : 'false'}
+        data-density={few ? 'few' : 'full'}
+        aria-label="Sidebar"
         className={clsx(
-          // Floats clear of the viewport edges on desktop (lg:) — a rounded, fully-bordered card
-          // with an ambient shadow instead of a flush panel glued to the browser chrome. The
-          // mobile drawer (below lg:) stays edge-to-edge/square since it's a full-height overlay,
-          // not a persistent piece of chrome, so "floating" there would just cost screen space.
-          'fixed inset-y-0 left-0 h-screen glass-sidebar flex flex-col z-40 border border-[color:var(--sidebar-edge)] transition-[transform,width] duration-200',
-          'w-64',
-          'lg:inset-auto lg:left-3 lg:top-3 lg:h-[calc(100vh-1.5rem)] lg:rounded-2xl',
-          collapsed ? 'lg:w-[76px]' : 'lg:w-64',
+          // Floats clear of the viewport edges on desktop (lg:) as a rounded card; the mobile
+          // drawer (below lg:) stays a full-height, edge-to-edge overlay.
+          'app-sidebar fixed inset-y-0 left-0 h-screen glass-sidebar flex flex-col z-40 border border-[color:var(--sidebar-edge)] transition-[transform,width] duration-200',
+          'w-60',
+          'lg:inset-auto lg:left-3 lg:top-3 lg:rounded-2xl',
+          // Desktop: the card is only as tall as its content (capped at the viewport, then the
+          // nav scrolls) — the profile sits right under the last group, not at the screen's foot.
+          'lg:h-auto lg:max-h-[calc(100vh-1.5rem)]',
+          collapsed ? 'lg:w-[60px]' : few ? 'lg:w-[208px]' : 'lg:w-[232px]',
           open ? 'translate-x-0' : '-translate-x-full',
           'lg:translate-x-0',
         )}
@@ -692,16 +828,17 @@ export function Sidebar({
         type="button"
         onClick={onToggleCollapse}
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="hidden lg:flex absolute -right-3 top-7 w-6 h-6 rounded-full glass-sidebar items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer text-[color:var(--app-text-muted)]"
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        className={clsx('hidden lg:flex absolute -right-3 w-6 h-6', collapsed ? 'top-[40px]' : 'top-[64px]', 'rounded-full glass-sidebar border border-[color:var(--sidebar-edge)] items-center justify-center shadow-sm hover:scale-110 transition-transform cursor-pointer text-[color:var(--app-text-muted)] z-10')}
       >
-        {collapsed ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
+        {collapsed ? <PanelLeftOpen size={12} /> : <PanelLeftClose size={12} />}
       </button>
 
-      <div className={clsx('p-5 flex items-center gap-3 border-b border-[color:var(--sidebar-edge)]', collapsed && 'lg:justify-center lg:px-3')}>
-        <img src="/logo.svg" alt="Tcheck" className="w-10 h-10 flex-shrink-0" />
+      <div className={clsx('px-3.5 py-3 flex items-center gap-2.5 border-b border-[color:var(--sidebar-edge)]', collapsed && 'lg:justify-center lg:px-2')}>
+        <img src="/logo.svg" alt="Tcheck" className="w-7 h-7 flex-shrink-0" />
         <div className={clsx('flex-1 min-w-0', collapsed && 'lg:hidden')}>
-          <h1 className="text-lg font-bold tracking-tight text-[color:var(--app-text)] dark:text-white whitespace-nowrap">Tcheck</h1>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--app-accent-label)] whitespace-nowrap">
+          <p className="text-[14px] leading-5 font-semibold tracking-[-0.01em] text-[color:var(--app-text)] dark:text-white whitespace-nowrap">Tcheck</p>
+          <p className="text-[10px] leading-4 font-semibold uppercase tracking-[0.08em] text-[color:var(--app-accent-label)] truncate">
             {roleLabel}
           </p>
           <LiveClock collapsed={collapsed} />
@@ -709,27 +846,27 @@ export function Sidebar({
         <button
           type="button"
           onClick={onClose}
-          className={clsx('lg:hidden p-1.5 rounded-lg text-[color:var(--app-text)] dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer', collapsed && 'lg:hidden')}
+          className="lg:hidden p-1.5 rounded-lg text-[color:var(--app-text)] dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
           aria-label="Close navigation menu"
         >
-          <X size={18} />
+          <X size={16} />
         </button>
       </div>
 
-      <div className={clsx('px-3 pt-3', collapsed && 'lg:px-2')}>
+      <div className={clsx('px-2.5 pt-2.5', collapsed && 'lg:px-2')}>
         {collapsed && (
           <button
             type="button"
             onClick={() => { onToggleCollapse(); setTimeout(() => navSearchRef.current?.focus(), 50); }}
             data-rail-label="Search pages"
             aria-label="Search pages"
-            className="hidden lg:flex mx-auto w-11 h-9 items-center justify-center rounded-lg text-[color:var(--app-text-muted)] hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
+            className="hidden lg:flex mx-auto w-10 h-8 items-center justify-center rounded-lg text-[color:var(--app-text-muted)] hover:bg-[color:var(--nav-hover-bg)] cursor-pointer"
           >
             <Search size={16} />
           </button>
         )}
         <div className={clsx('relative', collapsed && 'lg:hidden')}>
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--app-text-muted)] pointer-events-none" />
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[color:var(--app-text-muted)] pointer-events-none" />
           <input
             ref={navSearchRef}
             type="search"
@@ -744,216 +881,32 @@ export function Sidebar({
             }}
             placeholder="Search pages…"
             aria-label="Search pages in the menu"
-            className="w-full h-9 pl-8 pr-3 rounded-lg text-sm bg-slate-100 dark:bg-white/5 border border-transparent focus:border-[color:var(--sidebar-edge)] focus:outline-none text-[color:var(--app-text)] dark:text-white placeholder:text-[color:var(--app-text-muted)]"
+            className="w-full h-8 pl-8 pr-2.5 rounded-lg text-[13px] bg-black/[0.04] dark:bg-white/5 border border-transparent focus:border-[color:var(--sidebar-edge)] focus:outline-none text-[color:var(--app-text)] dark:text-white placeholder:text-[color:var(--app-text-muted)]"
           />
         </div>
       </div>
 
       <NavQuery.Provider value={navQuery}>
-      <nav ref={navRef} className="sidebar-nav-scroll flex-1 px-3 pt-4 space-y-1 overflow-y-auto overflow-x-hidden">
-        {isSuperAdmin && (
-          <>
-            <NavSection title="Overview" links={superAdminOverview} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Administration" links={superAdminAdmin} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={addFacilitiesBadge(addEscalationBadge(addTicketBadge(superAdminGeneral)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-          </>
-        )}
-        {isAdmin && !isSuperAdmin && (
-          <>
-            <NavSection title="Overview" links={[...hodOverview, ...taliLinks]} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Administration" links={filterBySchoolConfig(addPendingBadge(hodAdmin))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Operations" links={filterBySchoolConfig(addFacilitiesBadge(addEscalationBadge(hodOperations)))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(hodGeneral))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-          </>
-        )}
-        {isExecutive && (
-          <>
-            <NavSection title="Overview" links={[...hierarchyOverview, ...taliLinks]} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Operations" links={filterBySchoolConfig(execOperations)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={execGeneral} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-          </>
-        )}
-        {isHierarchyOps && (
-          <>
-            <NavSection title="Overview" links={[...hierarchyOverview, ...taliLinks]} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection
-              title="Administration"
-              links={filterBySchoolConfig(user?.role === 'DEPUTY_HOD' ? hierarchyAdmin.filter((l) => l.label === 'Users') : hierarchyAdmin)}
-              isSuperAdmin={isSuperAdmin}
-              onNavigate={onClose}
-              collapsed={collapsed}
-            />
-            <NavSection
-              title="Operations"
-              links={filterBySchoolConfig(addFacilitiesBadge(addEscalationBadge(
-                user?.role === 'DEPUTY_HOD'
-                  ? hierarchyOperations.filter((l) => l.label !== 'Fraud Detection' && l.label !== 'Escalations' && l.label !== 'Facilities')
-                  : hierarchyOperations,
-              )))}
-              isSuperAdmin={isSuperAdmin}
-              onNavigate={onClose}
-              collapsed={collapsed}
-            />
-            <NavSection title="General" links={filterBySchoolConfig(addTicketBadge(hierarchyGeneral))} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-          </>
-        )}
-        {isRegistrar && (
-          <>
-            <NavSection title="Overview" links={[...hierarchyOverview, ...taliLinks]} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="Administration" links={filterBySchoolConfig(registrarAdmin)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-            <NavSection title="General" links={filterBySchoolConfig(registrarGeneral)} isSuperAdmin={isSuperAdmin} onNavigate={onClose} collapsed={collapsed} />
-          </>
-        )}
-        {isIctAdmin && matchLinks(addEscalationBadge(ictAdminLinks), navQuery).map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.to === '/admin'}
-            onClick={onClose}
-            data-rail-label={collapsed ? link.label : undefined}
-            aria-label={collapsed ? link.label : undefined}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
-                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
-                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
-              )
-            }
-          >
-            <NavIcon Icon={link.icon} active={false} />
-            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
-            {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
-            {collapsed && <NavBadge count={link.badge} collapsed />}
-          </NavLink>
-        ))}
-        {isLecturer && matchLinks(addFacilitiesBadge(addEscalationBadge(filterByPermission(filterBySchoolConfig(lecturerNavLinks)))), navQuery).map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.to === '/lecturer'}
-            onClick={onClose}
-            data-rail-label={collapsed ? link.label : undefined}
-            aria-label={collapsed ? link.label : undefined}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
-                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
-                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
-              )
-            }
-          >
-            <NavIcon Icon={link.icon} active={false} />
-            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
-            {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
-            {collapsed && <NavBadge count={link.badge} collapsed />}
-          </NavLink>
-        ))}
-        {isCemManager && matchLinks(addFacilitiesBadge(filterByPermission(filterBySchoolConfig(cemManagerNavLinks))), navQuery).map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            onClick={onClose}
-            data-rail-label={collapsed ? link.label : undefined}
-            aria-label={collapsed ? link.label : undefined}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
-                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
-                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
-              )
-            }
-          >
-            <NavIcon Icon={link.icon} active={false} />
-            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
-            {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
-            {collapsed && <NavBadge count={link.badge} collapsed />}
-          </NavLink>
-        ))}
-        {isStaff && matchLinks(filterByPermission(filterBySchoolConfig(staffNavLinks)), navQuery).map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.to === '/staff'}
-            onClick={onClose}
-            data-rail-label={collapsed ? link.label : undefined}
-            aria-label={collapsed ? link.label : undefined}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
-                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
-                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
-              )
-            }
-          >
-            <NavIcon Icon={link.icon} active={false} />
-            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
-          </NavLink>
-        ))}
-        {isCxm && cxmCohortId && matchLinks(buildCxmCohortLinks(cxmCohortId), navQuery).map((link) => {
-          // Every panel is its own real route now, so NavLink's own pathname-based isActive works
-          // natively — except the overview link (`/cem/cohorts/:id`), which is a *prefix* of every
-          // panel route and needs `end` to avoid staying lit while on a sub-page. Messages carries
-          // `?cohortId=` instead of a distinct path, so it's matched on the query string.
-          const isOverview = link.to === `/cem/cohorts/${cxmCohortId}`;
-          const isMessages = link.to.startsWith('/messages');
-          const isActive = isMessages
-            ? location.pathname === '/messages' && location.search.includes(`cohortId=${cxmCohortId}`)
-            : isOverview
-              ? location.pathname === link.to
-              : location.pathname === link.to;
-          return (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={isOverview}
-              onClick={onClose}
-              data-rail-label={collapsed ? link.label : undefined}
-              aria-label={collapsed ? link.label : undefined}
-              className={clsx(
-                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
-                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
-                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
-              )}
-            >
-              <NavIcon Icon={link.icon} active={isActive} />
-              <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
-            </NavLink>
-          );
-        })}
-        {/* Deliberately skips filterBySchoolConfig — that helper's Terms/Programs mutual-exclusivity
-            rule (keyed on the *label* "Training pipelines") targets the admin/hierarchy pipelines item
-            and must never touch a CEM's own "Programmes" link on any
-            CALENDAR_BASED school. */}
-        {isCxm && !cxmCohortId && matchLinks(addFacilitiesBadge(filterByPermission(cxmLinks)), navQuery).map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            // "Programmes" (/cem) is only active on itself, not under /cem/facilities or /cem/performance.
-            end={link.to === '/cem'}
-            onClick={onClose}
-            data-rail-label={collapsed ? link.label : undefined}
-            aria-label={collapsed ? link.label : undefined}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-3 px-2 py-2 rounded-xl text-sm font-medium transition-all',
-                collapsed && 'lg:justify-center lg:px-0 lg:w-11 lg:mx-auto',
-                isActive ? 'shadow-sm nav-link-active font-semibold' : 'nav-link-idle',
-              )
-            }
-          >
-            <NavIcon Icon={link.icon} active={false} />
-            <span className={clsx('flex-1 whitespace-nowrap overflow-hidden', collapsed && 'lg:hidden')}>{link.label}</span>
-            {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
-            {collapsed && <NavBadge count={link.badge} collapsed />}
-          </NavLink>
+      <nav ref={navRef} aria-label="Main" className={clsx('sidebar-nav-scroll flex-1 min-h-0 lg:flex-[0_1_auto] px-2.5 pt-2 pb-2 overflow-y-auto overflow-x-hidden', collapsed && 'lg:px-2')}>
+        {sections.map((s, i) => (
+          <NavGroup
+            key={s.title ?? `flat-${i}`}
+            title={s.title}
+            links={s.links}
+            collapsed={collapsed}
+            open={s.title ? groups.isOpen(s.title) : true}
+            onToggle={() => s.title && groups.toggle(s.title)}
+            onNavigate={onClose}
+            first={i === 0}
+          />
         ))}
         {navNoMatch && (
-          <p className="px-3 py-5 text-sm text-center text-[color:var(--app-text-muted)]">No pages match “{navQuery.trim()}”</p>
+          <p className="px-3 py-5 text-[13px] text-center text-[color:var(--app-text-muted)]">No pages match “{navQuery.trim()}”</p>
         )}
       </nav>
       </NavQuery.Provider>
 
-      <div className="p-3">
+      <div className={clsx('p-2.5 border-t border-[color:var(--sidebar-edge)]', collapsed && 'lg:p-2')}>
         <ProfileMenu
           user={user}
           roleAccent={roleAccent}

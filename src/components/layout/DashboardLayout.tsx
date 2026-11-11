@@ -19,6 +19,13 @@ export function DashboardLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
 
+  // The admin type scale (index.css `html.admin-ui`) applies while the dashboard is mounted —
+  // on <html> so modals and tooltips portalled to <body> pick it up too; login keeps its own.
+  useEffect(() => {
+    document.documentElement.classList.add('admin-ui');
+    return () => document.documentElement.classList.remove('admin-ui');
+  }, []);
+
   // Backs the "/" hint shown next to Search in the sidebar — ignored while typing in any field
   // so it doesn't hijack a literal "/" character in, say, a school code or a message draft.
   useEffect(() => {
@@ -59,10 +66,9 @@ export function DashboardLayout() {
   // nothing else in the dashboard is reachable until the current terms are accepted.
   if (user.termsRequired) return <TermsAcceptancePage />;
 
-  // Sidebar now floats lg:left-3 with its own width, plus a matching gap before content starts
-  // (12px offset + width + 12px gap) — content margin has to grow by that offset+gap or it would
-  // sit flush against the floating card instead of clearing it.
-  const contentMargin = collapsed ? 'lg:ml-[100px]' : 'lg:ml-[280px]';
+  // The content's left margin clears the floating sidebar (12px offset + its width + 12px gap).
+  // The width depends on the sidebar's state (rail / few pages / full), which it publishes as
+  // data attributes — index.css `.app-sidebar ~ .app-main` picks the margin from them.
 
   return (
     <div className="min-h-screen app-shell transition-[background-color,color] duration-200">
@@ -79,14 +85,14 @@ export function DashboardLayout() {
       <button
         type="button"
         onClick={() => setMobileNavOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-20 p-2.5 rounded-xl glass-sidebar border border-[color:var(--sidebar-edge)] text-[color:var(--app-text)] dark:text-white shadow-sm cursor-pointer"
+        className="lg:hidden fixed top-3 left-3 z-20 p-2 rounded-lg glass-sidebar border border-[color:var(--sidebar-edge)] text-[color:var(--app-text)] dark:text-white shadow-sm cursor-pointer"
         aria-label="Open navigation menu"
       >
-        <Menu size={20} />
+        <Menu size={18} />
       </button>
       <GlobalSearchBar open={searchOpen} onClose={() => setSearchOpen(false)} />
       <PermissionNotice />
-      <main className={`${contentMargin} flex flex-col p-4 pt-16 sm:p-5 sm:pt-16 lg:pt-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
+      <main className={`app-main flex flex-col p-4 pt-16 sm:p-5 sm:pt-16 lg:pt-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
         <div className="flex-1">
           {user.role === 'SUPER_ADMIN' && <SupportSessionBanner />}
           <Outlet />
