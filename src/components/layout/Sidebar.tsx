@@ -15,6 +15,7 @@ import {
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation, FacilityTicket, Permission, User } from '../../types';
 import { isHierarchyRole, ROLE_LABEL } from '../../lib/rbac';
+import { SidebarTooltip } from './SidebarTooltip';
 
 interface NavItem {
   to: string;
@@ -328,34 +329,6 @@ const ictAdminLinks: NavItem[] = [
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
-/** Live clock under the brand header — ticks every second so the glow reads as "live" rather
- * than a static timestamp that happens to be right once. */
-function LiveClock({ collapsed }: { collapsed: boolean }) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const time = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-  const date = now.toLocaleDateString([], { month: 'short', day: 'numeric' });
-
-  return (
-    <p
-      className={clsx(
-        'mt-1 flex items-center gap-1.5 text-[10.5px] leading-none tabular-nums text-[color:var(--app-text-muted)] whitespace-nowrap overflow-hidden',
-        collapsed && 'lg:hidden',
-      )}
-    >
-      <span className="relative flex h-1.5 w-1.5 shrink-0">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500" />
-      </span>
-      <span className="truncate">{date} &middot; {time}</span>
-    </p>
-  );
-}
-
 /** A titled (collapsible) or untitled (flat) block of nav rows. `isActive` overrides NavLink's own
  * pathname matching for links whose activeness depends on more than the path (the CEM programme
  * panels' `?cohortId=` Messages link). */
@@ -393,16 +366,43 @@ function linkIsActive(link: NavItem, pathname: string, group?: NavGroup): boolea
   return pathMatches(link.to, pathname);
 }
 
-const ROW_BASE =
-  'relative flex items-center gap-2.5 h-8 px-2.5 rounded-lg text-[13px] leading-none font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40';
-const ROW_RAIL = 'lg:justify-center lg:px-0 lg:w-10 lg:mx-auto';
+/* ---- Visual vocabulary. Rows are 32px, 8px radius, 13px; everything animates at 120ms. The rail
+   variants are all `lg:`-prefixed because the collapsed rail only exists on desktop — the mobile
+   drawer always renders the full rows, whatever `collapsed` says. ---- */
+const FOCUS_RING = 'outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:focus-visible:ring-blue-400/60';
+const ROW_BASE = clsx(
+  'group/row relative flex items-center gap-2.5 h-8 px-2 rounded-lg text-[13px] leading-none',
+  'transition-[background-color,color] duration-[120ms] ease-out',
+  FOCUS_RING,
+);
+const ROW_IDLE = 'font-normal text-slate-600 hover:bg-slate-100/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-slate-100';
+const ROW_ACTIVE = 'font-medium text-slate-900 bg-blue-600/[0.07] dark:text-white dark:bg-blue-400/[0.10]';
+const ROW_RAIL = 'lg:justify-center lg:w-9 lg:h-9 lg:px-0 lg:mx-auto';
+const ICON_BUTTON = clsx(
+  'inline-flex items-center justify-center w-7 h-7 shrink-0 rounded-md cursor-pointer',
+  'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.06]',
+  'transition-[background-color,color] duration-[120ms]',
+  FOCUS_RING,
+);
+const HAIRLINE = 'border-slate-200/70 dark:border-white/[0.07]';
+
+function ActiveIndicator() {
+  return (
+    <span
+      className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-blue-600 dark:bg-blue-400"
+      aria-hidden="true"
+    />
+  );
+}
 
 function NavIcon({ Icon, active }: { Icon: React.ComponentType<{ size?: number }>; active: boolean }) {
   return (
     <span
       className={clsx(
-        'flex items-center justify-center w-4 h-4 flex-shrink-0 transition-colors',
-        active ? 'text-blue-600 dark:text-blue-400' : 'opacity-75',
+        'flex items-center justify-center w-4 h-4 flex-shrink-0 transition-colors duration-[120ms]',
+        active
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-slate-400 group-hover/row:text-slate-600 dark:text-slate-500 dark:group-hover/row:text-slate-300',
       )}
       aria-hidden="true"
     >
@@ -411,20 +411,31 @@ function NavIcon({ Icon, active }: { Icon: React.ComponentType<{ size?: number }
   );
 }
 
+function formatCount(count: number) {
+  return count > 99 ? '99+' : String(count);
+}
+
 function NavBadge({ count, collapsed }: { count?: number; collapsed: boolean }) {
   if (!count) return null;
-  if (collapsed) {
-    return (
-      <span
-        className="hidden lg:block absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[color:var(--app-elevated-solid)]"
-        aria-hidden="true"
-      />
-    );
-  }
   return (
-    <span className="text-[10px] leading-none font-semibold bg-blue-500 text-white px-1.5 py-[3px] rounded-full min-w-[18px] text-center tabular-nums">
-      {count > 99 ? '99+' : count}
-    </span>
+    <>
+      <span
+        className={clsx(
+          'inline-flex items-center justify-center h-[18px] min-w-[18px] px-1.5 rounded-full shrink-0',
+          'text-[10.5px] font-medium leading-none tabular-nums',
+          'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/15 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20',
+          collapsed && 'lg:hidden',
+        )}
+      >
+        {formatCount(count)}
+      </span>
+      {collapsed && (
+        <span
+          className="hidden lg:block absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 ring-2 ring-white dark:ring-slate-900"
+          aria-hidden="true"
+        />
+      )}
+    </>
   );
 }
 
@@ -440,7 +451,9 @@ function NavRow({
   const [expanded, setExpanded] = useState(childActive);
 
   const label = (
-    <span className={clsx('flex-1 min-w-0 truncate text-left', collapsed && 'lg:hidden')}>{link.label}</span>
+    <span className={clsx('flex-1 min-w-0 truncate text-left', collapsed && 'lg:hidden')} title={link.label}>
+      {link.label}
+    </span>
   );
 
   if (hasChildren && !collapsed) {
@@ -452,27 +465,28 @@ function NavRow({
           onClick={() => setExpanded((e) => !e)}
           aria-expanded={expanded}
           aria-controls={subId}
-          className={clsx(ROW_BASE, 'w-full cursor-pointer', childActive ? 'nav-link-active' : 'nav-link-idle')}
+          className={clsx(ROW_BASE, 'w-full cursor-pointer', childActive ? ROW_ACTIVE : ROW_IDLE)}
         >
           <NavIcon Icon={link.icon} active={childActive} />
           {label}
-          <ChevronRight size={14} className={clsx('shrink-0 opacity-60 transition-transform', expanded && 'rotate-90')} aria-hidden="true" />
+          <ChevronRight
+            size={14}
+            className={clsx('shrink-0 text-slate-400 dark:text-slate-500 transition-transform duration-150', expanded && 'rotate-90')}
+            aria-hidden="true"
+          />
         </button>
         {expanded && (
-          <div id={subId} className="mt-0.5 ml-[17px] pl-3 border-l border-[color:var(--sidebar-edge)] space-y-0.5">
+          <div id={subId} className={clsx('mt-0.5 ml-[15px] pl-2.5 border-l space-y-0.5', HAIRLINE)}>
             {link.children!.map((child) => (
               <NavLink
                 key={child.to}
                 to={child.to}
                 onClick={onNavigate}
                 className={({ isActive }) =>
-                  clsx(
-                    'flex items-center h-7 px-2.5 rounded-md text-[12.5px] leading-none font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40',
-                    isActive ? 'nav-link-active' : 'nav-link-idle',
-                  )
+                  clsx(ROW_BASE, 'h-7 text-[12.5px]', isActive ? ROW_ACTIVE : ROW_IDLE)
                 }
               >
-                <span className="truncate">{child.label}</span>
+                <span className="truncate" title={child.label}>{child.label}</span>
               </NavLink>
             ))}
           </div>
@@ -485,41 +499,42 @@ function NavRow({
   // to its first child instead of an expand toggle.
   const target = hasChildren ? link.children![0].to : link.to;
   return (
-    <NavLink
-      to={target}
-      end={target === '/admin' || target === '/lecturer'}
-      onClick={onNavigate}
-      title={collapsed ? link.label : undefined}
-      aria-label={collapsed ? link.label : undefined}
-      className={({ isActive }) => {
-        const active = forcedActive ?? (isActive || childActive);
-        return clsx(ROW_BASE, collapsed && ROW_RAIL, active ? 'nav-link-active' : 'nav-link-idle');
-      }}
-    >
-      {({ isActive }) => {
-        const active = forcedActive ?? (isActive || childActive);
-        return (
-          <>
-            <NavIcon Icon={link.icon} active={active} />
-            {label}
-            {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
-            {collapsed && <NavBadge count={link.badge} collapsed />}
-          </>
-        );
-      }}
-    </NavLink>
+    <SidebarTooltip label={link.label} enabled={collapsed} desktopOnly>
+      <NavLink
+        to={target}
+        end={target === '/admin' || target === '/lecturer'}
+        onClick={onNavigate}
+        aria-label={collapsed ? link.label : undefined}
+        className={({ isActive }) => {
+          const active = forcedActive ?? (isActive || childActive);
+          return clsx(ROW_BASE, collapsed && ROW_RAIL, active ? ROW_ACTIVE : ROW_IDLE);
+        }}
+      >
+        {({ isActive }) => {
+          const active = forcedActive ?? (isActive || childActive);
+          return (
+            <>
+              {active && <ActiveIndicator />}
+              <NavIcon Icon={link.icon} active={active} />
+              {label}
+              <NavBadge count={link.badge} collapsed={collapsed} />
+            </>
+          );
+        }}
+      </NavLink>
+    </SidebarTooltip>
   );
 }
 
 function NavSection({
-  group, collapsed, groupCollapsed, onToggleGroup, onNavigate, showDivider,
+  group, collapsed, groupCollapsed, onToggleGroup, onNavigate, isFirst,
 }: {
   group: NavGroup;
   collapsed: boolean;
   groupCollapsed: boolean;
   onToggleGroup: (title: string) => void;
   onNavigate: () => void;
-  showDivider: boolean;
+  isFirst: boolean;
 }) {
   const location = useLocation();
   if (group.links.length === 0) return null;
@@ -528,9 +543,10 @@ function NavSection({
   // a collapsed group's rows stay visible there via `lg:block` while the mobile drawer hides them.
   const open = !title || !groupCollapsed;
   const listId = title ? `nav-group-${title.replace(/\W+/g, '-').toLowerCase()}` : undefined;
+  const badgeTotal = group.links.reduce((n, l) => n + (l.badge ?? 0), 0);
 
   return (
-    <div className={clsx(title && 'pt-2 first:pt-0')}>
+    <div className={clsx(!isFirst && 'mt-2', !isFirst && collapsed && 'lg:mt-3')}>
       {title && (
         <button
           type="button"
@@ -538,21 +554,41 @@ function NavSection({
           aria-expanded={open}
           aria-controls={listId}
           className={clsx(
-            'group/sec flex items-center w-full h-6 px-2.5 mb-0.5 rounded-md text-[10.5px] font-semibold uppercase tracking-[0.08em] cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 hover:text-[color:var(--app-text)] dark:hover:text-slate-200',
+            'group/sec flex items-center gap-1 w-full h-7 px-2 rounded-md cursor-pointer select-none',
+            'text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-300',
+            'transition-colors duration-[120ms]',
+            FOCUS_RING,
             collapsed && 'lg:hidden',
           )}
-          style={{ color: 'var(--nav-section)' }}
         >
-          <span className="flex-1 text-left truncate">{title}</span>
+          <span className="truncate">{title}</span>
           <ChevronDown
             size={12}
-            className={clsx('shrink-0 opacity-0 group-hover/sec:opacity-100 group-focus-visible/sec:opacity-100 transition-all', !open && '-rotate-90 opacity-100')}
+            className={clsx(
+              'shrink-0 transition-[transform,opacity] duration-150 ease-out',
+              open
+                ? 'opacity-0 group-hover/sec:opacity-100 group-focus-visible/sec:opacity-100'
+                : '-rotate-90 opacity-100',
+            )}
             aria-hidden="true"
           />
+          {!open && (
+            <span className="ml-auto flex items-center gap-1.5">
+              {badgeTotal > 0 && (
+                <span
+                  className="inline-flex items-center gap-1 h-4 px-1.5 rounded-full text-[10px] font-medium leading-none tabular-nums bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/15 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20"
+                  aria-label={`${badgeTotal} pending`}
+                >
+                  <span className="w-1 h-1 rounded-full bg-blue-500" aria-hidden="true" />
+                  {formatCount(badgeTotal)}
+                </span>
+              )}
+              <span className="text-[11px] font-normal tabular-nums text-slate-400 dark:text-slate-600" aria-label={`${group.links.length} pages`}>
+                {group.links.length}
+              </span>
+            </span>
+          )}
         </button>
-      )}
-      {collapsed && showDivider && (
-        <div className="hidden lg:block mx-3 my-2 h-px bg-[color:var(--sidebar-edge)]" aria-hidden="true" />
       )}
       {(open || collapsed) && (
         <div id={listId} className={clsx('space-y-0.5', !open && 'hidden lg:block')}>
@@ -571,16 +607,14 @@ function NavSection({
   );
 }
 
-
-/** Collapses Search/Theme/Logout behind one avatar trigger instead of three permanently-visible
- * rows — was the last thing in the sidebar feeling like "an old sidebar" (a flat list of account
- * actions with no chrome around them). Opens as a popover above the trigger since the trigger
- * itself lives at the very bottom of the screen. */
+/** The footer's account trigger. Its popover (Search / My Profile / Appearance / Logout) is
+ * unchanged; it opens above the trigger, or below when a short nav leaves it high on the screen. */
 function ProfileMenu({
-  user, roleAccent, dark, onToggleTheme, onOpenSearch, onLogout, collapsed,
+  user, roleAccent, subtitle, dark, onToggleTheme, onOpenSearch, onLogout, collapsed,
 }: {
   user: User | null | undefined;
   roleAccent: string;
+  subtitle: string;
   dark: boolean;
   onToggleTheme: () => void;
   onOpenSearch: () => void;
@@ -594,6 +628,7 @@ function ProfileMenu({
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const MENU_HEIGHT_ESTIMATE = 300;
+  const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
 
   const toggleOpen = () => {
     if (!open && ref.current) {
@@ -715,37 +750,37 @@ function ProfileMenu({
         )}
       </AnimatePresence>
 
-      <button
-        type="button"
-        onClick={toggleOpen}
-        title={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}
-        aria-expanded={open}
-        aria-label={`Account menu for ${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()}
-        className={clsx(
-          'flex items-center gap-2 w-full p-1.5 rounded-xl border transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40',
-          open
-            ? 'bg-black/[0.04] dark:bg-white/[0.07] border-black/5 dark:border-white/5'
-            : 'bg-black/[0.03] dark:bg-white/[0.05] border-black/5 dark:border-white/5 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]',
-          collapsed && 'lg:justify-center lg:px-0',
-        )}
-      >
-        <div className="relative flex-shrink-0">
-          <div className={clsx(`w-7 h-7 rounded-full bg-gradient-to-br ${roleAccent} flex items-center justify-center text-white text-[11px] font-semibold ring-2 ring-[color:var(--app-elevated-solid)] shadow-sm`)}>
-            {user?.firstName?.[0]}{user?.lastName?.[0]}
-          </div>
-          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[color:var(--app-elevated-solid)]" aria-hidden="true" />
-        </div>
-        <div className={clsx('flex-1 min-w-0 text-left', collapsed && 'lg:hidden')}>
-          <p className="text-[12.5px] leading-tight font-semibold truncate text-[color:var(--app-text)] dark:text-white">
-            {user?.firstName} {user?.lastName}
-          </p>
-          <p className="text-[11px] leading-tight truncate text-[color:var(--app-text-muted)] dark:text-slate-500">{user?.email}</p>
-        </div>
-        <ChevronDown
-          size={14}
-          className={clsx('shrink-0 transition-transform text-[color:var(--app-text-muted)]', open && 'rotate-180', collapsed && 'lg:hidden')}
-        />
-      </button>
+      <SidebarTooltip label={fullName || 'Account'} enabled={collapsed && !open} desktopOnly>
+        <button
+          type="button"
+          onClick={toggleOpen}
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-label={`Account menu for ${fullName}`.trim()}
+          className={clsx(
+            'flex items-center gap-2.5 w-full h-10 px-1.5 rounded-lg cursor-pointer text-left',
+            'transition-[background-color] duration-[120ms]',
+            open ? 'bg-slate-100 dark:bg-white/[0.07]' : 'hover:bg-slate-100 dark:hover:bg-white/[0.05]',
+            FOCUS_RING,
+            collapsed && 'lg:w-9 lg:h-9 lg:px-0 lg:justify-center lg:mx-auto',
+          )}
+        >
+          <span className="relative flex-shrink-0">
+            <span className={clsx(`flex w-7 h-7 rounded-full bg-gradient-to-br ${roleAccent} items-center justify-center text-white text-[11px] font-semibold`)}>
+              {user?.firstName?.[0]}{user?.lastName?.[0]}
+            </span>
+            <span className="absolute -bottom-px -right-px w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" aria-hidden="true" />
+          </span>
+          <span className={clsx('flex-1 min-w-0', collapsed && 'lg:hidden')}>
+            <span className="block text-[13px] leading-4 font-medium truncate text-slate-900 dark:text-slate-100" title={fullName}>
+              {fullName}
+            </span>
+            <span className="block text-[11.5px] leading-4 truncate text-slate-500 dark:text-slate-400" title={subtitle}>
+              {subtitle}
+            </span>
+          </span>
+        </button>
+      </SidebarTooltip>
     </div>
   );
 }
@@ -1002,13 +1037,18 @@ export function Sidebar({
     setCollapsedGroups((prev) => (prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]));
 
   const desktopWidth = collapsed ? 'lg:w-[64px]' : fewPages ? 'lg:w-[212px]' : 'lg:w-[232px]';
+  // Second header line: the institution this account belongs to, falling back to the role. When
+  // the role is already up there, the footer shows the email instead of repeating it.
+  const orgName = user?.school?.institutionName || user?.school?.name || '';
+  const headerSubtitle = orgName || roleLabel;
+  const footerSubtitle = orgName ? roleLabel : (user?.email ?? roleLabel);
 
   return (
     <>
       {/* Backdrop — mobile only, closes the drawer on tap */}
       {open && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-[2px] lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -1016,76 +1056,144 @@ export function Sidebar({
       <aside
         aria-label="Sidebar"
         className={clsx(
-          // Mobile: an edge-to-edge, full-height drawer. Desktop (lg:): a floating rounded card that
-          // is only as tall as its content (capped at the viewport) — short role navs no longer
-          // stretch into a tall empty column, and the user card sits right below the last group.
-          'fixed inset-y-0 left-0 h-screen glass-sidebar flex flex-col z-40 border border-[color:var(--sidebar-edge)] transition-[transform,width] duration-200',
-          'w-[248px]',
-          'lg:inset-auto lg:left-3 lg:top-3 lg:h-auto lg:max-h-[calc(100vh-1.5rem)] lg:rounded-2xl',
+          // One continuous surface. Mobile: an edge-to-edge, full-height drawer. Desktop (lg:): a
+          // floating card only as tall as its content (capped at the viewport).
+          'sidebar-surface fixed inset-y-0 left-0 h-screen flex flex-col z-40 border-r',
+          HAIRLINE,
+          'w-[248px] transition-[transform,width] duration-200 ease-out',
+          'lg:inset-auto lg:left-3 lg:top-3 lg:h-auto lg:max-h-[calc(100vh-1.5rem)] lg:rounded-xl lg:border',
           desktopWidth,
           open ? 'translate-x-0' : '-translate-x-full',
           'lg:translate-x-0',
         )}
       >
-      {/* Collapse toggle — desktop only, straddles the sidebar's right edge */}
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        aria-expanded={!collapsed}
-        className="hidden lg:flex absolute -right-3 top-[22px] z-10 w-6 h-6 rounded-full glass-sidebar border border-[color:var(--sidebar-edge)] items-center justify-center shadow-sm hover:scale-110 transition-transform cursor-pointer text-[color:var(--app-text-muted)]"
-      >
-        {collapsed ? <PanelLeftOpen size={12} /> : <PanelLeftClose size={12} />}
-      </button>
-
-      <div className={clsx('px-3.5 py-3 flex items-center gap-2.5 border-b border-[color:var(--sidebar-edge)] shrink-0', collapsed && 'lg:justify-center lg:px-2')}>
-        <img src="/logo.svg" alt="Tcheck" className="w-8 h-8 flex-shrink-0" />
-        <div className={clsx('flex-1 min-w-0', collapsed && 'lg:hidden')}>
-          <p className="text-[14px] leading-tight font-semibold tracking-tight text-[color:var(--app-text)] dark:text-white whitespace-nowrap">Tcheck</p>
-          <p className="mt-0.5 text-[10.5px] leading-tight font-medium uppercase tracking-[0.06em] text-[color:var(--app-accent-label)] truncate" title={roleLabel}>
-            {roleLabel}
-          </p>
-          <LiveClock collapsed={collapsed} />
+        {/* Header — full row (mobile always; desktop when expanded) */}
+        <div className={clsx('shrink-0 flex items-center gap-2.5 h-14 pl-3.5 pr-2.5 border-b', HAIRLINE, collapsed && 'lg:hidden')}>
+          <img src="/logo.svg" alt="" className="w-6 h-6 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] leading-4 font-semibold tracking-[-0.01em] text-slate-900 dark:text-white">Tcheck</p>
+            <p className="text-[11.5px] leading-4 text-slate-500 dark:text-slate-400 truncate" title={headerSubtitle}>
+              {headerSubtitle}
+            </p>
+          </div>
+          <SidebarTooltip label="Collapse sidebar" side="bottom" className="hidden lg:block">
+            <button type="button" onClick={onToggleCollapse} aria-label="Collapse sidebar" aria-expanded className={ICON_BUTTON}>
+              <PanelLeftClose size={16} />
+            </button>
+          </SidebarTooltip>
+          <button type="button" onClick={onClose} className={clsx(ICON_BUTTON, 'lg:hidden')} aria-label="Close navigation menu">
+            <X size={16} />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="lg:hidden p-1.5 rounded-lg text-[color:var(--app-text)] dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
-          aria-label="Close navigation menu"
+
+        {/* Header — collapsed rail (desktop only): the logo doubles as the expand button and
+            swaps to the expand icon on hover/focus. */}
+        {collapsed && (
+          <div className={clsx('hidden lg:flex shrink-0 items-center justify-center h-14 border-b', HAIRLINE)}>
+            <SidebarTooltip label="Expand sidebar">
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                aria-label="Expand sidebar"
+                aria-expanded={false}
+                className={clsx(
+                  'group/exp relative flex items-center justify-center w-9 h-9 rounded-lg cursor-pointer',
+                  'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-white',
+                  'transition-[background-color,color] duration-[120ms]',
+                  FOCUS_RING,
+                )}
+              >
+                <img
+                  src="/logo.svg"
+                  alt=""
+                  className="w-6 h-6 transition-opacity duration-[120ms] group-hover/exp:opacity-0 group-focus-visible/exp:opacity-0"
+                />
+                <PanelLeftOpen
+                  size={16}
+                  className="absolute opacity-0 transition-opacity duration-[120ms] group-hover/exp:opacity-100 group-focus-visible/exp:opacity-100"
+                  aria-hidden="true"
+                />
+              </button>
+            </SidebarTooltip>
+          </div>
+        )}
+
+        {/* Search — opens the global search dialog (same as "/" anywhere outside a field). */}
+        <div className={clsx('shrink-0 px-3 pt-3 pb-1', collapsed && 'lg:px-0')}>
+          <SidebarTooltip label="Search" hint="/" enabled={collapsed} desktopOnly>
+            <button
+              type="button"
+              onClick={() => { onOpenSearch(); onClose(); }}
+              aria-label="Search"
+              aria-keyshortcuts="/"
+              className={clsx(
+                'group/search flex items-center gap-2 w-full h-8 pl-2.5 pr-1.5 rounded-lg border cursor-pointer text-[13px]',
+                'border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600',
+                'dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-slate-500 dark:hover:border-white/[0.14] dark:hover:text-slate-300',
+                'transition-[border-color,color,background-color] duration-[120ms]',
+                FOCUS_RING,
+                collapsed && 'lg:w-9 lg:h-9 lg:px-0 lg:mx-auto lg:justify-center lg:border-transparent lg:bg-transparent lg:hover:bg-slate-100/70 dark:lg:border-transparent dark:lg:bg-transparent dark:lg:hover:bg-white/[0.05]',
+              )}
+            >
+              <Search size={14} className="shrink-0" aria-hidden="true" />
+              <span className={clsx('flex-1 text-left truncate', collapsed && 'lg:hidden')}>Search</span>
+              <kbd
+                className={clsx(
+                  'inline-flex items-center justify-center h-[18px] min-w-[18px] px-1 rounded-[5px] border font-sans text-[10.5px] font-medium leading-none',
+                  'border-slate-200 bg-slate-50 text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400',
+                  collapsed && 'lg:hidden',
+                )}
+                aria-hidden="true"
+              >
+                /
+              </kbd>
+            </button>
+          </SidebarTooltip>
+        </div>
+
+        <nav
+          aria-label="Main navigation"
+          className={clsx('sidebar-nav-scroll flex-1 lg:flex-initial min-h-0 px-3 pt-2 pb-3 overflow-y-auto overflow-x-hidden', collapsed && 'lg:px-0')}
         >
-          <X size={16} />
-        </button>
-      </div>
+          {groups.map((group, i) => (
+            <NavSection
+              key={group.title ?? `group-${i}`}
+              group={group}
+              collapsed={collapsed}
+              groupCollapsed={!!group.title && collapsedGroups.includes(group.title)}
+              onToggleGroup={toggleGroup}
+              onNavigate={onClose}
+              isFirst={i === 0}
+            />
+          ))}
+        </nav>
 
-      <nav
-        aria-label="Main navigation"
-        className={clsx('sidebar-nav-scroll flex-1 lg:flex-initial min-h-0 px-2 py-2.5 space-y-0.5 overflow-y-auto overflow-x-hidden', collapsed && 'lg:px-1.5')}
-      >
-        {groups.map((group, i) => (
-          <NavSection
-            key={group.title ?? `group-${i}`}
-            group={group}
-            collapsed={collapsed}
-            groupCollapsed={!!group.title && collapsedGroups.includes(group.title)}
-            onToggleGroup={toggleGroup}
-            onNavigate={onClose}
-            showDivider={i > 0}
-          />
-        ))}
-      </nav>
-
-      <div className={clsx('p-2 border-t border-[color:var(--sidebar-edge)] shrink-0', collapsed && 'lg:px-1.5')}>
-        <ProfileMenu
-          user={user}
-          roleAccent={roleAccent}
-          dark={dark}
-          onToggleTheme={toggle}
-          onOpenSearch={() => { onOpenSearch(); onClose(); }}
-          onLogout={() => { logout(); navigate('/login'); }}
-          collapsed={collapsed}
-        />
-      </div>
+        <div className={clsx('shrink-0 border-t px-2 py-2', HAIRLINE, collapsed && 'lg:px-0')}>
+          <div className={clsx('flex items-center gap-1', collapsed && 'lg:flex-col-reverse lg:gap-1')}>
+            <div className={clsx('flex-1 min-w-0', collapsed && 'lg:w-full lg:flex-none')}>
+              <ProfileMenu
+                user={user}
+                roleAccent={roleAccent}
+                subtitle={footerSubtitle}
+                dark={dark}
+                onToggleTheme={toggle}
+                onOpenSearch={() => { onOpenSearch(); onClose(); }}
+                onLogout={() => { logout(); navigate('/login'); }}
+                collapsed={collapsed}
+              />
+            </div>
+            <SidebarTooltip label={dark ? 'Switch to light theme' : 'Switch to dark theme'} side={collapsed ? 'right' : 'top'}>
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+                className={clsx(ICON_BUTTON, collapsed && 'lg:w-9 lg:h-9 lg:rounded-lg')}
+              >
+                {dark ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+            </SidebarTooltip>
+          </div>
+        </div>
       </aside>
     </>
   );

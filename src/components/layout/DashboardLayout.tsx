@@ -16,7 +16,7 @@ export function DashboardLayout() {
   // Reported by the Sidebar: roles with only a handful of pages get a narrower sidebar.
   const [fewPages, setFewPages] = useState(false);
 
-  // Backs the "/" hint shown next to Search in the sidebar — ignored while typing in any field
+  // Backs the "/" chip on the sidebar's Search field — ignored while typing in any field
   // so it doesn't hijack a literal "/" character in, say, a school code or a message draft.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -74,10 +74,10 @@ export function DashboardLayout() {
       <button
         type="button"
         onClick={() => setMobileNavOpen(true)}
-        className="lg:hidden fixed top-3 left-3 z-20 p-2 rounded-lg glass-sidebar border border-[color:var(--sidebar-edge)] text-[color:var(--app-text)] dark:text-white shadow-sm cursor-pointer"
+        className="sidebar-surface lg:hidden fixed top-3 left-3 z-20 inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200/70 dark:border-white/[0.07] text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors duration-[120ms] cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
         aria-label="Open navigation menu"
       >
-        <Menu size={18} />
+        <Menu size={16} />
       </button>
       <GlobalSearchBar open={searchOpen} onClose={() => setSearchOpen(false)} />
       <PermissionNotice />
