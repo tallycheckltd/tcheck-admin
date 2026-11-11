@@ -12,7 +12,7 @@ import {
   LayoutDashboard, School, Users, Users2, Settings, BookOpen, Calendar,
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star, MessageSquareQuote, Presentation,
-  ShieldAlert, ShieldCheck, ChevronDown, ChevronRight, ChevronLeft, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, ScrollText, Search, Radar, Layers, Siren, CalendarClock, Battery, Network, UploadCloud,
+  ShieldAlert, ShieldCheck, ChevronRight, ChevronLeft, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, ScrollText, Search, Radar, Layers, Siren, CalendarClock, Battery, Network, UploadCloud,
   User as UserIcon, Plug, Wrench, DoorOpen, FileBarChart, Eye, MailCheck, Building2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation, FacilityTicket, User } from '../../types';
@@ -38,7 +38,11 @@ interface NavItem {
   end?: boolean;
   /** Overrides path-based highlighting (e.g. a link that carries a query string). */
   active?: boolean;
+  /** Badge colour: brand for plain counts, amber / red for things that need attention. */
+  tone?: BadgeTone;
 }
+
+type BadgeTone = 'count' | 'warn' | 'alert';
 
 /* ---- SUPER_ADMIN (Tallycheck Global) ---- */
 const superAdminOverview = withIcons(NAV.superAdminOverview);
@@ -126,34 +130,6 @@ const registrarGeneral = withIcons(NAV.registrarGeneral);
 /* ---- ICT Admin — infrastructure only ---- */
 const ictAdminLinks = withIcons(NAV.ictAdminLinks);
 
-/** Live clock under the brand header (hours and minutes — seconds made the line too long for the
- * compact sidebar); refreshes every 10s. */
-function LiveClock({ collapsed }: { collapsed: boolean }) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 10_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const date = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-
-  return (
-    <p
-      className={clsx(
-        'mt-0.5 flex items-center gap-1.5 text-[10.5px] leading-4 tabular-nums text-[color:var(--app-text-muted)] truncate',
-        collapsed && 'lg:hidden',
-      )}
-    >
-      <span className="relative flex h-1.5 w-1.5 shrink-0">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500" />
-      </span>
-      <span className="truncate">{date} &middot; {time}</span>
-    </p>
-  );
-}
-
 /** Routes that are only "active" on themselves, not on every page below them. */
 const END_PATHS = new Set(['/admin', '/lecturer', '/platform', '/staff', '/cem']);
 
@@ -170,21 +146,18 @@ function isLinkActive(link: NavItem, pathname: string): boolean {
   return isPathActive(link, pathname);
 }
 
-function NavBadge({ count, collapsed }: { count?: number; collapsed: boolean }) {
+function NavBadge({ count, tone = 'count', collapsed }: { count?: number; tone?: BadgeTone; collapsed: boolean }) {
   if (!count) return null;
   if (collapsed) {
     return (
       <span
-        className="hidden lg:block absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[color:var(--app-elevated-solid)]"
+        data-tone={tone}
+        className="sb-dot hidden lg:block absolute top-1.5 right-1.5 ring-2 ring-[color:var(--sb-bg)]"
         aria-hidden="true"
       />
     );
   }
-  return (
-    <span className="ml-auto shrink-0 text-[10px] font-semibold tabular-nums bg-blue-500 text-white px-1.5 h-[18px] leading-[18px] rounded-full min-w-[18px] text-center">
-      {count > 99 ? '99+' : count}
-    </span>
-  );
+  return <span className="sb-badge" data-tone={tone}>{count > 99 ? '99+' : count}</span>;
 }
 
 // Sidebar page search: what the person typed in the box above the nav. Every list of links below
@@ -205,9 +178,9 @@ function matchLinks<T extends { label: string; children?: T[] }>(links: T[], que
   return out;
 }
 
-/* Shared row geometry (11-11 compact pass): 32px rows, 13px type, 16px icons. */
-const ROW = 'group/row relative flex items-center gap-2.5 h-8 px-2 rounded-lg text-[13px] leading-none font-medium transition-colors';
-const ROW_RAIL = 'lg:justify-center lg:px-0 lg:w-10 lg:mx-auto';
+/* Shared row geometry: .sb-row in index.css (32px, 8px radius, 13px label, 16px muted icon). In the
+   desktop icon rail a row becomes a centred 36px square with the same active indicator. */
+const ROW_RAIL = 'lg:justify-center lg:px-0 lg:w-9 lg:h-9 lg:mx-auto';
 
 function NavRow({ link, collapsed, onNavigate }: { link: NavItem; collapsed: boolean; onNavigate: () => void }) {
   const location = useLocation();
@@ -229,27 +202,25 @@ function NavRow({ link, collapsed, onNavigate }: { link: NavItem; collapsed: boo
           onClick={() => setOpen(!expanded)}
           aria-expanded={expanded}
           aria-controls={listId}
-          className={clsx(ROW, 'w-full cursor-pointer', active ? 'nav-link-active' : 'nav-link-idle')}
+          data-active={active && !expanded ? 'true' : undefined}
+          className="sb-row sb-focus w-full cursor-pointer"
         >
-          <Icon size={16} />
-          <span className="flex-1 text-left truncate">{link.label}</span>
-          <ChevronRight size={14} className={clsx('shrink-0 opacity-60 transition-transform', expanded && 'rotate-90')} />
+          <span className="sb-icon"><Icon size={16} /></span>
+          <span className="flex-1 text-left truncate" title={link.label}>{link.label}</span>
+          <ChevronRight size={14} className={clsx('shrink-0 text-[color:var(--sb-faint)] transition-transform duration-150', expanded && 'rotate-90')} />
         </button>
         {expanded && (
-          <div id={listId} className="mt-0.5 ml-[17px] pl-2.5 border-l border-[color:var(--sidebar-edge)] space-y-0.5">
+          <div id={listId} className="sb-guide mt-0.5 mb-1 ml-[15px] pl-2.5 space-y-px">
             {link.children!.map((child) => (
               <NavLink
                 key={child.to}
                 to={child.to}
                 onClick={onNavigate}
-                className={({ isActive }) =>
-                  clsx(
-                    'flex items-center gap-2 h-7 px-2 rounded-md text-[12.5px] leading-none font-medium transition-colors',
-                    isActive ? 'nav-link-active' : 'nav-link-idle',
-                  )
-                }
+                aria-current={isPathActive(child, location.pathname) ? 'page' : undefined}
+                data-active={isPathActive(child, location.pathname) ? 'true' : undefined}
+                className="sb-row sb-sub sb-focus"
               >
-                <span className="truncate">{child.label}</span>
+                <span className="truncate" title={child.label}>{child.label}</span>
               </NavLink>
             ))}
           </div>
@@ -265,14 +236,28 @@ function NavRow({ link, collapsed, onNavigate }: { link: NavItem; collapsed: boo
       onClick={onNavigate}
       data-rail-label={collapsed ? link.label : undefined}
       aria-label={collapsed ? link.label : undefined}
-      className={clsx(ROW, collapsed && ROW_RAIL, active ? 'nav-link-active' : 'nav-link-idle')}
+      aria-current={active ? 'page' : undefined}
+      data-active={active ? 'true' : undefined}
+      className={clsx('sb-row sb-focus', collapsed && ROW_RAIL)}
     >
-      <Icon size={16} />
+      <span className="sb-icon"><Icon size={16} /></span>
       <span className={clsx('flex-1 truncate', collapsed && 'lg:hidden')} title={collapsed ? undefined : link.label}>{link.label}</span>
-      {!collapsed && <NavBadge count={link.badge} collapsed={false} />}
-      {collapsed && <NavBadge count={link.badge} collapsed />}
+      {link.badge ? (
+        <>
+          <span className={clsx(collapsed && 'lg:hidden', 'ml-auto flex')}><NavBadge count={link.badge} tone={link.tone} collapsed={false} /></span>
+          {collapsed && <NavBadge count={link.badge} tone={link.tone} collapsed />}
+        </>
+      ) : null}
     </NavLink>
   );
+}
+
+/** The most urgent tone among some links' badges (for a folded section's dot). */
+function topTone(links: NavItem[]): BadgeTone | null {
+  const tones = links.filter((l) => l.badge).map((l) => l.tone ?? 'count');
+  if (tones.includes('alert')) return 'alert';
+  if (tones.includes('warn')) return 'warn';
+  return tones.length ? 'count' : null;
 }
 
 /**
@@ -292,38 +277,36 @@ function NavGroup({
   const expanded = !title || open || searching;
   const listId = title ? `nav-group-${title.toLowerCase().replace(/\W+/g, '-')}` : undefined;
   const hiddenBadges = expanded ? 0 : visible.reduce((n, l) => n + (l.badge ?? 0), 0);
+  const hiddenTone = hiddenBadges ? topTone(visible) : null;
 
   return (
-    <div className={clsx(!first && title && 'pt-2', !first && collapsed && 'lg:pt-0')}>
+    <div className={clsx(!first && title && 'mt-2', !first && collapsed && 'lg:mt-0')}>
       {title && (
         <>
-          {!first && collapsed && <div className="hidden lg:block mx-3 my-2 border-t border-[color:var(--sidebar-edge)]" aria-hidden="true" />}
+          {!first && collapsed && <div className="sb-hairline hidden lg:block mx-2 my-2 border-t" aria-hidden="true" />}
           <button
             type="button"
             onClick={onToggle}
             disabled={searching}
             aria-expanded={expanded}
             aria-controls={listId}
-            className={clsx(
-              'flex w-full items-center gap-1.5 h-7 px-2 rounded-md text-[10.5px] font-semibold uppercase tracking-[0.08em] transition-colors cursor-pointer disabled:cursor-default hover:bg-[color:var(--nav-hover-bg)] disabled:hover:bg-transparent',
-              collapsed && 'lg:hidden',
-            )}
-            style={{ color: 'var(--nav-section)' }}
+            title={!expanded && hiddenBadges ? `${title}: ${hiddenBadges} need${hiddenBadges === 1 ? 's' : ''} attention` : undefined}
+            className={clsx('sb-section sb-focus cursor-pointer disabled:cursor-default', collapsed && 'lg:hidden')}
           >
-            <span className="flex-1 text-left truncate">{title}</span>
-            {!expanded && hiddenBadges > 0 && (
-              <span className="text-[10px] font-semibold tabular-nums normal-case tracking-normal bg-blue-500 text-white px-1.5 h-4 leading-4 rounded-full">
-                {hiddenBadges > 99 ? '99+' : hiddenBadges}
+            <span className="truncate">{title}</span>
+            <ChevronRight size={12} className="sb-chev shrink-0" aria-hidden="true" />
+            {!expanded && (
+              <span className="ml-auto flex items-center gap-2 pl-2">
+                {hiddenTone && <span className="sb-dot" data-tone={hiddenTone} aria-hidden="true" />}
+                <span className="text-[11px] tabular-nums font-normal text-[color:var(--sb-faint)]">{visible.length}</span>
               </span>
             )}
-            {!expanded && <span className="text-[10.5px] font-medium tabular-nums normal-case tracking-normal opacity-70">{visible.length}</span>}
-            <ChevronDown size={13} className={clsx('shrink-0 transition-transform', !expanded && '-rotate-90')} />
           </button>
         </>
       )}
       {/* A folded group still shows its icons in the desktop rail. */}
       {(expanded || collapsed) && (
-        <div id={listId} className={clsx('space-y-0.5', title && 'mt-0.5', !expanded && 'hidden lg:block')}>
+        <div id={listId} className={clsx('space-y-px', !expanded && 'hidden lg:block', collapsed && 'lg:space-y-0.5')}>
           {visible.map((link) => (
             <NavRow key={link.to + link.label} link={link} collapsed={collapsed} onNavigate={onNavigate} />
           ))}
@@ -367,10 +350,12 @@ function useNavGroups(userId: string | undefined, activeTitle: string | undefine
  * actions with no chrome around them). Opens as a popover above the trigger since the trigger
  * itself lives at the very bottom of the screen. */
 function ProfileMenu({
-  user, roleAccent, dark, onToggleTheme, onOpenSearch, onLogout, collapsed,
+  user, roleAccent, subtitle, dark, onToggleTheme, onOpenSearch, onLogout, collapsed,
 }: {
   user: User | null | undefined;
   roleAccent: string;
+  /** Second line under the name (role, or email when the header already shows the role). */
+  subtitle: string;
   dark: boolean;
   onToggleTheme: () => void;
   onOpenSearch: () => void;
@@ -402,7 +387,7 @@ function ProfileMenu({
   const iconBadgeClass = 'flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 bg-black/[0.03] dark:bg-white/5';
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex-1 min-w-0">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -414,13 +399,17 @@ function ProfileMenu({
             // variant — this dropdown sits directly over other content in the same panel (nav
             // items, or the page behind it when the rail is collapsed), and a solid hex here
             // guarantees full coverage regardless of any compositing/paint-order quirk.
-            className="absolute bottom-full left-0 z-50 isolate mb-2 w-60 rounded-xl border border-[color:var(--sidebar-edge)] shadow-xl overflow-hidden p-1.5 space-y-0.5 origin-bottom-left"
+            className={clsx(
+              'absolute bottom-full left-0 z-50 isolate mb-2 rounded-xl border border-[color:var(--sb-border)] shadow-xl overflow-hidden p-1.5 space-y-0.5 origin-bottom-left',
+              // As wide as the sidebar's footer row (it sits over the nav); a fixed width beside the rail.
+              collapsed ? 'w-[216px] lg:w-60' : 'w-[calc(100%+32px)]',
+            )}
             style={{ backgroundColor: dark ? '#0f172a' : '#ffffff' }}
           >
             <button onClick={() => { onOpenSearch(); setOpen(false); }} type="button" className={itemClass}>
               <span className={iconBadgeClass}><Search size={15} /></span>
               <span className="flex-1 text-left">Search</span>
-              <kbd className="inline-flex items-center justify-center px-1.5 h-5 rounded-md text-[10px] font-medium border border-[color:var(--sidebar-edge)] text-[color:var(--app-text-muted)]">
+              <kbd className="sb-kbd">
                 /
               </kbd>
             </button>
@@ -472,50 +461,45 @@ function ProfileMenu({
         type="button"
         onClick={() => setOpen((o) => !o)}
         data-rail-label={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}
-        aria-label={collapsed ? `Account menu for ${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() : undefined}
+        aria-label={collapsed ? `Account menu for ${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() : `Account menu — ${user?.email ?? ''}`}
+        title={collapsed ? undefined : user?.email}
         aria-haspopup="menu"
         aria-expanded={open}
         className={clsx(
-          'flex items-center gap-2 w-full p-1.5 rounded-xl border transition-colors cursor-pointer',
-          open
-            ? 'bg-black/[0.04] dark:bg-white/[0.07] border-black/5 dark:border-white/5'
-            : 'bg-black/[0.03] dark:bg-white/[0.05] border-black/5 dark:border-white/5 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]',
-          collapsed && 'lg:justify-center lg:px-0',
+          'sb-focus flex items-center gap-2.5 w-full h-10 px-1.5 rounded-lg text-left transition-colors duration-[120ms] cursor-pointer',
+          open ? 'bg-[color:var(--sb-hover)]' : 'hover:bg-[color:var(--sb-hover)]',
+          collapsed && 'lg:justify-center lg:px-0 lg:w-9 lg:h-9 lg:mx-auto',
         )}
       >
-        <div className="relative flex-shrink-0">
-          <div className={clsx(`w-7 h-7 rounded-full bg-gradient-to-br ${roleAccent} flex items-center justify-center text-white text-[10.5px] font-semibold ring-2 ring-[color:var(--app-elevated-solid)] shadow-sm`)}>
+        <span className="relative flex-shrink-0">
+          <span className={clsx(`flex w-7 h-7 rounded-full bg-gradient-to-br ${roleAccent} items-center justify-center text-white text-[10.5px] font-semibold tracking-[0.02em]`)}>
             {user?.firstName?.[0]}{user?.lastName?.[0]}
-          </div>
-          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[color:var(--app-elevated-solid)]" aria-hidden="true" />
-        </div>
-        <div className={clsx('flex-1 min-w-0 text-left', collapsed && 'lg:hidden')}>
-          <p className="text-[12.5px] leading-4 font-semibold truncate text-[color:var(--app-text)] dark:text-white">
+          </span>
+          <span className="absolute -bottom-px -right-px w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[color:var(--sb-bg)]" aria-hidden="true" />
+        </span>
+        <span className={clsx('flex-1 min-w-0', collapsed && 'lg:hidden')}>
+          <span className="block text-[13px] leading-4 font-medium truncate text-[color:var(--sb-text-strong)]">
             {user?.firstName} {user?.lastName}
-          </p>
-          <p className="text-[11px] leading-4 truncate text-[color:var(--app-text-muted)] dark:text-slate-400">{user?.email}</p>
-        </div>
-        <ChevronDown
-          size={13}
-          className={clsx('shrink-0 transition-transform text-[color:var(--app-text-muted)]', open && 'rotate-180', collapsed && 'lg:hidden')}
-        />
+          </span>
+          <span className="block mt-0.5 text-[11.5px] leading-[14px] truncate text-[color:var(--sb-muted)]">{subtitle}</span>
+        </span>
       </button>
     </div>
   );
 }
 
 /**
- * Collapsed rail: the page name pops out beside the icon the moment the pointer (or keyboard focus)
- * is on it — no waiting for the browser's slow native tooltip, no need to expand the sidebar.
- * One delegated listener on the <aside> reads `data-rail-label`; the label is portalled to <body>
- * so the nav's scroll container and the aside's transform can't clip or offset it.
+ * Sidebar tooltips. In the collapsed rail the page name pops out beside the icon the moment the
+ * pointer (or keyboard focus) is on it (`data-rail-label`); icon-only buttons (collapse, theme) get
+ * the same instant tooltip in either state (`data-tip`). One delegated listener on the <aside>; the
+ * tip is portalled to <body> so the nav's scroll container and the aside's transform can't clip it.
  */
-function useRailLabel(collapsed: boolean) {
+function useSidebarTooltip(collapsed: boolean) {
   const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null);
   const show = (target: EventTarget | null) => {
-    if (!collapsed || !window.matchMedia('(min-width: 1024px)').matches) return;
-    const el = (target as HTMLElement | null)?.closest?.<HTMLElement>('[data-rail-label]');
-    const label = el?.dataset.railLabel;
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
+    const el = (target as HTMLElement | null)?.closest?.<HTMLElement>('[data-rail-label],[data-tip]');
+    const label = el?.dataset.tip || (collapsed ? el?.dataset.railLabel : undefined);
     if (!el || !label) { setTip(null); return; }
     const r = el.getBoundingClientRect();
     setTip({ label, top: r.top + r.height / 2, left: r.right + 10 });
@@ -525,12 +509,13 @@ function useRailLabel(collapsed: boolean) {
     onMouseLeave: () => setTip(null),
     onFocus: (e: React.FocusEvent) => show(e.target),
     onBlur: () => setTip(null),
+    onClick: () => setTip(null),
     onScrollCapture: () => setTip(null),
   };
-  const label = collapsed && tip && createPortal(
+  const label = tip && createPortal(
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-slate-900"
+      className="pointer-events-none fixed z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[11.5px] leading-4 font-medium text-white shadow-lg ring-1 ring-black/5 dark:bg-slate-700 dark:ring-white/10"
       style={{ top: tip.top, left: tip.left }}
     >
       {tip.label}
@@ -540,12 +525,15 @@ function useRailLabel(collapsed: boolean) {
   return { handlers, label };
 }
 
+/** ⌘K on Apple keyboards, Ctrl K elsewhere ("/" already opens the global search). */
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
 export function Sidebar({
   open, onClose, collapsed, onToggleCollapse, onOpenSearch,
 }: {
   open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void; onOpenSearch: () => void;
 }) {
-  const rail = useRailLabel(collapsed);
+  const rail = useSidebarTooltip(collapsed);
   const [navQuery, setNavQuery] = useState('');
   const navSearchRef = useRef<HTMLInputElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -555,6 +543,18 @@ export function Sidebar({
     const id = requestAnimationFrame(() => setNavNoMatch(navQuery.trim() !== '' && !navRef.current?.querySelector('a[href]')));
     return () => cancelAnimationFrame(id);
   }, [navQuery]);
+  // ⌘K / Ctrl K jumps to the page search (expanding the rail first). "/" stays the global search.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key.toLowerCase() !== 'k' || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      if (!window.matchMedia('(min-width: 1024px)').matches) return;
+      e.preventDefault();
+      if (collapsed) { onToggleCollapse(); setTimeout(() => navSearchRef.current?.focus(), 50); }
+      else navSearchRef.current?.focus();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [collapsed, onToggleCollapse]);
   const { user, logout } = useAuth();
   const { dark, toggle } = useTheme();
   const navigate = useNavigate();
@@ -653,10 +653,10 @@ export function Sidebar({
     links.map((l) => l.to === '/admin/support' ? { ...l, badge: openTicketsCount } : l);
 
   const addEscalationBadge = (links: NavItem[]) =>
-    links.map((l) => l.to === '/admin/escalations' ? { ...l, badge: openEscalationsCount } : l);
+    links.map((l) => l.to === '/admin/escalations' ? { ...l, badge: openEscalationsCount, tone: 'alert' as const } : l);
 
   const addFacilitiesBadge = (links: NavItem[]) =>
-    links.map((l) => (l.to === '/admin/facilities' || l.to === '/cem/facilities') ? { ...l, badge: openFacilityTicketsCount } : l);
+    links.map((l) => (l.to === '/admin/facilities' || l.to === '/cem/facilities') ? { ...l, badge: openFacilityTicketsCount, tone: 'warn' as const } : l);
 
   const addPendingBadge = (links: NavItem[]) =>
     links.map((l) => l.to === '/admin/users' ? { ...l, badge: pendingApprovals } : l);
@@ -795,12 +795,16 @@ export function Sidebar({
   const activeTitle = sections.find((s) => s.title && s.links.some((l) => isLinkActive(l, location.pathname)))?.title;
   const groups = useNavGroups(user?.id, activeTitle, location.pathname);
 
+  // Header line two: the school this account works in; the role instead when there isn't one.
+  const schoolName = user?.school?.name?.trim();
+  const headerSub = schoolName || roleLabel;
+
   return (
     <>
       {/* Backdrop — mobile only, closes the drawer on tap */}
       {open && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-[2px] lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -810,63 +814,60 @@ export function Sidebar({
         data-density={few ? 'few' : 'full'}
         aria-label="Sidebar"
         className={clsx(
-          // Floats clear of the viewport edges on desktop (lg:) as a rounded card; the mobile
-          // drawer (below lg:) stays a full-height, edge-to-edge overlay.
-          'app-sidebar fixed inset-y-0 left-0 h-screen glass-sidebar flex flex-col z-40 border border-[color:var(--sidebar-edge)] transition-[transform,width] duration-200',
-          'w-60',
+          // One continuous surface. Floats clear of the viewport edges on desktop (lg:) as a
+          // rounded card; the mobile drawer (below lg:) stays a full-height, edge-to-edge overlay.
+          'app-sidebar sb-surface fixed inset-y-0 left-0 h-screen flex flex-col z-40 border-l-0 border-y-0 lg:border transition-[transform,width] duration-200',
+          'w-[264px] max-w-[85vw]',
           'lg:inset-auto lg:left-3 lg:top-3 lg:rounded-2xl',
           // Desktop: the card is only as tall as its content (capped at the viewport, then the
           // nav scrolls) — the profile sits right under the last group, not at the screen's foot.
-          'lg:h-auto lg:max-h-[calc(100vh-1.5rem)]',
+          'lg:h-auto lg:max-h-[calc(100vh-1.5rem)] lg:max-w-none',
           collapsed ? 'lg:w-[60px]' : few ? 'lg:w-[208px]' : 'lg:w-[232px]',
           open ? 'translate-x-0' : '-translate-x-full',
           'lg:translate-x-0',
         )}
       >
-      {/* Collapse toggle — desktop only, straddles the sidebar's right edge */}
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className={clsx('hidden lg:flex absolute -right-3 w-6 h-6', collapsed ? 'top-[40px]' : 'top-[64px]', 'rounded-full glass-sidebar border border-[color:var(--sidebar-edge)] items-center justify-center shadow-sm hover:scale-110 transition-transform cursor-pointer text-[color:var(--app-text-muted)] z-10')}
-      >
-        {collapsed ? <PanelLeftOpen size={12} /> : <PanelLeftClose size={12} />}
-      </button>
-
-      <div className={clsx('px-3.5 py-3 flex items-center gap-2.5 border-b border-[color:var(--sidebar-edge)]', collapsed && 'lg:justify-center lg:px-2')}>
-        <img src="/logo.svg" alt="Tcheck" className="w-7 h-7 flex-shrink-0" />
+      {/* Header: logo + product + school, with the collapse toggle (desktop) / close (mobile) in the row. */}
+      <div className={clsx('sb-hairline flex items-center gap-2.5 h-14 pl-4 pr-2.5 border-b shrink-0', collapsed && 'lg:flex-col lg:justify-center lg:gap-1.5 lg:h-auto lg:py-3 lg:px-0')}>
+        <img src="/logo.svg" alt="" className="w-6 h-6 flex-shrink-0" />
         <div className={clsx('flex-1 min-w-0', collapsed && 'lg:hidden')}>
-          <p className="text-[14px] leading-5 font-semibold tracking-[-0.01em] text-[color:var(--app-text)] dark:text-white whitespace-nowrap">Tcheck</p>
-          <p className="text-[10px] leading-4 font-semibold uppercase tracking-[0.08em] text-[color:var(--app-accent-label)] truncate">
-            {roleLabel}
-          </p>
-          <LiveClock collapsed={collapsed} />
+          <p className="text-[13px] leading-4 font-semibold tracking-[-0.01em] text-[color:var(--sb-text-strong)] truncate">Tcheck</p>
+          <p className="mt-0.5 text-[11.5px] leading-[14px] text-[color:var(--sb-muted)] truncate" title={headerSub}>{headerSub}</p>
         </div>
         <button
           type="button"
+          onClick={onToggleCollapse}
+          data-tip={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+          className="sb-icon-btn sb-focus hidden lg:inline-flex cursor-pointer"
+        >
+          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+        </button>
+        <button
+          type="button"
           onClick={onClose}
-          className="lg:hidden p-1.5 rounded-lg text-[color:var(--app-text)] dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
+          className="sb-icon-btn sb-focus lg:hidden cursor-pointer"
           aria-label="Close navigation menu"
         >
           <X size={16} />
         </button>
       </div>
 
-      <div className={clsx('px-2.5 pt-2.5', collapsed && 'lg:px-2')}>
+      <div className={clsx('px-3 pt-3 shrink-0', collapsed && 'lg:pt-2')}>
         {collapsed && (
           <button
             type="button"
             onClick={() => { onToggleCollapse(); setTimeout(() => navSearchRef.current?.focus(), 50); }}
-            data-rail-label="Search pages"
+            data-rail-label={`Search pages (${IS_MAC ? '⌘K' : 'Ctrl K'})`}
             aria-label="Search pages"
-            className="hidden lg:flex mx-auto w-10 h-8 items-center justify-center rounded-lg text-[color:var(--app-text-muted)] hover:bg-[color:var(--nav-hover-bg)] cursor-pointer"
+            className="sb-icon-btn sb-focus hidden lg:flex mx-auto !w-9 !h-9 rounded-lg cursor-pointer"
           >
             <Search size={16} />
           </button>
         )}
         <div className={clsx('relative', collapsed && 'lg:hidden')}>
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[color:var(--app-text-muted)] pointer-events-none" />
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[color:var(--sb-faint)] pointer-events-none" />
           <input
             ref={navSearchRef}
             type="search"
@@ -879,15 +880,21 @@ export function Sidebar({
                 if (first) { e.preventDefault(); first.click(); setNavQuery(''); }
               }
             }}
-            placeholder="Search pages…"
+            placeholder="Search pages"
             aria-label="Search pages in the menu"
-            className="w-full h-8 pl-8 pr-2.5 rounded-lg text-[13px] bg-black/[0.04] dark:bg-white/5 border border-transparent focus:border-[color:var(--sidebar-edge)] focus:outline-none text-[color:var(--app-text)] dark:text-white placeholder:text-[color:var(--app-text-muted)]"
+            aria-keyshortcuts={IS_MAC ? 'Meta+K' : 'Control+K'}
+            className="sb-field w-full pl-8 pr-12 focus:outline-none"
           />
+          {navQuery === '' && (
+            <kbd className="sb-kbd absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none hidden lg:inline-flex" aria-hidden="true">
+              {IS_MAC ? '⌘K' : 'Ctrl K'}
+            </kbd>
+          )}
         </div>
       </div>
 
       <NavQuery.Provider value={navQuery}>
-      <nav ref={navRef} aria-label="Main" className={clsx('sidebar-nav-scroll flex-1 min-h-0 lg:flex-[0_1_auto] px-2.5 pt-2 pb-2 overflow-y-auto overflow-x-hidden', collapsed && 'lg:px-2')}>
+      <nav ref={navRef} aria-label="Main" className={clsx('sidebar-nav-scroll flex-1 min-h-0 lg:flex-[0_1_auto] px-3 pt-2 pb-3 overflow-y-auto overflow-x-hidden', collapsed && 'lg:pt-1')}>
         {sections.map((s, i) => (
           <NavGroup
             key={s.title ?? `flat-${i}`}
@@ -901,21 +908,31 @@ export function Sidebar({
           />
         ))}
         {navNoMatch && (
-          <p className="px-3 py-5 text-[13px] text-center text-[color:var(--app-text-muted)]">No pages match “{navQuery.trim()}”</p>
+          <p className="px-3 py-5 text-[12.5px] text-center text-[color:var(--sb-muted)]">No pages match “{navQuery.trim()}”</p>
         )}
       </nav>
       </NavQuery.Provider>
 
-      <div className={clsx('p-2.5 border-t border-[color:var(--sidebar-edge)]', collapsed && 'lg:p-2')}>
+      <div className={clsx('sb-hairline flex items-center gap-1 px-2 py-2 border-t shrink-0', collapsed && 'lg:px-0 lg:justify-center')}>
         <ProfileMenu
           user={user}
           roleAccent={roleAccent}
+          subtitle={schoolName ? roleLabel : user?.email ?? ''}
           dark={dark}
           onToggleTheme={toggle}
           onOpenSearch={() => { onOpenSearch(); onClose(); }}
           onLogout={() => { logout(); navigate('/login'); }}
           collapsed={collapsed}
         />
+        <button
+          type="button"
+          onClick={toggle}
+          data-tip={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          className={clsx('sb-icon-btn sb-focus cursor-pointer', collapsed && 'lg:hidden')}
+        >
+          {dark ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
       </div>
       </aside>
       {rail.label}

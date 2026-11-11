@@ -85,7 +85,7 @@ export function DashboardLayout() {
       <button
         type="button"
         onClick={() => setMobileNavOpen(true)}
-        className="lg:hidden fixed top-3 left-3 z-20 p-2 rounded-lg glass-sidebar border border-[color:var(--sidebar-edge)] text-[color:var(--app-text)] dark:text-white shadow-sm cursor-pointer"
+        className="sb-surface sb-focus lg:hidden fixed top-3 left-3 z-20 flex items-center justify-center w-9 h-9 rounded-lg text-[color:var(--sb-text-strong)] cursor-pointer"
         aria-label="Open navigation menu"
       >
         <Menu size={18} />

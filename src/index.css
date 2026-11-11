@@ -50,6 +50,23 @@
   --nav-active-bg: rgba(37, 99, 235, 0.11);
   --nav-active-text: #1e3a8a;
   --sidebar-edge: #d1d9e4;
+  /* Sidebar v2 (11-11 "make it really proper") — one continuous surface, neutral rows, brand only
+     on the active icon / indicator / count badges. Used by .sb-* below. */
+  --sb-bg: #ffffff;
+  --sb-border: rgba(226, 232, 240, 0.9);   /* slate-200 */
+  --sb-hairline: rgba(226, 232, 240, 0.8);
+  --sb-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 20px -8px rgba(15, 23, 42, 0.08);
+  --sb-text: #475569;          /* slate-600 */
+  --sb-text-strong: #0f172a;   /* slate-900 */
+  --sb-muted: #64748b;         /* slate-500 */
+  --sb-faint: #94a3b8;         /* slate-400 */
+  --sb-icon: #8391a7;
+  --sb-hover: rgba(15, 23, 42, 0.04);
+  --sb-active: rgba(37, 99, 235, 0.075);
+  --sb-brand: #2563eb;         /* blue-600 */
+  --sb-ring: rgba(37, 99, 235, 0.55);
+  --sb-field: #ffffff;
+  --sb-kbd-bg: #f8fafc;
 }
 
 html.dark {
@@ -71,6 +88,21 @@ html.dark {
   --nav-active-bg: rgba(59, 130, 246, 0.12);
   --nav-active-text: #93c5fd;
   --sidebar-edge: rgba(255, 255, 255, 0.06);
+  --sb-bg: #0f172a;            /* slate-900 */
+  --sb-border: rgba(255, 255, 255, 0.08);
+  --sb-hairline: rgba(255, 255, 255, 0.06);
+  --sb-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -10px rgba(0, 0, 0, 0.5);
+  --sb-text: #a3b0c2;
+  --sb-text-strong: #f8fafc;
+  --sb-muted: #8190a5;
+  --sb-faint: #64748b;
+  --sb-icon: #74839a;
+  --sb-hover: rgba(255, 255, 255, 0.045);
+  --sb-active: rgba(96, 165, 250, 0.1);
+  --sb-brand: #60a5fa;         /* blue-400 */
+  --sb-ring: rgba(96, 165, 250, 0.6);
+  --sb-field: rgba(255, 255, 255, 0.02);
+  --sb-kbd-bg: rgba(255, 255, 255, 0.04);
 }
 
 html {
@@ -155,12 +187,7 @@ html:not(.dark) option {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
-/* Thin, unobtrusive scrollbar for the sidebar's nav list — the default OS scrollbar used to sit
-   right on top of the divider above the profile card, reading as a stray broken line. */
-.sidebar-nav-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--sidebar-edge) transparent;
-}
+/* Thin, unobtrusive scrollbar for the sidebar's nav list (see also .sidebar-nav-scroll below). */
 .sidebar-nav-scroll::-webkit-scrollbar {
   width: 6px;
 }
@@ -168,7 +195,7 @@ html:not(.dark) option {
   background: transparent;
 }
 .sidebar-nav-scroll::-webkit-scrollbar-thumb {
-  background-color: var(--sidebar-edge);
+  background-color: var(--sb-border);
   border-radius: 9999px;
 }
 
@@ -402,18 +429,154 @@ html.admin-ui body {
   .app-sidebar[data-collapsed="true"] ~ .app-main { margin-left: 84px; }
 }
 
-/* Sidebar navigation — theme tokens (light + dark) */
-.nav-link-active {
-  background: var(--nav-active-bg);
-  color: var(--nav-active-text);
+/* ── Sidebar v2 ──────────────────────────────────────────────────────────────────────────────
+   Surface, rows, section headers and badges for components/layout/Sidebar.tsx. Colours come from
+   the --sb-* tokens above so light and dark are both deliberate. In the components layer so
+   Tailwind utilities on the same element (rail sizing, padding) still win. */
+@layer components {
+.sb-surface {
+  background: var(--sb-bg);
+  border: 1px solid var(--sb-border);
+  box-shadow: var(--sb-shadow);
+}
+.sb-hairline { border-color: var(--sb-hairline); }
+
+/* Shared keyboard focus ring (pointer clicks never show it). */
+.sb-focus:focus-visible {
+  outline: 2px solid var(--sb-ring);
+  outline-offset: -2px;
 }
 
-.nav-link-idle {
-  color: var(--nav-item);
+/* Nav row: 32px, 8px radius, muted 16px icon; active = tint + strong label + brand icon + 2px bar. */
+.sb-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 450;
+  color: var(--sb-text);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.sb-row .sb-icon { flex-shrink: 0; color: var(--sb-icon); transition: color 120ms ease; }
+.sb-row:hover { background: var(--sb-hover); color: var(--sb-text-strong); }
+.sb-row:hover .sb-icon { color: var(--sb-text); }
+.sb-row[data-active="true"] { background: var(--sb-active); color: var(--sb-text-strong); font-weight: 550; }
+.sb-row[data-active="true"] .sb-icon { color: var(--sb-brand); }
+.sb-row[data-active="true"]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--sb-brand);
+}
+/* Attendance-style sub rows: 28px; the active one lights its segment of the guide line instead. */
+.sb-row.sb-sub { height: 28px; font-size: 12.5px; padding: 0 8px; border-radius: 6px; }
+.sb-row.sb-sub[data-active="true"]::before { left: -11px; top: 6px; bottom: 6px; width: 1px; border-radius: 1px; }
+.sb-guide { border-left: 1px solid var(--sb-hairline); }
+
+/* Section header: quiet 11px label; the chevron fades in on hover/focus and stays while folded. */
+.sb-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--sb-muted);
+  transition: color 120ms ease;
+}
+.sb-section:not(:disabled):hover { color: var(--sb-text-strong); }
+.sb-section .sb-chev { opacity: 0; transition: opacity 150ms ease, transform 150ms ease; }
+.sb-section[aria-expanded="true"] .sb-chev { transform: rotate(90deg); }
+.sb-section:not(:disabled):hover .sb-chev,
+.sb-section:focus-visible .sb-chev,
+.sb-section[aria-expanded="false"] .sb-chev { opacity: 1; }
+
+/* Ghost icon button (collapse, theme, close). */
+.sb-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: var(--sb-muted);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.sb-icon-btn:hover { background: var(--sb-hover); color: var(--sb-text-strong); }
+
+/* Page search field: slim, hairline border, no heavy fill. */
+.sb-field {
+  height: 32px;
+  border-radius: 8px;
+  background: var(--sb-field);
+  border: 1px solid var(--sb-border);
+  color: var(--sb-text-strong);
+  font-size: 13px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.sb-field::placeholder { color: var(--sb-faint); }
+.sb-field:hover { border-color: color-mix(in srgb, var(--sb-faint) 45%, transparent); }
+.sb-field:focus { border-color: var(--sb-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sb-brand) 18%, transparent); }
+.sb-field::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.sb-kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  border: 1px solid var(--sb-border);
+  background: var(--sb-kbd-bg);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--sb-muted);
+  font-family: var(--font-sans);
 }
 
-.nav-link-idle:hover {
-  background: var(--nav-hover-bg);
+/* Count badges: compact tinted pills, tabular numbers. Brand for counts, amber / red for alerts. */
+.sb-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+}
+.sb-badge[data-tone="warn"] { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+.sb-badge[data-tone="alert"] { background: rgba(239, 68, 68, 0.11); color: #b91c1c; }
+html.dark .sb-badge { background: rgba(96, 165, 250, 0.15); color: #93c5fd; }
+html.dark .sb-badge[data-tone="warn"] { background: rgba(251, 191, 36, 0.14); color: #fcd34d; }
+html.dark .sb-badge[data-tone="alert"] { background: rgba(248, 113, 113, 0.15); color: #fca5a5; }
+.sb-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--sb-brand); flex-shrink: 0; }
+.sb-dot[data-tone="warn"] { background: #f59e0b; }
+.sb-dot[data-tone="alert"] { background: #ef4444; }
+}
+
+/* Thin, unobtrusive scrollbar for the nav list. */
+.sidebar-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sb-border) transparent;
 }
 
 /* ── Badge animations ── */
