@@ -18,22 +18,22 @@ export const Input = forwardRef<HTMLInputElement, Props>(({ label, error, icon: 
 
   return (
     <div className="space-y-1">
-      {label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>}
+      {label && <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">{label}</label>}
       <div className="relative group">
         {Icon && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
-            <Icon size={18} />
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+            <Icon size={16} />
           </div>
         )}
         <input
           ref={ref}
           type={isPassword ? (revealed ? 'text' : 'password') : type}
           className={clsx(
-            'w-full rounded-xl py-2.5 text-sm bg-white dark:bg-white/5 border transition-all',
+            'w-full rounded-lg py-2 text-sm bg-white dark:bg-white/5 border transition-all',
             'text-gray-900 dark:text-white placeholder-gray-400',
             'focus:outline-none focus:ring-2 focus:ring-blue-500/50',
-            Icon ? 'pl-11' : 'pl-4',
-            isPassword ? 'pr-11' : 'pr-4',
+            Icon ? 'pl-10' : 'pl-3.5',
+            isPassword ? 'pr-10' : 'pr-3.5',
             error ? 'border-red-400' : 'border-gray-200 dark:border-white/10 group-focus-within:border-blue-500/50',
             className,
           )}
@@ -45,9 +45,9 @@ export const Input = forwardRef<HTMLInputElement, Props>(({ label, error, icon: 
             onClick={() => setRevealed((r) => !r)}
             tabIndex={-1}
             aria-label={revealed ? 'Hide password' : 'Show password'}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
           >
-            {revealed ? <EyeOff size={17} /> : <Eye size={17} />}
+            {revealed ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         )}
       </div>

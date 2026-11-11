@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,400..600&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -11,6 +11,36 @@
   --color-primary: #3B82F6;
   --color-primary-dark: #2563EB;
   --color-accent: #8B5CF6;
+
+  /* ── Type system ──
+     One refined ramp for the whole admin. Tailwind's defaults (24px text-2xl, 30px text-3xl …)
+     read as "amplified" in a dense admin UI, so the shared scale itself is tightened here rather
+     than every page: page titles (text-2xl) land at 20px, card titles (text-lg) at 15px, body and
+     tables (text-sm) at 13px, labels (text-xs) at 12px. Spacing is untouched (rem stays 16px). */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --text-xs: 0.75rem;          /* 12px — labels, meta */
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.8125rem;        /* 13px — body, tables, nav */
+  --text-sm--line-height: 1.5;
+  --text-base: 0.875rem;       /* 14px — prominent body */
+  --text-base--line-height: 1.55;
+  --text-lg: 0.9375rem;        /* 15px — card titles */
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.0625rem;        /* 17px — section titles */
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.25rem;         /* 20px — page titles */
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 1.375rem;        /* 22px — large page titles / KPI values */
+  --text-3xl--line-height: 1.25;
+  --text-4xl: 1.75rem;         /* 28px — hero numbers only */
+  --text-4xl--line-height: 1.15;
+  --text-5xl: 2.25rem;         /* 36px — auth hero only */
+  --text-5xl--line-height: 1.1;
+  --text-6xl: 2.75rem;
+  --text-6xl--line-height: 1.05;
+  /* "extrabold"/"black" are too heavy for Inter at admin sizes — cap them near bold. */
+  --font-weight-extrabold: 700;
+  --font-weight-black: 750;
 }
 
 /* OTP box input's wrong-code tell — see components/auth/OtpBoxInput.tsx */
@@ -71,28 +101,55 @@ html.dark {
   --sidebar-edge: rgba(255, 255, 255, 0.06);
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  /* Inter's open 4/6/9 and single-storey a — calmer, cleaner glyphs at small admin sizes. */
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--app-bg);
   color: var(--app-text);
 }
 
-/* One type ramp in light mode — avoids mixed system-ui vs Inter clashes */
-html:not(.dark) main {
-  color: var(--app-text);
-  font-family: 'Inter', system-ui, sans-serif;
+/* Base heading rhythm. In @layer base so per-page utilities (font-bold, text-*) still win. */
+@layer base {
+  h1, h2, h3, h4 {
+    font-weight: 600;
+    letter-spacing: -0.011em;
+  }
+  main h1, main h2, main h3 {
+    color: var(--app-text);
+  }
+  html.dark main h1, html.dark main h2, html.dark main h3 {
+    color: inherit;
+  }
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    letter-spacing: 0.01em;
+  }
+  button, input, select, textarea {
+    font: inherit;
+  }
 }
 
-html:not(.dark) main h1,
-html:not(.dark) main h2,
-html:not(.dark) main h3 {
-  color: var(--app-text);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+/* Headings everywhere drop to a calmer weight/tracking: utility `font-bold` (700) on a 20px
+   title reads heavy in Inter, so titles inside the dashboard shell settle at 650. */
+main :where(h1, h2) {
+  letter-spacing: -0.015em;
+}
+main :where(h1.font-bold, h2.font-bold, h3.font-bold) {
+  font-weight: 650;
 }
 
 /* Native selects: explicit light-mode colors (avoids washed-out text on some OS/browser combos) */
@@ -207,7 +264,7 @@ html:not(.dark) option {
   position: relative;
   overflow: hidden;
   border-radius: 1rem;
-  padding: 1.5rem;
+  padding: 1.25rem;
   background: var(--app-elevated-solid);
   border: 1px solid var(--app-border-soft);
   box-shadow: var(--app-shadow);
@@ -251,11 +308,11 @@ html:not(.dark) option {
 .gradient-table thead th {
   color: white;
   font-weight: 600;
-  padding: 0.875rem 1rem;
+  padding: 0.625rem 0.875rem;
   text-align: left;
-  font-size: 0.8rem;
+  font-size: 0.6875rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .gradient-table thead th:first-child {
@@ -279,9 +336,9 @@ html:not(.dark) option {
 }
 
 .gradient-table tbody td {
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 0.875rem;
   border-bottom: 1px solid var(--app-border-soft);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--app-text-secondary);
 }
 
@@ -360,4 +417,19 @@ textarea:focus {
 
 .badge-pulse {
   animation: pulse-badge 2s ease-in-out infinite;
+}
+
+/* Faint grid behind the auth screens (AuthShell) — line colour follows the theme. */
+.auth-grid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+}
+.dark .auth-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }

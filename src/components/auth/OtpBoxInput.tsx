@@ -93,9 +93,13 @@ export function OtpBoxInput({ length = 6, value, onChange, onComplete, shakeKey,
           onKeyDown={(e) => handleKeyDown(index, e)}
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
-          className={`w-11 h-14 text-center text-xl font-bold rounded-xl bg-white/5 border text-white
-            focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all
-            ${digit ? 'border-blue-500/40 bg-blue-500/10' : 'border-white/10'}`}
+          aria-label={`Digit ${index + 1} of ${length}`}
+          className={`w-11 h-12 text-center text-lg font-semibold tabular-nums rounded-lg border transition-colors
+            text-slate-900 dark:text-white
+            focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 dark:focus:border-blue-400/60
+            ${digit
+              ? 'border-blue-300 bg-blue-50 dark:border-blue-500/40 dark:bg-blue-500/10'
+              : 'border-slate-300 bg-white shadow-sm shadow-slate-900/[0.03] dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none'}`}
         />
       ))}
     </div>

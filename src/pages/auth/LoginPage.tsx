@@ -6,6 +6,11 @@ import { useAuth } from '../../context/AuthContext';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, MailCheck, RotateCw } from 'lucide-react';
 import { OtpBoxInput } from '../../components/auth/OtpBoxInput';
 import { homeRouteFor } from '../../lib/rbac';
+import { AuthShell, AuthBrand } from '../../components/auth/AuthShell';
+import {
+  authError, authIconButton, authInput, authInputIcon, authLabel, authLink, authMutedLink,
+  authPrimaryButton, authSpinner, authSubtitle, authTitle,
+} from '../../components/auth/authStyles';
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -91,226 +96,201 @@ export function LoginPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(99,102,241,0.1),transparent_50%)]" />
+  const aside = (
+    <div className="hidden lg:flex flex-1 flex-col justify-center relative px-14 xl:px-20">
+      <div className="max-w-md">
+        <AuthBrand className="mb-10" />
 
-      {/* Subtle grid pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-        backgroundSize: '64px 64px',
-      }} />
+        <h1 className="text-4xl xl:text-5xl font-semibold tracking-tight leading-[1.1] text-slate-900 dark:text-white mb-5">
+          Enterprise<br />
+          <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+            Attendance
+          </span>
+        </h1>
 
-      {/* Floating orbs */}
-      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed mb-9">
+          Hardware-verified presence, AI-powered identity checks, and real-time campus analytics — all managed from one unified platform.
+        </p>
 
-      {/* Left panel - Branding */}
-      <div className="hidden lg:flex flex-1 flex-col justify-center items-center relative px-16">
-        <div className="max-w-lg">
-          <div className="flex items-center gap-3 mb-8">
-            <img src="/logo.svg" alt="Tcheck" className="w-12 h-12" />
-            <span className="text-2xl font-bold text-white tracking-tight">Tcheck</span>
-          </div>
-
-          <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
-            Enterprise<br />
-            <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-              Attendance
-            </span>
-          </h1>
-
-          <p className="text-lg text-slate-400 leading-relaxed mb-10">
-            Hardware-verified presence, AI-powered identity checks, and real-time campus analytics — all managed from one unified platform.
-          </p>
-
-          <div className="space-y-4">
-            {[
-              { label: 'Hardware-Verified Presence', desc: 'Automated Tcheck beacon tracking ensures students are physically inside the lecture hall.' },
-              { label: 'Biometric Anti-Cheat', desc: 'AI-powered liveness and identity verification stops buddy-punching and proxy check-ins instantly.' },
-              { label: 'Live Campus Analytics', desc: 'Real-time dashboards, role-based access, and forensic audit trails for complete administrative control.' },
-            ].map((feature, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-200">{feature.label}</p>
-                  <p className="text-xs text-slate-500">{feature.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="absolute bottom-8 left-16 text-xs text-slate-600">
-          &copy; {new Date().getFullYear()} Tcheck. All rights reserved.
-        </div>
+        <ul className="space-y-4">
+          {[
+            { label: 'Hardware-Verified Presence', desc: 'Automated Tcheck beacon tracking ensures students are physically inside the lecture hall.' },
+            { label: 'Biometric Anti-Cheat', desc: 'AI-powered liveness and identity verification stops buddy-punching and proxy check-ins instantly.' },
+            { label: 'Live Campus Analytics', desc: 'Real-time dashboards, role-based access, and forensic audit trails for complete administrative control.' },
+          ].map((feature) => (
+            <li key={feature.label} className="flex items-start gap-3">
+              <span className="mt-0.5 w-6 h-6 rounded-md bg-blue-50 border border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20 flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+              </span>
+              <span>
+                <span className="block text-sm font-medium text-slate-800 dark:text-slate-200">{feature.label}</span>
+                <span className="block text-xs leading-relaxed text-slate-500 dark:text-slate-400">{feature.desc}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* Right panel - Login form */}
-      <div className="flex-1 flex items-center justify-center relative px-6 py-12">
-        <div className="w-full max-w-[420px]">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
-            <img src="/logo.svg" alt="Tcheck" className="w-10 h-10" />
-            <span className="text-xl font-bold text-white tracking-tight">Tcheck</span>
-          </div>
+      <p className="absolute bottom-6 left-14 xl:left-20 text-xs text-slate-500 dark:text-slate-500">
+        &copy; {new Date().getFullYear()} Tcheck. All rights reserved.
+      </p>
+    </div>
+  );
 
-          {otpStage ? (
-            <div className="space-y-6">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5">
-                  <MailCheck size={28} className="text-blue-400" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-2">Verify It's You</h2>
-                <p className="text-slate-400 text-sm">
-                  Enter the 6-digit code we sent to<br />
-                  <span className="text-slate-200 font-medium">{email}</span>
-                </p>
-              </div>
+  return (
+    <AuthShell aside={aside}>
+      {/* Mobile logo */}
+      <AuthBrand className="lg:hidden mb-9 justify-center" />
 
-              <OtpBoxInput
-                value={code}
-                onChange={setCode}
-                onComplete={submitOtp}
-                shakeKey={otpErrorTick}
-                disabled={loading}
-              />
-
-              {error && (
-                <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in">
-                  <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-400">{error}</p>
-                </div>
-              )}
-
-              {loading && (
-                <div className="flex justify-center">
-                  <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
-                </div>
-              )}
-
-              <div className="flex flex-col items-center gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={resendCooldown > 0 || resending}
-                  className="flex items-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                >
-                  <RotateCw size={14} className={resending ? 'animate-spin' : ''} />
-                  {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setOtpStage(false); setCode(''); setError(''); }}
-                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-                >
-                  Use a different account
-                </button>
-              </div>
+      {otpStage ? (
+        <div className="space-y-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20 flex items-center justify-center mb-4">
+              <MailCheck size={22} className="text-blue-600 dark:text-blue-400" aria-hidden="true" />
             </div>
-          ) : (
-          <>
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
-            <p className="text-slate-400 text-sm">Sign in to your dashboard</p>
+            <h2 className={`${authTitle} mb-1.5`}>Verify it's you</h2>
+            <p className={authSubtitle}>
+              Enter the 6-digit code we sent to<br />
+              <span className="font-medium text-slate-900 dark:text-slate-200">{email}</span>
+            </p>
           </div>
 
-          <form onSubmit={handlePasswordSubmit} className="space-y-5">
+          <OtpBoxInput
+            value={code}
+            onChange={setCode}
+            onComplete={submitOtp}
+            shakeKey={otpErrorTick}
+            disabled={loading}
+          />
+
+          {error && (
+            <div role="alert" className={authError}>
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" aria-hidden="true" />
+              <p>{error}</p>
+            </div>
+          )}
+
+          {loading && (
+            <div className="flex justify-center" aria-live="polite">
+              <div className="w-5 h-5 border-2 border-blue-600/25 border-t-blue-600 dark:border-blue-400/30 dark:border-t-blue-400 rounded-full animate-spin" />
+              <span className="sr-only">Verifying…</span>
+            </div>
+          )}
+
+          <div className="flex flex-col items-center gap-2.5 pt-1 text-sm">
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendCooldown > 0 || resending}
+              className={`flex items-center gap-1.5 cursor-pointer ${authLink} disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed`}
+            >
+              <RotateCw size={13} className={resending ? 'animate-spin' : ''} aria-hidden="true" />
+              {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOtpStage(false); setCode(''); setError(''); }}
+              className={`cursor-pointer ${authMutedLink}`}
+            >
+              Use a different account
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mb-7">
+            <h2 className={`${authTitle} mb-1.5`}>Welcome back</h2>
+            <p className={authSubtitle}>Sign in to your dashboard</p>
+          </div>
+
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
             {/* Email field */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-300">Email</label>
+            <div className="space-y-1.5">
+              <label htmlFor="login-email" className={authLabel}>Email</label>
               <div className="relative group">
-                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                <Mail size={16} className={authInputIcon} aria-hidden="true" />
                 <input
+                  id="login-email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@tcheck.app"
                   required
-                  className="w-full pl-12 pr-4 py-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
+                  className={`${authInput} pl-10 pr-3.5`}
                 />
               </div>
             </div>
 
             {/* Password field */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-slate-300">Password</label>
-                <Link to="/forgot-password" className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                <label htmlFor="login-password" className={authLabel}>Password</label>
+                <Link to="/forgot-password" className={`text-xs ${authLink}`}>
                   Forgot password?
                 </Link>
               </div>
               <div className="relative group">
-                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                <Lock size={16} className={authInputIcon} aria-hidden="true" />
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
-                  className="w-full pl-12 pr-12 py-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all"
+                  className={`${authInput} pl-10 pr-10`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className={authIconButton}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
             {/* Error */}
             {error && (
-              <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in">
-                <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-                <p className="text-sm text-red-400">{error}</p>
+              <div role="alert" className={authError}>
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" aria-hidden="true" />
+                <p>{error}</p>
               </div>
             )}
 
             {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group"
-            >
+            <button type="submit" disabled={loading} className={`${authPrimaryButton} mt-2`}>
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className={authSpinner} />
                   Signing in...
                 </>
               ) : (
                 <>
                   Sign In
-                  <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
                 </>
               )}
             </button>
           </form>
-          </>
-          )}
+        </>
+      )}
 
-          <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
-            <p className="text-center text-xs text-slate-600">
-              Admin & Lecturer access only. Students use the mobile app.
-            </p>
-            <p className="text-center text-xs text-slate-600">
-              <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
-                Privacy Policy
-              </a>
-              <span className="mx-2">·</span>
-              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
-                Terms of Service
-              </a>
-            </p>
-          </div>
-        </div>
+      <div className="mt-7 pt-5 border-t border-slate-200 dark:border-white/[0.06] space-y-2 text-center text-xs text-slate-500 dark:text-slate-500">
+        <p className="text-balance">Admin &amp; Lecturer access only. Students use the mobile app.</p>
+        <p>
+          <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className={authMutedLink}>
+            Privacy Policy
+          </a>
+          <span className="mx-2" aria-hidden="true">·</span>
+          <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className={authMutedLink}>
+            Terms of Service
+          </a>
+        </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

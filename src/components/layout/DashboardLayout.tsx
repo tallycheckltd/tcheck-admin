@@ -13,6 +13,8 @@ export function DashboardLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
+  // Reported by the Sidebar: roles with only a handful of pages get a narrower sidebar.
+  const [fewPages, setFewPages] = useState(false);
 
   // Backs the "/" hint shown next to Search in the sidebar — ignored while typing in any field
   // so it doesn't hijack a literal "/" character in, say, a school code or a message draft.
@@ -51,10 +53,10 @@ export function DashboardLayout() {
   // nothing else in the dashboard is reachable until the current terms are accepted.
   if (user.termsRequired) return <TermsAcceptancePage />;
 
-  // Sidebar now floats lg:left-3 with its own width, plus a matching gap before content starts
-  // (12px offset + width + 12px gap) — content margin has to grow by that offset+gap or it would
-  // sit flush against the floating card instead of clearing it.
-  const contentMargin = collapsed ? 'lg:ml-[100px]' : 'lg:ml-[280px]';
+  // Sidebar floats lg:left-3 with its own width, plus a matching gap before content starts
+  // (12px offset + width + 12px gap) — keep these in step with Sidebar.tsx's desktopWidth
+  // (64px rail / 212px few-pages / 232px default).
+  const contentMargin = collapsed ? 'lg:ml-[88px]' : fewPages ? 'lg:ml-[236px]' : 'lg:ml-[256px]';
 
   return (
     <div className="min-h-screen app-shell transition-[background-color,color] duration-200">
@@ -64,6 +66,7 @@ export function DashboardLayout() {
         collapsed={collapsed}
         onToggleCollapse={toggleCollapsed}
         onOpenSearch={() => setSearchOpen(true)}
+        onFewPagesChange={setFewPages}
       />
       {/* Mobile-only menu trigger — floats over page content instead of living in a persistent
           topbar, since removing that bar (search moved into the sidebar as a modal, see below)
@@ -71,14 +74,14 @@ export function DashboardLayout() {
       <button
         type="button"
         onClick={() => setMobileNavOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-20 p-2.5 rounded-xl glass-sidebar border border-[color:var(--sidebar-edge)] text-[color:var(--app-text)] dark:text-white shadow-sm cursor-pointer"
+        className="lg:hidden fixed top-3 left-3 z-20 p-2 rounded-lg glass-sidebar border border-[color:var(--sidebar-edge)] text-[color:var(--app-text)] dark:text-white shadow-sm cursor-pointer"
         aria-label="Open navigation menu"
       >
-        <Menu size={20} />
+        <Menu size={18} />
       </button>
       <GlobalSearchBar open={searchOpen} onClose={() => setSearchOpen(false)} />
       <PermissionNotice />
-      <main className={`${contentMargin} flex flex-col p-4 pt-16 sm:p-6 sm:pt-16 lg:pt-6 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
+      <main className={`${contentMargin} flex flex-col p-4 pt-14 sm:p-6 sm:pt-14 lg:pt-5 min-h-screen antialiased text-[color:var(--app-text)] dark:text-slate-100 transition-[margin] duration-200`}>
         <div className="flex-1">
           <Outlet />
         </div>
@@ -91,7 +94,7 @@ export function DashboardLayout() {
 function DashboardFooter() {
   const year = new Date().getFullYear();
   return (
-    <footer className="mt-auto pt-6 pb-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[0.75rem] text-slate-500 dark:text-slate-500">
+    <footer className="mt-auto pt-6 pb-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-500">
       <span>&copy; {year} Tallycheck Ltd. All rights reserved.</span>
       <span className="text-slate-300 dark:text-slate-700">|</span>
       <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">

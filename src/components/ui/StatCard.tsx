@@ -32,18 +32,18 @@ export function StatCard({ title, value, icon, trend, color = 'blue', size = 'de
         <div className={`flex items-center justify-between ${compact ? '' : 'items-start'}`}>
           <div className={compact ? 'flex items-center gap-3' : undefined}>
             {compact && (
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${iconColors[color]}`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${iconColors[color]}`}>
                 {icon}
               </div>
             )}
             <div>
-              <p className="text-sm text-slate-600 dark:text-slate-500">{title}</p>
-              <p className={`${compact ? 'text-lg' : 'mt-1 text-3xl'} font-bold text-slate-900 dark:text-white leading-tight`}>{value}</p>
-              {trend && <p className="mt-1 text-sm text-green-500">{trend}</p>}
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-400">{title}</p>
+              <p className={`${compact ? 'text-lg' : 'mt-1 text-3xl'} font-semibold tracking-tight tabular-nums text-slate-900 dark:text-white leading-tight`}>{value}</p>
+              {trend && <p className="mt-1 text-xs text-green-500">{trend}</p>}
             </div>
           </div>
           {!compact && (
-            <div className={`p-3 rounded-xl ${iconColors[color]}`}>
+            <div className={`p-2.5 rounded-lg ${iconColors[color]}`}>
               {icon}
             </div>
           )}
