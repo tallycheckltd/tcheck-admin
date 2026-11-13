@@ -26,6 +26,8 @@ export const visitorsGroup: NavLinkDef = {
   icon: 'IdCard',
   label: 'Visitors',
   children: [
+    // Every admin invites visitors too, from the same page as everyone else (with My invitations).
+    { to: '/visitors/invite', icon: 'MailCheck', label: 'Invite a visitor' },
     { to: '/visitors/on-site', icon: 'Radio', label: 'On site now' },
     { to: '/visitors/history', icon: 'ClipboardList', label: 'History' },
     { to: '/visitors/invites', icon: 'MailCheck', label: 'Invites' },

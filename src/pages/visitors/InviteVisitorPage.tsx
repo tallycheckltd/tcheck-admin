@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { InviteForm } from './InviteForm';
-import { STATUS_BADGE, windowLabel, stamp, type VisitorInvite } from './visitorsApi';
+import { STATUS_BADGE, windowLabel, stamp, guestDetailsLabel, type VisitorInvite } from './visitorsApi';
 
 /**
  * Visitors (2026-11-13) — "Invite a visitor", for every staff member the school allows: the form,
@@ -50,6 +50,7 @@ export function InviteVisitorPage() {
                 <div className="min-w-0 space-y-0.5">
                   <p className="font-medium text-slate-950 dark:text-white">{r.guestName}</p>
                   <p className="text-sm text-slate-600 dark:text-slate-400">{windowLabel(r.validFrom, r.validUntil)}{r.purpose ? ` · ${r.purpose}` : ''}</p>
+                  {guestDetailsLabel(r) && <p className={`text-xs ${guestDetailsLabel(r)!.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>{guestDetailsLabel(r)!.text}</p>}
                   <p className="text-xs text-slate-500">
                     {r.status === 'PENDING' ? <>Gate code <span className="font-mono font-semibold tracking-widest">{r.code}</span></> : r.checkInAt ? `Arrived ${stamp(r.checkInAt)}${r.checkOutAt ? ` · left ${stamp(r.checkOutAt)}` : ''}` : null}
                   </p>

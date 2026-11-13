@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { InviteForm } from './InviteForm';
-import { STATUS_BADGE, windowLabel, stamp, type InviteStatus, type VisitorInvite } from './visitorsApi';
+import { STATUS_BADGE, windowLabel, stamp, guestDetailsLabel, type InviteStatus, type VisitorInvite } from './visitorsApi';
 
 /**
  * Visitors (2026-11-13) — every invitation at the school (ICT Admin, School Admin): who invited
@@ -79,7 +79,8 @@ export function InvitesPage() {
                 <tr key={r.id}>
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-950 dark:text-white">{r.guestName}</p>
-                    <p className="text-xs text-slate-500 tabular-nums">{r.guestPhone} · {r.guestEmail}</p>
+                    <p className="text-xs text-slate-500 tabular-nums">{r.guestPhone} · {r.guestEmail}{r.guestCompany ? ` · ${r.guestCompany}` : ''}</p>
+                    {guestDetailsLabel(r) && <p className={`mt-0.5 text-xs ${guestDetailsLabel(r)!.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>{guestDetailsLabel(r)!.text}</p>}
                   </td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.hostName ?? '—'}{r.purpose && <p className="text-xs text-slate-500">{r.purpose}</p>}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{windowLabel(r.validFrom, r.validUntil)}</td>

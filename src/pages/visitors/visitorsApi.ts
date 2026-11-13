@@ -23,6 +23,9 @@ export interface VisitorInvite {
   cancelledAt: string | null;
   checkInAt: string | null;
   checkOutAt: string | null;
+  /** The guest completed their own details (and consent) on the pass page. */
+  guestCompany: string | null;
+  detailsCompletedAt: string | null;
 }
 
 export interface AdminVisit {
@@ -98,6 +101,12 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour
 export function windowLabel(from: string, until: string): string {
   const sameDay = new Date(from).toDateString() === new Date(until).toDateString();
   return sameDay ? `${day(from)}, ${time(from)} – ${time(until)}` : `${day(from)} ${time(from)} – ${day(until)} ${time(until)}`;
+}
+
+/** Whether the guest has confirmed their own details yet (only matters while the invite is open). */
+export function guestDetailsLabel(inv: { status: InviteStatus; detailsCompletedAt: string | null }): { ok: boolean; text: string } | null {
+  if (inv.detailsCompletedAt) return { ok: true, text: 'Guest confirmed details' };
+  return inv.status === 'PENDING' ? { ok: false, text: 'Waiting for guest details' } : null;
 }
 
 export const stamp = (iso: string | null) => (iso ? `${day(iso)} ${time(iso)}` : '—');
