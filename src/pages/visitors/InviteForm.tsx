@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { windowLabel, type GuestEntry, type VisitorInvite } from './visitorsApi';
-import { todayWindow, tomorrowMorning, sameAsLast, toIsoWindow, type When } from './timeWindows';
+import { todayWindow, tomorrowMorning, weekdays, sameAsLast, toIsoWindow, describeWindow, type When } from './timeWindows';
 
 /**
  * Visitors (2026-11-13) — the invite form, shared by "Invite a visitor" (every staff member) and the
@@ -13,17 +13,39 @@ import { todayWindow, tomorrowMorning, sameAsLast, toIsoWindow, type When } from
  * being shown, and "same as last time" offers their usual slot next week. One-tap times for the rest.
  */
 
+/** Starts (date + time) and Ends (date + time), with a plain-words summary of what that means. */
+export function WindowFields({ idPrefix, value, onChange, compact = false }: { idPrefix: string; value: When; onChange: (w: When) => void; compact?: boolean }) {
+  const d = describeWindow(value);
+  const set = (k: keyof When) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    // Moving the start date past the end date carries the end date along.
+    onChange(k === 'date' && v > value.untilDate ? { ...value, date: v, untilDate: v } : { ...value, [k]: v });
+  };
+  return (
+    <div className="space-y-2">
+      <div className={`grid gap-3 ${compact ? 'grid-cols-2' : 'sm:grid-cols-4'}`}>
+        <Input id={`${idPrefix}-date`} label="Starts" type="date" value={value.date} onChange={set('date')} required />
+        <Input id={`${idPrefix}-from`} label="at" type="time" value={value.from} onChange={set('from')} required />
+        <Input id={`${idPrefix}-until-date`} label="Ends" type="date" value={value.untilDate} min={value.date} onChange={set('untilDate')} required />
+        <Input id={`${idPrefix}-until`} label="at" type="time" value={value.until} onChange={set('until')} required />
+      </div>
+      <p className={`text-xs ${d.ok ? 'text-slate-500' : 'text-rose-600 dark:text-red-400'}`} aria-live="polite">{d.text}</p>
+    </div>
+  );
+}
+
 export function TimeChips({ value, onPick, last }: { value: When; onPick: (w: When) => void; last?: { from: string; until: string } | null }) {
   const chips: { label: string; w: When }[] = [
     // After 5 pm the "today" window is the next four hours, so say that.
     { label: new Date().getHours() >= 17 ? 'Next 4 hours' : 'Today, until 5 pm', w: todayWindow() },
     { label: 'Tomorrow 9–1', w: tomorrowMorning() },
+    { label: 'Weekdays, 8–5', w: weekdays() },
     ...(last ? [{ label: 'Same as last time', w: sameAsLast(last.from, last.until) }] : []),
   ];
   return (
     <div className="flex flex-wrap gap-2" role="group" aria-label="Quick times">
       {chips.map((c) => {
-        const on = c.w.date === value.date && c.w.from === value.from && c.w.until === value.until;
+        const on = c.w.date === value.date && c.w.from === value.from && c.w.untilDate === value.untilDate && c.w.until === value.until;
         return (
           <button key={c.label} type="button" onClick={() => onPick(c.w)} aria-pressed={on}
             className={`rounded-full px-3 py-1 text-xs font-medium ring-1 transition-colors cursor-pointer ${on ? 'bg-blue-600 text-white ring-blue-600' : 'bg-white text-slate-700 ring-slate-200 hover:ring-blue-400 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10'}`}>
@@ -151,11 +173,7 @@ export function InviteForm({ onCreated, prefill, guests = [], onClearPrefill }: 
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">When</span>
           <TimeChips value={when} onPick={setWhen} last={picked?.lastValidFrom && picked.lastValidUntil ? { from: picked.lastValidFrom, until: picked.lastValidUntil } : null} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Input id="visitor-date" label="Date" type="date" value={when.date} onChange={(e) => setWhen((w) => ({ ...w, date: e.target.value }))} required />
-          <Input id="visitor-from" label="From" type="time" value={when.from} onChange={(e) => setWhen((w) => ({ ...w, from: e.target.value }))} required />
-          <Input id="visitor-until" label="Until" type="time" value={when.until} onChange={(e) => setWhen((w) => ({ ...w, until: e.target.value }))} required />
-        </div>
+        <WindowFields idPrefix="visitor" value={when} onChange={setWhen} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Input id="visitor-purpose" label="Purpose (optional)" value={fields.purpose} onChange={set('purpose')} maxLength={300} placeholder="Meeting, interview, delivery…" />
@@ -164,7 +182,7 @@ export function InviteForm({ onCreated, prefill, guests = [], onClearPrefill }: 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-slate-500">The visitor is emailed a QR code and a six-digit code for the gate. Valid only for the time you choose.</p>
-        <Button type="submit" disabled={saving}>{saving ? 'Sending…' : picked ? `Invite ${picked.name.split(' ')[0]} again` : 'Send invitation'}</Button>
+        <Button type="submit" disabled={saving || !describeWindow(when).ok}>{saving ? 'Sending…' : picked ? `Invite ${picked.name.split(' ')[0]} again` : 'Send invitation'}</Button>
       </div>
     </form>
   );

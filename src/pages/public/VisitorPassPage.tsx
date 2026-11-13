@@ -25,6 +25,7 @@ interface Pass {
   code: string;
   qrToken: string;
   status: Status;
+  multiDay?: boolean;
 }
 
 const STATUS: Record<Status, { label: string; note: string; icon: typeof CheckCircle2; tone: string }> = {
@@ -113,7 +114,8 @@ export function VisitorPassPage() {
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300"><CalendarClock size={18} /></span>
                   <div><p className="text-xs uppercase tracking-wide text-slate-500">Valid only</p>
                     <p className="font-semibold text-slate-950 dark:text-white">{w.day}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 tabular-nums">{w.time} · {pass.status === 'EXPIRED' ? 'expired' : `expires ${w.ends}`}</p></div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 tabular-nums">{w.time} · {pass.status === 'EXPIRED' ? 'expired' : `expires ${w.ends}`}</p>
+                    {pass.multiDay && live && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Come and go as needed between these dates — show this pass each time you arrive.</p>}</div>
                 </div>
               </div>
             </div>

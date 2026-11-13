@@ -3,8 +3,8 @@ import { CheckCircle, History, Search, Users, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { TimeChips } from './InviteForm';
-import { tomorrowMorning, toIsoWindow } from './timeWindows';
+import { TimeChips, WindowFields } from './InviteForm';
+import { tomorrowMorning, toIsoWindow, describeWindow } from './timeWindows';
 import type { GuestEntry } from './visitorsApi';
 
 /**
@@ -90,13 +90,9 @@ export function GuestPicker({ guests, loading, onPick, onGroupDone, admin }: { g
           </div>
           <p className="text-xs text-slate-600 dark:text-slate-400">{[...selected].map((id) => nameOf.get(id)).filter(Boolean).join(', ')}</p>
           <TimeChips value={when} onPick={setWhen} />
-          <Input id="group-date" label="Date" type="date" value={when.date} onChange={(e) => setWhen((w) => ({ ...w, date: e.target.value }))} />
-          <div className="grid grid-cols-2 gap-2">
-            <Input id="group-from" label="From" type="time" value={when.from} onChange={(e) => setWhen((w) => ({ ...w, from: e.target.value }))} />
-            <Input id="group-until" label="Until" type="time" value={when.until} onChange={(e) => setWhen((w) => ({ ...w, until: e.target.value }))} />
-          </div>
+          <WindowFields idPrefix="group" value={when} onChange={setWhen} compact />
           <Input id="group-purpose" label="Purpose (optional)" value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="e.g. Board meeting" maxLength={300} />
-          <Button onClick={inviteSelected} disabled={busy} className="w-full">{busy ? 'Sending…' : `Send ${selected.size} invitation${selected.size === 1 ? '' : 's'}`}</Button>
+          <Button onClick={inviteSelected} disabled={busy || !describeWindow(when).ok} className="w-full">{busy ? 'Sending…' : `Send ${selected.size} invitation${selected.size === 1 ? '' : 's'}`}</Button>
           <p className="text-[11px] text-slate-500">Each guest gets their own invitation, code and email, using the details on file.</p>
         </div>
       )}
