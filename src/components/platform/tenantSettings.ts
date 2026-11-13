@@ -14,6 +14,7 @@ export const defaultFeatures: Required<SchoolFeatures> = {
   insights: false,
   cohortMoves: false,
   classChanges: false,
+  visitors: false,
 };
 
 export interface SchoolSettingsValue {

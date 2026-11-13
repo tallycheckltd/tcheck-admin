@@ -16,7 +16,7 @@ export type RoleName =
   | 'VC' | 'DVC' | 'REGISTRAR_ACADEMIC' | 'REGISTRAR_ADMIN' | 'DEAN' | 'HOD' | 'DEPUTY_HOD'
   | 'ICT_ADMIN'
   | 'CLIENT_EXPERIENCE_MANAGER' | 'CEM_MANAGER'
-  | 'LECTURER' | 'STAFF' | 'INVIGILATOR'
+  | 'LECTURER' | 'STAFF' | 'INVIGILATOR' | 'GUARD'
   | 'STUDENT';
 
 /** Canonical scope names (P2): FACULTY replaces a Dean's misleading DEPARTMENT; TENANT replaces
@@ -182,6 +182,13 @@ export const ROLE_TABLE: Record<RoleName, RoleDefinition> = {
     label: 'Invigilator', tier: 'STAFF', capability: 'roleOnly', scope: 'self',
     orgScoped: false, hierarchy: false, schoolFloor: false, scopeLevel: 'INDIVIDUAL',
     requiresOrgUnit: false, canHoldCustomRole: false, switchable: true, dashboard: true, mobile: true, homeRoute: '/lecturer', nav: 'invigilator',
+  },
+  GUARD: {
+    // Visitors (2026-11-13) — signs in on the gate tablet only (mobile /auth/login); the
+    // /visitors/gate/* routes' requireRole is the whole decision. No dashboard, no nav.
+    label: 'Guard', tier: 'STAFF', capability: 'roleOnly', scope: 'self',
+    orgScoped: false, hierarchy: false, schoolFloor: false, scopeLevel: 'INDIVIDUAL',
+    requiresOrgUnit: false, canHoldCustomRole: false, switchable: false, dashboard: false, mobile: true, homeRoute: '/login', nav: 'none',
   },
   STUDENT: {
     label: 'Student', tier: 'OPERATIONAL_STUDENT', capability: 'roleOnly', scope: 'self',

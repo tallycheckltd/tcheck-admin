@@ -91,6 +91,8 @@ export interface SchoolFeatures {
   cohortMoves?: boolean;
   /** Opt-in (F4) — cancel / move / switch-online on Classes (editors and the class's lecturer), listed on Class changes. */
   classChanges?: boolean;
+  /** Opt-in (Visitors) — staff invite visitors, the guard tablet checks them in, ICT sees the Visitors section. */
+  visitors?: boolean;
 }
 
 export type AttendanceMode = 'CALENDAR_BASED' | 'STAGE_BASED';

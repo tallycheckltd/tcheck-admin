@@ -60,6 +60,16 @@ import { SystemAnnouncementsPage } from './pages/admin/SystemAnnouncementsPage';
 import { FollowUpsPage } from './pages/admin/FollowUpsPage';
 import { RequestFeedbackPage } from './pages/admin/RequestFeedbackPage';
 import { FeedbackRedirectPage } from './pages/public/FeedbackRedirectPage';
+import { VisitorPassPage } from './pages/public/VisitorPassPage';
+import { InviteVisitorPage } from './pages/visitors/InviteVisitorPage';
+import { OnSitePage as VisitorsOnSitePage } from './pages/visitors/OnSitePage';
+import { HistoryPage as VisitorsHistoryPage } from './pages/visitors/HistoryPage';
+import { InvitesPage as VisitorsInvitesPage } from './pages/visitors/InvitesPage';
+import { AnalyticsPage as VisitorsAnalyticsPage } from './pages/visitors/AnalyticsPage';
+import { ProfilesPage as VisitorsProfilesPage } from './pages/visitors/ProfilesPage';
+import { VisitorSettingsPage } from './pages/visitors/VisitorSettingsPage';
+import { VisitorStaffPage } from './pages/visitors/VisitorStaffPage';
+import { BarrierPage } from './pages/visitors/BarrierPage';
 import { EmailPreferencesPage } from './pages/public/EmailPreferencesPage';
 import { EmailActivityPage } from './pages/admin/EmailActivityPage';
 import { SupportPage } from './pages/admin/SupportPage';
@@ -97,6 +107,8 @@ export default function App() {
             <Route path="/feedback/:requestId" element={<FeedbackRedirectPage />} />
             {/* SBS Phase 9 — the link in optional emails; the token in the URL is the only credential. */}
             <Route path="/email-preferences" element={<EmailPreferencesPage />} />
+            {/* Visitors — "View your pass", the link in a visitor's email; the random token is the only credential. */}
+            <Route path="/pass/:qrToken" element={<VisitorPassPage />} />
             <Route element={<DashboardLayout />}>
               {/* Admin routes (SUPER_ADMIN + SCHOOL_ADMIN) */}
               <Route path="/admin" element={<OverviewPage />} />
@@ -224,6 +236,21 @@ export default function App() {
                 <Route path="/cem-team/cems/:cemId" element={<CemOverviewPage />} />
               </Route>
               <Route path="/announcements" element={<AnnouncementsPage />} />
+
+              {/* Visitors (2026-11-13) — "Invite a visitor" for any staff member the school allows (visitor.routes.ts
+                  checks the role and the school's whoCanInvite); the Visitors section for ICT Admin and School Admin. */}
+              <Route path="/visitors/invite" element={<InviteVisitorPage />} />
+              <Route element={<RequireRole roles={['SCHOOL_ADMIN', 'ICT_ADMIN']} />}>
+                <Route path="/visitors" element={<Navigate to="/visitors/on-site" replace />} />
+                <Route path="/visitors/on-site" element={<VisitorsOnSitePage />} />
+                <Route path="/visitors/history" element={<VisitorsHistoryPage />} />
+                <Route path="/visitors/invites" element={<VisitorsInvitesPage />} />
+                <Route path="/visitors/analytics" element={<VisitorsAnalyticsPage />} />
+                <Route path="/visitors/profiles" element={<VisitorsProfilesPage />} />
+                <Route path="/visitors/settings" element={<VisitorSettingsPage />} />
+                <Route path="/visitors/staff" element={<VisitorStaffPage />} />
+                <Route path="/visitors/barrier" element={<BarrierPage />} />
+              </Route>
 
               {/* Shared routes (admin and lecturer) */}
               <Route path="/courses" element={<CoursesPage />} />

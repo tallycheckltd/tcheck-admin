@@ -8,7 +8,7 @@ import type { NavSet, RoleName } from '../../shared/roles';
 import { ROLE_TABLE } from '../../shared/roles';
 import type { Permission } from '../../types';
 
-export type IconName = 'ShieldCheck' | 'BarChart3' | 'Battery' | 'BookOpen' | 'Calendar' | 'CalendarClock' | 'ClipboardList' | 'DoorOpen' | 'Eye' | 'FileBarChart' | 'FileText' | 'GraduationCap' | 'Layers' | 'LayoutDashboard' | 'LifeBuoy' | 'Link2' | 'MailCheck' | 'Megaphone' | 'MessageSquare' | 'MessageSquareQuote' | 'Network' | 'Plug' | 'Presentation' | 'Radar' | 'Radio' | 'ScanEye' | 'ScrollText' | 'School' | 'Settings' | 'ShieldAlert' | 'Siren' | 'Smartphone' | 'Sparkles' | 'Star' | 'Tags' | 'UploadCloud' | 'UserCheck' | 'Users' | 'Users2' | 'Wrench';
+export type IconName = 'ShieldCheck' | 'BarChart3' | 'Battery' | 'BookOpen' | 'Calendar' | 'CalendarClock' | 'ClipboardList' | 'DoorOpen' | 'Eye' | 'FileBarChart' | 'FileText' | 'GraduationCap' | 'IdCard' | 'Layers' | 'LayoutDashboard' | 'LifeBuoy' | 'Link2' | 'MailCheck' | 'Megaphone' | 'MessageSquare' | 'MessageSquareQuote' | 'Network' | 'Plug' | 'Presentation' | 'Radar' | 'Radio' | 'ScanEye' | 'ScrollText' | 'School' | 'Settings' | 'ShieldAlert' | 'Siren' | 'Smartphone' | 'Sparkles' | 'Star' | 'Tags' | 'UploadCloud' | 'UserCheck' | 'Users' | 'Users2' | 'Wrench';
 
 export interface NavLinkDef {
   to: string;
@@ -17,6 +17,26 @@ export interface NavLinkDef {
   children?: NavLinkDef[];
   superAdminOnly?: boolean;
 }
+
+/* ---- Visitors (2026-11-13) — hidden unless School.features.visitors (Sidebar.tsx). ICT Admin and
+   School Admin get the folding group (full phone/ID numbers); every other staff role gets the one
+   "Invite a visitor" page. ---- */
+export const visitorsGroup: NavLinkDef = {
+  to: '/visitors',
+  icon: 'IdCard',
+  label: 'Visitors',
+  children: [
+    { to: '/visitors/on-site', icon: 'Radio', label: 'On site now' },
+    { to: '/visitors/history', icon: 'ClipboardList', label: 'History' },
+    { to: '/visitors/invites', icon: 'MailCheck', label: 'Invites' },
+    { to: '/visitors/analytics', icon: 'BarChart3', label: 'Analytics' },
+    { to: '/visitors/profiles', icon: 'Users', label: 'Visitor profiles' },
+    { to: '/visitors/staff', icon: 'UserCheck', label: 'Staff & guards' },
+    { to: '/visitors/barrier', icon: 'ScanEye', label: 'Barrier (BioStar)' },
+    { to: '/visitors/settings', icon: 'Settings', label: 'Visitor settings' },
+  ],
+};
+export const inviteVisitorLink: NavLinkDef = { to: '/visitors/invite', icon: 'MailCheck', label: 'Invite a visitor' };
 
 /* ---- SUPER_ADMIN (P10, A7.1/A7.2) — the watchtower. Its own area (/platform); tenant pages are
    not reachable (the API refuses them — middleware/platformGate.ts). ---- */
@@ -89,6 +109,7 @@ export const hodOperations: NavLinkDef[] = [
   { to: '/admin/facilities', icon: 'Wrench', label: 'Facilities' },
   { to: '/live', icon: 'Radio', label: 'Live Attendance' },
   { to: '/admin/lecturer-presence', icon: 'UserCheck', label: 'Lecturer Presence' },
+  visitorsGroup,
   { to: '/admin/invigilation', icon: 'ScanEye', label: 'Invigilation' },
   // Executive Ed Phase 9 — hidden entirely unless this school has execEdSuite on, via
   // filterBySchoolConfig/hiddenNavLabels below (same mechanism as the Announcements/Terms toggle).
@@ -134,6 +155,7 @@ export const lecturerLinks: NavLinkDef[] = [
   { to: '/reports', icon: 'FileText', label: 'Reports' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
   { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
+  inviteVisitorLink,
 ];
 
 export const cxmLinks: NavLinkDef[] = [
@@ -150,6 +172,7 @@ export const cxmLinks: NavLinkDef[] = [
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
   // UAT F17 — the one Announcements page (send to own courses / programmes).
   { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
+  inviteVisitorLink,
 ];
 
 /* ---- CEM_MANAGER (P9, A8.6) — the team board first; the facilities queue is the team's tickets. ---- */
@@ -161,6 +184,7 @@ export const cemManagerLinks: NavLinkDef[] = [
   { to: '/admin/facilities', icon: 'Wrench', label: 'Facilities' },
   // UAT F24 — read-only oversight of the manager's own CEMs' direct chats.
   { to: '/admin/messages', icon: 'Eye', label: 'Message Oversight' },
+  inviteVisitorLink,
 ];
 
 export const hierarchyOverview: NavLinkDef[] = [
@@ -225,6 +249,7 @@ export const execOperations: NavLinkDef[] = [
 export const execGeneral: NavLinkDef[] = [
   { to: '/reports', icon: 'FileText', label: 'Reports' },
   { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
+  inviteVisitorLink,
 ];
 
 // UAT (09-29): no Settings — school-wide rules are the School Admin's alone. Device Verification is
@@ -235,6 +260,7 @@ export const hierarchyGeneral: NavLinkDef[] = [
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
   // UAT F17 — Dean / HOD / Deputy HOD announce to their own department.
   { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
+  inviteVisitorLink,
 ];
 
 export const registrarAdmin: NavLinkDef[] = [
@@ -248,6 +274,7 @@ export const registrarGeneral: NavLinkDef[] = [
   { to: '/admin/invigilation', icon: 'ScanEye', label: 'Invigilation' },
   { to: '/reports', icon: 'FileText', label: 'Reports' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
+  inviteVisitorLink,
 ];
 
 export const ictAdminLinks: NavLinkDef[] = [
@@ -258,6 +285,7 @@ export const ictAdminLinks: NavLinkDef[] = [
   { to: '/admin/beacon-heatmap', icon: 'Radar', label: 'Heatmap Simulator' },
   { to: '/admin/device-verification', icon: 'Smartphone', label: 'Device Verification' },
   { to: '/live', icon: 'Radio', label: 'Live Attendance' },
+  visitorsGroup,
   { to: '/messages', icon: 'MessageSquare', label: 'System Alerts' },
 ];
 
@@ -267,6 +295,7 @@ export const staffLinks: NavLinkDef[] = [
   { to: '/staff', icon: 'UserCheck', label: 'Staff View' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
   { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
+  inviteVisitorLink,
 ];
 
 /* ---- INVIGILATOR (P2) — a scan-only account; the lecturer nav it used to share led to pages its
@@ -275,6 +304,7 @@ export const invigilatorLinks: NavLinkDef[] = [
   { to: '/lecturer', icon: 'LayoutDashboard', label: 'Dashboard' },
   { to: '/messages', icon: 'MessageSquare', label: 'Messages' },
   { to: '/announcements', icon: 'Megaphone', label: 'Announcements' },
+  inviteVisitorLink,
 ];
 
 /**
@@ -328,6 +358,15 @@ export function navTargetsForRole(role: RoleName): string[] {
  * then says no" cannot be shipped. Every nav target must be listed here.
  */
 export const NAV_PAGE_API: Record<string, string> = {
+  '/visitors/on-site': 'GET /visitors/on-site',
+  '/visitors/history': 'GET /visitors/visits',
+  '/visitors/invites': 'GET /visitors/invites',
+  '/visitors/analytics': 'GET /visitors/analytics',
+  '/visitors/profiles': 'GET /visitors/profiles',
+  '/visitors/invite': 'GET /visitors/invites/mine',
+  '/visitors/settings': 'GET /visitors/settings',
+  '/visitors/staff': 'GET /visitors/staff',
+  '/visitors/barrier': 'GET /visitors/biostar',
   '/admin': 'GET /attendance/dashboard-stats',
   '/platform': 'GET /platform/home',
   '/platform/institutions': 'GET /platform/institutions',

@@ -13,7 +13,7 @@ import {
   Radio, FileText, MessageSquare, Sun, Moon, LogOut, UserCheck, ClipboardList,
   BarChart3, Sparkles, Smartphone, GraduationCap, Tags, Link2, Megaphone, Star, MessageSquareQuote, Presentation,
   ShieldAlert, ShieldCheck, ChevronRight, ChevronLeft, X, LifeBuoy, PanelLeftClose, PanelLeftOpen, ScanEye, ScrollText, Search, Radar, Layers, Siren, CalendarClock, Battery, Network, UploadCloud,
-  User as UserIcon, Plug, Wrench, DoorOpen, FileBarChart, Eye, MailCheck, Building2 } from 'lucide-react';
+  User as UserIcon, Plug, Wrench, DoorOpen, FileBarChart, Eye, MailCheck, Building2, IdCard } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DashboardStats, Ticket, Escalation, FacilityTicket, User } from '../../types';
 import { ROLE_LABEL } from '../../lib/rbac';
@@ -22,7 +22,7 @@ import type { IconName, NavLinkDef } from './navConfig';
 import { roleDef, ROLE_TABLE, homeRouteFor, type RoleName } from '../../shared/roles';
 
 // P2: nav items live in navConfig.ts as plain data (icon names); this maps the names to components.
-const ICONS: Record<IconName, React.ComponentType<{ size?: number }>> = { ShieldCheck, BarChart3, Battery, BookOpen, Calendar, CalendarClock, ClipboardList, DoorOpen, Eye, FileBarChart, FileText, GraduationCap, Layers, LayoutDashboard, LifeBuoy, Link2, MailCheck, Megaphone, MessageSquare, MessageSquareQuote, Network, Plug, Presentation, Radar, Radio, ScanEye, ScrollText, School, Settings, ShieldAlert, Siren, Smartphone, Sparkles, Star, Tags, UploadCloud, UserCheck, Users, Users2, Wrench };
+const ICONS: Record<IconName, React.ComponentType<{ size?: number }>> = { ShieldCheck, BarChart3, Battery, BookOpen, Calendar, CalendarClock, ClipboardList, DoorOpen, Eye, FileBarChart, FileText, GraduationCap, IdCard, Layers, LayoutDashboard, LifeBuoy, Link2, MailCheck, Megaphone, MessageSquare, MessageSquareQuote, Network, Plug, Presentation, Radar, Radio, ScanEye, ScrollText, School, Settings, ShieldAlert, Siren, Smartphone, Sparkles, Star, Tags, UploadCloud, UserCheck, Users, Users2, Wrench };
 function withIcons(links: NavLinkDef[]): NavItem[] {
   return links.map((l) => ({ ...l, icon: ICONS[l.icon], children: l.children ? withIcons(l.children) : undefined }));
 }
@@ -677,6 +677,8 @@ export function Sidebar({
     // Follow-ups (F2/F3) — only once the school switched the follow-up agent on (Settings > TALI agents).
     if (!(user?.school?.features as { taliAgents?: { followUp?: boolean } } | undefined)?.taliAgents?.followUp) hiddenNavLabels.add('Follow-ups');
     if (!user?.school?.features?.classChanges) hiddenNavLabels.add('Class changes');
+    // Visitors (2026-11-13) — the whole group and the staff invite page exist only where the school has visitors on.
+    if (!user?.school?.features?.visitors) { hiddenNavLabels.add('Visitors'); hiddenNavLabels.add('Invite a visitor'); }
     hiddenNavLabels.add(attendanceMode === 'STAGE_BASED' ? 'Terms' : 'Training pipelines'); // P13: renamed from "Programs"
     // Executive Ed Phase 9 — NPS Analytics only means anything for a school actually running the
     // NPS engine (Phase 6's sweep is itself execEdSuite-gated), so it's hidden everywhere else.

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTerms } from '../../hooks/useTerms';
-import { useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Cake, ClipboardCheck, Info, Star, BarChart3, PieChart as PieChartIcon, Table as TableIcon, ChevronDown, Folder, Wrench } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useApi, useMutation } from '../../hooks/useApi';
@@ -161,8 +161,15 @@ export function StaffPanelsGrid({ cohortId, only }: { cohortId?: string; only?: 
  * here (see the Permission enum's "surface-agnostic" contract). Every panel independently
  * shows/hides based on the logged-in user's own `permissions` — nothing here re-checks anything
  * client-side that the server doesn't also enforce on the actual request. */
+// Visitors (2026-11-13) — the permissions this page shows something for (navConfig's '/staff' entry).
+const STAFF_VIEW_PERMISSIONS = ['VIEW_BIRTHDAYS', 'VIEW_BLE_CHECKINS', 'VIEW_MANUAL_CHECKINS', 'MANUAL_CHECK_IN', 'REQUEST_FEEDBACK'];
+
 export function StaffViewPage() {
   const { user } = useAuth();
+  // A front-desk account ICT added (only DASHBOARD_ACCESS) has nothing here: send it to the page it's for.
+  if (user?.role === 'STAFF' && user.school?.features?.visitors && !(user.permissions ?? []).some((p) => STAFF_VIEW_PERMISSIONS.includes(p))) {
+    return <Navigate to="/visitors/invite" replace />;
+  }
 
   return (
     <div className="space-y-5">
