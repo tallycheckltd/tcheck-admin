@@ -1,3 +1,4 @@
+import { BarrierPage } from '../visitors/BarrierPage';
 import { useCallback, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useApi, useMutation } from '../../hooks/useApi';
@@ -366,6 +367,14 @@ export function IntegrationsPage() {
             </section>
           )}
         </>
+      )}
+
+      {/* Tcheck Visitors: the gate barrier link, only where the school has visitors on. */}
+      {user?.role === 'SCHOOL_ADMIN' && user.school?.features?.visitors && (
+        <section id="visitors" className="space-y-4" aria-label="Tcheck Visitors integrations">
+          <SectionTitle title="Tcheck Visitors" hint="Connect the gate barrier so a visitor's QR code opens it." />
+          <BarrierPage embedded />
+        </section>
       )}
 
       {disconnecting && (

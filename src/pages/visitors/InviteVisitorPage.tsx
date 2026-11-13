@@ -24,7 +24,7 @@ export function InviteVisitorPage() {
   const navigate = useNavigate();
   const admin = ADMIN_ROLES.includes(user?.role ?? '');
   const [tab, setTab] = useState<'active' | 'past'>('active');
-  const { data, refetch, error } = useApi<VisitorInvite[]>(`/visitors/invites/mine?state=${tab}`);
+  const { data, refetch, error } = useApi<VisitorInvite[]>(`/visitors/invites/mine?state=${tab}`, { refetchIntervalMs: 20_000, refetchWhenVisible: true });
   const guests = useApi<GuestEntry[]>('/visitors/guests?limit=200');
   const [busy, setBusy] = useState<string | null>(null);
   const [prefill, setPrefill] = useState<GuestEntry | null>(null);

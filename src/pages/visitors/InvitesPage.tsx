@@ -29,7 +29,7 @@ export function InvitesPage() {
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (search.trim().length >= 2) params.set('search', search.trim());
-  const { data, loading, refetch } = useApi<VisitorInvite[]>(`/visitors/invites?${params.toString()}`);
+  const { data, loading, refetch } = useApi<VisitorInvite[]>(`/visitors/invites?${params.toString()}`, { refetchIntervalMs: 15_000, refetchWhenVisible: true });
   const rows = data ?? [];
 
   const cancel = async (id: string) => {

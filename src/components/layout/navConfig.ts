@@ -34,11 +34,13 @@ export const visitorsGroup: NavLinkDef = {
     { to: '/visitors/analytics', icon: 'BarChart3', label: 'Analytics' },
     { to: '/visitors/profiles', icon: 'Users', label: 'Visitor profiles' },
     { to: '/visitors/tablets', icon: 'Smartphone', label: 'Gate tablets' },
-    { to: '/visitors/staff', icon: 'UserCheck', label: 'Staff & guards' },
-    { to: '/visitors/barrier', icon: 'ScanEye', label: 'Barrier (BioStar)' },
-    { to: '/visitors/settings', icon: 'Settings', label: 'Visitor settings' },
   ],
 };
+/* Visitor settings and the BioStar link are set up once, so they sit with Settings and Integrations,
+   not in the daily Visitors group. A School Admin finds them inside the school's own Settings and
+   Integrations pages; an ICT Admin has neither page, so gets these two links (hidden with the group). */
+export const visitorSettingsLink: NavLinkDef = { to: '/visitors/settings', icon: 'Settings', label: 'Visitor settings' };
+export const visitorIntegrationsLink: NavLinkDef = { to: '/visitors/barrier', icon: 'Plug', label: 'Visitor integrations' };
 export const inviteVisitorLink: NavLinkDef = { to: '/visitors/invite', icon: 'MailCheck', label: 'Invite a visitor' };
 
 /* ---- SUPER_ADMIN (P10, A7.1/A7.2) — the watchtower. Its own area (/platform); tenant pages are
@@ -289,6 +291,8 @@ export const ictAdminLinks: NavLinkDef[] = [
   { to: '/admin/device-verification', icon: 'Smartphone', label: 'Device Verification' },
   { to: '/live', icon: 'Radio', label: 'Live Attendance' },
   visitorsGroup,
+  visitorIntegrationsLink,
+  visitorSettingsLink,
   { to: '/messages', icon: 'MessageSquare', label: 'System Alerts' },
 ];
 
@@ -368,7 +372,6 @@ export const NAV_PAGE_API: Record<string, string> = {
   '/visitors/profiles': 'GET /visitors/profiles',
   '/visitors/invite': 'GET /visitors/invites/mine',
   '/visitors/settings': 'GET /visitors/settings',
-  '/visitors/staff': 'GET /visitors/staff',
   '/visitors/tablets': 'GET /visitors/terminals',
   '/visitors/barrier': 'GET /visitors/biostar',
   '/admin': 'GET /attendance/dashboard-stats',

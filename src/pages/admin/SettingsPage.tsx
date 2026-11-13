@@ -1,3 +1,4 @@
+import { VisitorSettingsPage } from '../visitors/VisitorSettingsPage';
 import { useState, useEffect } from 'react';
 import { CheckoutPolicyCard } from '../../components/attendance/CheckoutPolicyCard';
 import { Can } from '../../components/shared/Can';
@@ -217,6 +218,11 @@ export function SettingsPage() {
           </GlassCard>
         )}
       </div>
+
+      {/* Visitors: who can invite, gate rules, retention — only where the school has visitors on. */}
+      {user?.role === 'SCHOOL_ADMIN' && user.school?.features?.visitors && (
+        <div id="visitors" className="pt-2"><VisitorSettingsPage embedded /></div>
+      )}
 
       {/* The activity log needs the width for its table. */}
       {user?.role === 'SCHOOL_ADMIN' && (

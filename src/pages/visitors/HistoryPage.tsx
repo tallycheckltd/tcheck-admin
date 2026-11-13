@@ -43,7 +43,7 @@ export function HistoryPage() {
   if (status) params.set('status', status);
   if (type) params.set('type', type);
   const query = params.toString();
-  const { data, loading, error } = useApi<AdminVisit[]>(`/visitors/visits?${query}`);
+  const { data, loading, error } = useApi<AdminVisit[]>(`/visitors/visits?${query}`, { refetchIntervalMs: 15_000, refetchWhenVisible: true });
   const rows = data ?? [];
 
   const exportCsv = async () => {

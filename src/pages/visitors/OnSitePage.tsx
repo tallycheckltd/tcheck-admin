@@ -11,11 +11,11 @@ import { duration, stamp, type AdminVisit } from './visitorsApi';
 
 /**
  * Visitors (2026-11-13) — who is on site right now (ICT Admin, School Admin). Refreshes every 20
- * seconds so check-ins at the gate appear without a reload; overstays sort to the top and are
+ * seconds so check-ins at the gate appear without a reload; the newest arrival is first and overstays are
  * flagged. Full phone and ID numbers: this page is admin-only.
  */
 export function OnSitePage() {
-  const { data, loading, refetch } = useApi<{ visits: AdminVisit[]; overstayHours: number }>('/visitors/on-site', { refetchIntervalMs: 20_000, refetchWhenVisible: true });
+  const { data, loading, refetch } = useApi<{ visits: AdminVisit[]; overstayHours: number }>('/visitors/on-site', { refetchIntervalMs: 10_000, refetchWhenVisible: true });
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const visits = useMemo(() => data?.visits ?? [], [data]);
@@ -24,7 +24,7 @@ export function OnSitePage() {
     const q = search.trim().toLowerCase();
     return visits
       .filter((v) => !q || [v.name, v.phone, v.nationalId, v.tagNumber, v.hostName, v.company].some((x) => x?.toLowerCase().includes(q)))
-      .sort((a, b) => Number(b.overstay) - Number(a.overstay) || a.checkInAt.localeCompare(b.checkInAt));
+      .sort((a, b) => b.checkInAt.localeCompare(a.checkInAt)); // newest arrival first
   }, [visits, search]);
   const overstays = visits.filter((v) => v.overstay).length;
   const invited = visits.filter((v) => v.invited).length;

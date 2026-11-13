@@ -46,7 +46,7 @@ function lastSeen(iso: string | null): string {
 }
 
 export function GateTabletsPage() {
-  const { data, loading, refetch } = useApi<TabletList>('/visitors/terminals');
+  const { data, loading, refetch } = useApi<TabletList>('/visitors/terminals', { refetchIntervalMs: 10_000, refetchWhenVisible: true });
   const rows = data?.terminals ?? [];
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');

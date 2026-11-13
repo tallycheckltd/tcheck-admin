@@ -75,6 +75,8 @@ export interface VisitorAnalytics {
   perDay: { day: string; count: number }[];
   perHour: { hour: number; count: number }[];
   topHosts: { name: string; count: number }[];
+  /** The ten companies most visits came from. */
+  topCompanies: { name: string; count: number }[];
 }
 
 export interface VisitorSettings {

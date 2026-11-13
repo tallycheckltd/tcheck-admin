@@ -678,7 +678,7 @@ export function Sidebar({
     if (!(user?.school?.features as { taliAgents?: { followUp?: boolean } } | undefined)?.taliAgents?.followUp) hiddenNavLabels.add('Follow-ups');
     if (!user?.school?.features?.classChanges) hiddenNavLabels.add('Class changes');
     // Visitors (2026-11-13) — the whole group and the staff invite page exist only where the school has visitors on.
-    if (!user?.school?.features?.visitors) { hiddenNavLabels.add('Visitors'); hiddenNavLabels.add('Invite a visitor'); }
+    if (!user?.school?.features?.visitors) { hiddenNavLabels.add('Visitors'); hiddenNavLabels.add('Invite a visitor'); hiddenNavLabels.add('Visitor settings'); hiddenNavLabels.add('Visitor integrations'); }
     hiddenNavLabels.add(attendanceMode === 'STAGE_BASED' ? 'Terms' : 'Training pipelines'); // P13: renamed from "Programs"
     // Executive Ed Phase 9 — NPS Analytics only means anything for a school actually running the
     // NPS engine (Phase 6's sweep is itself execEdSuite-gated), so it's hidden everywhere else.

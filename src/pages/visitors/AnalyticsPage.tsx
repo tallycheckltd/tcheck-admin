@@ -57,6 +57,7 @@ export function AnalyticsPage() {
   const tickEvery = days <= 7 ? 1 : days <= 30 ? 5 : 15;
   const hours = (data?.perHour ?? []).filter((h) => h.hour >= 6 && h.hour <= 21);
   const topHostMax = Math.max(1, ...(data?.topHosts ?? []).map((h) => h.count));
+  const topCompanyMax = Math.max(1, ...(data?.topCompanies ?? []).map((c) => c.count));
 
   return (
     <div className="space-y-6">
@@ -110,6 +111,27 @@ export function AnalyticsPage() {
                           <div className="h-2 rounded-r-[4px] bg-blue-500 dark:bg-blue-400" style={{ width: `${(h.count / topHostMax) * 100}%` }} />
                         </td>
                         <td className="py-1.5 pl-3 text-right tabular-nums font-medium text-slate-950 dark:text-white">{h.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="glass-card p-5">
+              <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Top 10 companies</h2>
+              {(data.topCompanies ?? []).length === 0 ? (
+                <p className="mt-4 text-sm text-slate-500">No companies recorded yet. A company shows here when it is on the visitor's invite or typed at the gate.</p>
+              ) : (
+                <table className="mt-4 w-full text-sm">
+                  <tbody>
+                    {(data.topCompanies ?? []).map((c) => (
+                      <tr key={c.name}>
+                        <td className="py-1.5 pr-3 text-slate-700 dark:text-slate-300 truncate max-w-[12rem]">{c.name}</td>
+                        <td className="py-1.5 w-1/2">
+                          <div className="h-2 rounded-r-[4px] bg-blue-500 dark:bg-blue-400" style={{ width: `${(c.count / topCompanyMax) * 100}%` }} />
+                        </td>
+                        <td className="py-1.5 pl-3 text-right tabular-nums font-medium text-slate-950 dark:text-white">{c.count}</td>
                       </tr>
                     ))}
                   </tbody>

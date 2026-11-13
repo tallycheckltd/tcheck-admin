@@ -55,7 +55,8 @@ function Step({ n, title, done, children, active }: { n: number; title: string; 
   );
 }
 
-export function BarrierPage() {
+export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
+  const Heading = embedded ? 'h2' : 'h1';
   const { data, refetch } = useApi<Status>('/visitors/biostar', { refetchIntervalMs: 8000, refetchWhenVisible: true });
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -98,7 +99,7 @@ export function BarrierPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Barrier (BioStar 2)</h1>
+          <Heading className={embedded ? 'text-lg font-semibold text-slate-950 dark:text-white' : 'text-2xl font-bold text-slate-950 dark:text-white'}>Barrier (BioStar 2)</Heading>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">Connect your Suprema BioStar 2 barrier: visitors scan the QR code in their email to walk in, and the barrier checks them in and out — no guard needed.</p>
         </div>
         {data && (

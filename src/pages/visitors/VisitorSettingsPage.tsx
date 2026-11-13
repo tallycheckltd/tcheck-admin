@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CheckCircle, ChevronRight, Loader2, ShieldCheck } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
@@ -9,7 +8,7 @@ import type { VisitorSettings, VisitorSettingsResponse } from './visitorsApi';
 
 /**
  * Visitors (2026-11-13) — visitor settings (ICT Admin, School Admin). Its own page under Visitors so
- * ICT Admin, who has no school Settings page, can run the gate too; people are on Staff & guards.
+ * ICT Admin, who has no school Settings page, can run the gate too.
  */
 
 function Toggle({ id, label, help, checked, onChange }: { id: string; label: string; help: string; checked: boolean; onChange: (v: boolean) => void }) {
@@ -24,7 +23,8 @@ function Toggle({ id, label, help, checked, onChange }: { id: string; label: str
   );
 }
 
-export function VisitorSettingsPage() {
+export function VisitorSettingsPage({ embedded = false }: { embedded?: boolean } = {}) {
+  const Heading = embedded ? 'h2' : 'h1';
   const { data, loading } = useApi<VisitorSettingsResponse>('/visitors/settings');
   const [s, setS] = useState<VisitorSettings | null>(null);
   const [saving, setSaving] = useState(false);
@@ -50,7 +50,7 @@ export function VisitorSettingsPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Visitor settings</h1>
+        <Heading className={embedded ? 'text-lg font-semibold text-slate-950 dark:text-white' : 'text-2xl font-bold text-slate-950 dark:text-white'}>Visitor settings</Heading>
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Who can invite, how the gate works, and how long visitor records are kept.</p>
       </div>
 
@@ -93,14 +93,6 @@ export function VisitorSettingsPage() {
           </div>
         </form>
       )}
-
-      <Link to="/visitors/staff" className="glass-card p-5 flex items-center justify-between gap-4 hover:ring-1 hover:ring-blue-500/40 transition">
-        <span>
-          <span className="flex items-center gap-2 font-semibold text-slate-950 dark:text-white"><ShieldCheck size={18} className="text-blue-500" /> Front-desk staff and gate guards</span>
-          <span className="block text-sm text-slate-600 dark:text-slate-400 mt-1">Add the people who invite visitors and run the gate, resend invites and reset passwords.</span>
-        </span>
-        <ChevronRight size={18} className="text-slate-400 shrink-0" />
-      </Link>
     </div>
   );
 }
