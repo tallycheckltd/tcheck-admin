@@ -7,6 +7,7 @@ export type InviteStatus = 'PENDING' | 'USED' | 'CANCELLED' | 'EXPIRED';
 
 export interface VisitorInvite {
   id: string;
+  visitorId: string | null;
   guestName: string;
   guestEmail: string;
   guestPhone: string;
@@ -23,9 +24,7 @@ export interface VisitorInvite {
   cancelledAt: string | null;
   checkInAt: string | null;
   checkOutAt: string | null;
-  /** The guest completed their own details (and consent) on the pass page. */
   guestCompany: string | null;
-  detailsCompletedAt: string | null;
 }
 
 export interface AdminVisit {
@@ -61,6 +60,9 @@ export interface VisitorProfile {
   blockedReason: string | null;
   visitCount: number;
   lastVisitAt: string | null;
+  inviteCount: number;
+  lastInvitedAt: string | null;
+  lastInvitedBy: string | null;
 }
 
 export interface VisitorAnalytics {
@@ -90,6 +92,38 @@ export interface VisitorSettingsResponse {
   inviterRoles: { role: string; label: string }[];
 }
 
+/** A past guest, for "Invite again" (GET /visitors/guests). The ID number is only ever masked here. */
+export interface GuestEntry {
+  visitorId: string;
+  name: string;
+  email: string | null;
+  phone: string;
+  company: string | null;
+  nationalIdMasked: string | null;
+  hasNationalId: boolean;
+  isBlocked: boolean;
+  timesInvited: number;
+  lastInvitedAt: string | null;
+  lastPurpose: string | null;
+  lastValidFrom: string | null;
+  lastValidUntil: string | null;
+  lastInvitedBy: string | null;
+  visits: number;
+  lastVisitAt: string | null;
+}
+
+/** A guest entry from what another page already has (an invitation or a profile), for "Invite again". */
+export function guestFrom(x: { visitorId?: string | null; id?: string; name?: string; guestName?: string; email?: string | null; guestEmail?: string; phone?: string; guestPhone?: string; company?: string | null; guestCompany?: string | null; purpose?: string | null; validFrom?: string; validUntil?: string; nationalId?: string | null }): GuestEntry | null {
+  const visitorId = x.visitorId ?? x.id;
+  if (!visitorId) return null;
+  return {
+    visitorId, name: x.guestName ?? x.name ?? '', email: x.guestEmail ?? x.email ?? null, phone: x.guestPhone ?? x.phone ?? '',
+    company: x.guestCompany ?? x.company ?? null, nationalIdMasked: x.nationalId ? `***${x.nationalId.slice(-3)}` : null, hasNationalId: !!x.nationalId,
+    isBlocked: false, timesInvited: 1, lastInvitedAt: null, lastPurpose: x.purpose ?? null,
+    lastValidFrom: x.validFrom ?? null, lastValidUntil: x.validUntil ?? null, lastInvitedBy: null, visits: 0, lastVisitAt: null,
+  };
+}
+
 export const STATUS_BADGE: Record<InviteStatus, ['green' | 'blue' | 'gray' | 'red', string]> = {
   PENDING: ['blue', 'Expected'],
   USED: ['green', 'Arrived'],
@@ -104,12 +138,6 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour
 export function windowLabel(from: string, until: string): string {
   const sameDay = new Date(from).toDateString() === new Date(until).toDateString();
   return sameDay ? `${day(from)}, ${time(from)} – ${time(until)}` : `${day(from)} ${time(from)} – ${day(until)} ${time(until)}`;
-}
-
-/** Whether the guest has confirmed their own details yet (only matters while the invite is open). */
-export function guestDetailsLabel(inv: { status: InviteStatus; detailsCompletedAt: string | null }): { ok: boolean; text: string } | null {
-  if (inv.detailsCompletedAt) return { ok: true, text: 'Guest confirmed details' };
-  return inv.status === 'PENDING' ? { ok: false, text: 'Waiting for guest details' } : null;
 }
 
 export const stamp = (iso: string | null) => (iso ? `${day(iso)} ${time(iso)}` : '—');

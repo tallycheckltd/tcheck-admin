@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Users, ShieldOff, ShieldCheck, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { History, Users, ShieldOff, ShieldCheck, Loader2 } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
@@ -8,7 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { SearchInput } from '../../components/ui/SearchInput';
-import { stamp, type VisitorProfile } from './visitorsApi';
+import { stamp, guestFrom, type VisitorProfile } from './visitorsApi';
 
 /**
  * Visitors (2026-11-13) — returning visitors and the blocked list (ICT Admin, School Admin). A
@@ -20,6 +21,7 @@ export function ProfilesPage() {
   const [blocking, setBlocking] = useState<VisitorProfile | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
   const params = new URLSearchParams();
   if (search.trim().length >= 2) params.set('search', search.trim());
   if (blockedOnly) params.set('blocked', 'true');
@@ -60,6 +62,7 @@ export function ProfilesPage() {
               <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-gray-100 dark:border-white/5">
                 <th className="px-4 py-3 font-medium">Visitor</th>
                 <th className="px-4 py-3 font-medium">ID number</th>
+                <th className="px-4 py-3 font-medium">Invited</th>
                 <th className="px-4 py-3 font-medium">Visits</th>
                 <th className="px-4 py-3 font-medium">Last visit</th>
                 <th className="px-4 py-3" />
@@ -74,9 +77,14 @@ export function ProfilesPage() {
                     {p.isBlocked && p.blockedReason && <p className="text-xs text-rose-700 dark:text-red-400 mt-0.5">{p.blockedReason}</p>}
                   </td>
                   <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-slate-300">{p.nationalId ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                    <span className="tabular-nums">{p.inviteCount}×</span>
+                    {p.lastInvitedAt && <p className="text-xs text-slate-500">last {stamp(p.lastInvitedAt)}{p.lastInvitedBy ? ` by ${p.lastInvitedBy}` : ''}</p>}
+                  </td>
                   <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-slate-300">{p.visitCount}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{stamp(p.lastVisitAt)}</td>
                   <td className="px-4 py-3 text-right">
+                    {!p.isBlocked && p.email && <Button size="sm" variant="secondary" className="mr-2" onClick={() => navigate('/visitors/invite', { state: { prefill: guestFrom(p) } })}><History size={14} className="mr-1.5" />Invite</Button>}
                     {p.isBlocked
                       ? <Button size="sm" variant="secondary" disabled={busy} onClick={() => unblock(p.id)}><ShieldCheck size={14} className="mr-1.5" />Unblock</Button>
                       : <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setBlocking(p); setReason(''); }}><ShieldOff size={14} className="mr-1.5" />Block</Button>}

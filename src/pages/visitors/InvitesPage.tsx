@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MailCheck, Plus, X, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { History, MailCheck, Plus, X, Loader2 } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
@@ -7,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { InviteForm } from './InviteForm';
-import { STATUS_BADGE, windowLabel, stamp, guestDetailsLabel, type InviteStatus, type VisitorInvite } from './visitorsApi';
+import { STATUS_BADGE, windowLabel, stamp, guestFrom, type InviteStatus, type VisitorInvite } from './visitorsApi';
 
 /**
  * Visitors (2026-11-13) — every invitation at the school (ICT Admin, School Admin): who invited
@@ -23,6 +24,8 @@ export function InvitesPage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const again = (r: VisitorInvite) => navigate('/visitors/invite', { state: { prefill: guestFrom(r) } });
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (search.trim().length >= 2) params.set('search', search.trim());
@@ -80,7 +83,6 @@ export function InvitesPage() {
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-950 dark:text-white">{r.guestName}</p>
                     <p className="text-xs text-slate-500 tabular-nums">{r.guestPhone} · {r.guestEmail}{r.guestCompany ? ` · ${r.guestCompany}` : ''}</p>
-                    {guestDetailsLabel(r) && <p className={`mt-0.5 text-xs ${guestDetailsLabel(r)!.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>{guestDetailsLabel(r)!.text}</p>}
                   </td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.hostName ?? '—'}{r.purpose && <p className="text-xs text-slate-500">{r.purpose}</p>}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{windowLabel(r.validFrom, r.validUntil)}</td>
@@ -91,7 +93,10 @@ export function InvitesPage() {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-500">{stamp(r.createdAt)}</td>
                   <td className="px-4 py-3 text-right">
-                    {r.status === 'PENDING' && <Button size="sm" variant="secondary" disabled={busy === r.id} onClick={() => cancel(r.id)}>Cancel</Button>}
+                    <div className="flex justify-end gap-2">
+                      {r.visitorId && <Button size="sm" variant="ghost" onClick={() => again(r)}><History size={14} className="mr-1.5" />Invite again</Button>}
+                      {r.status === 'PENDING' && <Button size="sm" variant="secondary" disabled={busy === r.id} onClick={() => cancel(r.id)}>Cancel</Button>}
+                    </div>
                   </td>
                 </tr>
               ))}
