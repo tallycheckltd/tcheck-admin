@@ -42,6 +42,9 @@ export interface AdminVisit {
   checkInAt: string;
   checkOutAt: string | null;
   checkOutMethod: 'GUARD' | 'AUTO' | 'BARRIER' | null;
+  /** The gate tablet that checked them in / out (its name at the time); null when it wasn't a tablet. */
+  checkInGate: string | null;
+  checkOutGate: string | null;
   invited: boolean;
   minutesOnSite: number;
   overstay: boolean;

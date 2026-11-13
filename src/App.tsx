@@ -70,6 +70,7 @@ import { ProfilesPage as VisitorsProfilesPage } from './pages/visitors/ProfilesP
 import { VisitorSettingsPage } from './pages/visitors/VisitorSettingsPage';
 import { VisitorStaffPage } from './pages/visitors/VisitorStaffPage';
 import { BarrierPage } from './pages/visitors/BarrierPage';
+import { GateTabletsPage } from './pages/visitors/GateTabletsPage';
 import { EmailPreferencesPage } from './pages/public/EmailPreferencesPage';
 import { EmailActivityPage } from './pages/admin/EmailActivityPage';
 import { SupportPage } from './pages/admin/SupportPage';
@@ -248,6 +249,7 @@ export default function App() {
                 <Route path="/visitors/analytics" element={<VisitorsAnalyticsPage />} />
                 <Route path="/visitors/profiles" element={<VisitorsProfilesPage />} />
                 <Route path="/visitors/settings" element={<VisitorSettingsPage />} />
+                <Route path="/visitors/tablets" element={<GateTabletsPage />} />
                 <Route path="/visitors/staff" element={<VisitorStaffPage />} />
                 <Route path="/visitors/barrier" element={<BarrierPage />} />
               </Route>

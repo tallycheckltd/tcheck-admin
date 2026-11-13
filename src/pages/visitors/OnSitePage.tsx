@@ -81,6 +81,7 @@ export function OnSitePage() {
                   <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">{v.tagNumber ?? '—'}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
                     {stamp(v.checkInAt)}
+                    {v.checkInGate && <span className="block text-xs text-slate-500">{v.checkInGate}</span>}
                     <div className="mt-1"><Badge color={v.invited ? 'green' : 'gray'}>{v.invited ? 'Invited' : 'Walk-in'}</Badge></div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">

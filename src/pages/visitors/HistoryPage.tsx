@@ -129,8 +129,8 @@ export function HistoryPage() {
                   <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-slate-300">{v.nationalId ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{v.hostName ?? '—'}{v.purpose && <p className="text-xs text-slate-500">{v.purpose}</p>}</td>
                   <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">{v.tagNumber ?? '—'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{stamp(v.checkInAt)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{v.checkOutAt ? stamp(v.checkOutAt) : <Badge color="blue">On site</Badge>}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{stamp(v.checkInAt)}{v.checkInGate && <span className="block text-xs text-slate-500">{v.checkInGate}</span>}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{v.checkOutAt ? stamp(v.checkOutAt) : <Badge color="blue">On site</Badge>}{v.checkOutGate && <span className="block text-xs text-slate-500">{v.checkOutGate}</span>}</td>
                   <td className="px-4 py-3 whitespace-nowrap tabular-nums text-slate-700 dark:text-slate-300">{duration(v.minutesOnSite)}</td>
                 </tr>
               ))}
