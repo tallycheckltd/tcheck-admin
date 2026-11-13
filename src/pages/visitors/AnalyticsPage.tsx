@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { BarChart3, Users, MailCheck, DoorOpen, Clock, Loader2 } from 'lucide-react';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { BarChart3, Users, MailCheck, DoorOpen, Clock, Loader2, TrendingUp, Building2, UserCheck, PieChart as PieIcon } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -7,35 +8,59 @@ import { StatCard } from '../../components/ui/StatCard';
 import { duration, type VisitorAnalytics } from './visitorsApi';
 
 /**
- * Visitors (2026-11-13) — visit counts by day and hour, average time on site, top hosts and
- * invited against walk-in (ICT Admin, School Admin). Single-series bars in one hue: the title
- * names the series, each bar shows its value on hover/focus, and the counts are also listed.
+ * Visitors (2026-11-13) — visit counts by day and hour, average time on site, invited against
+ * walk-in, top hosts and top companies (ICT Admin, School Admin).
+ *
+ * Charts (recharts): one hue (blue) wherever a chart shows a single measure, so the title names
+ * the series and no legend is needed. The only two-series chart is invited against walk-in, where
+ * blue and green were checked for colour-blind separation and each slice is also labelled with
+ * its name and count, so colour is never the only cue. Every chart has a hover tooltip.
  */
 const RANGES = [{ days: 7, label: '7 days' }, { days: 30, label: '30 days' }, { days: 90, label: '90 days' }] as const;
+const BLUE = '#3B82F6';
+const GREEN = '#0EA371'; // passes the colour-blind and contrast checks beside BLUE in light and dark
+const AXIS = { fontSize: 11, fill: '#94a3b8' } as const;
+const GRID = 'rgba(148,163,184,0.18)';
 
-function Bars({ items, label }: { items: { key: string; tick: string; count: number; title: string }[]; label: string }) {
-  const max = Math.max(1, ...items.map((i) => i.count));
+function Tip({ active, payload, label, unit = 'visits' }: { active?: boolean; payload?: { value?: number; payload?: { title?: string; name?: string } }[]; label?: string | number; unit?: string }) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0];
   return (
-    <div role="list" aria-label={label} className="flex h-44 items-end gap-[2px] border-b border-slate-200 dark:border-white/10">
-      {items.map((i) => (
-        <div key={i.key} role="listitem" tabIndex={0} aria-label={`${i.title}: ${i.count}`} className="group relative flex h-full flex-1 flex-col justify-end focus:outline-none">
-          <span className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus:opacity-100 dark:bg-white dark:text-slate-900">
-            {i.title}: <strong>{i.count}</strong>
-          </span>
-          <div
-            className="w-full rounded-t-[4px] bg-blue-500 transition-colors group-hover:bg-blue-600 group-focus:bg-blue-600 dark:bg-blue-400 dark:group-hover:bg-blue-300"
-            style={{ height: i.count ? `${Math.max(3, (i.count / max) * 100)}%` : '0%' }}
-          />
-        </div>
-      ))}
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-white/10 dark:bg-slate-900">
+      <p className="text-slate-500 dark:text-slate-400">{p.payload?.title ?? p.payload?.name ?? label}</p>
+      <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-950 dark:text-white">{p.value} {p.value === 1 ? unit.replace(/s$/, '') : unit}</p>
     </div>
   );
 }
 
-function Ticks({ ticks }: { ticks: string[] }) {
+function ChartCard({ icon, title, hint, children, className = '' }: { icon: React.ReactNode; title: string; hint?: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className="mt-1.5 flex gap-[2px] text-[10px] text-slate-500 tabular-nums">
-      {ticks.map((t, idx) => <span key={idx} className="flex-1 text-center truncate">{t}</span>)}
+    <section className={`glass-card p-5 ${className}`}>
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-white">
+        <span className="text-blue-500">{icon}</span>{title}
+        {hint && <span className="font-normal text-slate-500">{hint}</span>}
+      </h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+/** Horizontal bars, longest first, each with its name on the left and its count at the end. */
+function RankBars({ rows, empty, label }: { rows: { name: string; count: number }[]; empty: string; label: string }) {
+  if (rows.length === 0) return <p className="py-8 text-center text-sm text-slate-500">{empty}</p>;
+  return (
+    <div style={{ height: Math.max(120, rows.length * 34 + 10) }} role="img" aria-label={`${label}: ${rows.map((r) => `${r.name} ${r.count}`).join(', ')}`}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 36, bottom: 0, left: 0 }} barCategoryGap={8}>
+          <XAxis type="number" hide allowDecimals={false} domain={[0, 'dataMax']} />
+          <YAxis type="category" dataKey="name" width={176} tick={{ fontSize: 12, fill: '#64748b', width: 400 }} axisLine={false} tickLine={false}
+            tickFormatter={(v: string) => (v.length > 24 ? `${v.slice(0, 23)}…` : v)} />
+          <Tooltip cursor={{ fill: 'rgba(148,163,184,0.12)' }} content={<Tip />} />
+          <Bar dataKey="count" fill={BLUE} radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={false}>
+            <LabelList dataKey="count" position="right" style={{ fontSize: 12, fontWeight: 600, fill: '#64748b' }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -56,8 +81,8 @@ export function AnalyticsPage() {
   });
   const tickEvery = days <= 7 ? 1 : days <= 30 ? 5 : 15;
   const hours = (data?.perHour ?? []).filter((h) => h.hour >= 6 && h.hour <= 21);
-  const topHostMax = Math.max(1, ...(data?.topHosts ?? []).map((h) => h.count));
-  const topCompanyMax = Math.max(1, ...(data?.topCompanies ?? []).map((c) => c.count));
+  const hourItems = hours.map((h) => ({ tick: `${String(h.hour).padStart(2, '0')}:00`, count: h.count, title: `${String(h.hour).padStart(2, '0')}:00–${String(h.hour + 1).padStart(2, '0')}:00` }));
+  const split = [{ name: 'Invited', count: data?.invited ?? 0, color: BLUE }, { name: 'Walk-in', count: data?.walkIn ?? 0, color: GREEN }];
 
   return (
     <div className="space-y-6">
@@ -84,60 +109,74 @@ export function AnalyticsPage() {
             <StatCard size="compact" title="Average time on site" value={data.averageMinutesOnSite === null ? '—' : duration(data.averageMinutesOnSite)} icon={<Clock size={18} />} color="cyan" />
           </div>
 
-          <div className="glass-card p-5">
-            <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Visits per day</h2>
-            <div className="mt-6"><Bars label="Visits per day" items={dayItems} /></div>
-            <Ticks ticks={dayItems.map((d, i) => (i % tickEvery === 0 ? d.tick : ''))} />
+          <ChartCard icon={<TrendingUp size={16} />} title="Visits per day">
+            <div className="h-56" role="img" aria-label={`Visits per day over the last ${days} days, ${data.total} in total`}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dayItems} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+                  <defs>
+                    <linearGradient id="visitsFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={BLUE} stopOpacity={0.28} />
+                      <stop offset="100%" stopColor={BLUE} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke={GRID} vertical={false} />
+                  <XAxis dataKey="tick" tick={AXIS} axisLine={false} tickLine={false} interval={tickEvery - 1} tickMargin={8} />
+                  <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} width={44} />
+                  <Tooltip cursor={{ stroke: '#94a3b8', strokeDasharray: '3 3' }} content={<Tip />} />
+                  <Area type="monotone" dataKey="count" stroke={BLUE} strokeWidth={2} fill="url(#visitsFill)" dot={days <= 30 ? { r: 2.5, fill: BLUE, strokeWidth: 0 } : false} activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }} isAnimationActive={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <ChartCard className="lg:col-span-2" icon={<Clock size={16} />} title="Busiest hours" hint="(arrivals, 06:00–21:00)">
+              <div className="h-56" role="img" aria-label="Arrivals by hour of the day">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={hourItems} margin={{ top: 8, right: 8, bottom: 0, left: -18 }} barCategoryGap={3}>
+                    <CartesianGrid stroke={GRID} vertical={false} />
+                    <XAxis dataKey="tick" tick={AXIS} axisLine={false} tickLine={false} interval={2} tickMargin={8} />
+                    <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} width={44} />
+                    <Tooltip cursor={{ fill: 'rgba(148,163,184,0.12)' }} content={<Tip unit="arrivals" />} />
+                    <Bar dataKey="count" fill={BLUE} radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+
+            <ChartCard icon={<PieIcon size={16} />} title="Invited and walk-in">
+              <div className="relative h-40" role="img" aria-label={`${data.invited} invited, ${data.walkIn} walk-in`}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={split} dataKey="count" nameKey="name" innerRadius={48} outerRadius={70} paddingAngle={split.every((x) => x.count > 0) ? 2 : 0} stroke="none" startAngle={90} endAngle={-270} isAnimationActive={false}>
+                      {split.map((x) => <Cell key={x.name} fill={x.color} />)}
+                    </Pie>
+                    <Tooltip content={<Tip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold tabular-nums text-slate-950 dark:text-white">{data.total}</span>
+                  <span className="text-[11px] text-slate-500">visits</span>
+                </div>
+              </div>
+              <ul className="mt-3 space-y-1.5 text-sm">
+                {split.map((x) => (
+                  <li key={x.name} className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: x.color }} />{x.name}</span>
+                    <span className="tabular-nums font-medium text-slate-950 dark:text-white">{x.count} <span className="font-normal text-slate-500">({data.total ? Math.round((x.count / data.total) * 100) : 0}%)</span></span>
+                  </li>
+                ))}
+              </ul>
+            </ChartCard>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="glass-card p-5">
-              <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Busiest hours <span className="font-normal text-slate-500">(arrivals, 06:00–21:00)</span></h2>
-              <div className="mt-6"><Bars label="Arrivals by hour" items={hours.map((h) => ({ key: String(h.hour), tick: String(h.hour), count: h.count, title: `${String(h.hour).padStart(2, '0')}:00–${String(h.hour + 1).padStart(2, '0')}:00` }))} /></div>
-              <Ticks ticks={hours.map((h) => (h.hour % 3 === 0 ? `${String(h.hour).padStart(2, '0')}:00` : ''))} />
-            </div>
-
-            <div className="glass-card p-5">
-              <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Top hosts</h2>
-              {data.topHosts.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-500">No hosts recorded yet. Walk-ins only have a host when the guard types one.</p>
-              ) : (
-                <table className="mt-4 w-full text-sm">
-                  <tbody>
-                    {data.topHosts.map((h) => (
-                      <tr key={h.name}>
-                        <td className="py-1.5 pr-3 text-slate-700 dark:text-slate-300 truncate max-w-[12rem]">{h.name}</td>
-                        <td className="py-1.5 w-1/2">
-                          <div className="h-2 rounded-r-[4px] bg-blue-500 dark:bg-blue-400" style={{ width: `${(h.count / topHostMax) * 100}%` }} />
-                        </td>
-                        <td className="py-1.5 pl-3 text-right tabular-nums font-medium text-slate-950 dark:text-white">{h.count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            <div className="glass-card p-5">
-              <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Top 10 companies</h2>
-              {(data.topCompanies ?? []).length === 0 ? (
-                <p className="mt-4 text-sm text-slate-500">No companies recorded yet. A company shows here when it is on the visitor's invite or typed at the gate.</p>
-              ) : (
-                <table className="mt-4 w-full text-sm">
-                  <tbody>
-                    {(data.topCompanies ?? []).map((c) => (
-                      <tr key={c.name}>
-                        <td className="py-1.5 pr-3 text-slate-700 dark:text-slate-300 truncate max-w-[12rem]">{c.name}</td>
-                        <td className="py-1.5 w-1/2">
-                          <div className="h-2 rounded-r-[4px] bg-blue-500 dark:bg-blue-400" style={{ width: `${(c.count / topCompanyMax) * 100}%` }} />
-                        </td>
-                        <td className="py-1.5 pl-3 text-right tabular-nums font-medium text-slate-950 dark:text-white">{c.count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+            <ChartCard icon={<UserCheck size={16} />} title="Top hosts">
+              <RankBars label="Top hosts" rows={data.topHosts} empty="No hosts recorded yet. Walk-ins only have a host when the guard types one." />
+            </ChartCard>
+            <ChartCard icon={<Building2 size={16} />} title="Top 10 companies">
+              <RankBars label="Top 10 companies" rows={data.topCompanies ?? []} empty="No companies recorded yet. A company shows when it is on the invite or typed at the gate." />
+            </ChartCard>
           </div>
         </>
       )}
