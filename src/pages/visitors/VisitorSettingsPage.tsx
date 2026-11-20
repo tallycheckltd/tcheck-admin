@@ -83,6 +83,7 @@ export function VisitorSettingsPage({ embedded = false }: { embedded?: boolean }
 
           <div className="divide-y divide-gray-100 dark:divide-white/5">
             <Toggle id="vs-id" label="ID number required at the gate" help="The guard can't check a walk-in in without an ID or passport number." checked={s.idRequiredAtGate} onChange={(v) => set('idRequiredAtGate', v)} />
+            <Toggle id="vs-idtick" label="Guard ticks &quot;ID matches&quot; for code check-ins" help="For a visitor using their six-digit code at the tablet, Check in stays off until the guard has checked their ID against the name (every day of a multi-day pass). Turn on once your gate tablets show the tick." checked={!!s.requireIdTickForCodes} onChange={(v) => set('requireIdTickForCodes', v)} />
             <Toggle id="vs-email" label="Email the host when their visitor arrives" help="Also shows as a notification in the dashboard and the app." checked={s.emailHostOnArrival} onChange={(v) => set('emailHostOnArrival', v)} />
           </div>
 

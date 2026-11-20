@@ -34,6 +34,8 @@ export const visitorsGroup: NavLinkDef = {
     { to: '/visitors/analytics', icon: 'BarChart3', label: 'Analytics' },
     { to: '/visitors/profiles', icon: 'Users', label: 'Visitor profiles' },
     { to: '/visitors/tablets', icon: 'Smartphone', label: 'Gate tablets' },
+    // Gate access (2026-11-20): BioStar doors, live scans, people, fingerprints, alerts — ICT's daily view.
+    { to: '/visitors/gate', icon: 'DoorOpen', label: 'Gate access' },
   ],
 };
 /* Visitor settings and the BioStar link are set up once, so they sit with Settings and Integrations,
@@ -64,6 +66,8 @@ export const superAdminGeneral: NavLinkDef[] = [
   { to: '/platform/school-analytics', icon: 'FileBarChart', label: 'School analytics' },
   // 11-02 — per-school audit trail (names shown; each view recorded in that school's trail).
   { to: '/platform/audit', icon: 'ScrollText', label: 'Audit log' },
+  // 11-20 — every school's BioStar gate: health, versions, alerts, kill switch.
+  { to: '/platform/gate', icon: 'DoorOpen', label: 'Gates' },
 ];
 
 export const hodOverview: NavLinkDef[] = [
@@ -373,6 +377,7 @@ export const NAV_PAGE_API: Record<string, string> = {
   '/visitors/invite': 'GET /visitors/invites/mine',
   '/visitors/settings': 'GET /visitors/settings',
   '/visitors/tablets': 'GET /visitors/terminals',
+  '/visitors/gate': 'GET /visitors/biostar/overview',
   '/visitors/barrier': 'GET /visitors/biostar',
   '/admin': 'GET /attendance/dashboard-stats',
   '/platform': 'GET /platform/home',
@@ -384,6 +389,7 @@ export const NAV_PAGE_API: Record<string, string> = {
   '/platform/fleet': 'GET /platform/fleet',
   '/platform/analytics': 'GET /platform/home',
   '/platform/audit': 'GET /platform/audit/schools',
+  '/platform/gate': 'GET /platform/biostar/schools',
   '/platform/school-analytics': 'GET /platform/school-analytics',
   '/admin/analytics': 'GET /school-analytics',
   '/admin/audit': 'GET /audit/events',

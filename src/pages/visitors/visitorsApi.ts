@@ -85,6 +85,8 @@ export interface VisitorSettings {
   earlyArrivalMinutes: number;
   overstayHours: number;
   idRequiredAtGate: boolean;
+  /** Gate access (2026-11-20): code check-ins need the guard's "ID matches" tick. */
+  requireIdTickForCodes?: boolean;
   emailHostOnArrival: boolean;
   retentionDays: number;
 }

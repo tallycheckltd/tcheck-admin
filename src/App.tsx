@@ -70,6 +70,14 @@ import { ProfilesPage as VisitorsProfilesPage } from './pages/visitors/ProfilesP
 import { VisitorSettingsPage } from './pages/visitors/VisitorSettingsPage';
 import { BarrierPage } from './pages/visitors/BarrierPage';
 import { GateTabletsPage } from './pages/visitors/GateTabletsPage';
+import { GateOverviewPage } from './pages/visitors/gate/GateOverviewPage';
+import { GateLivePage } from './pages/visitors/gate/GateLivePage';
+import { GateDoorsPage } from './pages/visitors/gate/GateDoorsPage';
+import { GatePeoplePage } from './pages/visitors/gate/GatePeoplePage';
+import { GateFingerprintsPage } from './pages/visitors/gate/GateFingerprintsPage';
+import { GateCodesPage } from './pages/visitors/gate/GateCodesPage';
+import { GateAlertsPage, GateJobsPage, GateCheckPage, GateReportsPage } from './pages/visitors/gate/GateOpsPages';
+import { PlatformGatePage } from './pages/platform/PlatformGatePage';
 import { EmailPreferencesPage } from './pages/public/EmailPreferencesPage';
 import { EmailActivityPage } from './pages/admin/EmailActivityPage';
 import { SupportPage } from './pages/admin/SupportPage';
@@ -133,6 +141,9 @@ export default function App() {
                 {/* 11-05 — any school's analytics, numbers only (GET /platform/school-analytics). */}
                 <Route path="/platform/school-analytics" element={<SchoolAnalyticsPage />} />
                 <Route path="/platform/audit" element={<PlatformAuditPage />} />
+                {/* 11-20 — every school's BioStar gate (GET /platform/biostar/*). */}
+                <Route path="/platform/gate" element={<PlatformGatePage />} />
+                <Route path="/platform/gate/:schoolId" element={<PlatformGatePage />} />
               </Route>
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/users/:id" element={<UserDetailPage />} />
@@ -251,6 +262,18 @@ export default function App() {
                 <Route path="/visitors/tablets" element={<GateTabletsPage />} />
                 <Route path="/visitors/staff" element={<Navigate to="/visitors/tablets" replace />} />
                 <Route path="/visitors/barrier" element={<BarrierPage />} />
+                {/* Gate access (2026-11-20) — BioStar doors, scans, people, fingerprints, alerts (/visitors/biostar/*). */}
+                <Route path="/visitors/gate" element={<GateOverviewPage />} />
+                <Route path="/visitors/gate/live" element={<GateLivePage />} />
+                <Route path="/visitors/gate/doors" element={<GateDoorsPage />} />
+                <Route path="/visitors/gate/people" element={<GatePeoplePage />} />
+                <Route path="/visitors/gate/people/:id" element={<GatePeoplePage />} />
+                <Route path="/visitors/gate/fingerprints" element={<GateFingerprintsPage />} />
+                <Route path="/visitors/gate/codes" element={<GateCodesPage />} />
+                <Route path="/visitors/gate/alerts" element={<GateAlertsPage />} />
+                <Route path="/visitors/gate/jobs" element={<GateJobsPage />} />
+                <Route path="/visitors/gate/check" element={<GateCheckPage />} />
+                <Route path="/visitors/gate/reports" element={<GateReportsPage />} />
               </Route>
 
               {/* Shared routes (admin and lecturer) */}

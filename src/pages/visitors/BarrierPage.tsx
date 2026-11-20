@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Activity, CheckCircle2, Circle, Copy, KeyRound, Loader2, Play, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../lib/api';
@@ -12,14 +13,21 @@ import { stamp } from './visitorsApi';
  * and readers, and from then on visitor QR codes (and delegate passes) open the barrier and barrier
  * scans check people in and out. A guided setup, a self-test against the real BioStar, the live
  * gate feed and the queue's health.
+ *
+ * Gate access (2026-11-20): the day-to-day view moved to Visitors → Gate access; this stays the setup.
+ * Adds the staff access group, fingerprints (on/off, how long they are kept), whether a code
+ * check-in at a tablet opens its door, and the midnight grace period for campus codes.
  */
 
 interface Named { id: string; name: string }
 interface Status {
   configured: boolean;
   online: boolean;
+  connectorUpdateRequired?: boolean;
+  minConnectorVersion?: string;
   integration: null | {
-    enabled: boolean; visitorAccessGroupId: string | null; delegateAccessGroupId: string | null; userGroupId: string | null;
+    enabled: boolean; visitorAccessGroupId: string | null; delegateAccessGroupId: string | null; staffAccessGroupId?: string | null; userGroupId: string | null;
+    graceSeconds?: number; biometricsEnabled?: boolean; biometricRetentionDays?: number; openDoorOnCodeCheckIn?: boolean;
     qrCardType: 6 | 7; syncWalkInTags: boolean; entryDeviceIds: string[]; exitDeviceIds: string[];
     lastSeenAt: string | null; agentVersion: string | null; biostarVersion: string | null; lastEventAt: string | null; agentTokenCreatedAt: string | null;
     inventory: null | { accessGroups?: Named[]; userGroups?: Named[]; devices?: Named[] };
@@ -32,9 +40,12 @@ interface Status {
 
 const OUTCOME: Record<string, ['green' | 'blue' | 'red' | 'purple' | 'gray' | 'yellow', string]> = {
   CHECKED_IN: ['green', 'Checked in'], CHECKED_OUT: ['blue', 'Checked out'], DELEGATE: ['purple', 'Delegate'],
-  NO_MATCH: ['gray', 'Not a Tcheck pass'], IGNORED: ['gray', 'Recorded'],
+  NO_MATCH: ['gray', 'Not a Tcheck pass'], IGNORED: ['gray', 'Recorded'], PERSON_IN: ['purple', 'Delegate / staff in'], PERSON_OUT: ['purple', 'Delegate / staff out'],
 };
-const JOB_LABEL: Record<string, string> = { GRANT_VISITOR: 'Give a visitor access', GRANT_WALKIN: 'Give a walk-in tag access', GRANT_DELEGATE: 'Give a delegate access', REVOKE: 'Remove access', SELF_TEST: 'Self-test' };
+const JOB_LABEL: Record<string, string> = {
+  GRANT_VISITOR: 'Give a visitor access', GRANT_WALKIN: 'Give a walk-in tag access', GRANT_DELEGATE: 'Give a delegate access', REVOKE: 'Remove access', SELF_TEST: 'Self-test',
+  SYNC_IDENTITY: 'Update a person in BioStar', OPEN_DOOR: 'Open a door', ENROLL_FINGERPRINT: 'Enrol a fingerprint', DELETE_BIOMETRIC: 'Delete fingerprints', RECONCILE: 'BioStar check',
+};
 
 function ago(iso: string | null) {
   if (!iso) return 'never';
@@ -64,21 +75,21 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [error, setError] = useState<string | null>(null);
   const integ = data?.integration ?? null;
   const inv = integ?.inventory ?? null;
-  const [form, setForm] = useState({ visitorAccessGroupId: '', delegateAccessGroupId: '', userGroupId: '', qrCardType: 6 as 6 | 7, syncWalkInTags: false, entry: [] as string[], exit: [] as string[] });
+  const [form, setForm] = useState({ visitorAccessGroupId: '', delegateAccessGroupId: '', staffAccessGroupId: '', userGroupId: '', qrCardType: 6 as 6 | 7, syncWalkInTags: false, entry: [] as string[], exit: [] as string[] });
   const [formFor, setFormFor] = useState<string | null>(null);
   // Load the saved choices once per integration (not on every 8-second refresh, which would undo edits).
   const key = integ ? `${integ.visitorAccessGroupId}|${integ.entryDeviceIds.join()}|${integ.exitDeviceIds.join()}|${integ.agentTokenCreatedAt}` : null;
   useEffect(() => {
     if (!integ || key === formFor) return;
     setFormFor(key);
-    setForm({ visitorAccessGroupId: integ.visitorAccessGroupId ?? '', delegateAccessGroupId: integ.delegateAccessGroupId ?? '', userGroupId: integ.userGroupId ?? '', qrCardType: integ.qrCardType, syncWalkInTags: integ.syncWalkInTags, entry: integ.entryDeviceIds, exit: integ.exitDeviceIds });
+    setForm({ visitorAccessGroupId: integ.visitorAccessGroupId ?? '', delegateAccessGroupId: integ.delegateAccessGroupId ?? '', staffAccessGroupId: integ.staffAccessGroupId ?? '', userGroupId: integ.userGroupId ?? '', qrCardType: integ.qrCardType, syncWalkInTags: integ.syncWalkInTags, entry: integ.entryDeviceIds, exit: integ.exitDeviceIds });
   }, [integ, key, formFor]);
 
   const deviceName = useMemo(() => new Map((inv?.devices ?? []).map((d) => [d.id, d.name])), [inv]);
   const run = async (k: string, fn: () => Promise<unknown>) => { setBusy(k); setError(null); try { await fn(); await refetch({ silent: true }); } catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong'); } finally { setBusy(null); } };
   const copy = async (text: string, what: string) => { try { await navigator.clipboard.writeText(text); setCopied(what); setTimeout(() => setCopied(null), 1800); } catch { setCopied(null); } };
   const save = (extra: Record<string, unknown> = {}) => run('save', () => api.put('/visitors/biostar/settings', {
-    visitorAccessGroupId: form.visitorAccessGroupId || null, delegateAccessGroupId: form.delegateAccessGroupId || null, userGroupId: form.userGroupId || null,
+    visitorAccessGroupId: form.visitorAccessGroupId || null, delegateAccessGroupId: form.delegateAccessGroupId || null, staffAccessGroupId: form.staffAccessGroupId || null, userGroupId: form.userGroupId || null,
     qrCardType: form.qrCardType, syncWalkInTags: form.syncWalkInTags, entryDeviceIds: form.entry, exitDeviceIds: form.exit, ...extra,
   }));
 
@@ -100,7 +111,7 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Heading className={embedded ? 'text-lg font-semibold text-slate-950 dark:text-white' : 'text-2xl font-bold text-slate-950 dark:text-white'}>Barrier (BioStar 2)</Heading>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">Connect your Suprema BioStar 2 barrier: visitors scan the QR code in their email to walk in, and the barrier checks them in and out — no guard needed.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">Connect your Suprema BioStar 2 barrier: visitors scan a QR on their phone (made on the day, for that phone only), delegates scan their daily campus code or use a fingerprint, and the barrier checks them in and out. Day to day, use <Link to="/visitors/gate" className="text-blue-600 hover:underline dark:text-blue-400">Gate access</Link>.</p>
         </div>
         {data && (
           <div className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 ring-1 ${data.online ? 'bg-emerald-50 ring-emerald-600/20 dark:bg-emerald-500/10' : 'bg-slate-100 ring-slate-500/10 dark:bg-white/5'}`} role="status">
@@ -116,6 +127,7 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
         )}
       </div>
 
+      {data?.connectorUpdateRequired && <p role="alert" className="flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"><ShieldAlert size={16} className="mt-0.5 shrink-0" />Your connector is {integ?.agentVersion}. Install connector {data.minConnectorVersion} or newer: older versions can't run daily codes, doors or fingerprints.</p>}
       {error && <p role="alert" className="flex items-start gap-2 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:bg-red-500/10 dark:text-red-300"><XCircle size={16} className="mt-0.5 shrink-0" />{error}</p>}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
@@ -148,13 +160,17 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
           <Step n={3} title="Choose access groups and readers" done={steps.choices} active={steps.online && !steps.choices}>
             {!inv?.accessGroups?.length ? <p>Once the connector is running, your BioStar access groups and readers appear here.</p> : (
               <>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block"><span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Visitors' access group</span>
                     <select className={select} value={form.visitorAccessGroupId} onChange={(e) => setForm({ ...form, visitorAccessGroupId: e.target.value })}>
                       <option value="">Choose…</option>{inv.accessGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select></label>
                   <label className="block"><span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Delegates' access group</span>
                     <select className={select} value={form.delegateAccessGroupId} onChange={(e) => setForm({ ...form, delegateAccessGroupId: e.target.value })}>
+                      <option value="">Not yet</option>{inv.accessGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select></label>
+                  <label className="block"><span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Staff access group (fingerprints)</span>
+                    <select className={select} value={form.staffAccessGroupId} onChange={(e) => setForm({ ...form, staffAccessGroupId: e.target.value })}>
                       <option value="">Not yet</option>{inv.accessGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select></label>
                   <label className="block"><span className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">BioStar user group</span>
@@ -179,7 +195,7 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
                       </div>
                     ))}
                   </div>
-                  <p className="mt-1.5 text-xs text-slate-500">Leave all unmarked and the first scan checks a visitor in, the next checks them out.</p>
+                  <p className="mt-1.5 text-xs text-slate-500">Leave all unmarked and the first scan checks a visitor in, the next checks them out. The <Link to="/visitors/gate/doors" className="text-blue-600 hover:underline dark:text-blue-400">Doors</Link> page shows each reader with its door, model and what it reads.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                   <label className="flex items-center gap-2"><span className="text-xs font-medium text-slate-700 dark:text-slate-300">QR type</span>
@@ -213,7 +229,7 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
           </Step>
 
           <Step n={5} title="Switch on" done={steps.on} active={steps.test && !steps.on}>
-            <p>From now on every new invitation becomes a barrier pass, still-valid invitations are added straight away, and a pass stops working when the visit ends or is cancelled.</p>
+            <p>From now on a visitor's QR is made when their phone opens the pass on the day, and taken off BioStar when they scan out. Delegates' campus codes change every day. Everyone's access ends by the end of their day, even if this link goes down.</p>
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" role="switch" className="h-5 w-5 accent-emerald-600" checked={!!integ?.enabled} disabled={!steps.choices || busy === 'save'} onChange={(e) => save({ enabled: e.target.checked })} />
               <span className="font-medium text-slate-900 dark:text-slate-100">{integ?.enabled ? 'On — QR codes open the barrier' : 'Off'}</span>
@@ -223,6 +239,7 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
         </ol>
 
         <div className="space-y-6">
+          {integ && <GateSettings integ={integ} busy={busy === 'gate'} onSave={(patch) => run('gate', () => api.put('/visitors/biostar/settings', patch))} />}
           <section className="glass-card p-5">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-white"><Activity size={16} className="text-blue-500" />Gate activity</h2>
             {!data?.recentEvents.length ? <p className="mt-3 text-sm text-slate-500">Barrier scans appear here as they happen.</p> : (
@@ -265,5 +282,34 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Gate access (2026-11-20): fingerprints, tablet doors and the campus-code grace period. */
+function GateSettings({ integ, busy, onSave }: { integ: NonNullable<Status['integration']>; busy: boolean; onSave: (patch: Record<string, unknown>) => void }) {
+  const [retention, setRetention] = useState(String(integ.biometricRetentionDays ?? 7));
+  const [grace, setGrace] = useState(String(Math.round((integ.graceSeconds ?? 300) / 60)));
+  return (
+    <section className="glass-card p-5 space-y-4">
+      <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Gate settings</h2>
+      <label className="flex items-start gap-3 text-sm cursor-pointer">
+        <input type="checkbox" role="switch" className="mt-0.5 h-5 w-5 accent-emerald-600" checked={!!integ.biometricsEnabled} disabled={busy} onChange={(e) => onSave({ biometricsEnabled: e.target.checked })} />
+        <span><span className="font-medium text-slate-900 dark:text-slate-100">Fingerprints at the gate</span><span className="block text-xs text-slate-500">People who agree can enrol a finger at a reader. It is stored only in BioStar. Switch on after your data protection officer has approved it.</span></span>
+      </label>
+      <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); onSave({ biometricRetentionDays: Number(retention) }); }}>
+        <label className="text-xs text-slate-600 dark:text-slate-400">Delete fingerprints this many days after a person's last programme
+          <input id="bio-retention" type="number" min={0} max={365} className="mt-1 w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-white/10 dark:bg-white/5" value={retention} onChange={(e) => setRetention(e.target.value)} /></label>
+        <Button size="sm" variant="secondary" disabled={busy}>Save</Button>
+      </form>
+      <label className="flex items-start gap-3 text-sm cursor-pointer">
+        <input type="checkbox" role="switch" className="mt-0.5 h-5 w-5 accent-emerald-600" checked={integ.openDoorOnCodeCheckIn !== false} disabled={busy} onChange={(e) => onSave({ openDoorOnCodeCheckIn: e.target.checked })} />
+        <span><span className="font-medium text-slate-900 dark:text-slate-100">A code check-in at a tablet opens its door</span><span className="block text-xs text-slate-500">Link each tablet to its door on the Doors page.</span></span>
+      </label>
+      <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); onSave({ graceSeconds: Math.max(1, Number(grace)) * 60 }); }}>
+        <label className="text-xs text-slate-600 dark:text-slate-400">Minutes yesterday's campus code still works after midnight
+          <input id="grace-min" type="number" min={1} max={60} className="mt-1 w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-white/10 dark:bg-white/5" value={grace} onChange={(e) => setGrace(e.target.value)} /></label>
+        <Button size="sm" variant="secondary" disabled={busy}>Save</Button>
+      </form>
+    </section>
   );
 }

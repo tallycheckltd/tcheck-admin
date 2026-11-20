@@ -36,6 +36,11 @@ export function InvitesPage() {
     setBusy(id);
     try { await api.post(`/visitors/invites/${id}/cancel`); await refetch({ silent: true }); } catch { /* shown by the app's error toast */ } finally { setBusy(null); }
   };
+  // Gate access (2026-11-20): the visitor changed phone — unlock the pass and send the email again.
+  const resetDevice = async (id: string) => {
+    setBusy(id);
+    try { await api.post(`/visitors/invites/${id}/reset-device`); await refetch({ silent: true }); } catch { /* shown by the app's error toast */ } finally { setBusy(null); }
+  };
 
   return (
     <div className="space-y-5">
@@ -95,7 +100,8 @@ export function InvitesPage() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       {r.visitorId && <Button size="sm" variant="ghost" onClick={() => again(r)}><History size={14} className="mr-1.5" />Invite again</Button>}
-                      {r.status === 'PENDING' && <Button size="sm" variant="secondary" disabled={busy === r.id} onClick={() => cancel(r.id)}>Cancel</Button>}
+                      {r.status === 'PENDING' && <Button size="sm" variant="ghost" disabled={busy === r.id} title="The visitor changed phone: unlock the pass and email it again" onClick={() => resetDevice(r.id)}>Reset device</Button>}
+                  {r.status === 'PENDING' && <Button size="sm" variant="secondary" disabled={busy === r.id} onClick={() => cancel(r.id)}>Cancel</Button>}
                     </div>
                   </td>
                 </tr>

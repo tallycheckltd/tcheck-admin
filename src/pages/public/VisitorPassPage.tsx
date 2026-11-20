@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { AlertTriangle, CalendarClock, CheckCircle2, Clock, Loader2, UserRound, XCircle } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, Clock, Loader2, Smartphone, UserRound, XCircle } from 'lucide-react';
 import { API_BASE } from '../../lib/apiBase';
 
 /**
@@ -10,6 +10,11 @@ import { API_BASE } from '../../lib/apiBase';
  * credential, and no phone, ID or email is ever shown. Built for a phone at the gate: the
  * status, who invited them and exactly when the pass works, the QR and the code. The guard records
  * ID details at the gate.
+ *
+ * Gate access (2026-11-20): the pass opens on ONE phone — the first that opens the link — and a
+ * forwarded link shows nothing on another. The QR is not the link: it is today's code, fetched from
+ * /activate only inside the visit window, and shown once the barrier has it. It stops working when
+ * the visitor scans out. The device key is kept in this browser (and an HttpOnly cookie).
  */
 
 type Status = 'VALID' | 'NOT_YET_VALID' | 'USED' | 'EXPIRED' | 'CANCELLED';
@@ -22,14 +27,25 @@ interface Pass {
   purpose: string | null;
   validFrom: string;
   validUntil: string;
-  code: string;
-  qrToken: string;
+  opensAt: string;
+  code: string | null;
   status: Status;
   multiDay?: boolean;
+  /** The barrier reads QR codes at this school (BioStar link on). */
+  barrier: boolean;
+  /** Inside the window on the bound phone: ask /activate for today's QR. */
+  canActivate: boolean;
+  onSite?: boolean;
+  deviceKey?: string;
 }
+interface Credential { value: string; state: 'PENDING' | 'LIVE'; validUntil: string }
+
+const keyName = (token: string) => `tcpd:${token}`;
+const readKey = (token: string) => { try { return localStorage.getItem(keyName(token)); } catch { return null; } };
+const saveKey = (token: string, key: string) => { try { localStorage.setItem(keyName(token), key); } catch { /* private mode: the cookie still holds it */ } };
 
 const STATUS: Record<Status, { label: string; note: string; icon: typeof CheckCircle2; tone: string }> = {
-  VALID: { label: 'Valid now', note: 'Show the QR or give the code to the guard at the gate.', icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300' },
+  VALID: { label: 'Valid now', note: 'Scan the QR at the barrier, or give the code and your ID to the guard.', icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300' },
   NOT_YET_VALID: { label: 'Not yet valid', note: 'Your pass starts working shortly before your visit.', icon: Clock, tone: 'bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300' },
   USED: { label: 'Used', note: 'You were checked in with this pass. Each pass works for one visit.', icon: CheckCircle2, tone: 'bg-slate-100 text-slate-700 ring-slate-500/20 dark:bg-white/10 dark:text-slate-300' },
   EXPIRED: { label: 'Expired', note: 'This visit is over. Ask the person who invited you for a new invitation.', icon: XCircle, tone: 'bg-rose-50 text-rose-800 ring-rose-600/20 dark:bg-red-500/15 dark:text-red-300' },
@@ -47,21 +63,66 @@ export function VisitorPassPage() {
   const { qrToken } = useParams();
   const [pass, setPass] = useState<Pass | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [otherPhone, setOtherPhone] = useState(false);
+  const [cred, setCred] = useState<Credential | null>(null);
+  const [credError, setCredError] = useState<string | null>(null);
+  // The page's clock: a pass left open before its window flips to the QR at the opening time.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t); }, []);
 
-  useEffect(() => {
+  const headers = useCallback((): Record<string, string> => {
+    const k = qrToken ? readKey(qrToken) : null;
+    return k ? { 'X-Pass-Device': k } : {};
+  }, [qrToken]);
+
+  const load = useCallback(() => {
     if (!qrToken) return;
-    fetch(`${API_BASE}/public/visitor-pass/${encodeURIComponent(qrToken)}`, { cache: 'no-store' })
+    fetch(`${API_BASE}/public/visitor-pass/${encodeURIComponent(qrToken)}`, { cache: 'no-store', credentials: 'include', headers: headers() })
       .then(async (r) => {
         if (r.status === 404) throw new Error('We couldn’t find this pass. Check that you opened the full link from your email.');
+        if (r.status === 409) { setOtherPhone(true); return; }
         if (!r.ok) throw new Error('This pass can’t be shown right now. Please try again in a moment.');
-        setPass(await r.json());
+        const p = await r.json() as Pass;
+        if (p.deviceKey) saveKey(qrToken, p.deviceKey);
+        setPass(p);
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'This pass can’t be shown right now.'));
-  }, [qrToken]);
+  }, [qrToken, headers]);
+  useEffect(() => { load(); }, [load]);
+  const opensAtMs = pass ? new Date(pass.opensAt).getTime() : null;
+  const waiting = !!pass && !pass.canActivate && pass.barrier && pass.status !== 'USED' && pass.status !== 'EXPIRED' && pass.status !== 'CANCELLED';
+  useEffect(() => { if (waiting && opensAtMs && now >= opensAtMs) load(); }, [waiting, opensAtMs, now, load]);
+
+  // Inside the window: today's QR. Poll quickly until the barrier has it, then every minute (a code
+  // that was used or rotated is replaced; scanning out ends it).
+  useEffect(() => {
+    if (!qrToken || !pass?.canActivate) return;
+    let stop = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/public/visitor-pass/${encodeURIComponent(qrToken)}/activate`, { method: 'POST', cache: 'no-store', credentials: 'include', headers: { 'Content-Type': 'application/json', ...headers() }, body: '{}' });
+        const body = await r.json().catch(() => ({}));
+        if (r.status === 409 && body.code === 'PASS_ALREADY_OPEN') { setOtherPhone(true); return; }
+        if (!r.ok) { setCredError(body.error ?? 'Your QR can’t be shown right now. Give the code to the guard.'); setCred(null); return; }
+        setCredError(null);
+        setCred(body.credential);
+        if (!stop) timer = setTimeout(tick, body.credential?.state === 'LIVE' ? 60_000 : 2000);
+      } catch {
+        if (!stop) timer = setTimeout(tick, 5000);
+      }
+    };
+    void tick();
+    // A pass page left open re-reads its status (used, expired) every few minutes.
+    const refresh = setInterval(load, 5 * 60_000);
+    return () => { stop = true; clearTimeout(timer); clearInterval(refresh); };
+  }, [qrToken, pass?.canActivate, headers, load]);
 
   const status = pass ? STATUS[pass.status] : null;
   const live = pass?.status === 'VALID' || pass?.status === 'NOT_YET_VALID';
   const w = pass ? when(pass.validFrom, pass.validUntil) : null;
+  const opensAt = pass ? new Date(pass.opensAt) : null;
+  const beforeWindow = !!opensAt && opensAt.getTime() > now;
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 px-4 py-6 sm:py-12 flex justify-center">
@@ -72,9 +133,16 @@ export function VisitorPassPage() {
             <p className="mt-4 text-sm text-slate-700 dark:text-slate-300">{error}</p>
           </div>
         )}
-        {!error && !pass && <p className="flex items-center justify-center gap-2 pt-20 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" /> Loading your pass…</p>}
+        {otherPhone && (
+          <div className="rounded-3xl bg-white dark:bg-slate-900 p-8 shadow-xl text-center" role="alert">
+            <Smartphone size={32} className="mx-auto text-amber-500" />
+            <h1 className="mt-4 text-lg font-semibold text-slate-950 dark:text-white">This pass is open on another phone</h1>
+            <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">A visitor pass works on one phone only. If you changed phone, ask the person who invited you to reset it, then open the link again.</p>
+          </div>
+        )}
+        {!error && !pass && !otherPhone && <p className="flex items-center justify-center gap-2 pt-20 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" /> Loading your pass…</p>}
 
-        {pass && status && w && (
+        {pass && status && w && !otherPhone && (
           <>
             <div className="overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-xl">
               <div className="flex items-center gap-3 px-6 pt-6">
@@ -93,11 +161,30 @@ export function VisitorPassPage() {
 
               {live && (
                 <div className="px-6 pt-6 text-center">
-                  <div className="mx-auto inline-block rounded-2xl bg-white p-3 ring-1 ring-slate-200">
-                    <QRCodeSVG value={pass.qrToken} size={208} level="M" marginSize={0} title="Visitor pass QR code" />
-                  </div>
-                  <p className="mt-5 text-xs uppercase tracking-[0.14em] text-slate-500">Gate code</p>
-                  <p className="mt-1 font-mono text-4xl font-bold tracking-[0.25em] text-slate-950 dark:text-white tabular-nums" aria-label={`Gate code ${pass.code.split('').join(' ')}`}>{pass.code}</p>
+                  {pass.barrier && beforeWindow && opensAt && (
+                    <div className="rounded-2xl bg-slate-50 px-4 py-6 dark:bg-white/5">
+                      <Clock size={28} className="mx-auto text-slate-400" />
+                      <p className="mt-2 font-semibold text-slate-950 dark:text-white">Your QR opens at {opensAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{opensAt.toDateString() === new Date().toDateString() ? 'today' : opensAt.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}. Open this page again then.</p>
+                    </div>
+                  )}
+                  {pass.canActivate && cred?.state === 'LIVE' && (
+                    <>
+                      <div className="mx-auto inline-block rounded-2xl bg-white p-3 ring-1 ring-slate-200">
+                        <QRCodeSVG value={cred.value} size={208} level="M" marginSize={0} title="Visitor pass QR code" />
+                      </div>
+                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{pass.onSite ? 'Scan it again on your way out.' : 'Scan this at the barrier.'} It works for you only, today.</p>
+                    </>
+                  )}
+                  {pass.canActivate && cred?.state === 'PENDING' && <p className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" />Getting your QR ready at the gate…</p>}
+                  {pass.canActivate && !cred && !credError && <p className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" />Loading your QR…</p>}
+                  {credError && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">{credError}</p>}
+                  {pass.code && (
+                    <>
+                      <p className="mt-5 text-xs uppercase tracking-[0.14em] text-slate-500">{pass.barrier ? 'Or give this code and your ID to the guard' : 'Gate code — give it and your ID to the guard'}</p>
+                      <p className="mt-1 font-mono text-4xl font-bold tracking-[0.25em] text-slate-950 dark:text-white tabular-nums" aria-label={`Gate code ${pass.code.split('').join(' ')}`}>{pass.code}</p>
+                    </>
+                  )}
                 </div>
               )}
 
