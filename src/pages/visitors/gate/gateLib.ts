@@ -34,7 +34,7 @@ export function ago(iso: string | null | undefined) {
 export const ms = (v: number | null | undefined) => (v == null ? '—' : v < 1000 ? `${Math.round(v)} ms` : v < 60_000 ? `${(v / 1000).toFixed(1)} s` : `${Math.round(v / 60_000)} min`);
 export const time = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—');
 
-export const CREDENTIAL: Record<string, string> = { QR: 'QR code', FINGER: 'Fingerprint', FACE: 'Face', CARD: 'Card / tag', CODE: 'Six-digit code', REMOTE: 'Opened remotely', UNKNOWN: 'Unknown' };
+export const CREDENTIAL: Record<string, string> = { QR: 'QR code', FINGER: 'Fingerprint', FACE: 'Face', CARD: 'Card / tag', CODE: 'Six-digit code', REMOTE: 'Opened from Tcheck', UNKNOWN: 'Unknown' };
 export const PERSON_KIND: Record<string, string> = { PERSON: 'Delegate / staff', VISITOR: 'Visitor', WALKIN: 'Walk-in' };
 export const CRED_STATE: Record<string, ['green' | 'blue' | 'red' | 'purple' | 'gray' | 'yellow', string]> = {
   ISSUED: ['yellow', 'Waiting for BioStar'], LIVE: ['green', 'Live'], GRACE: ['blue', 'Grace period'], CONSUMED: ['gray', 'Used'],
@@ -45,17 +45,17 @@ export const END_REASON: Record<string, string> = {
   DEVICE_RESET: 'Pass moved to another phone', BLOCKED: 'Visitor blocked', SUSPENDED: 'Access suspended',
 };
 export const JOB_KIND: Record<string, string> = {
-  SYNC_IDENTITY: 'Update a person in BioStar', OPEN_DOOR: 'Open a door', ENROLL_FINGERPRINT: 'Enrol a fingerprint', DELETE_BIOMETRIC: 'Delete fingerprints',
+  SYNC_IDENTITY: 'Update a person in BioStar', OPEN_DOOR: 'Open a barrier', ENROLL_FINGERPRINT: 'Enrol a fingerprint', DELETE_BIOMETRIC: 'Delete fingerprints',
   RECONCILE: 'BioStar check', SELF_TEST: 'Self-test', REVOKE: 'Remove access', GRANT_VISITOR: 'Give a visitor access (old)', GRANT_WALKIN: 'Give a walk-in access (old)', GRANT_DELEGATE: 'Give a delegate access (old)',
 };
 export const ALERT_KIND: Record<string, string> = {
-  SECOND_DEVICE: 'Pass opened on a second phone', USED_PASS_TRIED: 'Used pass tried again', ANTI_PASSBACK: 'Second entry refused', TWO_READERS: 'Same person at two gates',
-  TABLET_CODE_GUESSING: 'Wrong codes at a tablet', CONNECTOR_OFFLINE: 'Connector offline', DOOR_FORCED: 'Door forced open',
+  SECOND_DEVICE: 'Pass opened on a second phone', USED_PASS_TRIED: 'Used pass tried again', ANTI_PASSBACK: 'Second entry refused', TWO_READERS: 'Same person at two barriers',
+  TABLET_CODE_GUESSING: 'Wrong codes at a tablet', CONNECTOR_OFFLINE: 'Connector offline', DOOR_FORCED: 'Forced passage / tailgating',
 };
 export const DOOR_STATE: Record<string, ['green' | 'blue' | 'red' | 'purple' | 'gray' | 'yellow', string]> = {
-  LOCKED: ['green', 'Locked'], UNLOCKED: ['yellow', 'Unlocked'], OPEN: ['blue', 'Open'], HELD_OPEN: ['yellow', 'Held open'], FORCED_OPEN: ['red', 'Forced open'], UNKNOWN: ['gray', 'Unknown'],
+  LOCKED: ['green', 'Closed'], UNLOCKED: ['yellow', 'Free passage'], OPEN: ['blue', 'Open'], HELD_OPEN: ['yellow', 'Held open (blocked)'], FORCED_OPEN: ['red', 'Forced passage'], UNKNOWN: ['gray', 'Unknown'],
 };
-export const REASON: Record<string, string> = { ANTI_PASSBACK: 'Already inside (anti-passback)', INVALID_USER: 'Code not valid now', CREDENTIAL_NOT_FOUND: 'Unknown code', NO_AUTH: 'No access to this door', UNKNOWN: 'Other' };
+export const REASON: Record<string, string> = { ANTI_PASSBACK: 'Already inside (anti-passback)', INVALID_USER: 'Code not valid now', CREDENTIAL_NOT_FOUND: 'Unknown code', NO_AUTH: 'No access to this lane', UNKNOWN: 'Other' };
 
 export function useAction() {
   const [busy, setBusy] = useState<string | null>(null);

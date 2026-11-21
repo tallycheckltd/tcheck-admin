@@ -9,7 +9,7 @@ import { XCircle } from 'lucide-react';
 const GATE_TABS = [
   { to: '/visitors/gate', label: 'Overview', end: true },
   { to: '/visitors/gate/live', label: 'Live feed' },
-  { to: '/visitors/gate/doors', label: 'Doors' },
+  { to: '/visitors/gate/doors', label: 'Lanes' },
   { to: '/visitors/gate/people', label: 'People' },
   { to: '/visitors/gate/fingerprints', label: 'Fingerprints' },
   { to: '/visitors/gate/codes', label: 'Codes' },
@@ -25,20 +25,20 @@ export function GateShell({ title, intro, actions, children }: { title: string; 
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Gate access</p>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{title}</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#004aad] dark:text-blue-300">Flap barriers</p>
+          <h1 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-slate-950 dark:text-white">{title}</h1>
           {intro && <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-400">{intro}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      <nav aria-label="Gate access pages" className="-mx-1 overflow-x-auto">
+      <nav aria-label="Flap barrier pages" className="-mx-1 overflow-x-auto">
         <ul className="flex min-w-max gap-1 border-b border-slate-200 px-1 dark:border-white/10">
           {GATE_TABS.map((t) => (
             <li key={t.to}>
               <NavLink
                 to={t.to}
                 end={'end' in t ? t.end : false}
-                className={({ isActive }) => `inline-block border-b-2 px-3 py-2 text-sm whitespace-nowrap ${isActive ? 'border-blue-600 font-medium text-blue-700 dark:text-blue-300' : 'border-transparent text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'}`}
+                className={({ isActive }) => `inline-block border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors ${isActive ? 'border-[#004aad] font-semibold text-[#004aad] dark:border-blue-400 dark:text-blue-300' : 'border-transparent text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'}`}
               >{t.label}</NavLink>
             </li>
           ))}

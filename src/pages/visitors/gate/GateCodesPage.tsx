@@ -32,7 +32,7 @@ export function GateCodesPage() {
   const doRevoke = () => run('revoke', async () => { if (!revoke) return; await api.post(`/visitors/biostar/credentials/${revoke.id}/revoke`, { reason }); setRevoke(null); setReason(''); await refetch({ silent: true }); });
 
   return (
-    <GateShell title="Codes" intro="Every code your readers accept comes from here. A visitor's code is made when their phone opens the pass on the day; a delegate's changes every day.">
+    <GateShell title="Codes" intro="Every code your flap barrier readers accept comes from here. A visitor's code is made when their phone opens the pass on the day; a delegate's changes every day.">
       <ErrorLine error={error} />
       {data && (
         <div className="flex flex-wrap gap-2 text-xs">
@@ -64,7 +64,7 @@ export function GateCodesPage() {
       </Panel>
       <Modal open={!!revoke} onClose={() => setRevoke(null)} title={`Revoke code ${revoke?.last4 ?? ''}`}>
         <form className="space-y-4 text-sm" onSubmit={(e) => { e.preventDefault(); void doRevoke(); }}>
-          <p className="text-slate-600 dark:text-slate-400">The code stops working at the readers within seconds. {revoke?.holder} needs a new one (a visitor's phone gets one when they open the pass again).</p>
+          <p className="text-slate-600 dark:text-slate-400">The code stops working at the flap barriers within seconds. {revoke?.holder} needs a new one (a visitor's phone gets one when they open the pass again).</p>
           <label className="block">Reason<input id="revoke-reason" className={`${inputCls} mt-1`} value={reason} onChange={(e) => setReason(e.target.value)} required minLength={3} /></label>
           <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setRevoke(null)}>Cancel</Button><Button variant="danger" disabled={reason.trim().length < 3 || busy === 'revoke'}>Revoke</Button></div>
         </form>

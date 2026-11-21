@@ -10,6 +10,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { InviteForm } from './InviteForm';
 import { GuestPicker } from './GuestPicker';
 import { STATUS_BADGE, windowLabel, stamp, guestFrom, type GuestEntry, type VisitorInvite } from './visitorsApi';
+import { PageHeader } from './visitorsUi';
 
 /**
  * Visitors (2026-11-13) — "Invite a visitor", for every staff member the school allows and every
@@ -54,10 +55,7 @@ export function InviteVisitorPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Invite a visitor</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">The visitor gets an email with a QR code and a six-digit code, valid only for the time you choose. You get an email when they arrive.</p>
-      </div>
+      <PageHeader title="Invite a visitor" intro="Your visitor gets an email with their pass and a six-digit code, valid only for the time you choose. On the day, the pass shows a QR that opens the flap barrier. You get an email when they arrive." />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <InviteForm prefill={prefill} guests={guests.data ?? []} onClearPrefill={() => setPrefill(null)} onCreated={() => { setTab('active'); refreshAll(); }} />

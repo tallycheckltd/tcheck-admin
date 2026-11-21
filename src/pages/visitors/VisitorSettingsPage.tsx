@@ -5,6 +5,7 @@ import { api } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import type { VisitorSettings, VisitorSettingsResponse } from './visitorsApi';
+import { PageHeader } from './visitorsUi';
 
 /**
  * Visitors (2026-11-13) — visitor settings (ICT Admin, School Admin). Its own page under Visitors so
@@ -49,10 +50,9 @@ export function VisitorSettingsPage({ embedded = false }: { embedded?: boolean }
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <Heading className={embedded ? 'text-lg font-semibold text-slate-950 dark:text-white' : 'text-2xl font-bold text-slate-950 dark:text-white'}>Visitor settings</Heading>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Who can invite, how the gate works, and how long visitor records are kept.</p>
-      </div>
+      {embedded
+        ? <div><Heading className="text-lg font-semibold text-slate-950 dark:text-white">Visitor settings</Heading><p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Who can invite, how the flap barriers and front desk work, and how long visitor records are kept.</p></div>
+        : <PageHeader title="Visitor settings" intro="Who can invite, how the flap barriers and front desk work, and how long visitor records are kept." />}
 
       {loading || !s || !data ? (
         <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" /> Loading…</p>
@@ -83,7 +83,7 @@ export function VisitorSettingsPage({ embedded = false }: { embedded?: boolean }
 
           <div className="divide-y divide-gray-100 dark:divide-white/5">
             <Toggle id="vs-id" label="ID number required at the gate" help="The guard can't check a walk-in in without an ID or passport number." checked={s.idRequiredAtGate} onChange={(v) => set('idRequiredAtGate', v)} />
-            <Toggle id="vs-idtick" label="Guard ticks &quot;ID matches&quot; for code check-ins" help="For a visitor using their six-digit code at the tablet, Check in stays off until the guard has checked their ID against the name (every day of a multi-day pass). Turn on once your gate tablets show the tick." checked={!!s.requireIdTickForCodes} onChange={(v) => set('requireIdTickForCodes', v)} />
+            <Toggle id="vs-idtick" label="Guard ticks &quot;ID matches&quot; for code check-ins" help="For a visitor using their six-digit code at the tablet, Check in stays off until the guard has checked their ID against the name (every day of a multi-day pass). Turn on once your barrier tablets show the tick." checked={!!s.requireIdTickForCodes} onChange={(v) => set('requireIdTickForCodes', v)} />
             <Toggle id="vs-email" label="Email the host when their visitor arrives" help="Also shows as a notification in the dashboard and the app." checked={s.emailHostOnArrival} onChange={(v) => set('emailHostOnArrival', v)} />
           </div>
 

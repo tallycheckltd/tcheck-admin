@@ -33,9 +33,9 @@ export const visitorsGroup: NavLinkDef = {
     { to: '/visitors/invites', icon: 'MailCheck', label: 'Invites' },
     { to: '/visitors/analytics', icon: 'BarChart3', label: 'Analytics' },
     { to: '/visitors/profiles', icon: 'Users', label: 'Visitor profiles' },
-    { to: '/visitors/tablets', icon: 'Smartphone', label: 'Gate tablets' },
+    { to: '/visitors/tablets', icon: 'Smartphone', label: 'Barrier tablets' },
     // Gate access (2026-11-20): BioStar doors, live scans, people, fingerprints, alerts — ICT's daily view.
-    { to: '/visitors/gate', icon: 'DoorOpen', label: 'Gate access' },
+    { to: '/visitors/gate', icon: 'DoorOpen', label: 'Flap barriers' },
   ],
 };
 /* Visitor settings and the BioStar link are set up once, so they sit with Settings and Integrations,
@@ -67,7 +67,7 @@ export const superAdminGeneral: NavLinkDef[] = [
   // 11-02 — per-school audit trail (names shown; each view recorded in that school's trail).
   { to: '/platform/audit', icon: 'ScrollText', label: 'Audit log' },
   // 11-20 — every school's BioStar gate: health, versions, alerts, kill switch.
-  { to: '/platform/gate', icon: 'DoorOpen', label: 'Gates' },
+  { to: '/platform/gate', icon: 'DoorOpen', label: 'Flap barriers' },
 ];
 
 export const hodOverview: NavLinkDef[] = [

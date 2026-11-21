@@ -37,7 +37,7 @@ function ReaderRow({ r, doors, onChange, busy }: { r: Reader; doors: Door[]; onC
           <option value="IN">In</option><option value="OUT">Out</option><option value="NONE">Not set</option>
         </select>
       </label>
-      <label className="text-xs text-slate-500">Door
+      <label className="text-xs text-slate-500">Lane
         <select id={`door-${r.id}`} className={`${selectCls} ml-2`} value={r.doorId ?? ''} disabled={busy} onChange={(e) => onChange({ doorId: e.target.value || null })}>
           <option value="">None</option>{doors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
@@ -58,29 +58,29 @@ export function GateDoorsPage() {
   const linkTablet = (id: string, doorId: string | null) => run(`t-${id}`, async () => { await api.put(`/visitors/biostar/tablets/${id}/door`, { doorId }); await refetch({ silent: true }); });
   const openDoor = () => run('open', async () => {
     if (!openFor) return;
-    setResult('Asking BioStar to open the door…');
+    setResult('Asking BioStar to open the flap…');
     const r = await api.post<{ jobId: string }>(`/visitors/biostar/doors/${openFor.id}/open`, { reason });
     for (let i = 0; i < 40; i += 1) {
       await new Promise((ok) => setTimeout(ok, 500));
       const s = await api.get<{ status: string; error: string | null; tookMs: number | null }>(`/visitors/biostar/door-jobs/${r.jobId}`);
-      if (s.status === 'OPENED') { setResult(`Opened in ${ms(s.tookMs)}. It locks again on its own.`); return; }
-      if (s.status === 'FAILED') { setResult(`Didn't open: ${s.error ?? 'BioStar refused'}. Use the manual release.`); return; }
+      if (s.status === 'OPENED') { setResult(`Opened in ${ms(s.tookMs)}. It closes again after one passage.`); return; }
+      if (s.status === 'FAILED') { setResult(`Didn't open: ${s.error ?? 'BioStar refused'}. Use the barrier's manual release.`); return; }
     }
-    setResult('No answer from the connector within 20 seconds. Use the manual release.');
+    setResult('No answer from the connector within 20 seconds. Use the barrier\'s manual release.');
   });
 
   return (
-    <GateShell title="Doors" intro="Doors and readers come from BioStar. Mark each reader In or Out so scans check people in and out. Opening a door from here needs a reason and is recorded.">
+    <GateShell title="Lanes" intro="Each flap barrier lane comes from BioStar with its entry and exit reader. Mark readers In or Out so passages check people in and out. Opening a lane from here lets one person through, needs a reason and is recorded.">
       <ErrorLine error={error} />
       {loading && !data && <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" />Loading…</p>}
-      {data && !data.doors.length && <p className="text-sm text-slate-500">No doors yet. They appear once the connector is running and BioStar has doors set up.</p>}
+      {data && !data.doors.length && <p className="text-sm text-slate-500">No lanes yet. They appear once the connector is running and the flap barriers are set up as doors in BioStar.</p>}
       <div className="grid gap-4 xl:grid-cols-2">
         {data?.doors.map((d) => {
           const [color, label] = DOOR_STATE[d.state] ?? DOOR_STATE.UNKNOWN!;
           const max = Math.max(1, ...d.today.byHour);
           return (
             <Panel key={d.id} title={d.name} hint={`${d.missingSince ? 'No longer in BioStar · ' : ''}last scan ${ago(d.lastEventAt)}`}
-              actions={<div className="flex items-center gap-2"><Badge color={color}>{label}</Badge>{!d.online && <Badge color="red">Offline</Badge>}<Button size="sm" variant="secondary" onClick={() => { setOpenFor(d); setReason(''); setResult(null); }} disabled={!!d.missingSince}><DoorOpen size={14} /> Open door</Button></div>}>
+              actions={<div className="flex items-center gap-2"><Badge color={color}>{label}</Badge>{!d.online && <Badge color="red">Offline</Badge>}<Button size="sm" variant="secondary" onClick={() => { setOpenFor(d); setReason(''); setResult(null); }} disabled={!!d.missingSince}><DoorOpen size={14} /> Open barrier</Button></div>}>
               <div className="grid grid-cols-3 gap-2 text-center text-sm">
                 <div><p className="text-xs text-slate-500">In today</p><p className="text-lg font-semibold tabular-nums">{d.today.in}</p></div>
                 <div><p className="text-xs text-slate-500">Out today</p><p className="text-lg font-semibold tabular-nums">{d.today.out}</p></div>
@@ -94,38 +94,38 @@ export function GateDoorsPage() {
               <h3 className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">Readers</h3>
               <ul className="divide-y divide-slate-100 text-sm dark:divide-white/5">
                 {d.readers.map((r) => <ReaderRow key={r.id} r={r} doors={data.doors} busy={busy === `r-${r.id}`} onChange={(p) => void patchReader(r.id, p)} />)}
-                {!d.readers.length && <li className="py-2 text-slate-500">No readers on this door.</li>}
+                {!d.readers.length && <li className="py-2 text-slate-500">No readers on this lane.</li>}
               </ul>
-              <p className="mt-3 text-xs text-slate-500">Tablets admitting to this door: {d.tablets.length ? d.tablets.map((t) => t.name).join(', ') : 'none'}</p>
+              <p className="mt-3 text-xs text-slate-500">Tablets admitting to this lane: {d.tablets.length ? d.tablets.map((t) => t.name).join(', ') : 'none'}</p>
             </Panel>
           );
         })}
       </div>
       {!!data?.unassignedReaders.length && (
-        <Panel title="Readers not on a door" hint="Give each a door and a direction, or leave it (an enrolment reader at a desk needs neither).">
+        <Panel title="Readers not on a lane" hint="Give each a lane and a direction, or leave it (an enrolment reader at a desk needs neither).">
           <ul className="divide-y divide-slate-100 text-sm dark:divide-white/5">{data.unassignedReaders.map((r) => <ReaderRow key={r.id} r={r} doors={data.doors} busy={busy === `r-${r.id}`} onChange={(p) => void patchReader(r.id, p)} />)}</ul>
         </Panel>
       )}
       {!!data?.tablets.length && (
-        <Panel title="Gate tablets" hint="A visitor checked in with a six-digit code at a tablet goes through the door the tablet is linked to.">
+        <Panel title="Barrier tablets" hint="A visitor checked in with a six-digit code at a tablet goes through the lane the tablet is linked to: the flap opens for them.">
           <ul className="divide-y divide-slate-100 text-sm dark:divide-white/5">
             {data.tablets.map((t) => (
               <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                 <span className="font-medium">{t.name}</span>
-                <select id={`tab-${t.id}`} aria-label={`Door for ${t.name}`} className={selectCls} value={t.doorId ?? ''} disabled={busy === `t-${t.id}`} onChange={(e) => void linkTablet(t.id, e.target.value || null)}>
-                  <option value="">No door (code check-in only)</option>{data.doors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                <select id={`tab-${t.id}`} aria-label={`Lane for ${t.name}`} className={selectCls} value={t.doorId ?? ''} disabled={busy === `t-${t.id}`} onChange={(e) => void linkTablet(t.id, e.target.value || null)}>
+                  <option value="">No lane (code check-in only)</option>{data.doors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </li>
             ))}
           </ul>
         </Panel>
       )}
-      <Modal open={!!openFor} onClose={() => setOpenFor(null)} title={`Open ${openFor?.name ?? 'door'}`}>
+      <Modal open={!!openFor} onClose={() => setOpenFor(null)} title={`Open ${openFor?.name ?? 'the barrier'}`}>
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void openDoor(); }}>
-          <p className="text-sm text-slate-600 dark:text-slate-400">BioStar opens the door once; it locks again on its own timer. This is recorded with your name and reason.</p>
-          <label className="block text-sm">Reason<input id="open-reason" className={`${inputCls} mt-1`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Delivery van at the main gate" required minLength={3} /></label>
+          <p className="text-sm text-slate-600 dark:text-slate-400">BioStar opens the flap for one passage; it closes again on its own. This is recorded with your name and reason.</p>
+          <label className="block text-sm">Reason<input id="open-reason" className={`${inputCls} mt-1`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Guest with luggage at lane 2" required minLength={3} /></label>
           {result && <p role="status" className="rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-white/5">{result}</p>}
-          <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setOpenFor(null)}>Close</Button><Button type="submit" disabled={reason.trim().length < 3 || busy === 'open'}>{busy === 'open' ? 'Opening…' : 'Open door'}</Button></div>
+          <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setOpenFor(null)}>Close</Button><Button type="submit" disabled={reason.trim().length < 3 || busy === 'open'}>{busy === 'open' ? 'Opening…' : 'Open barrier'}</Button></div>
         </form>
       </Modal>
     </GateShell>

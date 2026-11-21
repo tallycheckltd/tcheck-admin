@@ -1,33 +1,35 @@
 import { useMemo, useState } from 'react';
-import { DoorOpen, Clock, AlertTriangle, MailCheck, Loader2 } from 'lucide-react';
+import { DoorOpen, Clock, AlertTriangle } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../lib/api';
-import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SearchInput } from '../../components/ui/SearchInput';
-import { StatCard } from '../../components/ui/StatCard';
 import { duration, stamp, type AdminVisit } from './visitorsApi';
+import { PageHeader, Segmented, MetricStrip, RowList, PersonRow, Pill, ListSkeleton } from './visitorsUi';
 
 /**
- * Visitors (2026-11-13) — who is on site right now (ICT Admin, School Admin). Refreshes every 20
- * seconds so check-ins at the gate appear without a reload; the newest arrival is first and overstays are
- * flagged. Full phone and ID numbers: this page is admin-only.
+ * Visitors (2026-11-13; redesign 2026-11-21) — who is on site right now (ICT Admin, School Admin).
+ * Updates on its own; newest arrival first; overstays flagged. Full phone and ID numbers: admin-only.
  */
+type Filter = 'all' | 'invited' | 'walkin' | 'overstay';
+
 export function OnSitePage() {
   const { data, loading, refetch } = useApi<{ visits: AdminVisit[]; overstayHours: number }>('/visitors/on-site', { refetchIntervalMs: 10_000, refetchWhenVisible: true });
   const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
   const [busy, setBusy] = useState<string | null>(null);
   const visits = useMemo(() => data?.visits ?? [], [data]);
+  const overstays = visits.filter((v) => v.overstay).length;
+  const invited = visits.filter((v) => v.invited).length;
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
     return visits
+      .filter((v) => filter === 'all' || (filter === 'invited' && v.invited) || (filter === 'walkin' && !v.invited) || (filter === 'overstay' && v.overstay))
       .filter((v) => !q || [v.name, v.phone, v.nationalId, v.tagNumber, v.hostName, v.company].some((x) => x?.toLowerCase().includes(q)))
-      .sort((a, b) => b.checkInAt.localeCompare(a.checkInAt)); // newest arrival first
-  }, [visits, search]);
-  const overstays = visits.filter((v) => v.overstay).length;
-  const invited = visits.filter((v) => v.invited).length;
+      .sort((a, b) => b.checkInAt.localeCompare(a.checkInAt));
+  }, [visits, search, filter]);
 
   const checkOut = async (id: string) => {
     setBusy(id);
@@ -36,67 +38,40 @@ export function OnSitePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">On site now</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Everyone checked in at the gate and not yet checked out. Updates on its own.</p>
-        </div>
+      <PageHeader live title="On site now" intro="Everyone who came in and hasn't left yet, newest first." />
+
+      <MetricStrip items={[
+        { label: 'On site', value: visits.length },
+        { label: 'Invited', value: invited, hint: visits.length ? `${Math.round((invited / visits.length) * 100)}% of visitors` : undefined },
+        { label: 'Walk-ins', value: visits.length - invited },
+        { label: `Over ${data?.overstayHours ?? 8} hours`, value: overstays, tone: overstays ? 'warn' : 'default' },
+      ]} />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Segmented label="Show" value={filter} onChange={setFilter} options={[
+          { key: 'all', label: 'Everyone', count: visits.length }, { key: 'invited', label: 'Invited', count: invited },
+          { key: 'walkin', label: 'Walk-ins', count: visits.length - invited }, { key: 'overstay', label: 'Overstaying', count: overstays },
+        ]} />
         <div className="w-full sm:w-72"><SearchInput id="onsite-search" aria-label="Search visitors on site" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, phone, tag, host…" /></div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-        <StatCard size="compact" title="On site" value={visits.length} icon={<DoorOpen size={18} />} color="blue" />
-        <StatCard size="compact" title="Invited" value={invited} icon={<MailCheck size={18} />} color="green" />
-        <StatCard size="compact" title={`Over ${data?.overstayHours ?? 8} hours`} value={overstays} icon={<AlertTriangle size={18} />} color={overstays ? 'amber' : 'cyan'} />
-      </div>
-
-      {loading && !data ? (
-        <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" /> Loading…</p>
-      ) : shown.length === 0 ? (
-        <EmptyState icon={DoorOpen} title={search ? 'No one matches' : 'No visitors on site'} description={search ? 'Try a different name, phone number or tag.' : 'When the guard checks a visitor in at the gate, they appear here.'} />
+      {loading && !data ? <ListSkeleton /> : shown.length === 0 ? (
+        <EmptyState icon={DoorOpen} title={search || filter !== 'all' ? 'No one matches' : 'No visitors on site'} description={search || filter !== 'all' ? 'Try another filter or search.' : 'Visitors appear here the moment they come in.'} />
       ) : (
-        <div className="glass-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-gray-100 dark:border-white/5">
-                <th className="px-4 py-3 font-medium">Visitor</th>
-                <th className="px-4 py-3 font-medium">Host</th>
-                <th className="px-4 py-3 font-medium">Tag</th>
-                <th className="px-4 py-3 font-medium">Arrived</th>
-                <th className="px-4 py-3 font-medium">On site</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-              {shown.map((v) => (
-                <tr key={v.id} className={v.overstay ? 'bg-amber-50/60 dark:bg-amber-500/5' : undefined}>
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-slate-950 dark:text-white">{v.name}</p>
-                    <p className="text-xs text-slate-500 tabular-nums">{v.phone}{v.nationalId ? ` · ID ${v.nationalId}` : ''}{v.company ? ` · ${v.company}` : ''}</p>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
-                    {v.hostName ?? '—'}
-                    {v.purpose && <p className="text-xs text-slate-500">{v.purpose}</p>}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">{v.tagNumber ?? '—'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
-                    {stamp(v.checkInAt)}
-                    {v.checkInGate && <span className="block text-xs text-slate-500">{v.checkInGate}</span>}
-                    <div className="mt-1"><Badge color={v.invited ? 'green' : 'gray'}>{v.invited ? 'Invited' : 'Walk-in'}</Badge></div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={v.overstay ? 'inline-flex items-center gap-1 font-medium text-amber-700 dark:text-amber-400' : 'inline-flex items-center gap-1 text-slate-700 dark:text-slate-300'}>
-                      {v.overstay ? <AlertTriangle size={14} /> : <Clock size={14} />}{duration(v.minutesOnSite)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="secondary" disabled={busy === v.id} onClick={() => checkOut(v.id)}>{busy === v.id ? 'Checking out…' : 'Check out'}</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RowList caption={`${shown.length} on site`}>
+          {shown.map((v) => (
+            <PersonRow key={v.id} name={v.name} highlight={v.overstay ? 'warn' : null}
+              status={<><Pill tone={v.invited ? 'green' : 'gray'}>{v.invited ? 'Invited' : 'Walk-in'}</Pill>{v.tagNumber && <Pill tone="blue">Tag {v.tagNumber}</Pill>}</>}
+              meta={[v.phone, v.nationalId && `ID ${v.nationalId}`, v.company]}
+              details={v.hostName ? <>Visiting <span className="font-medium text-slate-700 dark:text-slate-300">{v.hostName}</span>{v.purpose ? ` · ${v.purpose}` : ''}</> : v.purpose}
+              aside={<>
+                <span className={`inline-flex items-center gap-1 font-semibold tabular-nums ${v.overstay ? 'text-amber-700 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>{v.overstay ? <AlertTriangle size={14} /> : <Clock size={14} />}{duration(v.minutesOnSite)}</span>
+                <span className="block text-xs text-slate-500">in at {stamp(v.checkInAt)}{v.checkInGate ? ` · ${v.checkInGate}` : ''}</span>
+              </>}
+              actions={<Button size="sm" variant="secondary" disabled={busy === v.id} onClick={() => checkOut(v.id)}>{busy === v.id ? 'Checking out…' : 'Check out'}</Button>}
+            />
+          ))}
+        </RowList>
       )}
     </div>
   );

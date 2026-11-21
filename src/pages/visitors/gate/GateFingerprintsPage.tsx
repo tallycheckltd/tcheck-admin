@@ -41,7 +41,7 @@ export function GateFingerprintsPage() {
   const remove = (r: Row) => run(`del-${r.userId}`, async () => { await api.delete(`/visitors/biometrics/${r.userId}`); await refetch({ silent: true }); });
 
   return (
-    <GateShell title="Fingerprints" intro="Fingerprints open the gates only on a person's programme days. They are stored on your BioStar server, never in Tcheck, and deleted after the programme ends."
+    <GateShell title="Fingerprints" intro="Fingerprints open the flap barriers only on a person's programme days. They are stored on your BioStar server, never in Tcheck, and deleted after the programme ends."
       actions={<Button onClick={() => setEnrolOpen(true)}><Fingerprint size={16} /> Enrol a fingerprint</Button>}>
       <ErrorLine error={error} />
       {data && (
@@ -80,7 +80,7 @@ export function GateFingerprintsPage() {
   );
 }
 
-const CONSENT = 'The person is here and agrees that their fingerprint is used to let them through the gates on their programme days. It is stored only on the school\'s door system, never by Tcheck, and deleted after their programme ends or when they withdraw consent.';
+const CONSENT = 'The person is here and agrees that their fingerprint is used to let them through the flap barriers on their programme days. It is stored only on the school\'s door system, never by Tcheck, and deleted after their programme ends or when they withdraw consent.';
 
 function EnrolModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState('');
@@ -155,7 +155,7 @@ function EnrolModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               {!status?.job?.steps?.length && !failed && <li className="flex items-center gap-2 text-slate-400"><Circle size={16} />Sending to BioStar</li>}
             </ol>
             {failed && <p className="text-rose-600">{status?.failureReason ?? status?.job?.error}</p>}
-            <div className="flex justify-end gap-2">{failed && <Button variant="secondary" onClick={() => setEnrolmentId(null)}>Try again</Button>}<Button onClick={onClose}>{done ? 'Done' : 'Close'}</Button></div>
+            <div className="flex justify-end gap-2">{failed && <Button variant="secondary" onClick={() => setEnrolmentId(null)}>Try again</Button>}{done && <Button variant="secondary" onClick={() => { setEnrolmentId(null); setPerson(null); setQ(''); setAgreed(false); }}>Enrol the next person</Button>}<Button onClick={onClose}>{done ? 'Done' : 'Close'}</Button></div>
           </div>
         )}
       </div>

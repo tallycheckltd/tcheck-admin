@@ -8,7 +8,7 @@ import { tomorrowMorning, toIsoWindow, describeWindow } from './timeWindows';
 import type { GuestEntry } from './visitorsApi';
 
 /**
- * Visitors (2026-11-13) — "Invite again": the people you've invited before (admins: the school's),
+ * Visitors (2026-11-13) — "Invite again": the people you've invited before (yours only, admins too — 2026-11-21),
  * most recent first. Tap one to fill the form; tick several to invite them together to one slot
  * (a meeting, an event) — each still gets their own invitation, code and email.
  */
@@ -16,7 +16,7 @@ import type { GuestEntry } from './visitorsApi';
 const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
 const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null);
 
-export function GuestPicker({ guests, loading, onPick, onGroupDone, admin }: { guests: GuestEntry[]; loading: boolean; onPick: (g: GuestEntry) => void; onGroupDone: () => void; admin: boolean }) {
+export function GuestPicker({ guests, loading, onPick, onGroupDone }: { guests: GuestEntry[]; loading: boolean; onPick: (g: GuestEntry) => void; onGroupDone: () => void; admin?: boolean }) {
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [when, setWhen] = useState(tomorrowMorning);
@@ -48,7 +48,7 @@ export function GuestPicker({ guests, loading, onPick, onGroupDone, admin }: { g
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="invite-again" className="flex items-center gap-2 font-semibold text-slate-950 dark:text-white"><History size={18} className="text-blue-500" />Invite again</h2>
-          <p className="text-xs text-slate-500 mt-0.5">{admin ? 'Everyone invited at your school.' : 'People you have invited before.'} Tap to fill the form, or tick several to invite them together.</p>
+          <p className="text-xs text-slate-500 mt-0.5">People you have invited before. Tap to fill the form, or tick several to invite them together.</p>
         </div>
       </div>
       <div className="relative">
@@ -72,7 +72,7 @@ export function GuestPicker({ guests, loading, onPick, onGroupDone, admin }: { g
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-slate-900 dark:text-white">{g.name}{g.isBlocked && <span className="ml-2 text-xs font-normal text-rose-600">Blocked</span>}</span>
                       <span className="block truncate text-xs text-slate-500">
-                        {[g.company, `Invited ${g.timesInvited}×`, g.lastVisitAt ? `last here ${shortDate(g.lastVisitAt)}` : g.lastInvitedAt ? `last invited ${shortDate(g.lastInvitedAt)}` : null, admin && g.lastInvitedBy ? `by ${g.lastInvitedBy}` : null].filter(Boolean).join(' · ')}
+                        {[g.company, `Invited ${g.timesInvited}×`, g.lastVisitAt ? `last here ${shortDate(g.lastVisitAt)}` : g.lastInvitedAt ? `last invited ${shortDate(g.lastInvitedAt)}` : null].filter(Boolean).join(' · ')}
                       </span>
                     </span>
                   </button>

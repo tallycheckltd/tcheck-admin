@@ -30,7 +30,7 @@ export function GateAlertsPage() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const resolve = (a: Alert) => run(a.id, async () => { await api.post(`/visitors/alerts/${a.id}/resolve`, { note: notes[a.id] || undefined }); await refetch({ silent: true }); });
   return (
-    <GateShell title="Suspicious activity" intro="Signs that a pass may have been shared, and gates that need a look. BioStar already refused the scan; these make it visible. ICT Admins get an email for the first few of each kind a day.">
+    <GateShell title="Suspicious activity" intro="Signs that a pass may have been shared, and flap barriers that need a look. BioStar already refused the scan; these make it visible. ICT Admins get an email for the first few of each kind a day.">
       <ErrorLine error={error} />
       <div className="flex flex-wrap gap-2">
         <select id="al-open" aria-label="Show" className={selectCls} value={open} onChange={(e) => setOpen(e.target.value as 'true')}><option value="true">Open</option><option value="false">Resolved</option><option value="">All</option></select>
@@ -80,7 +80,7 @@ export function GateJobsPage() {
   const { busy, error, run } = useAction();
   const retry = (j: Job) => run(j.id, async () => { await api.post(`/visitors/biostar/jobs/${j.id}/retry`); await refetch({ silent: true }); });
   return (
-    <GateShell title="Sync jobs" intro="Every change Tcheck sends to BioStar through the connector, and how long BioStar took. Failed jobs retry on their own (up to 8 times); a door or fingerprint request is never retried later.">
+    <GateShell title="Sync jobs" intro="Every change Tcheck sends to BioStar through the connector, and how long BioStar took. Failed jobs retry on their own (up to 8 times); a barrier-open or fingerprint request is never retried later.">
       <ErrorLine error={error} />
       <Panel title={data ? `${data.total} job(s)` : 'Jobs'}>
         <div className="mb-4 flex flex-wrap gap-2">
@@ -156,12 +156,12 @@ interface Report {
 }
 interface Audit { total: number; entries: { id: string; at: string; action: string; actor: string; actorRole: string; entityType: string; after: Record<string, unknown> | null }[] }
 const ACTION: Record<string, string> = {
-  'gate.doorOpened': 'Opened a door', 'gate.accessSuspended': 'Suspended access', 'gate.accessResumed': 'Resumed access', 'gate.credentialRevoked': 'Revoked a code',
+  'gate.doorOpened': 'Opened a barrier', 'gate.accessSuspended': 'Suspended access', 'gate.accessResumed': 'Resumed access', 'gate.credentialRevoked': 'Revoked a code',
   'gate.alertResolved': 'Resolved an alert', 'gate.biometricConsent': 'Fingerprint consent', 'gate.biometricConsentWithdrawn': 'Consent withdrawn', 'gate.biometricEnrolStarted': 'Started fingerprint enrolment',
   'gate.biometricEnrolled': 'Fingerprint enrolled', 'gate.biometricDeleteRequested': 'Fingerprint deletion requested', 'gate.biometricDeleted': 'Fingerprint deleted',
-  'gate.readerChanged': 'Changed a reader', 'gate.tabletDoorLinked': 'Linked a tablet to a door', 'gate.reconcileFixed': 'Fixed BioStar differences',
+  'gate.readerChanged': 'Changed a reader or lane', 'gate.tabletDoorLinked': 'Linked a tablet to a lane', 'gate.reconcileFixed': 'Fixed BioStar differences',
   'gate.platformDisabled': 'Tcheck support switched the link off', 'gate.platformEnabled': 'Tcheck support switched the link on',
-  'biostar.tokenGenerated': 'New connector token', 'biostar.settingsChanged': 'Changed gate settings', 'visitor.passDeviceReset': 'Moved a visitor pass to another phone',
+  'biostar.tokenGenerated': 'New connector token', 'biostar.settingsChanged': 'Changed flap barrier settings', 'visitor.passDeviceReset': 'Moved a visitor pass to another phone',
 };
 const BLUE = '#3B82F6';
 const AXIS = { fontSize: 11, fill: '#94a3b8' } as const;
@@ -179,10 +179,10 @@ export function GateReportsPage() {
     if (!r) return;
     const lines = ['Day,Entries,Exits,Refused,Visitors,Delegates and staff', ...r.days.map((d) => [d.day, d.entries, d.exits, d.refusals, d.visitors, d.people].join(','))];
     const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
-    const a = document.createElement('a'); a.href = url; a.download = `gate-report-${from}-to-${to}.csv`; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url; a.download = `flap-barrier-report-${from}-to-${to}.csv`; a.click(); URL.revokeObjectURL(url);
   };
   return (
-    <GateShell title="Reports and audit" intro="Traffic through your gates, refusals and fingerprints for a period, and every change made to the gate (who, when, why)."
+    <GateShell title="Reports and audit" intro="Passages through your flap barriers, refusals and fingerprints for a period, and every change made (who, when, why)."
       actions={<Button variant="secondary" size="sm" onClick={csv} disabled={!r}>Download CSV</Button>}>
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs text-slate-500">From<input id="rep-from" type="date" className={`${inputCls} mt-1`} value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></label>
@@ -198,14 +198,14 @@ export function GateReportsPage() {
             <Tile label="Fingerprints deleted" value={r.fingerprints.deletedInRange} sub="in period" />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            <Panel title="Entries per day">
+            <Panel title="Passages in per day">
               <div className="h-48"><ResponsiveContainer width="100%" height="100%"><BarChart data={r.days} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}><CartesianGrid stroke="rgba(148,163,184,0.18)" vertical={false} /><XAxis dataKey="day" tick={AXIS} tickFormatter={(d: string) => d.slice(5)} /><YAxis tick={AXIS} allowDecimals={false} /><Tooltip /><Bar dataKey="entries" name="Entries" fill={BLUE} radius={[4, 4, 0, 0]} isAnimationActive={false} /></BarChart></ResponsiveContainer></div>
             </Panel>
             <Panel title="Busiest hours" hint="Entries by hour of day">
               <div className="h-48"><ResponsiveContainer width="100%" height="100%"><BarChart data={r.hours} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}><CartesianGrid stroke="rgba(148,163,184,0.18)" vertical={false} /><XAxis dataKey="hour" tick={AXIS} tickFormatter={(h: number) => String(h).padStart(2, '0')} /><YAxis tick={AXIS} allowDecimals={false} /><Tooltip labelFormatter={(h) => `${String(h).padStart(2, '0')}:00`} /><Bar dataKey="entries" name="Entries" fill={BLUE} radius={[4, 4, 0, 0]} isAnimationActive={false} /></BarChart></ResponsiveContainer></div>
             </Panel>
-            <Panel title="By door">
-              <DataTable head={['Door', 'Entries', 'Exits', 'Refused']} empty={!r.doors.length ? 'No scans in this period.' : false}>
+            <Panel title="By lane">
+              <DataTable head={['Lane', 'Passages in', 'Passages out', 'Refused']} empty={!r.doors.length ? 'No scans in this period.' : false}>
                 {r.doors.map((d) => <tr key={d.door}><td className="px-5 py-2">{d.door}</td><td className="px-5 py-2 tabular-nums">{d.entries}</td><td className="px-5 py-2 tabular-nums">{d.exits}</td><td className="px-5 py-2 tabular-nums">{d.refusals}</td></tr>)}
               </DataTable>
             </Panel>
@@ -218,7 +218,7 @@ export function GateReportsPage() {
           </div>
         </>
       )}
-      <Panel title="Gate audit log" hint="Every door opened from Tcheck, code revoked, access suspended, fingerprint enrolled or deleted, and setting changed.">
+      <Panel title="Flap barrier audit log" hint="Every barrier opened from Tcheck, code revoked, access suspended, fingerprint enrolled or deleted, and setting changed.">
         <DataTable head={['When', 'Who', 'What', 'Detail']} empty={audit && !audit.entries.length ? 'Nothing yet.' : false}>
           {audit?.entries.map((e) => (
             <tr key={e.id}>

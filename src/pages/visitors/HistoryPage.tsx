@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { ClipboardList, Download, Loader2 } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../lib/api';
-import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { duration, stamp, type AdminVisit } from './visitorsApi';
+import { PageHeader, Segmented, RowList, PersonRow, Pill, ListSkeleton } from './visitorsUi';
 
 /**
  * Visitors (2026-11-13) — every visit (ICT Admin, School Admin): search, dates, host, status and
@@ -64,79 +64,44 @@ export function HistoryPage() {
     }
   };
 
-  const select = 'w-full h-[42px] rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm text-slate-900 dark:text-white';
-
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Visitor history</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Every visit with arrival, departure and time on site.</p>
-        </div>
-        <Button variant="secondary" onClick={exportCsv} disabled={exporting || rows.length === 0}>
-          {exporting ? <Loader2 size={16} className="animate-spin mr-2" /> : <Download size={16} className="mr-2" />}Export CSV
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Visitor history" intro="Every visit with arrival, departure and time on site."
+        actions={<Button variant="secondary" onClick={exportCsv} disabled={exporting || rows.length === 0}>{exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}Export CSV</Button>} />
 
-      <div className="glass-card p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-7 items-end">
-        <div className="lg:col-span-2"><SearchInput id="history-search" label="Search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, phone, ID, tag" /></div>
-        <Input id="history-from" label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input id="history-to" label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        <Input id="history-host" label="Host" value={host} onChange={(e) => setHost(e.target.value)} placeholder="Any host" />
-        <label htmlFor="history-status" className="block">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Status</span>
-          <select id="history-status" className={select} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-            <option value="">Any</option><option value="onsite">On site</option><option value="left">Left</option>
-          </select>
-        </label>
-        <label htmlFor="history-type" className="block">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Type</span>
-          <select id="history-type" className={select} value={type} onChange={(e) => setType(e.target.value as typeof type)}>
-            <option value="">All</option><option value="invited">Invited</option><option value="walkin">Walk-in</option>
-          </select>
-        </label>
-      </div>
+      <section className="space-y-4 rounded-2xl bg-white p-4 ring-1 ring-slate-900/5 dark:bg-white/[0.03] dark:ring-white/10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Segmented label="Status" value={status || 'any'} onChange={(k) => setStatus(k === 'any' ? '' : k)} options={[{ key: 'any', label: 'All visits' }, { key: 'onsite', label: 'On site' }, { key: 'left', label: 'Left' }]} />
+          <Segmented label="Type" value={type || 'all'} onChange={(k) => setType(k === 'all' ? '' : k)} options={[{ key: 'all', label: 'Everyone' }, { key: 'invited', label: 'Invited' }, { key: 'walkin', label: 'Walk-ins' }]} />
+        </div>
+        <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="lg:col-span-2"><SearchInput id="history-search" label="Search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, phone, ID, tag" /></div>
+          <Input id="history-from" label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <Input id="history-to" label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <Input id="history-host" label="Host" value={host} onChange={(e) => setHost(e.target.value)} placeholder="Any host" />
+        </div>
+      </section>
 
       {exportError && <p className="text-sm text-red-600 dark:text-red-400">{exportError}</p>}
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      {loading && !data ? (
-        <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" /> Loading…</p>
-      ) : rows.length === 0 ? (
+      {loading && !data ? <ListSkeleton /> : rows.length === 0 ? (
         <EmptyState icon={ClipboardList} title="No visits match" description="Widen the dates or clear a filter." />
       ) : (
-        <div className="glass-card overflow-x-auto">
-          <p className="px-4 pt-3 text-xs text-slate-500">{rows.length === 1000 ? 'Showing the newest 1,000 visits. Narrow the dates to see older ones, or export.' : `${rows.length} visit${rows.length === 1 ? '' : 's'}`}</p>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-gray-100 dark:border-white/5">
-                <th className="px-4 py-3 font-medium">Visitor</th>
-                <th className="px-4 py-3 font-medium">ID number</th>
-                <th className="px-4 py-3 font-medium">Host</th>
-                <th className="px-4 py-3 font-medium">Tag</th>
-                <th className="px-4 py-3 font-medium">Arrived</th>
-                <th className="px-4 py-3 font-medium">Left</th>
-                <th className="px-4 py-3 font-medium">Time on site</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-              {rows.map((v) => (
-                <tr key={v.id}>
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-slate-950 dark:text-white">{v.name} <span className="ml-1 align-middle"><Badge color={v.invited ? 'green' : 'gray'}>{v.invited ? 'Invited' : 'Walk-in'}</Badge></span></p>
-                    <p className="text-xs text-slate-500 tabular-nums">{v.phone}{v.company ? ` · ${v.company}` : ''}</p>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-slate-300">{v.nationalId ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{v.hostName ?? '—'}{v.purpose && <p className="text-xs text-slate-500">{v.purpose}</p>}</td>
-                  <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">{v.tagNumber ?? '—'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{stamp(v.checkInAt)}{v.checkInGate && <span className="block text-xs text-slate-500">{v.checkInGate}</span>}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{v.checkOutAt ? stamp(v.checkOutAt) : <Badge color="blue">On site</Badge>}{v.checkOutGate && <span className="block text-xs text-slate-500">{v.checkOutGate}</span>}</td>
-                  <td className="px-4 py-3 whitespace-nowrap tabular-nums text-slate-700 dark:text-slate-300">{duration(v.minutesOnSite)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RowList caption={rows.length === 1000 ? 'Showing the newest 1,000 visits. Narrow the dates to see older ones, or export.' : `${rows.length} visit${rows.length === 1 ? '' : 's'}, newest first`}>
+          {rows.map((v) => (
+            <PersonRow key={v.id} name={v.name}
+              status={<><Pill tone={v.invited ? 'green' : 'gray'}>{v.invited ? 'Invited' : 'Walk-in'}</Pill>{!v.checkOutAt && <Pill tone="blue">On site</Pill>}{v.tagNumber && <Pill>Tag {v.tagNumber}</Pill>}</>}
+              meta={[v.phone, v.nationalId && `ID ${v.nationalId}`, v.company]}
+              details={v.hostName ? <>Visited <span className="font-medium text-slate-700 dark:text-slate-300">{v.hostName}</span>{v.purpose ? ` · ${v.purpose}` : ''}</> : v.purpose}
+              aside={<>
+                <span className="font-semibold tabular-nums text-slate-900 dark:text-white">{duration(v.minutesOnSite)}</span>
+                <span className="block text-xs text-slate-500">in {stamp(v.checkInAt)}{v.checkInGate ? ` · ${v.checkInGate}` : ''}</span>
+                <span className="block text-xs text-slate-500">{v.checkOutAt ? <>out {stamp(v.checkOutAt)}{v.checkOutGate ? ` · ${v.checkOutGate}` : ''}</> : 'still on site'}</span>
+              </>}
+            />
+          ))}
+        </RowList>
       )}
     </div>
   );

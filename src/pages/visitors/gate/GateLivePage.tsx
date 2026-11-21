@@ -53,13 +53,13 @@ export function GateLivePage() {
     const p = new URLSearchParams(qs); p.delete('page'); p.delete('pageSize');
     const csv = await api.getText(`/visitors/biostar/events/export?${p.toString()}`);
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    const a = document.createElement('a'); a.href = url; a.download = 'gate-scans.csv'; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url; a.download = 'flap-barrier-scans.csv'; a.click(); URL.revokeObjectURL(url);
   };
 
   return (
     <GateShell
       title="Live feed"
-      intro="Every scan at your gates as it happens. Refused scans show BioStar's reason."
+      intro="Every scan at your flap barriers as it happens. Refused scans show BioStar's reason."
       actions={<>
         <Button variant="secondary" size="sm" onClick={() => setPaused((p) => !p)}>{paused ? <><Play size={14} /> Resume</> : <><Pause size={14} /> Pause</>}</Button>
         <Button variant="secondary" size="sm" onClick={() => void exportCsv()}><Download size={14} /> Export CSV</Button>
@@ -69,10 +69,10 @@ export function GateLivePage() {
         <div className="mb-4 grid gap-2 sm:grid-cols-4">
           <label className="text-xs text-slate-500">Result<select id="live-kind" className={`${selectCls} mt-1 w-full`} value={f.kind} onChange={(e) => set('kind', e.target.value)}><option value="">All</option><option value="GRANTED">Granted</option><option value="DENIED">Refused</option></select></label>
           <label className="text-xs text-slate-500">How<select id="live-cred" className={`${selectCls} mt-1 w-full`} value={f.credentialType} onChange={(e) => set('credentialType', e.target.value)}><option value="">All</option>{['QR', 'FINGER', 'FACE', 'CARD'].map((c) => <option key={c} value={c}>{CREDENTIAL[c]}</option>)}</select></label>
-          <label className="text-xs text-slate-500">Door<select id="live-door" className={`${selectCls} mt-1 w-full`} value={f.doorId} onChange={(e) => set('doorId', e.target.value)}><option value="">All doors</option>{doors?.doors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
+          <label className="text-xs text-slate-500">Lane<select id="live-door" className={`${selectCls} mt-1 w-full`} value={f.doorId} onChange={(e) => set('doorId', e.target.value)}><option value="">All lanes</option>{doors?.doors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
           <label className="text-xs text-slate-500">Person<input id="live-search" className={`${inputCls} mt-1`} placeholder="Name" value={f.search} onChange={(e) => set('search', e.target.value)} /></label>
         </div>
-        <DataTable head={['Time', 'Person', 'How', 'Door · reader', 'Direction', 'Result', 'Reached Tcheck']} empty={data && !data.events.length ? 'No scans match.' : false}>
+        <DataTable head={['Time', 'Person', 'How', 'Lane · reader', 'Direction', 'Result', 'Reached Tcheck']} empty={data && !data.events.length ? 'No scans match.' : false}>
           {data?.events.map((e) => (
             <tr key={e.id} className={fresh.has(e.id) ? 'bg-blue-50/60 transition-colors dark:bg-blue-500/10' : ''}>
               <td className="whitespace-nowrap px-5 py-2.5 tabular-nums" title={stamp(e.at)}>{time(e.at)}</td>

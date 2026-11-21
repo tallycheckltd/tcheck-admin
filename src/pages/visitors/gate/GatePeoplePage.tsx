@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, GraduationCap, Loader2, RefreshCw } from 'lucide-react';
+import { Modal } from '../../../components/ui/Modal';
 import { useApi } from '../../../hooks/useApi';
 import { api } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
@@ -42,8 +43,11 @@ function PeopleList() {
   const { data, refetch } = useApi<PeoplePage>(`/visitors/biostar/people?${qs}`);
   useGateLive(() => void refetch({ silent: true }), ['identity']);
   const set = (k: keyof typeof f, v: string) => { setPage(0); setF((x) => ({ ...x, [k]: v })); };
+  const [grantOpen, setGrantOpen] = useState(false);
   return (
-    <GateShell title="People" intro="Everyone Tcheck has put in BioStar. Codes show their last 4 characters only.">
+    <GateShell title="People" intro="Everyone Tcheck has put in BioStar. Codes show their last 4 characters only."
+      actions={<Button onClick={() => setGrantOpen(true)}><GraduationCap size={16} /> Give a programme access</Button>}>
+      {grantOpen && <ProgrammeAccessModal onClose={() => { setGrantOpen(false); void refetch({ silent: true }); }} />}
       <Panel title={data ? `${data.total} people` : 'People'}>
         <div className="mb-4 grid gap-2 sm:grid-cols-3">
           <label className="text-xs text-slate-500">Who<select id="ppl-kind" className={`${selectCls} mt-1 w-full`} value={f.kind} onChange={(e) => set('kind', e.target.value)}><option value="">Everyone</option><option value="PERSON">Delegates and staff</option><option value="VISITOR">Visitors</option><option value="WALKIN">Walk-ins</option></select></label>
@@ -97,7 +101,7 @@ function PersonDetail({ id }: { id: string }) {
             <Panel title="Access now">
               <div className="space-y-2 text-sm">
                 <p><AccessBadge p={i} /></p>
-                <p className="text-slate-600 dark:text-slate-400">{i.enabled && i.expiresAt ? `Until ${stamp(i.expiresAt)} (BioStar ends it by itself then)` : 'BioStar will refuse this person now.'}</p>
+                <p className="text-slate-600 dark:text-slate-400">{i.enabled && i.expiresAt ? `Until ${stamp(i.expiresAt)} (BioStar ends it by itself then)` : 'The flap barriers will refuse this person now.'}</p>
                 {i.suspendedAt && <p className="text-rose-600">Suspended {ago(i.suspendedAt)}: {i.suspendedReason}</p>}
                 <p className="text-xs text-slate-500">Last change sent {ago(i.lastSyncQueuedAt)} · in step with BioStar {ago(i.lastSyncedAt)}{i.lastSyncError ? ` · error: ${i.lastSyncError}` : ''}</p>
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -147,7 +151,7 @@ function PersonDetail({ id }: { id: string }) {
           </Panel>
           <div className="grid gap-4 lg:grid-cols-2">
             <Panel title="Scans">
-              <DataTable head={['Time', 'How', 'Door', 'Result']} empty={!data.events.length ? 'No scans yet.' : false}>
+              <DataTable head={['Time', 'How', 'Lane', 'Result']} empty={!data.events.length ? 'No scans yet.' : false}>
                 {data.events.map((e) => (
                   <tr key={e.id}>
                     <td className="px-5 py-2 text-xs tabular-nums">{stamp(e.at)}</td>
@@ -173,5 +177,44 @@ function PersonDetail({ id }: { id: string }) {
         </>
       )}
     </GateShell>
+  );
+}
+
+interface Programme { id: string; name: string; startDate: string; endDate: string; members: number; withAccess: number; opensAt: string }
+
+/** Every active member of a programme gets the flap barrier pass and today's code at once. */
+function ProgrammeAccessModal({ onClose }: { onClose: () => void }) {
+  const { data, refetch } = useApi<{ programmes: Programme[] }>('/visitors/biostar/programmes');
+  const { busy, error, run } = useAction();
+  const [result, setResult] = useState<Record<string, string>>({});
+  const grant = (p: Programme) => run(p.id, async () => {
+    const r = await api.post<{ members: number; ready: number; notOpenYet: number; failed: number }>(`/visitors/biostar/programmes/${p.id}/grant`);
+    setResult((x) => ({ ...x, [p.id]: `${r.ready} of ${r.members} ready${r.notOpenYet ? `, ${r.notOpenYet} open on ${stamp(p.opensAt)}` : ''}${r.failed ? `, ${r.failed} failed` : ''}` }));
+    await refetch({ silent: true });
+  });
+  return (
+    <Modal open onClose={onClose} title="Give a programme access">
+      <div className="space-y-4 text-sm">
+        <p className="text-slate-600 dark:text-slate-400">Everyone in the programme gets their campus pass and today's code on the flap barriers straight away, so the first scan works even before they open the app. Passes open one day before the programme starts.</p>
+        <ErrorLine error={error} />
+        {!data && <p className="flex items-center gap-2 text-slate-500"><Loader2 size={16} className="animate-spin" />Loading programmes…</p>}
+        {data && !data.programmes.length && <p className="text-slate-500">No current or upcoming programmes with dates.</p>}
+        <ul className="divide-y divide-slate-100 dark:divide-white/5">
+          {data?.programmes.map((p) => (
+            <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="font-medium text-slate-950 dark:text-white">{p.name}</p>
+                <p className="text-xs text-slate-500">{stamp(p.startDate).split(' ')[0]} – {stamp(p.endDate).split(' ')[0]} · {p.members} member(s) · {p.withAccess} with access</p>
+                {result[p.id] && <p className="text-xs text-emerald-700 dark:text-emerald-400">{result[p.id]}</p>}
+              </div>
+              <Button size="sm" variant={p.withAccess >= p.members ? 'secondary' : 'primary'} disabled={busy === p.id || !p.members} onClick={() => void grant(p)}>
+                {busy === p.id ? 'Giving access…' : p.withAccess >= p.members ? 'Refresh access' : 'Give access'}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <div className="flex justify-end"><Button variant="secondary" onClick={onClose}>Close</Button></div>
+      </div>
+    </Modal>
   );
 }

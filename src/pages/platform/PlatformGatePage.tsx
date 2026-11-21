@@ -33,7 +33,7 @@ export function PlatformGatePage() {
 function Header({ title, intro, back }: { title: string; intro: string; back?: boolean }) {
   return (
     <div className="space-y-1">
-      {back && <Link to="/platform/gate" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"><ArrowLeft size={14} /> All gates</Link>}
+      {back && <Link to="/platform/gate" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"><ArrowLeft size={14} /> All flap barriers</Link>}
       <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{title}</h1>
       <p className="max-w-3xl text-sm text-slate-600 dark:text-slate-400">{intro}</p>
     </div>
@@ -50,7 +50,7 @@ function AllGates() {
   const s = data?.schools ?? [];
   return (
     <div className="space-y-5">
-      <Header title="Gates" intro="Every school's BioStar 2 link. Schools that are offline or need attention come first." />
+      <Header title="Flap barriers" intro="Every school's flap barriers and BioStar 2 link. Schools that are offline or need attention come first." />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Tile label="Schools with a link" value={s.filter((x) => x.health !== 'NOT_SET_UP').length} />
         <Tile label="Offline" value={s.filter((x) => x.health === 'OFFLINE').length} tone={s.some((x) => x.health === 'OFFLINE') ? 'bad' : 'default'} />
@@ -103,7 +103,7 @@ function AllGates() {
         </Panel>
       )}
       {tab === 'Audit' && (
-        <Panel title="Gate changes across schools" hint="Kill switch, connector tokens and gate settings.">
+        <Panel title="Flap barrier changes across schools" hint="Kill switch, connector tokens and flap barrier settings.">
           <DataTable head={['When', 'School', 'What', 'By']} empty={audit && !audit.entries.length ? 'Nothing yet.' : false}>
             {audit?.entries.map((e) => <tr key={e.id}><td className="px-5 py-2 text-xs">{stamp(e.at)}</td><td className="px-5 py-2 text-xs">{e.school}</td><td className="px-5 py-2 text-xs">{e.action.replace(/^(gate|biostar)\./, '').replace(/([A-Z])/g, ' $1').toLowerCase()}{typeof e.after?.reason === 'string' ? `: ${e.after.reason}` : ''}</td><td className="px-5 py-2 text-xs">{e.actorRole.toLowerCase().replace(/_/g, ' ')}</td></tr>)}
           </DataTable>
@@ -131,7 +131,7 @@ function SchoolGate({ schoolId }: { schoolId: string }) {
   const name = data ? (data.school.institutionName ? `${data.school.institutionName} · ${data.school.name}` : data.school.name) : 'School';
   return (
     <div className="space-y-5">
-      <Header back title={name} intro="This school's gate, read only. People are not named here; fingerprints are counted, never shown." />
+      <Header back title={name} intro="This school's flap barriers, read only. People are not named here; fingerprints are counted, never shown." />
       <ErrorLine error={error} />
       {loading && !data && <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" />Loading…</p>}
       {data && (
@@ -142,14 +142,14 @@ function SchoolGate({ schoolId }: { schoolId: string }) {
             <Tile label="Today" value={data.overview.today.entries} sub={`${data.overview.today.exits} out · ${data.overview.today.refusals} refused`} />
             <Tile label="Fingerprints" value={data.overview.fingerprints} sub={`${data.overview.peopleWithAccess} people with access now`} />
           </div>
-          <Panel title="Kill switch" hint={disabled ? `Switched off: ${data.overview.connector.platformDisabledReason}` : 'Cuts this school\'s connector at once and stops all gate jobs. ICT must generate a new token afterwards.'}
+          <Panel title="Kill switch" hint={disabled ? `Switched off: ${data.overview.connector.platformDisabledReason}` : 'Cuts this school\'s connector at once and stops all flap barrier jobs. ICT must generate a new token afterwards.'}
             actions={disabled
               ? <Button size="sm" disabled={busy === 'on'} onClick={() => void run('on', async () => { await api.post(`/platform/biostar/schools/${schoolId}/enable`); await refetch({ silent: true }); })}>Switch back on</Button>
               : <Button size="sm" variant="danger" onClick={() => setConfirm(true)}><Power size={14} /> Switch off</Button>}>
             <p className="text-xs text-slate-500">Codes already in BioStar keep working until their day ends; BioStar removes them by itself.</p>
           </Panel>
           <div className="grid gap-4 lg:grid-cols-2">
-            <Panel title="Doors">
+            <Panel title="Lanes">
               <ul className="divide-y divide-slate-100 text-sm dark:divide-white/5">
                 {data.doors.doors.map((d) => <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2"><span>{d.name} <span className="text-xs text-slate-500">{d.readers.length} reader(s)</span></span><span className="flex items-center gap-2 text-xs"><Badge color={(DOOR_STATE[d.state] ?? DOOR_STATE.UNKNOWN!)[0]}>{(DOOR_STATE[d.state] ?? DOOR_STATE.UNKNOWN!)[1]}</Badge>{d.today.in} in · {d.today.refused} refused</span></li>)}
                 {!data.doors.doors.length && <li className="py-2 text-slate-500">No doors reported.</li>}
@@ -162,7 +162,7 @@ function SchoolGate({ schoolId }: { schoolId: string }) {
               </ul>
             </Panel>
             <Panel title="Recent scans">
-              <DataTable head={['Time', 'How', 'Door', 'Result']}>
+              <DataTable head={['Time', 'How', 'Lane', 'Result']}>
                 {data.events.events.slice(0, 15).map((e) => <tr key={e.id}><td className="px-5 py-2 text-xs">{stamp(e.at)}</td><td className="px-5 py-2 text-xs">{CREDENTIAL[e.credentialType ?? 'UNKNOWN']}</td><td className="px-5 py-2 text-xs">{e.door ?? '—'}</td><td className="px-5 py-2">{e.result === 'GRANTED' ? <Badge color="green">Granted</Badge> : <Badge color="red">Refused</Badge>}</td></tr>)}
               </DataTable>
             </Panel>
@@ -174,7 +174,7 @@ function SchoolGate({ schoolId }: { schoolId: string }) {
           </div>
         </>
       )}
-      <Modal open={confirm} onClose={() => setConfirm(false)} title={`Switch off ${name}'s gate link`}>
+      <Modal open={confirm} onClose={() => setConfirm(false)} title={`Switch off ${name}'s flap barrier link`}>
         <form className="space-y-4 text-sm" onSubmit={(e) => { e.preventDefault(); void run('off', async () => { await api.post(`/platform/biostar/schools/${schoolId}/disable`, { reason }); setConfirm(false); await refetch({ silent: true }); }); }}>
           <p>The connector's token stops working now and every waiting job is cancelled. The school's ICT is shown your reason.</p>
           <label className="block">Reason<input id="kill-reason" className={`${inputCls} mt-1`} value={reason} onChange={(e) => setReason(e.target.value)} required minLength={5} /></label>

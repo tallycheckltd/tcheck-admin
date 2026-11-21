@@ -38,7 +38,7 @@ export function GateOverviewPage() {
   const drift = c?.clockDriftMs != null && Math.abs(c.clockDriftMs) > 60_000;
 
   return (
-    <GateShell title="Overview" intro="Your BioStar 2 gates at a glance. QR codes and fingerprints open the doors through BioStar; this shows whether Tcheck and BioStar are in step and what happened today.">
+    <GateShell title="Overview" intro="Your flap barriers at a glance. A QR code or fingerprint opens the flap through BioStar 2 in under a second; this shows whether Tcheck and BioStar are in step and who passed through today.">
       {loading && !o && <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" />Loading…</p>}
       {o && c && (
         <>
@@ -48,7 +48,7 @@ export function GateOverviewPage() {
               <div className="space-y-1">
                 {c.platformDisabledAt && <p>Tcheck support switched this link off: {c.platformDisabledReason}. Contact them to switch it back on.</p>}
                 {!c.online && !c.platformDisabledAt && <p>The connector last called in {ago(c.lastSeenAt)}. New codes and Out scans are not reaching BioStar. BioStar still ends every code by the end of its day.</p>}
-                {c.updateRequired && <p>The connector is version {c.version}. Install 1.2.0 or newer: older versions can't run doors, fingerprints or daily codes.</p>}
+                {c.updateRequired && <p>The connector is version {c.version}. Install 1.2.0 or newer: older versions can't open flap barriers, enrol fingerprints or run daily codes.</p>}
                 {drift && <p>The connector's clock is {Math.round(Math.abs(c.clockDriftMs!) / 1000)} s {c.clockDriftMs! > 0 ? 'ahead' : 'behind'}. Set the computer's time automatically.</p>}
               </div>
             </div>
@@ -60,11 +60,11 @@ export function GateOverviewPage() {
             <Tile label="Failed in 24 hours" value={o.queue.failed24h} sub={<Link to="/visitors/gate/jobs?status=FAILED" className="text-blue-600 hover:underline dark:text-blue-400">See sync jobs</Link>} tone={o.queue.failed24h ? 'bad' : 'default'} />
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-            <Tile label="Entries today" value={o.today.entries} />
-            <Tile label="Exits today" value={o.today.exits} />
+            <Tile label="Passages in today" value={o.today.entries} />
+            <Tile label="Passages out today" value={o.today.exits} />
             <Tile label="Refused today" value={o.today.refusals} tone={o.today.refusals ? 'warn' : 'default'} />
             <Tile label="Open alerts" value={<Link to="/visitors/gate/alerts" className="hover:underline">{o.openAlerts}</Link>} tone={o.openAlerts ? 'bad' : 'default'} />
-            <Tile label="Doors needing attention" value={<Link to="/visitors/gate/doors" className="hover:underline">{o.doorsNeedingAttention}</Link>} sub={`${o.readersOffline} reader(s) offline`} tone={o.doorsNeedingAttention || o.readersOffline ? 'bad' : 'default'} />
+            <Tile label="Lanes needing attention" value={<Link to="/visitors/gate/doors" className="hover:underline">{o.doorsNeedingAttention}</Link>} sub={`${o.readersOffline} reader(s) offline`} tone={o.doorsNeedingAttention || o.readersOffline ? 'bad' : 'default'} />
             <Tile label="People with access now" value={o.peopleWithAccess} sub={`${o.liveCodes} live code(s) · ${o.fingerprints} fingerprint(s)`} />
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
@@ -81,7 +81,7 @@ export function GateOverviewPage() {
                     );
                   })}
                 </ul>
-              ) : <p className="text-sm text-slate-500">No one through the gates yet today.</p>}
+              ) : <p className="text-sm text-slate-500">No one through the flap barriers yet today.</p>}
             </Panel>
             <Panel title="Why scans were refused today">
               {o.today.refusalsByReason.length ? (

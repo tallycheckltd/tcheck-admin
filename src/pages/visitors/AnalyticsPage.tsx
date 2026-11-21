@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { BarChart3, Users, MailCheck, DoorOpen, Clock, Loader2, TrendingUp, Building2, UserCheck, PieChart as PieIcon } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
-import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StatCard } from '../../components/ui/StatCard';
 import { duration, type VisitorAnalytics } from './visitorsApi';
+import { PageHeader, Segmented } from './visitorsUi';
 
 /**
  * Visitors (2026-11-13) — visit counts by day and hour, average time on site, invited against
@@ -86,15 +86,8 @@ export function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Visitor analytics</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">How many people visit, when, for how long and who they come to see.</p>
-        </div>
-        <div className="flex gap-2" role="tablist" aria-label="Date range">
-          {RANGES.map((r) => <Button key={r.days} size="sm" role="tab" aria-selected={days === r.days} variant={days === r.days ? 'primary' : 'secondary'} onClick={() => setDays(r.days)}>{r.label}</Button>)}
-        </div>
-      </div>
+      <PageHeader title="Visitor analytics" intro="How many people visit, when, for how long and who they come to see."
+        actions={<Segmented label="Date range" value={String(days)} onChange={(k) => setDays(Number(k) as typeof days)} options={RANGES.map((r) => ({ key: String(r.days), label: r.label }))} />} />
 
       {loading && !data ? (
         <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" /> Loading…</p>

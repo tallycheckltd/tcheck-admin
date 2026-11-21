@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { stamp } from './visitorsApi';
+import { PageHeader } from './visitorsUi';
 
 /**
  * Visitors (2026-11-13) — gate tablets (ICT Admin, School Admin). A tablet is named here and
@@ -98,15 +99,8 @@ export function GateTabletsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Gate tablets</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Name each tablet, then type its activation code into the Tcheck Visitors app once. Nobody signs in on the tablet, and every check-in records which tablet did it.
-          </p>
-        </div>
-        <Button onClick={() => { setName(''); setError(null); setAdding(true); }}><Plus size={16} className="mr-1.5" />Add tablet</Button>
-      </div>
+      <PageHeader title="Barrier tablets" intro="Name each tablet, then type its activation code into the Tcheck Visitors app once. Nobody signs in on the tablet, every check-in records which tablet did it, and a tablet linked to a lane opens that flap barrier."
+        actions={<Button onClick={() => { setName(''); setError(null); setAdding(true); }}><Plus size={16} />Add tablet</Button>} />
 
       {error && !adding && !renaming && !stopping && <p role="alert" className="text-sm text-rose-700 dark:text-red-400">{error}</p>}
 

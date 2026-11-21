@@ -35,6 +35,8 @@ interface Pass {
   barrier: boolean;
   /** Inside the window on the bound phone: ask /activate for today's QR. */
   canActivate: boolean;
+  /** Before the window on the day: stage the code so the flap barrier already has it on arrival. */
+  canStage?: boolean;
   onSite?: boolean;
   deviceKey?: string;
 }
@@ -45,7 +47,7 @@ const readKey = (token: string) => { try { return localStorage.getItem(keyName(t
 const saveKey = (token: string, key: string) => { try { localStorage.setItem(keyName(token), key); } catch { /* private mode: the cookie still holds it */ } };
 
 const STATUS: Record<Status, { label: string; note: string; icon: typeof CheckCircle2; tone: string }> = {
-  VALID: { label: 'Valid now', note: 'Scan the QR at the barrier, or give the code and your ID to the guard.', icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300' },
+  VALID: { label: 'Valid now', note: 'Scan the QR at the flap barrier, or give the code and your ID to the guard.', icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300' },
   NOT_YET_VALID: { label: 'Not yet valid', note: 'Your pass starts working shortly before your visit.', icon: Clock, tone: 'bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300' },
   USED: { label: 'Used', note: 'You were checked in with this pass. Each pass works for one visit.', icon: CheckCircle2, tone: 'bg-slate-100 text-slate-700 ring-slate-500/20 dark:bg-white/10 dark:text-slate-300' },
   EXPIRED: { label: 'Expired', note: 'This visit is over. Ask the person who invited you for a new invitation.', icon: XCircle, tone: 'bg-rose-50 text-rose-800 ring-rose-600/20 dark:bg-red-500/15 dark:text-red-300' },
@@ -89,6 +91,11 @@ export function VisitorPassPage() {
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'This pass can’t be shown right now.'));
   }, [qrToken, headers]);
   useEffect(() => { load(); }, [load]);
+  // Opened early on the day: stage the code quietly (no QR yet), so the first scan at the flap barrier is instant.
+  useEffect(() => {
+    if (!qrToken || !pass?.canStage) return;
+    void fetch(`${API_BASE}/public/visitor-pass/${encodeURIComponent(qrToken)}/activate`, { method: 'POST', cache: 'no-store', credentials: 'include', headers: { 'Content-Type': 'application/json', ...headers() }, body: '{}' }).catch(() => null);
+  }, [qrToken, pass?.canStage, headers]);
   const opensAtMs = pass ? new Date(pass.opensAt).getTime() : null;
   const waiting = !!pass && !pass.canActivate && pass.barrier && pass.status !== 'USED' && pass.status !== 'EXPIRED' && pass.status !== 'CANCELLED';
   useEffect(() => { if (waiting && opensAtMs && now >= opensAtMs) load(); }, [waiting, opensAtMs, now, load]);
@@ -173,16 +180,16 @@ export function VisitorPassPage() {
                       <div className="mx-auto inline-block rounded-2xl bg-white p-3 ring-1 ring-slate-200">
                         <QRCodeSVG value={cred.value} size={208} level="M" marginSize={0} title="Visitor pass QR code" />
                       </div>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{pass.onSite ? 'Scan it again on your way out.' : 'Scan this at the barrier.'} It works for you only, today.</p>
+                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{pass.onSite ? 'Scan it at the exit flap barrier on your way out.' : 'Scan this at the flap barrier.'} It works for you only, today.</p>
                     </>
                   )}
-                  {pass.canActivate && cred?.state === 'PENDING' && <p className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" />Getting your QR ready at the gate…</p>}
+                  {pass.canActivate && cred?.state === 'PENDING' && <p className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" />Getting your QR ready at the flap barrier…</p>}
                   {pass.canActivate && !cred && !credError && <p className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" />Loading your QR…</p>}
                   {credError && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">{credError}</p>}
                   {pass.code && (
                     <>
-                      <p className="mt-5 text-xs uppercase tracking-[0.14em] text-slate-500">{pass.barrier ? 'Or give this code and your ID to the guard' : 'Gate code — give it and your ID to the guard'}</p>
-                      <p className="mt-1 font-mono text-4xl font-bold tracking-[0.25em] text-slate-950 dark:text-white tabular-nums" aria-label={`Gate code ${pass.code.split('').join(' ')}`}>{pass.code}</p>
+                      <p className="mt-5 text-xs uppercase tracking-[0.14em] text-slate-500">{pass.barrier ? 'Or give this code and your ID to the guard' : 'Your code — give it and your ID to the guard'}</p>
+                      <p className="mt-1 font-mono text-4xl font-bold tracking-[0.25em] text-slate-950 dark:text-white tabular-nums" aria-label={`Visitor code ${pass.code.split('').join(' ')}`}>{pass.code}</p>
                     </>
                   )}
                 </div>

@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { History, MailCheck, Plus, X, Loader2 } from 'lucide-react';
+import { History, MailCheck, Plus, X } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../lib/api';
-import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { InviteForm } from './InviteForm';
-import { STATUS_BADGE, windowLabel, stamp, guestFrom, type InviteStatus, type VisitorInvite } from './visitorsApi';
+import { windowLabel, stamp, guestFrom, type InviteStatus, type VisitorInvite } from './visitorsApi';
+import { PageHeader, Segmented, RowList, PersonRow, Pill, ListSkeleton } from './visitorsUi';
+
+const STATUS_PILL: Record<InviteStatus, ['green' | 'blue' | 'amber' | 'red' | 'gray', string]> = { PENDING: ['blue', 'Expected'], USED: ['green', 'Arrived'], EXPIRED: ['gray', 'Expired'], CANCELLED: ['red', 'Cancelled'] };
 
 /**
  * Visitors (2026-11-13) — every invitation at the school (ICT Admin, School Admin): who invited
@@ -43,72 +45,36 @@ export function InvitesPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Invitations</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Every visitor invited by staff at your school.</p>
-        </div>
-        <Button onClick={() => setShowForm((s) => !s)} variant={showForm ? 'secondary' : 'primary'}>
-          {showForm ? <><X size={16} className="mr-2" />Close</> : <><Plus size={16} className="mr-2" />Invite a visitor</>}
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Invitations" intro="Every visitor invited by staff at your school, and what happened."
+        actions={<Button onClick={() => setShowForm((x) => !x)} variant={showForm ? 'secondary' : 'primary'}>{showForm ? <><X size={16} />Close</> : <><Plus size={16} />Invite a visitor</>}</Button>} />
 
       {showForm && <InviteForm onCreated={() => void refetch({ silent: true })} />}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter by status">
-          {FILTERS.map((f) => (
-            <Button key={f.key || 'all'} size="sm" role="tab" aria-selected={status === f.key} variant={status === f.key ? 'primary' : 'secondary'} onClick={() => setStatus(f.key)}>{f.label}</Button>
-          ))}
-        </div>
+        <Segmented label="Filter by status" value={status || 'ALL'} onChange={(k) => setStatus(k === 'ALL' ? '' : k as InviteStatus)}
+          options={FILTERS.map((f) => ({ key: f.key || 'ALL', label: f.label, count: f.key ? undefined : rows.length }))} />
         <div className="w-full sm:w-72"><SearchInput id="invites-search" aria-label="Search invitations" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Guest, phone, email or code" /></div>
       </div>
 
-      {loading && !data ? (
-        <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" /> Loading…</p>
-      ) : rows.length === 0 ? (
+      {loading && !data ? <ListSkeleton /> : rows.length === 0 ? (
         <EmptyState icon={MailCheck} title="No invitations" description={status || search ? 'Nothing matches this filter.' : 'When staff invite a visitor, the invitation shows here.'} />
       ) : (
-        <div className="glass-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-gray-100 dark:border-white/5">
-                <th className="px-4 py-3 font-medium">Guest</th>
-                <th className="px-4 py-3 font-medium">Invited by</th>
-                <th className="px-4 py-3 font-medium">Visit window</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Sent</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-slate-950 dark:text-white">{r.guestName}</p>
-                    <p className="text-xs text-slate-500 tabular-nums">{r.guestPhone} · {r.guestEmail}{r.guestCompany ? ` · ${r.guestCompany}` : ''}</p>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.hostName ?? '—'}{r.purpose && <p className="text-xs text-slate-500">{r.purpose}</p>}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{windowLabel(r.validFrom, r.validUntil)}</td>
-                  <td className="px-4 py-3">
-                    <Badge color={STATUS_BADGE[r.status][0]}>{STATUS_BADGE[r.status][1]}</Badge>
-                    {r.checkInAt && <p className="mt-1 text-xs text-slate-500">at {stamp(r.checkInAt)}</p>}
-                    {r.status === 'PENDING' && <p className="mt-1 font-mono text-xs tracking-widest text-slate-500">{r.code}</p>}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-500">{stamp(r.createdAt)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      {r.visitorId && <Button size="sm" variant="ghost" onClick={() => again(r)}><History size={14} className="mr-1.5" />Invite again</Button>}
-                      {r.status === 'PENDING' && <Button size="sm" variant="ghost" disabled={busy === r.id} title="The visitor changed phone: unlock the pass and email it again" onClick={() => resetDevice(r.id)}>Reset device</Button>}
-                  {r.status === 'PENDING' && <Button size="sm" variant="secondary" disabled={busy === r.id} onClick={() => cancel(r.id)}>Cancel</Button>}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RowList caption={`${rows.length} invitation${rows.length === 1 ? '' : 's'}`}>
+          {rows.map((r) => (
+            <PersonRow key={r.id} name={r.guestName}
+              status={<><Pill tone={STATUS_PILL[r.status][0]}>{STATUS_PILL[r.status][1]}</Pill>{r.status === 'PENDING' && <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] tracking-widest text-slate-600 dark:bg-white/10 dark:text-slate-300">{r.code}</span>}</>}
+              meta={[r.guestPhone, r.guestEmail, r.guestCompany]}
+              details={<>Invited by <span className="font-medium text-slate-700 dark:text-slate-300">{r.hostName ?? '—'}</span>{r.purpose ? ` · ${r.purpose}` : ''} · sent {stamp(r.createdAt)}</>}
+              aside={<><span className="font-medium text-slate-900 dark:text-white">{windowLabel(r.validFrom, r.validUntil)}</span>{r.checkInAt && <span className="block text-xs text-slate-500">arrived {stamp(r.checkInAt)}</span>}</>}
+              actions={<>
+                {r.visitorId && <Button size="sm" variant="ghost" onClick={() => again(r)}><History size={14} />Invite again</Button>}
+                {r.status === 'PENDING' && <Button size="sm" variant="ghost" disabled={busy === r.id} title="The visitor changed phone: unlock the pass and email it again" onClick={() => resetDevice(r.id)}>Reset device</Button>}
+                {r.status === 'PENDING' && <Button size="sm" variant="secondary" disabled={busy === r.id} onClick={() => cancel(r.id)}>Cancel</Button>}
+              </>}
+            />
+          ))}
+        </RowList>
       )}
     </div>
   );
