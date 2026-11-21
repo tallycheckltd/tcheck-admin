@@ -37,9 +37,19 @@
  *   - every user it makes carries department "Tcheck", and it refuses to change a user without it,
  *     so a clash with a real BioStar user_id can never overwrite a member of staff;
  *   - a BioStar 2 QR (type 7) card names its user_id in the card row.
+ *
+ * 1.3.0 (2026-11-21) — the connector reads what kind of BioStar it is talking to and adapts:
+ *   - server check (every inventory, and in the self-test): version (GET /js/info.json), BioStar 2 or
+ *     BioStar X, the server's time zone (GET /api/preferences/1), and for every QR reader whether QR
+ *     reading is switched on (GET /api/devices/:id/config → barcode.use_barcode); Tcheck turns these
+ *     facts into plain warnings on the setup page;
+ *   - time handling: Suprema documents start/expiry as UTC ("…Z"), but BioStar's own default period
+ *     (2030-12-31T23:59:00.00Z) reads as wall-clock time. The event clock (the newest event's time
+ *     against now) shows which; Tcheck confirms it with the lane test and sends timeShiftMinutes, and
+ *     the connector then writes, reads and searches every BioStar time shifted by it.
  */
 
-const VERSION = '1.2.1';
+const VERSION = '1.3.0';
 const MARKER = 'Tcheck'; // department on every BioStar user the connector creates
 const env = (k, d) => (process.env[k] ?? d);
 const CFG = {
@@ -82,6 +92,8 @@ const BS = {
   session: null,
   cardShape: null, // 'collection' | 'flat', learned from the first card this server accepts
   typeMap: null,   // card_type.id → card_type.type on this server (GET /api/cards/types)
+  /** How far BioStar's clock strings run ahead of UTC (0 = they are UTC; Nairobi wall time = +3 h). From Tcheck. */
+  shiftMs: 0,
 
   async login() {
     const r = await fetch(`${CFG.biostar}/api/login`, {
@@ -118,8 +130,11 @@ const BS = {
     return [];
   },
 
-  /** BioStar's documented datetime form: 2030-12-31T23:59:00.00Z */
-  dt(iso) { return `${new Date(iso).toISOString().slice(0, 19)}.00Z`; },
+  /** BioStar's documented datetime form: 2030-12-31T23:59:00.00Z (shifted when this server reads wall-clock time). */
+  dt(iso) { return `${new Date(Date.parse(iso) + this.shiftMs).toISOString().slice(0, 19)}.00Z`; },
+  /** A BioStar datetime string → the real instant (ISO, UTC). */
+  fromBs(s) { const t = Date.parse(s); return Number.isNaN(t) ? null : new Date(t - this.shiftMs).toISOString(); },
+  setShiftMinutes(m) { const v = Number(m); if (Number.isFinite(v) && Math.abs(v) <= 14 * 60) this.shiftMs = v * 60_000; },
 
   async getUser(userId) {
     try { return (await this.call('GET', `/api/users/${encodeURIComponent(userId)}`)).User ?? null; } catch (e) { if (e.status === 404 || e.status === 400) return null; throw e; }
@@ -290,7 +305,7 @@ const BS = {
       for (const u of rows) {
         if (!this.ours(u)) continue;
         out.push({
-          userId: String(u.user_id), disabled: String(u.disabled) === 'true', expiry: u.expiry_datetime ?? null,
+          userId: String(u.user_id), disabled: String(u.disabled) === 'true', expiry: u.expiry_datetime ? this.fromBs(u.expiry_datetime) : null,
           cards: Number(u.card_count ?? (Array.isArray(u.cards) ? u.cards.length : 0)) || 0,
           fingers: Number(u.fingerprint_template_count ?? (Array.isArray(u.fingerprint_templates) ? u.fingerprint_templates.length : 0)) || 0,
           groups: (u.access_groups ?? []).map((g) => String(g.id ?? g)),
@@ -303,7 +318,9 @@ const BS = {
 
   /** Events between two times, oldest first, 200 a page (a busy gate can pass 200 a minute). */
   async searchEvents(fromIso, toIso, maxPages = 20) {
-    const out = []; const seen = new Set(); let from = fromIso;
+    const out = []; const seen = new Set();
+    const shift = (iso) => new Date(Date.parse(iso) + this.shiftMs).toISOString();
+    let from = shift(fromIso); toIso = shift(toIso);
     for (let page = 0; page < maxPages; page += 1) {
       const data = await this.call('POST', '/api/events/search', {
         Query: { limit: 200, conditions: [{ column: 'datetime', operator: 3, values: [from, toIso] }], orders: [{ column: 'datetime', descending: false }] },
@@ -322,7 +339,53 @@ const BS = {
     const data = await this.call('GET', '/api/users/next_user_id').catch(() => null);
     return data?.User?.user_id != null ? Number(data.User.user_id) : null;
   },
+
+  /**
+   * What kind of BioStar this is — facts only; Tcheck decides what they mean. Never throws: a fact
+   * this server won't give comes back null.
+   *   version, platform ('BioStar 2' | 'BioStar X'), timeZoneOffsetMinutes (from the preference's
+   *   time_zone index, whole hours), readers: [{ id, qrOn }] for QR-capable readers, and
+   *   eventClockOffsetMinutes: how far the newest event's raw time runs ahead of now (≈0 → UTC,
+   *   ≈ +180 → Nairobi wall time), null when there is no recent event to judge by.
+   */
+  async serverCheck(devices = null) {
+    const out = { version: null, platform: null, timeZoneOffsetMinutes: null, eventClockOffsetMinutes: null, readers: [], checkedAt: new Date().toISOString() };
+    try {
+      const r = await fetch(`${CFG.biostar}/js/info.json`, { headers: this.session ? { 'bs-session-id': this.session } : {} });
+      const m = (await r.text()).match(/(\d+\.\d+\.\d+(?:\.\d+)?)/);
+      if (m) out.version = m[1];
+    } catch { /* older servers: try the settings below */ }
+    if (!out.version) {
+      const m = JSON.stringify(await this.call('GET', '/api/setting/biostar').catch(() => ({}))).match(/"(?:version|server_version|biostar_version)"\s*:\s*"(\d+\.\d+\.\d+(?:\.\d+)?)"/i);
+      if (m) out.version = m[1];
+    }
+    if (out.version) out.platform = Number(out.version.split('.')[0]) >= 2 ? 'BioStar 2' : 'BioStar X';
+    const idx = findKey(await this.call('GET', '/api/preferences/1').catch(() => null), 'time_zone');
+    if (idx != null && /^\d+$/.test(String(idx))) { const n = Number(idx); if (n >= 13 && n <= 26) out.timeZoneOffsetMinutes = (n - 13) * 60; }
+    const list = devices ?? this.rows(await this.call('GET', '/api/devices').catch(() => ({}))).map(deviceInfo);
+    for (const d of list.filter((x) => x.readsQr).slice(0, 50)) {
+      const v = findKey(await this.call('GET', `/api/devices/${encodeURIComponent(d.id)}/config`).catch(() => null), 'use_barcode');
+      out.readers.push({ id: String(d.id), qrOn: v == null ? null : String(v) === 'true' || v === true });
+    }
+    // The newest event in the last day (raw, unshifted): its time against now shows how this server writes times.
+    try {
+      const now = Date.now();
+      const data = await this.call('POST', '/api/events/search', { Query: { limit: 1, conditions: [{ column: 'datetime', operator: 3, values: [new Date(now - 26 * 3_600_000).toISOString(), new Date(now + 15 * 3_600_000).toISOString()] }], orders: [{ column: 'datetime', descending: true }] } });
+      const raw = this.rows(data)[0]?.datetime ?? this.rows(data)[0]?.server_datetime;
+      const t = raw ? Date.parse(raw) : NaN;
+      if (Number.isFinite(t) && now - t < 30 * 60_000) out.eventClockOffsetMinutes = Math.round((t - now) / (15 * 60_000)) * 15;
+    } catch { /* no events API rights: Tcheck relies on the lane test */ }
+    return out;
+  },
 };
+
+/** The first value under `key` anywhere in a BioStar answer (wrappers differ between versions). */
+function findKey(obj, key, depth = 0) {
+  if (!obj || typeof obj !== 'object' || depth > 6) return null;
+  if (Object.prototype.hasOwnProperty.call(obj, key) && typeof obj[key] !== 'object') return obj[key];
+  for (const v of Object.values(obj)) { const hit = findKey(v, key, depth + 1); if (hit != null) return hit; }
+  return null;
+}
 
 /** A BioStar device as Tcheck shows it: model, firmware, IP, online, and what it can read (by model). */
 function deviceInfo(d) {
@@ -399,6 +462,12 @@ async function selfTest(p) {
     try { const detail = await fn(); steps.push({ step: name, ok: true, detail: detail ?? null }); return true; } catch (e) { steps.push({ step: name, ok: false, detail: e.message }); return false; }
   };
   await step('Sign in to BioStar', async () => { await BS.login(); return 'bs-session-id received'; });
+  await step('Check the BioStar server', async () => {
+    const c = await BS.serverCheck();
+    const off = c.readers.filter((r) => r.qrOn === false).length;
+    const time = c.eventClockOffsetMinutes == null ? 'time handling confirmed by the lane test' : c.eventClockOffsetMinutes === 0 ? 'times are UTC' : `times run ${c.eventClockOffsetMinutes} min ahead of UTC (Tcheck adjusts)`;
+    return `${c.platform ?? 'BioStar'} ${c.version ?? '(version not reported)'}; ${c.readers.length} QR reader(s)${off ? `, ${off} with QR reading OFF` : ''}; ${time}`;
+  });
   await step('Read access groups', async () => {
     const inv = await BS.inventory();
     const found = p.accessGroupId ? inv.accessGroups.find((g) => g.id === String(p.accessGroupId)) : null;
@@ -439,6 +508,8 @@ async function selfTest(p) {
 
 async function runJob(job) {
   const p = job.payload ?? {};
+  // Tcheck puts the time shift on every job, so a change reaches BioStar before the next heartbeat.
+  if (p.timeShiftMinutes != null) BS.setShiftMinutes(p.timeShiftMinutes);
   const t0 = Date.now();
   const timed = (r) => ({ ...r, result: { ...(r.result ?? {}), biostarMs: Date.now() - t0 } });
   switch (job.kind) {
@@ -468,7 +539,7 @@ async function pollJobs(waitMs = 0) {
 
 const pending = [];
 const toEvent = (ev) => ({
-  id: String(ev.id ?? `${ev.device_id?.id}-${ev.index}-${ev.datetime}`), datetime: ev.datetime ?? ev.server_datetime,
+  id: String(ev.id ?? `${ev.device_id?.id}-${ev.index}-${ev.datetime}`), datetime: BS.fromBs(ev.datetime ?? ev.server_datetime) ?? ev.datetime ?? ev.server_datetime,
   deviceId: ev.device_id?.id != null ? String(ev.device_id.id) : null,
   userId: ev.user_id?.user_id != null ? String(ev.user_id.user_id) : (ev.user_id?.id != null ? String(ev.user_id.id) : null),
   eventCode: ev.event_type_id?.code != null ? String(ev.event_type_id.code) : null, eventName: ev.event_type_id?.name ?? null,
@@ -520,7 +591,18 @@ async function connectEvents() {
 
 async function heartbeat(withInventory) {
   const inventory = withInventory ? await BS.inventory().catch((e) => { log('warn', 'inventory failed', { error: e.message }); return undefined; }) : undefined;
-  const cfg = await tcheck('/heartbeat', { agentVersion: VERSION, inventory, clock: new Date().toISOString() });
+  let biostarVersion;
+  if (inventory) {
+    const server = await BS.serverCheck(inventory.devices).catch(() => null);
+    if (server) {
+      inventory.server = server;
+      biostarVersion = server.version ?? undefined;
+      const qr = new Map(server.readers.map((r) => [r.id, r.qrOn]));
+      inventory.devices = inventory.devices.map((d) => (qr.has(d.id) ? { ...d, qrEnabled: qr.get(d.id) } : d));
+    }
+  }
+  const cfg = await tcheck('/heartbeat', { agentVersion: VERSION, biostarVersion, inventory, clock: new Date().toISOString() });
+  if (cfg.timeShiftMinutes != null) BS.setShiftMinutes(cfg.timeShiftMinutes);
   if (cfg.updateRequired) log('warn', `Tcheck needs connector ${cfg.minConnectorVersion} or newer; this is ${VERSION}`);
   lastEventAt = cfg.lastEventAt ?? lastEventAt;
   return cfg;

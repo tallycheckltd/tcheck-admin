@@ -16,6 +16,10 @@ import { ms, useGateLive } from './gate/gateLib';
  * through (access groups suggested by name), the self-test, a live lane test (a test QR on this screen
  * scanned at a real flap barrier, timed), and switching on. Beside it: flap barrier settings, sending
  * barrier events to another system, and recent activity.
+ *
+ * 2026-11-21: "Your BioStar" (connector 1.3.0's server check: version, platform, time handling, QR
+ * reading per reader) with plain warnings; fingerprints folded into an optional section, since most
+ * schools start with visitors only.
  */
 
 interface Named { id: string; name: string }
@@ -42,6 +46,7 @@ interface Setup {
   connector: { online: boolean; lastSeenAt: string | null; version: string | null; minVersion: string; biostarVersion: string | null; biostarSupportsQr: boolean };
   found: { lanes: number; readers: number; qrReaders: number; fingerReaders: number; inReaders: number; outReaders: number; offlineReaders: number; accessGroups: number };
   suggestions: { visitorAccessGroupId: string | null; delegateAccessGroupId: string | null; staffAccessGroupId: string | null };
+  server?: { version: string | null; platform: string | null; checkedAt: string | null; timeShiftMinutes: number; timeCheck: string | null; qrReadersOff: string[]; warnings: { level: 'error' | 'warn' | 'info'; code: string; text: string }[] };
 }
 interface Lanes { doors: { id: string; name: string; readers: { id: string; name: string; direction: string; readsQr: boolean; readsFinger: boolean; online: boolean }[] }[] }
 interface LaneTest { state: 'SENDING' | 'LIVE' | 'ENDED'; reachedBioStarMs: number | null; error: string | null; validUntil: string | null; scans: { at: string; result: string; reason: string | null; direction: string | null; reader: string | null; lane: string | null; reachedTcheckMs: number }[] }
@@ -51,7 +56,7 @@ const OUTCOME: Record<string, ['green' | 'blue' | 'red' | 'purple' | 'gray', str
   CHECKED_IN: ['green', 'Visitor in'], CHECKED_OUT: ['blue', 'Visitor out'], PERSON_IN: ['purple', 'In'], PERSON_OUT: ['purple', 'Out'],
   LANE_TEST: ['blue', 'Lane test'], NO_MATCH: ['gray', 'Not a Tcheck pass'], IGNORED: ['gray', 'Recorded'],
 };
-const GROUP_FIELDS = [['visitorAccessGroupId', 'Visitors', true], ['delegateAccessGroupId', 'Delegates and students', false], ['staffAccessGroupId', 'Staff (fingerprints)', false]] as const;
+const GROUP_FIELDS = [['visitorAccessGroupId', 'Visitors', true], ['delegateAccessGroupId', 'Delegates and students', false], ['staffAccessGroupId', 'Staff', false]] as const;
 
 function CopyBox({ text, label }: { text: string; label: string }) {
   const [done, setDone] = useState(false);
@@ -125,7 +130,7 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-blue-600 dark:text-blue-300">Flap barriers · Suprema BioStar 2</p>
           <Heading className={embedded ? 'text-lg font-semibold text-slate-950 dark:text-white' : 'text-2xl font-bold text-slate-950 dark:text-white'}>Connect your flap barriers</Heading>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">Seven short steps. Visitors scan a QR on their phone, delegates scan their daily campus pass or use a fingerprint, and the flap opens in under a second. Day to day, use <Link to="/visitors/gate" className="text-blue-600 hover:underline dark:text-blue-400">Flap barriers</Link>.</p>
+          <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">Seven short steps. Visitors scan a QR on their phone, delegates scan their daily campus pass, and the flap opens in under a second. Day to day, use <Link to="/visitors/gate" className="text-blue-600 hover:underline dark:text-blue-400">Flap barriers</Link>.</p>
         </div>
         {setup && (
           <div className="min-w-[220px] rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-900/5 dark:bg-white/5 dark:ring-white/10" role="status">
@@ -171,15 +176,16 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
                 ? <><CheckCircle2 size={14} className="text-emerald-600" />Connected: connector {setup.connector.version}, BioStar {setup.connector.biostarVersion ?? 'version not reported'}{setup.connector.biostarSupportsQr ? '' : ' — QR codes need BioStar 2.8.11 or newer'}</>
                 : <><Loader2 size={14} className="animate-spin" />Waiting for the connector to call in…</>}
             </p>
+            {setup?.server?.checkedAt && <ServerPanel server={setup.server} />}
           </StepCard>
 
           <StepCard n={3} title="Check your flap barrier lanes" done={done('lanes')} open={current === 'lanes'} onToggle={() => toggle('lanes')}
-            summary={setup ? `${setup.found.lanes} lane(s) · ${setup.found.qrReaders} QR reader(s) · ${setup.found.fingerReaders} fingerprint reader(s)` : undefined}>
+            summary={setup ? `${setup.found.lanes} lane(s) · ${setup.found.qrReaders} QR reader(s)${setup.server?.qrReadersOff.length ? ` · ${setup.server.qrReadersOff.length} with QR reading off` : ''}${integ?.biometricsEnabled ? ` · ${setup.found.fingerReaders} fingerprint reader(s)` : ''}` : undefined}>
             <p>Each flap barrier lane is a door in BioStar with an entry and an exit reader. Tcheck reads them from BioStar and marks the entry reader In and the exit reader Out.</p>
             {setup && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {([['Lanes', setup.found.lanes], ['QR readers', setup.found.qrReaders], ['Fingerprint readers', setup.found.fingerReaders], ['Offline', setup.found.offlineReaders]] as const).map(([k, v]) => (
-                  <div key={k} className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5"><p className="text-xs text-slate-500">{k}</p><p className={`text-lg font-semibold tabular-nums ${k === 'Offline' && v ? 'text-rose-600' : 'text-slate-950 dark:text-white'}`}>{v}</p></div>
+                {([['Lanes', setup.found.lanes, false], ['QR readers', setup.found.qrReaders, false], ['QR reading off', setup.server?.qrReadersOff.length ?? 0, true], ['Offline', setup.found.offlineReaders, true]] as const).map(([k, v, bad]) => (
+                  <div key={k} className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5"><p className="text-xs text-slate-500">{k}</p><p className={`text-lg font-semibold tabular-nums ${bad && v ? 'text-rose-600' : 'text-slate-950 dark:text-white'}`}>{v}</p></div>
                 ))}
               </div>
             )}
@@ -193,6 +199,7 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
                 ))}
               </ul>
             )}
+            {!!setup?.server?.qrReadersOff.length && <p className="flex items-start gap-1.5 text-xs text-rose-700 dark:text-rose-300"><ShieldAlert size={14} className="mt-0.5 shrink-0" />QR reading is off on {setup.server.qrReadersOff.join(', ')}. In BioStar: Device → the reader → Barcode/QR → Use, then save. Visitors' QR codes won't be read until then.</p>}
             {setup && !setup.found.lanes && <p className="text-xs text-amber-700 dark:text-amber-400">No lanes yet. In BioStar, set each flap barrier lane up as a door with its entry and exit reader; it appears here within a minute.</p>}
             <Link to="/visitors/gate/doors" className="inline-flex text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">Change readers and directions on the Lanes page →</Link>
           </StepCard>
@@ -244,7 +251,7 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
             <p>From now on a visitor's QR is made on the day for their phone and removed when they scan out, delegates' campus codes change every day, and everyone's access ends by the end of their day even if the internet goes down.</p>
             <label className="flex cursor-pointer items-center gap-3">
               <input type="checkbox" role="switch" className="h-5 w-5 accent-emerald-600" checked={!!integ?.enabled} disabled={!integ?.visitorAccessGroupId || busy === 'on'} onChange={(e) => void run('on', () => api.put('/visitors/biostar/settings', { enabled: e.target.checked }))} />
-              <span className="font-medium text-slate-900 dark:text-slate-100">{integ?.enabled ? 'On: QR codes and fingerprints open the flap barriers' : 'Off'}</span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">{integ?.enabled ? `On: QR codes${integ.biometricsEnabled ? ' and fingerprints' : ''} open the flap barriers` : 'Off'}</span>
             </label>
             {!done('lanetest') && <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"><ShieldAlert size={14} />Scan a test QR at a flap barrier first (step 6).</p>}
           </StepCard>
@@ -303,6 +310,7 @@ function LaneTestPanel({ canStart, onDone }: { canStart: boolean; onDone: () => 
             <li className="flex items-center gap-2">{granted ? <CheckCircle2 size={16} className="text-emerald-600" /> : <Radio size={16} className="text-slate-400" />}
               {granted ? <span>Flap opened at <b>{granted.lane ?? granted.reader}</b> ({granted.direction === 'OUT' ? 'out' : 'in'}); Tcheck heard in {ms(granted.reachedTcheckMs)}</span> : data?.state === 'LIVE' ? 'Scan it at a flap barrier now' : 'Waiting'}</li>
             {data?.scans.filter((s) => s.result !== 'GRANTED').map((s, i) => <li key={i} className="text-xs text-rose-600">Refused at {s.lane ?? s.reader}: {s.reason?.replace(/_/g, ' ').toLowerCase() ?? 'no reason given'}</li>)}
+            {!granted && data?.scans.some((s) => s.result !== 'GRANTED' && /INVALID|EXPIRED|TIME|PERIOD/i.test(s.reason ?? '')) && <li className="text-xs text-slate-600 dark:text-slate-300">Tcheck has just adjusted for how your BioStar reads times. Scan the same QR again.</li>}
             <li className="pt-1"><Button size="sm" variant="secondary" onClick={() => void end()}>{granted ? 'Done' : 'Stop the test'}</Button></li>
           </ol>
         </div>
@@ -357,15 +365,6 @@ function GateSettings({ integ, busy, onSave }: { integ: NonNullable<Status['inte
     <section className="glass-card space-y-4 p-5">
       <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Flap barrier settings</h2>
       <label className="flex cursor-pointer items-start gap-3 text-sm">
-        <input type="checkbox" role="switch" className="mt-0.5 h-5 w-5 accent-emerald-600" checked={!!integ.biometricsEnabled} disabled={busy} onChange={(e) => onSave({ biometricsEnabled: e.target.checked })} />
-        <span><span className="font-medium text-slate-900 dark:text-slate-100">Fingerprints at the flap barriers</span><span className="block text-xs text-slate-500">People who agree can enrol a finger at a reader; it then opens the flap barriers on their programme days. It is stored only in BioStar. Switch on after your data protection officer has approved it.</span></span>
-      </label>
-      <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); onSave({ biometricRetentionDays: Number(retention) }); }}>
-        <label className="text-xs text-slate-600 dark:text-slate-400">Delete fingerprints this many days after a person's last programme
-          <input id="bio-retention" type="number" min={0} max={365} className="mt-1 w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-white/10 dark:bg-white/5" value={retention} onChange={(e) => setRetention(e.target.value)} /></label>
-        <Button size="sm" variant="secondary" disabled={busy}>Save</Button>
-      </form>
-      <label className="flex cursor-pointer items-start gap-3 text-sm">
         <input type="checkbox" role="switch" className="mt-0.5 h-5 w-5 accent-emerald-600" checked={integ.openDoorOnCodeCheckIn !== false} disabled={busy} onChange={(e) => onSave({ openDoorOnCodeCheckIn: e.target.checked })} />
         <span><span className="font-medium text-slate-900 dark:text-slate-100">A code check-in at a tablet opens its flap barrier</span><span className="block text-xs text-slate-500">Link each tablet to its lane on the Lanes page.</span></span>
       </label>
@@ -374,6 +373,43 @@ function GateSettings({ integ, busy, onSave }: { integ: NonNullable<Status['inte
           <input id="grace-min" type="number" min={1} max={60} className="mt-1 w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-white/10 dark:bg-white/5" value={grace} onChange={(e) => setGrace(e.target.value)} /></label>
         <Button size="sm" variant="secondary" disabled={busy}>Save</Button>
       </form>
+      {/* Optional: not needed for visitors. Folded away unless already on. */}
+      <details className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5" open={!!integ.biometricsEnabled}>
+        <summary className="cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">Fingerprints for delegates and staff (optional{integ.biometricsEnabled ? ', on' : ', off'})</summary>
+        <div className="mt-3 space-y-3">
+          <label className="flex cursor-pointer items-start gap-3 text-sm">
+            <input type="checkbox" role="switch" className="mt-0.5 h-5 w-5 accent-emerald-600" checked={!!integ.biometricsEnabled} disabled={busy} onChange={(e) => onSave({ biometricsEnabled: e.target.checked })} />
+            <span><span className="font-medium text-slate-900 dark:text-slate-100">Fingerprints at the flap barriers</span><span className="block text-xs text-slate-500">Not used for visitors. People who agree can enrol a finger at a reader; it then opens the flap barriers on their programme days. It is stored only in BioStar. Switch on only after your data protection officer has approved it.</span></span>
+          </label>
+          {integ.biometricsEnabled && (
+            <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); onSave({ biometricRetentionDays: Number(retention) }); }}>
+              <label className="text-xs text-slate-600 dark:text-slate-400">Delete fingerprints this many days after a person's last programme
+                <input id="bio-retention" type="number" min={0} max={365} className="mt-1 w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-white/10 dark:bg-white/5" value={retention} onChange={(e) => setRetention(e.target.value)} /></label>
+              <Button size="sm" variant="secondary" disabled={busy}>Save</Button>
+            </form>
+          )}
+        </div>
+      </details>
     </section>
+  );
+}
+
+/** "Your BioStar": the connector's server check, in plain words, with what to fix before go-live. */
+function ServerPanel({ server }: { server: NonNullable<Setup['server']> }) {
+  const tone = { error: 'text-rose-700 dark:text-rose-300', warn: 'text-amber-700 dark:text-amber-300', info: 'text-slate-600 dark:text-slate-300' } as const;
+  const time = server.timeCheck === 'LANE_TEST' ? 'proven by a real scan' : server.timeCheck === 'EVENT_CLOCK' ? 'read from BioStar\'s event times' : 'not checked yet';
+  return (
+    <div className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-white/10" aria-label="Your BioStar">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your BioStar</p>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+        <dt className="text-slate-500">Server</dt><dd className="text-slate-900 dark:text-slate-100">{server.platform ?? 'BioStar'} {server.version ?? '(version not reported)'}</dd>
+        <dt className="text-slate-500">Times</dt><dd className="text-slate-900 dark:text-slate-100">{server.timeShiftMinutes ? `Local time (UTC+${server.timeShiftMinutes / 60}), adjusted` : 'UTC'} · {time}</dd>
+      </dl>
+      {!!server.warnings.length && (
+        <ul className="space-y-1">
+          {server.warnings.map((w) => <li key={w.code + w.text} className={`flex items-start gap-1.5 text-xs ${tone[w.level]}`}>{w.level === 'info' ? <CheckCircle2 size={14} className="mt-0.5 shrink-0" /> : <ShieldAlert size={14} className="mt-0.5 shrink-0" />}{w.text}</li>)}
+        </ul>
+      )}
+    </div>
   );
 }

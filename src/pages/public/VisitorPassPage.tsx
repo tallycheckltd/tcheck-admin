@@ -15,6 +15,9 @@ import { API_BASE } from '../../lib/apiBase';
  * forwarded link shows nothing on another. The QR is not the link: it is today's code, fetched from
  * /activate only inside the visit window, and shown once the barrier has it. It stops working when
  * the visitor scans out. The device key is kept in this browser (and an HttpOnly cookie).
+ *
+ * 2026-11-21: loading the page never locks it. The visitor taps "Open my pass" (POST /open), so an
+ * email link scanner (Microsoft Safe Links, Gmail) that loads the page can't take the pass first.
  */
 
 type Status = 'VALID' | 'NOT_YET_VALID' | 'USED' | 'EXPIRED' | 'CANCELLED';
@@ -38,6 +41,8 @@ interface Pass {
   /** Before the window on the day: stage the code so the flap barrier already has it on arrival. */
   canStage?: boolean;
   onSite?: boolean;
+  /** Not on any phone yet: the visitor taps "Open my pass" to lock it to this one. */
+  needsOpen?: boolean;
   deviceKey?: string;
 }
 interface Credential { value: string; state: 'PENDING' | 'LIVE'; validUntil: string }
@@ -68,6 +73,7 @@ export function VisitorPassPage() {
   const [otherPhone, setOtherPhone] = useState(false);
   const [cred, setCred] = useState<Credential | null>(null);
   const [credError, setCredError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
   // The page's clock: a pass left open before its window flips to the QR at the opening time.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t); }, []);
@@ -91,13 +97,28 @@ export function VisitorPassPage() {
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'This pass can’t be shown right now.'));
   }, [qrToken, headers]);
   useEffect(() => { load(); }, [load]);
+  // Locks the pass to this phone. Only on a tap: email link scanners load pages but never tap.
+  const openHere = useCallback(() => {
+    if (!qrToken) return;
+    setOpening(true);
+    fetch(`${API_BASE}/public/visitor-pass/${encodeURIComponent(qrToken)}/open`, { method: 'POST', cache: 'no-store', credentials: 'include', headers: { 'Content-Type': 'application/json', ...headers() }, body: '{}' })
+      .then(async (r) => {
+        if (r.status === 409) { setOtherPhone(true); return; }
+        if (!r.ok) throw new Error('This pass can’t be opened right now. Please try again in a moment.');
+        const p = await r.json() as Pass;
+        if (p.deviceKey) saveKey(qrToken, p.deviceKey);
+        setPass(p);
+      })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'This pass can’t be opened right now.'))
+      .finally(() => setOpening(false));
+  }, [qrToken, headers]);
   // Opened early on the day: stage the code quietly (no QR yet), so the first scan at the flap barrier is instant.
   useEffect(() => {
     if (!qrToken || !pass?.canStage) return;
     void fetch(`${API_BASE}/public/visitor-pass/${encodeURIComponent(qrToken)}/activate`, { method: 'POST', cache: 'no-store', credentials: 'include', headers: { 'Content-Type': 'application/json', ...headers() }, body: '{}' }).catch(() => null);
   }, [qrToken, pass?.canStage, headers]);
   const opensAtMs = pass ? new Date(pass.opensAt).getTime() : null;
-  const waiting = !!pass && !pass.canActivate && pass.barrier && pass.status !== 'USED' && pass.status !== 'EXPIRED' && pass.status !== 'CANCELLED';
+  const waiting = !!pass && !pass.needsOpen && !pass.canActivate && pass.barrier && pass.status !== 'USED' && pass.status !== 'EXPIRED' && pass.status !== 'CANCELLED';
   useEffect(() => { if (waiting && opensAtMs && now >= opensAtMs) load(); }, [waiting, opensAtMs, now, load]);
 
   // Inside the window: today's QR. Poll quickly until the barrier has it, then every minute (a code
@@ -163,10 +184,19 @@ export function VisitorPassPage() {
 
               <div className={`mx-6 mt-4 flex items-start gap-3 rounded-2xl px-4 py-3 ring-1 ${status.tone}`} role="status">
                 <status.icon size={22} className="mt-0.5 shrink-0" />
-                <div><p className="font-semibold">{status.label}</p><p className="text-sm opacity-90">{status.note}</p></div>
+                <div><p className="font-semibold">{status.label}</p><p className="text-sm opacity-90">{pass.status === 'VALID' && !pass.barrier ? 'Give the code below and your ID to the guard.' : status.note}</p></div>
               </div>
 
-              {live && (
+              {live && pass.needsOpen && (
+                <div className="px-6 pt-6 text-center">
+                  <button type="button" onClick={openHere} disabled={opening}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#004aad] px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#003d8f] disabled:opacity-60">
+                    {opening ? <Loader2 size={18} className="animate-spin" /> : <Smartphone size={18} />} Open my pass
+                  </button>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Your pass will work on this phone only.</p>
+                </div>
+              )}
+              {live && !pass.needsOpen && (
                 <div className="px-6 pt-6 text-center">
                   {pass.barrier && beforeWindow && opensAt && (
                     <div className="rounded-2xl bg-slate-50 px-4 py-6 dark:bg-white/5">
