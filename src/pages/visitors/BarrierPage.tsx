@@ -397,7 +397,7 @@ function GateSettings({ integ, busy, onSave }: { integ: NonNullable<Status['inte
 /** "Your BioStar": the connector's server check, in plain words, with what to fix before go-live. */
 function ServerPanel({ server }: { server: NonNullable<Setup['server']> }) {
   const tone = { error: 'text-rose-700 dark:text-rose-300', warn: 'text-amber-700 dark:text-amber-300', info: 'text-slate-600 dark:text-slate-300' } as const;
-  const time = server.timeCheck === 'LANE_TEST' ? 'proven by a real scan' : server.timeCheck === 'EVENT_CLOCK' ? 'read from BioStar\'s event times' : 'not checked yet';
+  const time = server.timeCheck === 'LANE_TEST' ? 'proven by a real scan' : server.timeCheck === 'SELF_TEST' ? 'checked with BioStar by the self-test' : server.timeCheck === 'EVENT_CLOCK' ? 'read from BioStar\'s event times' : 'not checked yet';
   return (
     <div className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-white/10" aria-label="Your BioStar">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your BioStar</p>

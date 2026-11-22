@@ -47,9 +47,24 @@
  *     (2030-12-31T23:59:00.00Z) reads as wall-clock time. The event clock (the newest event's time
  *     against now) shows which; Tcheck confirms it with the lane test and sends timeShiftMinutes, and
  *     the connector then writes, reads and searches every BioStar time shifted by it.
+ *
+ * 1.4.0 (2026-11-22) — checked against a REAL BioStar 2.9.12.31 server (Windows, Nairobi time):
+ *   - BioStar reads "…Z" times as the server's wall-clock time: a visitor sent "until 15:26Z" at 13:26Z
+ *     was already `expired: true` on a Nairobi server. The self-test now asks BioStar directly
+ *     (timeProbe): it gives its test user an expiry half the school's UTC offset ahead and reads
+ *     BioStar's own `expired` verdict, so Tcheck knows the shift before any reader exists;
+ *   - GET /js/info.json answers { "biostar2": "2.9.12.31", "acb": …, "ta": …, "ve": … };
+ *   - the preference time_zone index is the admin's DISPLAY zone (a fresh install says "26" = UTC+9,
+ *     Suprema's Korean default) and follows Suprema's table, not a simple sequence; it is reported
+ *     for information only;
+ *   - user list rows count QR codes in qr_count, not card_count;
+ *   - BioStar accepts an empty card_id and makes a blank card: the connector refuses one;
+ *   - a card taken off a user stays in BioStar's card list for ever. The connector now deletes the
+ *     Tcheck codes it releases (TCQ/TCD/TCV prefixes only; a school's own cards and reusable walk-in
+ *     tags are never deleted). DELETE /api/cards?id= takes ONE id per call on a real server.
  */
 
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 const MARKER = 'Tcheck'; // department on every BioStar user the connector creates
 const env = (k, d) => (process.env[k] ?? d);
 const CFG = {
@@ -178,6 +193,8 @@ const BS = {
 
   /** Registers a card (or finds the one already there) and returns BioStar's database id for it. */
   async createCard(card, userId) {
+    // A real BioStar accepts an empty card_id and makes a blank card; never send one.
+    if (!card?.id || String(card.id).trim() === '' || String(card.id).length > 32) throw new BioStarError(`Refusing card value of length ${String(card?.id ?? '').length} (must be 1–32 characters)`, 400, null);
     const existing = await this.findCard(card.id);
     if (existing) return existing;
     const type = await this.cardTypeFor(card.type);
@@ -205,6 +222,21 @@ const BS = {
     throw lastErr;
   },
 
+  /**
+   * Deletes the card records a user just lost, when they are Tcheck's own codes (never a school's cards
+   * or a reusable walk-in tag). Best effort: a failure leaves an unused record, never blocks a sync.
+   */
+  async deleteReleasedCards(before, keepIds) {
+    const keep = new Set((keepIds ?? []).map(String));
+    let deleted = 0;
+    for (const c of before ?? []) {
+      const id = String(c?.id ?? ''); const value = String(c?.card_id ?? c?.display_card_id ?? '');
+      if (!id || keep.has(id) || !/^TC[QDV][0-9A-Z]{6,}$/.test(value)) continue;
+      try { await this.call('DELETE', `/api/cards?id=${encodeURIComponent(id)}`); deleted += 1; } catch { /* leave it */ }
+    }
+    return deleted;
+  },
+
   async assignCard(userId, cardDbId) {
     await this.call('PUT', `/api/users/${encodeURIComponent(userId)}`, { User: { cards: [{ id: cardDbId }] } });
   },
@@ -228,7 +260,8 @@ const BS = {
     await this.call('PUT', `/api/users/${encodeURIComponent(p.userId)}`, {
       User: { disabled: 'true', expiry_datetime: this.dt(new Date().toISOString()), access_groups: [], cards: [] },
     });
-    return { user: 'disabled' };
+    const cleaned = await this.deleteReleasedCards(existing.cards, []);
+    return { user: 'disabled', cardsDeleted: cleaned };
   },
 
   async inventory() {
@@ -278,7 +311,9 @@ const BS = {
     await this.call('PUT', `/api/users/${encodeURIComponent(p.userId)}`, {
       User: { ...fields, access_groups: enabled ? [{ id: Number(p.accessGroupId) || p.accessGroupId }] : [], cards: cardIds },
     });
-    return { user: existing ? 'updated' : 'created', enabled, cards: cardIds.length };
+    // Codes this user just lost (scanned out, rotated, expired) leave BioStar's card list too.
+    const cardsDeleted = existing ? await this.deleteReleasedCards(existing.cards, cardIds.map((c) => c.id)) : 0;
+    return { user: existing ? 'updated' : 'created', enabled, cards: cardIds.length, cardsDeleted };
   },
 
   /** Ask BioStar to open a door once (it re-locks on its own timer). Tries the documented body shapes. */
@@ -306,7 +341,10 @@ const BS = {
         if (!this.ours(u)) continue;
         out.push({
           userId: String(u.user_id), disabled: String(u.disabled) === 'true', expiry: u.expiry_datetime ? this.fromBs(u.expiry_datetime) : null,
-          cards: Number(u.card_count ?? (Array.isArray(u.cards) ? u.cards.length : 0)) || 0,
+          // A real BioStar counts QR codes in qr_count, not card_count (checked on 2.9.12.31).
+          cards: u.card_count != null || u.qr_count != null || u.mobile_count != null
+            ? (Number(u.card_count) || 0) + (Number(u.qr_count) || 0) + (Number(u.mobile_count) || 0)
+            : (Array.isArray(u.cards) ? u.cards.length : 0),
           fingers: Number(u.fingerprint_template_count ?? (Array.isArray(u.fingerprint_templates) ? u.fingerprint_templates.length : 0)) || 0,
           groups: (u.access_groups ?? []).map((g) => String(g.id ?? g)),
         });
@@ -360,8 +398,9 @@ const BS = {
       if (m) out.version = m[1];
     }
     if (out.version) out.platform = Number(out.version.split('.')[0]) >= 2 ? 'BioStar 2' : 'BioStar X';
+    // The admin's DISPLAY time zone (information only: it is not how BioStar reads the times we send).
     const idx = findKey(await this.call('GET', '/api/preferences/1').catch(() => null), 'time_zone');
-    if (idx != null && /^\d+$/.test(String(idx))) { const n = Number(idx); if (n >= 13 && n <= 26) out.timeZoneOffsetMinutes = (n - 13) * 60; }
+    if (idx != null && BS_TIME_ZONES[String(idx)] !== undefined) out.timeZoneOffsetMinutes = BS_TIME_ZONES[String(idx)];
     const list = devices ?? this.rows(await this.call('GET', '/api/devices').catch(() => ({}))).map(deviceInfo);
     for (const d of list.filter((x) => x.readsQr).slice(0, 50)) {
       const v = findKey(await this.call('GET', `/api/devices/${encodeURIComponent(d.id)}/config`).catch(() => null), 'use_barcode');
@@ -377,6 +416,13 @@ const BS = {
     } catch { /* no events API rights: Tcheck relies on the lane test */ }
     return out;
   },
+};
+
+/** BioStar's preference time_zone index → minutes from UTC (Suprema's table; not a simple sequence). */
+const BS_TIME_ZONES = {
+  0: -720, 1: -660, 2: -600, '3-1': -570, 3: -540, 4: -480, 5: -420, 6: -360, 7: -300, '8-1': -270, 8: -240, 9: -210, 10: -180, 11: -120, 12: -60,
+  13: 0, 14: 60, 15: 120, 16: 180, 17: 210, 18: 240, 19: 270, 20: 300, 21: 330, 22: 345, 23: 360, '23+1': 390, 24: 420, 25: 480, '25+1': 510, '25+2': 525,
+  26: 540, 27: 570, 28: 600, '28+1': 630, 29: 660, 30: 720, '30+1': 765, 31: 780, 32: 840,
 };
 
 /** The first value under `key` anywhere in a BioStar answer (wrappers differ between versions). */
@@ -465,7 +511,7 @@ async function selfTest(p) {
   await step('Check the BioStar server', async () => {
     const c = await BS.serverCheck();
     const off = c.readers.filter((r) => r.qrOn === false).length;
-    const time = c.eventClockOffsetMinutes == null ? 'time handling confirmed by the lane test' : c.eventClockOffsetMinutes === 0 ? 'times are UTC' : `times run ${c.eventClockOffsetMinutes} min ahead of UTC (Tcheck adjusts)`;
+    const time = c.eventClockOffsetMinutes == null ? 'no recent scans to judge times by (checked below)' : c.eventClockOffsetMinutes === 0 ? 'scan times are UTC' : `scan times run ${c.eventClockOffsetMinutes} min ahead of UTC (Tcheck adjusts)`;
     return `${c.platform ?? 'BioStar'} ${c.version ?? '(version not reported)'}; ${c.readers.length} QR reader(s)${off ? `, ${off} with QR reading OFF` : ''}; ${time}`;
   });
   await step('Read access groups', async () => {
@@ -497,13 +543,29 @@ async function selfTest(p) {
     const cards = Array.isArray(u.cards) ? u.cards.length : 0;
     return `${u.name ?? p.userId}, ${cards} card(s)`;
   });
+  // How does this BioStar read the times Tcheck sends? Ask BioStar itself: give the test user an expiry
+  // half the school's UTC offset away and read BioStar's own `expired` verdict.
+  let timeProbe = null;
+  const off = Number(p.probeOffsetMinutes);
+  if (created && Number.isFinite(off) && off !== 0) await step('Check how BioStar reads times', async () => {
+    const raw = (ms) => `${new Date(ms).toISOString().slice(0, 19)}.00Z`; // unshifted on purpose
+    const now = Date.now();
+    const expiry = off > 0 ? now + (off / 2) * 60_000 : now - (Math.abs(off) / 2) * 60_000;
+    await BS.call('PUT', `/api/users/${encodeURIComponent(p.userId)}`, { User: { start_datetime: raw(now - 2 * 86_400_000), expiry_datetime: raw(expiry) } });
+    const u = await BS.getUser(p.userId);
+    if (u?.expired == null) { timeProbe = { offsetMinutes: off, interpretsAsLocal: null }; return 'this BioStar does not report "expired"; the lane test will settle it'; }
+    const expired = String(u.expired) === 'true';
+    const local = off > 0 ? expired : !expired;
+    timeProbe = { offsetMinutes: off, interpretsAsLocal: local };
+    return local ? `BioStar reads times as local time (UTC${off > 0 ? '+' : '−'}${Math.abs(off) / 60}); Tcheck will adjust every time it sends` : 'BioStar reads times as UTC';
+  });
   if (created) await step('Revoke (disable, expire, leave groups, release card)', () => BS.revoke({ userId: p.userId }).then((r) => r.user));
   if (created) await step('Remove the test user', async () => {
     await BS.call('DELETE', `/api/users?id=${encodeURIComponent(p.userId)}`).catch(async () => BS.call('DELETE', `/api/users/${encodeURIComponent(p.userId)}`));
     return 'removed';
   }).catch(() => null);
   const failed = steps.filter((s) => !s.ok && s.step !== 'Remove the test user');
-  return { ok: failed.length === 0, steps, cardShape: BS.cardShape, error: failed[0] ? `${failed[0].step}: ${failed[0].detail}` : undefined };
+  return { ok: failed.length === 0, steps, cardShape: BS.cardShape, timeProbe, error: failed[0] ? `${failed[0].step}: ${failed[0].detail}` : undefined };
 }
 
 async function runJob(job) {
@@ -520,7 +582,7 @@ async function runJob(job) {
     case 'RECONCILE': return { ok: true, result: { users: await BS.tcheckUsers() } };
     case 'GRANT_VISITOR': case 'GRANT_WALKIN': case 'GRANT_DELEGATE': return { ok: true, result: await BS.grant(p) };
     case 'REVOKE': return { ok: true, result: await BS.revoke(p) };
-    case 'SELF_TEST': { const r = await selfTest(p); return { ok: r.ok, error: r.error, result: { steps: r.steps, cardShape: r.cardShape } }; }
+    case 'SELF_TEST': { const r = await selfTest(p); return { ok: r.ok, error: r.error, result: { steps: r.steps, cardShape: r.cardShape, timeProbe: r.timeProbe } }; }
     default: return { ok: false, error: `Unknown job kind ${job.kind}` };
   }
 }
