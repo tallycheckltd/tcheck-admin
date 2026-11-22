@@ -85,6 +85,11 @@
  *   - --config <file> (KEY=VALUE lines; the installer's file is readable only by administrators and
  *     the LOCAL SERVICE account the connector runs as), LOG_FILE with rotation (10 MB × 5),
  *     --check (every link tested, exit 0 or 1) and --print-cert (BioStar's certificate fingerprint).
+ *
+ * 1.5.1 (2026-11-22) — seen on the real server: POST /api/events/start right after sending the
+ * session over /wsapi can come back 500 "Authentication WebSocket are missing" because BioStar has not
+ * registered the socket yet. Now it waits a moment and retries (up to 5 times) instead of dropping
+ * the stream.
  */
 
 import fs from 'node:fs';
@@ -92,7 +97,7 @@ import https from 'node:https';
 import tls from 'node:tls';
 import crypto from 'node:crypto';
 
-const VERSION = '1.5.0';
+const VERSION = '1.5.1';
 const MARKER = 'Tcheck'; // department on every BioStar user the connector creates
 
 /** --config <file> (or CONNECTOR_CONFIG): KEY=VALUE lines. Values already in the environment win. */
@@ -870,7 +875,14 @@ async function connectEvents() {
   socket = agent ? new PinnedWebSocket(url, agent) : new WebSocket(url);
   socket.addEventListener('open', async () => {
     socket.send(`bs-session-id=${BS.session}`);
-    try { await BS.call('POST', '/api/events/start', {}); log('info', 'live BioStar events on'); } catch (e) { log('error', 'events/start failed', { error: e.message }); socket.close(); }
+    // BioStar needs a moment to register the socket's session (real 2.9.12: 500 "Authentication WebSocket are missing").
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      await sleep(attempt === 1 ? 200 : 500 * attempt);
+      try { await BS.call('POST', '/api/events/start', {}); log('info', 'live BioStar events on'); return; }
+      catch (e) {
+        if (!/WebSocket/i.test(e.message) || attempt === 5) { log('error', 'events/start failed', { error: e.message }); socket.close(); return; }
+      }
+    }
   });
   socket.addEventListener('message', (m) => {
     let data; try { data = JSON.parse(String(m.data)); } catch { return; }
