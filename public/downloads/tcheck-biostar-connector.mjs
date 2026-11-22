@@ -19,7 +19,13 @@
  *   BIOSTAR_URL           e.g. https://10.0.0.20  (the BioStar 2 server, HTTPS)
  *   BIOSTAR_LOGIN_ID      a BioStar operator account with user + card + access-group rights
  *   BIOSTAR_PASSWORD
- *   BIOSTAR_INSECURE_TLS  "1" to accept BioStar's self-signed certificate (prefer installing it instead)
+ *   BIOSTAR_CERT_SHA256   BioStar's certificate fingerprint (SHA-256, any format): only that exact
+ *                         certificate is accepted for BioStar (the installer sets it). Recommended.
+ *   BIOSTAR_INSECURE_TLS  "1" to accept any BioStar certificate — BioStar only, never Tcheck. Avoid.
+ *   LOG_FILE              write logs to this file (rotated at 10 MB, 5 kept) instead of the console
+ *   --config <file>       read the settings above from a KEY=VALUE file (the environment wins)
+ *   --check               test every link (Tcheck, BioStar TLS, sign-in, version) and exit 0 or 1
+ *   --print-cert          print BioStar's certificate (subject, address, SHA-256) and exit
  *
  * BioStar 2 API calls used (Suprema "New Local API"): POST /api/login (bs-session-id header),
  * GET/POST/PUT /api/users, POST /api/cards, PUT /api/access_groups/:id, GET /api/access_groups,
@@ -66,11 +72,50 @@
  * 1.4.1 (2026-11-22) — found running it on the real test server: on WINDOWS the connector exited at
  * once without a word. The "am I the script being run?" check split the path on "/" only, and Windows
  * gives "C:\Tcheck\tcheck-biostar-connector.mjs", so main() never ran. Now both separators count.
+ *
+ * 1.5.0 (2026-11-22) — security and a proper Windows install:
+ *   - BioStar's certificate is self-signed (issued by Suprema to the server's own IP), so before this
+ *     the connector set NODE_TLS_REJECT_UNAUTHORIZED=0, which switched certificate checks off for EVERY
+ *     connection — including the one to Tcheck that carries the connector key. Now Tcheck is always
+ *     verified normally, and BioStar is trusted by PINNING its exact certificate
+ *     (BIOSTAR_CERT_SHA256, set by the installer on the BioStar machine). BIOSTAR_INSECURE_TLS=1 still
+ *     works but only ever applies to BioStar, with a warning;
+ *   - BioStar traffic (REST and the live event WebSocket) goes through node:https with a pinned
+ *     agent: the certificate is checked BEFORE any byte (password, session) is sent;
+ *   - --config <file> (KEY=VALUE lines; the installer's file is readable only by administrators and
+ *     the LOCAL SERVICE account the connector runs as), LOG_FILE with rotation (10 MB × 5),
+ *     --check (every link tested, exit 0 or 1) and --print-cert (BioStar's certificate fingerprint).
  */
 
-const VERSION = '1.4.1';
+import fs from 'node:fs';
+import https from 'node:https';
+import tls from 'node:tls';
+import crypto from 'node:crypto';
+
+const VERSION = '1.5.0';
 const MARKER = 'Tcheck'; // department on every BioStar user the connector creates
+
+/** --config <file> (or CONNECTOR_CONFIG): KEY=VALUE lines. Values already in the environment win. */
+function loadConfigFile(argv) {
+  const i = argv.indexOf('--config');
+  const file = i >= 0 ? argv[i + 1] : process.env.CONNECTOR_CONFIG;
+  if (!file) return null;
+  const text = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (!m) continue;
+    let v = m[2];
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+    if (process.env[m[1]] === undefined) process.env[m[1]] = v;
+  }
+  return file;
+}
+let CONFIG_FILE = null;
+try { CONFIG_FILE = loadConfigFile(process.argv); } catch (e) { console.error(`Cannot read the configuration file: ${e.message}`); process.exit(2); }
+
 const env = (k, d) => (process.env[k] ?? d);
+/** A SHA-256 fingerprint in any format ("AB:CD…", "abcd…") → 64 lowercase hex characters, or ''. */
+const normPin = (v) => String(v ?? '').replace(/[^0-9a-f]/gi, '').toLowerCase();
 const CFG = {
   tcheck: String(env('TCHECK_URL', '')).replace(/\/+$/, ''),
   token: env('TCHECK_TOKEN', ''),
@@ -84,10 +129,24 @@ const CFG = {
   heartbeatEveryMs: Number(env('HEARTBEAT_MS', 60000)),
   inventoryEveryMs: Number(env('INVENTORY_MS', 600000)),
   catchUpEveryMs: Number(env('CATCHUP_MS', 60000)),
+  certSha256: normPin(env('BIOSTAR_CERT_SHA256', '')),
+  insecure: env('BIOSTAR_INSECURE_TLS') === '1',
+  logFile: env('LOG_FILE', ''),
 };
-if (env('BIOSTAR_INSECURE_TLS') === '1') process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-const log = (level, msg, extra) => console[level === 'error' ? 'error' : 'log'](`${new Date().toISOString()} [${level}] ${msg}${extra ? ` ${JSON.stringify(extra)}` : ''}`);
+/** Logs go to LOG_FILE when set (rotated at 10 MB, 5 old files kept), else to the console. Never secrets. */
+let logWrites = 0;
+function writeLog(level, line) {
+  if (!CFG.logFile) { console[level === 'error' ? 'error' : 'log'](line); return; }
+  try {
+    if (logWrites++ % 200 === 0 && fs.existsSync(CFG.logFile) && fs.statSync(CFG.logFile).size > 10 * 1024 * 1024) {
+      for (let n = 4; n >= 1; n -= 1) if (fs.existsSync(`${CFG.logFile}.${n}`)) fs.renameSync(`${CFG.logFile}.${n}`, `${CFG.logFile}.${n + 1}`);
+      fs.renameSync(CFG.logFile, `${CFG.logFile}.1`);
+    }
+    fs.appendFileSync(CFG.logFile, `${line}\n`);
+  } catch { console.log(line); }
+}
+const log = (level, msg, extra) => writeLog(level, `${new Date().toISOString()} [${level}] ${msg}${extra ? ` ${JSON.stringify(extra)}` : ''}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ─── Tcheck ──────────────────────────────────────────────────────────────────────────────────────
@@ -100,6 +159,166 @@ async function tcheck(path, body) {
   if (!r.ok) throw new Error(`Tcheck ${path} → ${r.status} ${data.error ?? ''}`.trim());
   return data;
 }
+
+// ─── BioStar TLS (1.5.0) ─────────────────────────────────────────────────────────────────────────
+//
+// Tcheck is always reached with Node's normal certificate checks. BioStar's certificate is self-signed,
+// so BioStar alone goes through node:https with an agent that checks the certificate's SHA-256 against
+// the pinned one BEFORE handing the socket over — nothing (password, session) is sent to a server that
+// does not match.
+
+/** 'plain' (http), 'pin' (exact certificate), 'insecure' (any certificate, BioStar only) or 'verify' (public CAs). */
+function biostarTlsMode() {
+  if (!/^https:/i.test(CFG.biostar)) return 'plain';
+  if (CFG.certSha256) return 'pin';
+  if (CFG.insecure) return 'insecure';
+  return 'verify';
+}
+
+class PinnedAgent extends https.Agent {
+  constructor(pin) { super({ keepAlive: true, maxSockets: 8 }); this.pin = pin; }
+  createConnection(options, cb) {
+    let done = false;
+    const finish = (err, sock) => { if (done) return; done = true; cb(err, sock); };
+    const s = tls.connect({ ...options, rejectUnauthorized: false });
+    s.once('secureConnect', () => {
+      if (this.pin) {
+        const got = normPin(s.getPeerCertificate()?.fingerprint256);
+        if (got !== this.pin) {
+          const err = Object.assign(new Error(`BioStar's certificate does not match the pinned one (it is ${got.slice(0, 16)}…). If BioStar's certificate was renewed, run the installer again or set BIOSTAR_CERT_SHA256 from --print-cert.`), { code: 'CERT_PIN_MISMATCH' });
+          s.destroy(); finish(err); return;
+        }
+      }
+      finish(null, s);
+    });
+    s.once('error', (e) => finish(e));
+    return undefined; // async: the request waits for finish()
+  }
+}
+
+let bsAgent = null;
+function bsAgentFor() {
+  const mode = biostarTlsMode();
+  if (mode !== 'pin' && mode !== 'insecure') return null;
+  if (!bsAgent) bsAgent = new PinnedAgent(mode === 'pin' ? CFG.certSha256 : null);
+  return bsAgent;
+}
+function resetBioStarTls() { bsAgent?.destroy(); bsAgent = null; }
+
+/** fetch() for BioStar: through the pinned agent when BioStar's certificate is self-signed. */
+function bsFetch(url, { method = 'GET', headers = {}, body } = {}) {
+  const agent = bsAgentFor();
+  if (!agent) return fetch(url, { method, headers, body });
+  return new Promise((resolve, reject) => {
+    const h = { ...headers };
+    if (body !== undefined) h['Content-Length'] = Buffer.byteLength(body);
+    const req = https.request(url, { method, headers: h, agent, timeout: 30_000 }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('error', reject);
+      res.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode,
+          headers: { get: (k) => { const v = res.headers[String(k).toLowerCase()]; return Array.isArray(v) ? v[0] : (v ?? null); } },
+          text: async () => text, json: async () => JSON.parse(text),
+        });
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('BioStar did not answer within 30 s')));
+    req.on('error', reject);
+    if (body !== undefined) req.write(body);
+    req.end();
+  });
+}
+
+/** One WebSocket frame from the client (always masked, RFC 6455 §5.3). */
+function encodeWsFrame(payload, opcode = 0x1) {
+  const len = payload.length;
+  let head;
+  if (len < 126) head = Buffer.from([0x80 | opcode, 0x80 | len]);
+  else if (len < 65536) { head = Buffer.alloc(4); head[0] = 0x80 | opcode; head[1] = 0x80 | 126; head.writeUInt16BE(len, 2); }
+  else { head = Buffer.alloc(10); head[0] = 0x80 | opcode; head[1] = 0x80 | 127; head.writeBigUInt64BE(BigInt(len), 2); }
+  const mask = crypto.randomBytes(4);
+  const body = Buffer.alloc(len);
+  for (let i = 0; i < len; i += 1) body[i] = payload[i] ^ mask[i & 3];
+  return Buffer.concat([head, mask, body]);
+}
+/** The next whole frame in `buf`, or null until more bytes arrive. */
+function decodeWsFrame(buf) {
+  if (buf.length < 2) return null;
+  const fin = (buf[0] & 0x80) !== 0; const opcode = buf[0] & 0x0f; const masked = (buf[1] & 0x80) !== 0;
+  let len = buf[1] & 0x7f; let off = 2;
+  if (len === 126) { if (buf.length < 4) return null; len = buf.readUInt16BE(2); off = 4; }
+  else if (len === 127) { if (buf.length < 10) return null; len = Number(buf.readBigUInt64BE(2)); off = 10; }
+  let mask = null;
+  if (masked) { if (buf.length < off + 4) return null; mask = buf.subarray(off, off + 4); off += 4; }
+  if (buf.length < off + len) return null;
+  const payload = Buffer.from(buf.subarray(off, off + len));
+  if (mask) for (let i = 0; i < len; i += 1) payload[i] ^= mask[i & 3];
+  return { fin, opcode, payload, length: off + len };
+}
+
+/** BioStar's live events (/wsapi) over the pinned agent: the same events and methods the global WebSocket offers here. */
+class PinnedWebSocket extends EventTarget {
+  constructor(url, agent) {
+    super();
+    this.readyState = 0; this._buf = Buffer.alloc(0); this._frag = [];
+    const key = crypto.randomBytes(16).toString('base64');
+    const req = https.request(url.replace(/^ws/i, 'http'), { agent, headers: { Connection: 'Upgrade', Upgrade: 'websocket', 'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': key } });
+    req.on('upgrade', (res, sock, head) => {
+      const expect = crypto.createHash('sha1').update(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest('base64');
+      if (res.headers['sec-websocket-accept'] !== expect) { sock.destroy(); this._fail(new Error('BioStar event stream: bad handshake')); return; }
+      this._sock = sock; this.readyState = 1;
+      sock.on('data', (d) => this._onData(d));
+      sock.on('close', () => this._closed());
+      sock.on('error', (e) => this._fail(e));
+      if (head?.length) this._onData(head);
+      this.dispatchEvent(new Event('open'));
+    });
+    req.on('response', (res) => { res.resume(); this._fail(new Error(`BioStar event stream refused (${res.statusCode})`)); });
+    req.on('error', (e) => this._fail(e));
+    req.end();
+  }
+  send(text) { if (this.readyState === 1) this._sock.write(encodeWsFrame(Buffer.from(String(text)), 0x1)); }
+  close() {
+    if (this._sock && this.readyState === 1) { try { this._sock.write(encodeWsFrame(Buffer.alloc(0), 0x8)); } catch { /* closing anyway */ } this._sock.end(); }
+    this._closed();
+  }
+  _onData(d) {
+    this._buf = Buffer.concat([this._buf, d]);
+    for (;;) {
+      const f = decodeWsFrame(this._buf);
+      if (!f) break;
+      this._buf = this._buf.subarray(f.length);
+      if (f.opcode === 0x9) { this._sock.write(encodeWsFrame(f.payload, 0xA)); continue; } // ping → pong
+      if (f.opcode === 0x8) { this.close(); return; }
+      if (f.opcode === 0x0 || f.opcode === 0x1 || f.opcode === 0x2) {
+        this._frag.push(f.payload);
+        if (f.fin) { const ev = new Event('message'); ev.data = Buffer.concat(this._frag).toString('utf8'); this._frag = []; this.dispatchEvent(ev); }
+      }
+    }
+  }
+  _fail(e) { if (this.readyState === 3) return; const ev = new Event('error'); ev.message = e.message; this.dispatchEvent(ev); this._closed(); }
+  _closed() { if (this.readyState === 3) return; this.readyState = 3; try { this._sock?.destroy(); } catch { /* gone */ } this.dispatchEvent(new Event('close')); }
+}
+
+/** BioStar's certificate as the network presents it (for the installer and for pinning). */
+function readBioStarCert(urlString = CFG.biostar, timeoutMs = 10_000) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(urlString);
+    const s = tls.connect({ host: u.hostname, port: Number(u.port || 443), rejectUnauthorized: false, servername: net_isIp(u.hostname) ? undefined : u.hostname });
+    const t = setTimeout(() => { s.destroy(); reject(new Error(`no TLS answer from ${u.host}`)); }, timeoutMs);
+    s.once('secureConnect', () => {
+      clearTimeout(t);
+      const c = s.getPeerCertificate();
+      s.end();
+      resolve({ subject: c.subject?.CN ?? null, organisation: c.subject?.O ?? null, altNames: c.subjectaltname ?? null, validTo: c.valid_to, fingerprint256: c.fingerprint256, pin: normPin(c.fingerprint256) });
+    });
+    s.once('error', (e) => { clearTimeout(t); reject(e); });
+  });
+}
+const net_isIp = (h) => /^[\d.]+$/.test(h) || h.includes(':');
 
 // ─── BioStar 2 ───────────────────────────────────────────────────────────────────────────────────
 
@@ -115,7 +334,7 @@ const BS = {
   shiftMs: 0,
 
   async login() {
-    const r = await fetch(`${CFG.biostar}/api/login`, {
+    const r = await bsFetch(`${CFG.biostar}/api/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ User: { login_id: CFG.login, password: CFG.password } }),
     });
@@ -129,7 +348,7 @@ const BS = {
 
   async call(method, path, body, { retry = true } = {}) {
     if (!this.session) await this.login();
-    const r = await fetch(`${CFG.biostar}${path}`, {
+    const r = await bsFetch(`${CFG.biostar}${path}`, {
       method, headers: { 'Content-Type': 'application/json', 'bs-session-id': this.session },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -393,7 +612,7 @@ const BS = {
   async serverCheck(devices = null) {
     const out = { version: null, platform: null, timeZoneOffsetMinutes: null, eventClockOffsetMinutes: null, readers: [], checkedAt: new Date().toISOString() };
     try {
-      const r = await fetch(`${CFG.biostar}/js/info.json`, { headers: this.session ? { 'bs-session-id': this.session } : {} });
+      const r = await bsFetch(`${CFG.biostar}/js/info.json`, { headers: this.session ? { 'bs-session-id': this.session } : {} });
       const m = (await r.text()).match(/(\d+\.\d+\.\d+(?:\.\d+)?)/);
       if (m) out.version = m[1];
     } catch { /* older servers: try the settings below */ }
@@ -647,7 +866,8 @@ async function connectEvents() {
   if (socket && socket.readyState <= 1) return;
   await BS.login();
   const url = `${CFG.biostar.replace(/^http/, 'ws')}/wsapi`;
-  socket = new WebSocket(url);
+  const agent = bsAgentFor();
+  socket = agent ? new PinnedWebSocket(url, agent) : new WebSocket(url);
   socket.addEventListener('open', async () => {
     socket.send(`bs-session-id=${BS.session}`);
     try { await BS.call('POST', '/api/events/start', {}); log('info', 'live BioStar events on'); } catch (e) { log('error', 'events/start failed', { error: e.message }); socket.close(); }
@@ -681,9 +901,46 @@ async function heartbeat(withInventory) {
   return cfg;
 }
 
+/** --check: every link the connector needs, tested once. Exit 0 when all pass. Prints no secrets. */
+async function check() {
+  const out = []; let ok = true;
+  const step = async (name, fn) => {
+    try { const d = await fn(); out.push(`  OK    ${name}${d ? ` — ${d}` : ''}`); return true; } catch (e) { ok = false; out.push(`  FAIL  ${name} — ${e.message}`); return false; }
+  };
+  console.log(`Tcheck BioStar connector ${VERSION} — check${CONFIG_FILE ? ` (settings from ${CONFIG_FILE})` : ''}`);
+  await step('Settings present', async () => {
+    const missing = ['tcheck', 'token', 'biostar', 'login', 'password'].filter((k) => !CFG[k]);
+    if (missing.length) throw new Error(`missing: ${missing.join(', ')}`);
+    return `Tcheck ${CFG.tcheck}; BioStar ${CFG.biostar}`;
+  });
+  const mode = biostarTlsMode();
+  if (mode === 'insecure') out.push('  WARN  BIOSTAR_INSECURE_TLS: BioStar\'s certificate is not checked. Pin it instead (BIOSTAR_CERT_SHA256).');
+  await step(`BioStar certificate (${mode === 'pin' ? 'pinned' : mode})`, async () => {
+    if (mode === 'plain') return 'plain HTTP (no certificate)';
+    const c = await readBioStarCert();
+    if (mode === 'pin' && c.pin !== CFG.certSha256) throw new Error(`does not match the pinned fingerprint (server ${c.fingerprint256})`);
+    return `${c.subject ?? '?'} · ${c.fingerprint256}`;
+  });
+  const signedIn = await step('Sign in to BioStar', async () => { await BS.login(); return 'session received'; });
+  if (signedIn) await step('BioStar version', async () => { const c = await BS.serverCheck([]); return `${c.platform ?? 'BioStar'} ${c.version ?? '(not reported)'}`; });
+  await step('Reach Tcheck with the connector key', async () => {
+    const r = await tcheck('/heartbeat', { agentVersion: VERSION, clock: new Date().toISOString() });
+    return `accepted${r.updateRequired ? ` (Tcheck asks for connector ${r.minConnectorVersion}+)` : ''}`;
+  });
+  console.log(out.join('\n'));
+  console.log(ok ? 'All checks passed.' : 'Some checks failed: fix them, then run --check again.');
+  return ok;
+}
+
 async function main() {
+  if (process.argv.includes('--print-cert')) {
+    if (!CFG.biostar) { console.error('Set BIOSTAR_URL (or --config) first.'); process.exit(2); }
+    try { console.log(JSON.stringify(await readBioStarCert(), null, 2)); process.exit(0); } catch (e) { console.error(`Cannot read BioStar's certificate: ${e.message}`); process.exit(1); }
+  }
+  if (process.argv.includes('--check')) process.exit((await check()) ? 0 : 1);
   for (const k of ['tcheck', 'token', 'biostar', 'login', 'password']) if (!CFG[k]) { log('error', `missing configuration: ${k}`); process.exit(2); }
-  log('info', `Tcheck BioStar connector ${VERSION} starting`, { tcheck: CFG.tcheck, biostar: CFG.biostar });
+  log('info', `Tcheck BioStar connector ${VERSION} starting`, { tcheck: CFG.tcheck, biostar: CFG.biostar, biostarTls: biostarTlsMode() });
+  if (biostarTlsMode() === 'insecure') log('warn', 'BIOSTAR_INSECURE_TLS=1: BioStar\'s certificate is not checked (Tcheck still is). Pin it instead: run --print-cert and set BIOSTAR_CERT_SHA256.');
   if (process.argv.includes('--once')) {
     await heartbeat(true); await connectEvents(); await catchUp(); await pollJobs(0); await flushEvents(); socket?.close(); return;
   }
@@ -720,3 +977,4 @@ function isEntryScript(metaUrl, argv1) {
 }
 if (isEntryScript(import.meta.url, process.argv[1])) main();
 export { BS, toEvent, runJob, selfTest, CFG, deviceInfo, enrolFingerprint, isEntryScript };
+export const _tls = { bsFetch, PinnedWebSocket, encodeWsFrame, decodeWsFrame, readBioStarCert, resetBioStarTls, biostarTlsMode, normPin, loadConfigFile, agent: () => bsAgentFor() };

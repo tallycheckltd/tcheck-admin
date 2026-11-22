@@ -18,6 +18,11 @@ import { API_BASE } from '../../lib/apiBase';
  *
  * 2026-11-21: loading the page never locks it. The visitor taps "Open my pass" (POST /open), so an
  * email link scanner (Microsoft Safe Links, Gmail) that loads the page can't take the pass first.
+ *
+ * 2026-11-22: one tap from the email. On a phone the pass opens by itself as soon as the page is
+ * actually on screen (link scanners run as desktop or headless browsers, so they never qualify). On a
+ * computer the page asks the visitor to open it on their phone instead: a QR of this page's address for
+ * the phone camera, with "use this computer" as a second choice.
  */
 
 type Status = 'VALID' | 'NOT_YET_VALID' | 'USED' | 'EXPIRED' | 'CANCELLED';
@@ -46,6 +51,22 @@ interface Pass {
   deviceKey?: string;
 }
 interface Credential { value: string; state: 'PENDING' | 'LIVE'; validUntil: string }
+
+/**
+ * A real phone in someone's hand: touch screen, coarse pointer, a mobile browser, and not an automated
+ * browser. Email link scanners run as desktop or headless browsers, so they never pass this.
+ */
+function isLikelyPhone(): boolean {
+  try {
+    const nav = navigator as Navigator & { webdriver?: boolean };
+    if (nav.webdriver) return false;
+    const touch = (nav.maxTouchPoints ?? 0) > 0 && window.matchMedia('(pointer: coarse)').matches;
+    const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(nav.userAgent) || (nav.platform === 'MacIntel' && (nav.maxTouchPoints ?? 0) > 1);
+    return touch && mobileUa;
+  } catch {
+    return false;
+  }
+}
 
 const keyName = (token: string) => `tcpd:${token}`;
 const readKey = (token: string) => { try { return localStorage.getItem(keyName(token)); } catch { return null; } };
@@ -112,6 +133,27 @@ export function VisitorPassPage() {
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'This pass can’t be opened right now.'))
       .finally(() => setOpening(false));
   }, [qrToken, headers]);
+  // One tap from the email: on a phone, open the pass as soon as the page is really on screen.
+  const [phone] = useState(isLikelyPhone);
+  const [autoTried, setAutoTried] = useState(false);
+  const needsOpen = !!pass?.needsOpen && (pass.status === 'VALID' || pass.status === 'NOT_YET_VALID');
+  useEffect(() => {
+    if (!needsOpen || !phone || autoTried) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Only once the page is really on screen (not a prerender or a background tab).
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (document.visibilityState !== 'visible') return;
+        setAutoTried(true);
+        openHere();
+      }, 300);
+    };
+    schedule();
+    document.addEventListener('visibilitychange', schedule);
+    return () => { document.removeEventListener('visibilitychange', schedule); if (timer) clearTimeout(timer); };
+  }, [needsOpen, phone, autoTried, openHere]);
+
   // Opened early on the day: stage the code quietly (no QR yet), so the first scan at the flap barrier is instant.
   useEffect(() => {
     if (!qrToken || !pass?.canStage) return;
@@ -187,13 +229,30 @@ export function VisitorPassPage() {
                 <div><p className="font-semibold">{status.label}</p><p className="text-sm opacity-90">{pass.status === 'VALID' && !pass.barrier ? 'Give the code below and your ID to the guard.' : status.note}</p></div>
               </div>
 
-              {live && pass.needsOpen && (
+              {live && pass.needsOpen && phone && (
                 <div className="px-6 pt-6 text-center">
+                  {opening || !autoTried
+                    ? <p className="flex items-center justify-center gap-2 py-6 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" />Opening your pass on this phone…</p>
+                    : (
+                      <button type="button" onClick={openHere}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#004aad] px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#003d8f]">
+                        <Smartphone size={18} /> Open my pass
+                      </button>
+                    )}
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Your pass works on this phone only.</p>
+                </div>
+              )}
+              {live && pass.needsOpen && !phone && (
+                <div className="px-6 pt-6 text-center">
+                  <p className="font-semibold text-slate-950 dark:text-white">Open your pass on your phone</p>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Point your phone's camera at this code. Your pass works on one device only, and you'll need it at the flap barrier.</p>
+                  <div className="mx-auto mt-4 inline-block rounded-2xl bg-white p-3 ring-1 ring-slate-200">
+                    <QRCodeSVG value={window.location.href} size={168} level="M" marginSize={0} title="Open this pass on your phone" />
+                  </div>
                   <button type="button" onClick={openHere} disabled={opening}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#004aad] px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#003d8f] disabled:opacity-60">
-                    {opening ? <Loader2 size={18} className="animate-spin" /> : <Smartphone size={18} />} Open my pass
+                    className="mt-4 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-[#004aad] ring-1 ring-[#004aad]/30 hover:bg-[#004aad]/5 disabled:opacity-60 dark:text-blue-300">
+                    {opening && <Loader2 size={14} className="animate-spin" />}Use this computer instead
                   </button>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Your pass will work on this phone only.</p>
                 </div>
               )}
               {live && !pass.needsOpen && (

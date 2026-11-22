@@ -112,13 +112,13 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
   };
   const apiUrl = `${window.location.origin}/api`;
   const key = token ?? '<your connector key>';
+  const downloads = `${window.location.origin}/downloads`;
   const commands = useMemo(() => ({
-    windows: `# PowerShell, in the folder you downloaded the connector to\n$env:TCHECK_URL="${apiUrl}"\n$env:TCHECK_TOKEN="${key}"\n$env:BIOSTAR_URL="https://<BioStar server address>"\n$env:BIOSTAR_LOGIN_ID="<operator>"\n$env:BIOSTAR_PASSWORD="<password>"\n# only if BioStar uses its own (self-signed) certificate:\n# $env:BIOSTAR_INSECURE_TLS="1"\nnode tcheck-biostar-connector.mjs`,
-    linux: `TCHECK_URL=${apiUrl} \\\nTCHECK_TOKEN=${key} \\\nBIOSTAR_URL=https://<BioStar server address> \\\nBIOSTAR_LOGIN_ID=<operator> BIOSTAR_PASSWORD=<password> \\\nnode tcheck-biostar-connector.mjs`,
-  }), [apiUrl, key]);
-  const service = os === 'windows'
-    ? 'nssm install TcheckConnector "C:\\Program Files\\nodejs\\node.exe" "C:\\Tcheck\\tcheck-biostar-connector.mjs"\n# then set the same variables under: nssm edit TcheckConnector → Environment'
-    : '# /etc/systemd/system/tcheck-connector.service → [Service] Environment=… ExecStart=/usr/bin/node /opt/tcheck/tcheck-biostar-connector.mjs Restart=always\nsudo systemctl enable --now tcheck-connector';
+    // The installer asks for the key and the BioStar password itself (never on the command line).
+    windows: `# PowerShell "Run as administrator", on the BioStar server, in the folder with the installer:\npowershell -ExecutionPolicy Bypass -File .\\Install-TcheckConnector.ps1 -TcheckUrl "${apiUrl}" -DownloadBase "${downloads}"`,
+    linux: `# 1. BioStar's certificate (run on the BioStar server, or check the fingerprint with ICT):\nBIOSTAR_URL=https://<BioStar server address> node tcheck-biostar-connector.mjs --print-cert\n# 2. Settings file, readable by the connector's user only (chmod 600):\ncat > /etc/tcheck-connector.conf <<'CONF'\nTCHECK_URL=${apiUrl}\nTCHECK_TOKEN=${key}\nBIOSTAR_URL=https://<BioStar server address>\nBIOSTAR_LOGIN_ID=<operator>\nBIOSTAR_PASSWORD=<password>\nBIOSTAR_CERT_SHA256=<fingerprint from step 1>\nCONF\n# 3. Test every link, then run:\nnode tcheck-biostar-connector.mjs --config /etc/tcheck-connector.conf --check\nnode tcheck-biostar-connector.mjs --config /etc/tcheck-connector.conf`,
+  }), [apiUrl, key, downloads]);
+  const service = '# /etc/systemd/system/tcheck-connector.service → [Service] User=tcheck ExecStart=/usr/bin/node /opt/tcheck/tcheck-biostar-connector.mjs --config /etc/tcheck-connector.conf Restart=always\nsudo systemctl enable --now tcheck-connector';
   const done = (k: string) => !!setup?.steps.find((s) => s.key === k)?.done;
   const selfSteps = data?.selfTest?.result?.steps ?? [];
   const groupName = (id: string | null | undefined) => groups.find((g) => g.id === id)?.name ?? null;
@@ -150,7 +150,7 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
             <p>The connector is a small program that runs on a computer next to your BioStar server. It only ever calls out to Tcheck, so you open no firewall port. The key tells Tcheck it's your school.</p>
             {token && (
               <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Copy this key now. It won't be shown again; it's already filled into the commands in step 2.</p>
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Copy this key now. It won't be shown again. You'll paste it into the installer in step 2.</p>
                 <CopyBox text={token} label="Connector key" />
               </div>
             )}
@@ -161,16 +161,24 @@ export function BarrierPage({ embedded = false }: { embedded?: boolean } = {}) {
 
           <StepCard n={2} title="Run the connector next to BioStar" done={done('connector')} open={current === 'connector'} onToggle={() => toggle('connector')}
             summary={setup?.connector.online ? `Online · connector ${setup.connector.version} · BioStar ${setup.connector.biostarVersion ?? '?'}` : undefined}>
-            <ol className="list-decimal space-y-2 pl-5">
-              <li>On a computer that can reach the BioStar server and the internet, install <a href="https://nodejs.org" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">Node.js 22 or newer</a>.</li>
-              <li><a href="/downloads/tcheck-biostar-connector.mjs" download className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"><Download size={14} />Download the connector</a> (one file, nothing to install).</li>
-              <li>Fill in your BioStar address and operator account, then run:</li>
-            </ol>
             <div className="flex gap-1" role="tablist" aria-label="Computer">
               {(['windows', 'linux'] as const).map((o) => <button key={o} type="button" role="tab" aria-selected={os === o} onClick={() => setOs(o)} className={`rounded-lg px-3 py-1 text-xs font-medium ${os === o ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>{o === 'windows' ? 'Windows' : 'Linux / Mac'}</button>)}
             </div>
-            <CopyBox text={commands[os]} label="Command to run the connector" />
-            <details className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5"><summary className="cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">Keep it running after a restart</summary><div className="mt-2"><CopyBox text={service} label="Run as a service" /></div></details>
+            {os === 'windows' ? (
+              <ol className="list-decimal space-y-2 pl-5">
+                <li>On the <b>BioStar server</b>, <a href="/downloads/Install-TcheckConnector.ps1" download className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"><Download size={14} />download the installer</a> (<a href="/downloads/Install-TcheckConnector.ps1.sha256" className="text-blue-600 hover:underline dark:text-blue-400">SHA-256</a>). It is a readable PowerShell script.</li>
+                <li>Open PowerShell with <b>Run as administrator</b> in that folder and run the command below.</li>
+                <li>Paste the connector key when asked, then a BioStar operator login and password. It shows BioStar's certificate to trust, tests every link, and installs the connector as a background service.</li>
+              </ol>
+            ) : (
+              <ol className="list-decimal space-y-2 pl-5">
+                <li>Install <a href="https://nodejs.org" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">Node.js 22 or newer</a> on a computer that can reach BioStar and the internet.</li>
+                <li><a href="/downloads/tcheck-biostar-connector.mjs" download className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"><Download size={14} />Download the connector</a> (<a href="/downloads/tcheck-biostar-connector.mjs.sha256" className="text-blue-600 hover:underline dark:text-blue-400">SHA-256</a>), then:</li>
+              </ol>
+            )}
+            <CopyBox text={commands[os]} label={os === 'windows' ? 'Command to run the installer' : 'Commands to set up the connector'} />
+            {os === 'linux' && <details className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5"><summary className="cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">Keep it running after a restart</summary><div className="mt-2"><CopyBox text={service} label="Run as a service" /></div></details>}
+            <p className="flex items-start gap-1.5 text-xs text-slate-500"><ShieldAlert size={14} className="mt-0.5 shrink-0" />Security: the connector only calls out (HTTPS); no firewall port opens. It trusts BioStar's exact certificate only, checks Tcheck's normally, and runs as a low-privilege account. Revoke it any time with a new key in step 1.</p>
             <p className="flex items-center gap-2 text-xs" role="status">
               {setup?.connector.online
                 ? <><CheckCircle2 size={14} className="text-emerald-600" />Connected: connector {setup.connector.version}, BioStar {setup.connector.biostarVersion ?? 'version not reported'}{setup.connector.biostarSupportsQr ? '' : ' — QR codes need BioStar 2.8.11 or newer'}</>
