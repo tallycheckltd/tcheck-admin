@@ -62,9 +62,13 @@
  *   - a card taken off a user stays in BioStar's card list for ever. The connector now deletes the
  *     Tcheck codes it releases (TCQ/TCD/TCV prefixes only; a school's own cards and reusable walk-in
  *     tags are never deleted). DELETE /api/cards?id= takes ONE id per call on a real server.
+ *
+ * 1.4.1 (2026-11-22) — found running it on the real test server: on WINDOWS the connector exited at
+ * once without a word. The "am I the script being run?" check split the path on "/" only, and Windows
+ * gives "C:\Tcheck\tcheck-biostar-connector.mjs", so main() never ran. Now both separators count.
  */
 
-const VERSION = '1.4.0';
+const VERSION = '1.4.1';
 const MARKER = 'Tcheck'; // department on every BioStar user the connector creates
 const env = (k, d) => (process.env[k] ?? d);
 const CFG = {
@@ -523,7 +527,14 @@ async function selfTest(p) {
   await step('Check Tcheck\'s user_id range is free', async () => {
     const next = await BS.nextUserId();
     if (next === null) return 'next_user_id not available on this BioStar version; relying on the department guard';
-    if (next > Number(p.userId)) throw new Error(`BioStar already uses user_ids up to ${next - 1}; Tcheck's range starts at ${p.userId}. Ask Tcheck to move the range.`);
+    if (next > Number(p.userId)) {
+      // A real BioStar never lowers next_user_id: deleted users still count (seen on 2.9.12.31). Only a
+      // live user at the id Tcheck is about to use, not made by Tcheck, is a real clash; every write is
+      // guarded by the department marker as well.
+      const there = await BS.getUser(p.userId);
+      if (there && !BS.ours(there)) throw new Error(`BioStar user_id ${p.userId} belongs to "${there.name ?? 'someone'}", not made by Tcheck. Ask Tcheck to move the range.`);
+      return `BioStar has used ids up to ${next - 1} before (deleted users count); id ${p.userId} is free, and Tcheck never changes a user it did not make`;
+    }
     return `BioStar's next free id is ${next}; Tcheck uses ${p.userId} and up`;
   });
   await step('Read doors and their readers', async () => {
@@ -700,5 +711,12 @@ async function main() {
 }
 const lastDoorStates = new Map();
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop())) main();
-export { BS, toEvent, runJob, selfTest, CFG, deviceInfo, enrolFingerprint };
+/** True when this file is the script node was started with — on Windows ("C:\\x\\y.mjs") as on Linux and macOS. */
+function isEntryScript(metaUrl, argv1) {
+  if (!argv1) return false;
+  const mine = decodeURIComponent(String(metaUrl).split('/').pop() ?? '').toLowerCase();
+  const run = String(argv1).split(/[\\/]/).pop()?.toLowerCase() ?? '';
+  return !!mine && (mine === run || mine === `${run}.mjs`);
+}
+if (isEntryScript(import.meta.url, process.argv[1])) main();
+export { BS, toEvent, runJob, selfTest, CFG, deviceInfo, enrolFingerprint, isEntryScript };
