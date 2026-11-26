@@ -16,7 +16,9 @@ import { Modal } from '../../components/ui/Modal';
 type Freq = 'WEEKLY' | 'MONTHLY';
 interface Sub { id: string; userId: string; frequency: Freq; weekday: number | null; hour: number; paused: boolean; nextRunAt: string | null; lastSentAt: string | null; lastError: string | null; person: { name: string; role: string; email: string } | null }
 export interface DigestState { on: boolean; canManage?: boolean; mine?: Sub | null; subscriptions?: Sub[]; eligible?: { id: string; name: string; role: string }[] }
-interface Digest { firstName: string; schoolName: string; frequency: Freq; periodWords: string; scope: string; tiles: { label: string; value: string; sub?: string }[]; attention: string[]; sections: { title: string; lines: string[] }[] }
+type Tone = 'good' | 'bad' | 'neutral';
+interface Digest { firstName: string; schoolName: string; frequency: Freq; periodWords: string; scope: string; tiles: { label: string; value: string; sub?: string; tone?: Tone }[]; attention: string[]; sections: { key: string; title: string; rows: { label: string; value: string; note?: string; tone?: Tone }[] }[] }
+const toneCls = (t?: Tone) => (t === 'good' ? 'text-green-700 dark:text-green-400' : t === 'bad' ? 'text-red-600 dark:text-red-400' : strong);
 
 const card = 'rounded-2xl border border-[var(--app-border-soft)] bg-[var(--app-elevated)] shadow-[var(--app-shadow)] dark:bg-white/[0.04] dark:border-white/10';
 const input = 'w-full rounded-xl border px-3 py-2 text-sm bg-[var(--app-elevated-solid)] border-[var(--app-border)] text-[var(--app-text)] focus:outline-none focus:ring-2 focus:ring-blue-500/35 dark:bg-white/5 dark:border-white/10';
@@ -159,32 +161,44 @@ function PreviewDialog({ title, userId, onClose }: { title: string; userId?: str
 export function DigestView({ d }: { d: Digest }) {
   const word = d.frequency === 'WEEKLY' ? 'week' : 'month';
   return (
-    <div className="space-y-3 text-sm">
-      <p className={muted}>Hi {d.firstName}, here is {d.scope} at a glance{d.periodWords ? <> for <strong className={strong}>{d.periodWords}</strong></> : ''}.</p>
+    <div className="space-y-4 text-sm">
+      <div>
+        <p className={clsx('text-xs', muted)}>{d.schoolName}{d.periodWords ? ` · ${d.periodWords}` : ''}</p>
+        <p className={clsx('mt-1', muted)}>Hi {d.firstName}, here is {d.scope} at a glance.</p>
+      </div>
       {d.tiles.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className={clsx('grid gap-2', d.tiles.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
           {d.tiles.map((t) => (
-            <div key={t.label} className="rounded-xl bg-black/[0.03] dark:bg-white/5 px-3 py-2">
-              <p className={clsx('text-[11px]', muted)}>{t.label}</p>
-              <p className={clsx('text-lg font-semibold tabular-nums', strong)}>{t.value}</p>
+            <div key={t.label} className="rounded-xl bg-black/[0.03] dark:bg-white/5 px-3 py-2.5">
+              <p className={clsx('text-[10px] uppercase tracking-wide', muted)}>{t.label}</p>
+              <p className={clsx('text-xl font-bold tabular-nums mt-0.5', toneCls(t.tone))}>{t.value}</p>
               {t.sub && <p className={clsx('text-[11px]', muted)}>{t.sub}</p>}
             </div>
           ))}
         </div>
       )}
       {d.attention.length ? (
-        <div className="rounded-xl bg-amber-500/10 px-3 py-2.5">
-          <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 inline-flex items-center gap-1"><AlertTriangle size={13} />Needs your attention</p>
-          <ul className="mt-1 space-y-1">{d.attention.map((a) => <li key={a} className="text-amber-950 dark:text-amber-100">• {a}</li>)}</ul>
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300 inline-flex items-center gap-1"><AlertTriangle size={13} />Needs your attention</p>
+          <ul className="mt-1.5 space-y-1.5">{d.attention.map((a) => <li key={a} className="flex gap-2 text-amber-950 dark:text-amber-100"><span className="text-amber-600">●</span><span>{a}</span></li>)}</ul>
         </div>
-      ) : <p className="text-green-700 dark:text-green-400 inline-flex items-center gap-1"><CheckCircle2 size={14} />Nothing needs your attention this {word}.</p>}
+      ) : (
+        <p className="rounded-xl border border-green-500/30 bg-green-500/10 px-3.5 py-3 text-green-800 dark:text-green-300 inline-flex items-center gap-1.5 w-full"><CheckCircle2 size={14} /><span><strong>All clear.</strong> Nothing needs your attention this {word}.</span></p>
+      )}
       {d.sections.map((s) => (
-        <div key={s.title}>
-          <p className={clsx('font-semibold', strong)}>{s.title}</p>
-          {s.lines.map((l) => <p key={l} className={muted}>{l}</p>)}
-        </div>
+        <section key={s.key}>
+          <p className={clsx('text-[11px] font-bold uppercase tracking-wide pb-1.5 border-b border-[var(--app-border-soft)] dark:border-white/10', muted)}>{s.title}</p>
+          <dl className="divide-y divide-[var(--app-border-soft)] dark:divide-white/5">
+            {s.rows.map((r) => (
+              <div key={r.label} className="flex items-start justify-between gap-4 py-2">
+                <dt><span className={strong}>{r.label}</span>{r.note && <span className={clsx('block text-[11px]', muted)}>{r.note}</span>}</dt>
+                <dd className={clsx('font-semibold tabular-nums whitespace-nowrap', toneCls(r.tone))}>{r.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       ))}
-      <p className={clsx('text-[11px] pt-1', muted)}>Numbers only: no student is named. Every number comes from the report of the same name, limited to what this person's account can see.</p>
+      <p className={clsx('text-[11px] pt-1', muted)}>Numbers only: no student or lecturer is named. Every number comes from the report of the same name, limited to what this person's account can see.</p>
     </div>
   );
 }
