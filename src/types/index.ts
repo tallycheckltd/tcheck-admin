@@ -93,6 +93,8 @@ export interface SchoolFeatures {
   classChanges?: boolean;
   /** Opt-in (Visitors) — staff invite visitors, the guard tablet checks them in, ICT sees the Visitors section. */
   visitors?: boolean;
+  /** Opt-in — leaders the School Admin chooses get a weekly or monthly email of the numbers (Reports → Leadership digest). */
+  leadershipDigest?: boolean;
 }
 
 export type AttendanceMode = 'CALENDAR_BASED' | 'STAGE_BASED';

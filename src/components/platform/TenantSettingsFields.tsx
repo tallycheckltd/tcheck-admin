@@ -3,7 +3,7 @@ import type { ElementType, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '../ui/Input';
 import { Slider } from '../ui/Slider';
-import { UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer, CalendarDays, Layers, ChevronDown, ToggleRight, Server, Briefcase, Sparkles, IdCard, ArrowRightLeft, CalendarClock, DoorOpen } from 'lucide-react';
+import { UserCheck, MessageSquareOff, MessageSquare, ShieldCheck, Megaphone, ScanFace, Timer, CalendarDays, Layers, ChevronDown, ToggleRight, Server, Briefcase, Sparkles, IdCard, ArrowRightLeft, CalendarClock, DoorOpen, Mail } from 'lucide-react';
 import type { SchoolSettingsValue } from './tenantSettings';
 
 
@@ -241,6 +241,13 @@ export function SchoolSettingsFields({ value, onChange }: { value: SchoolSetting
             description="Staff invite visitors from the dashboard; each visitor gets an email with a QR code and a six-digit code. Guards check people in and out on the gate tablet (Guard accounts), and ICT and School Admins see who is on site, the history and every invite under Visitors."
             checked={value.features.visitors}
             onChange={(v) => onChange({ ...value, features: { ...value.features, visitors: v } })}
+          />
+          <ToggleRow
+            icon={Mail}
+            title="Leadership Digest"
+            description="The School Admin chooses leaders (VC, DVC, Registrars, Deans, HODs) who get a weekly or monthly email of the school's numbers: attendance and where it's falling, students who need someone, follow-up results and retention against the agreed baseline. Each leader sees only their own area; counts only, never student names. Set up under Reports → Leadership digest."
+            checked={value.features.leadershipDigest}
+            onChange={(v) => onChange({ ...value, features: { ...value.features, leadershipDigest: v } })}
           />
           <ToggleRow
             icon={IdCard}

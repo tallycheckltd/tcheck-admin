@@ -15,6 +15,7 @@ import { downloadCsv } from '../../lib/csv';
 import { addTcheckHeader, afterTableY } from '../../lib/adminPdfExport';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { DigestPanel, type DigestState } from './DigestPanel';
 
 /**
  * Report library (2026-10-21). Home: the numbers that matter for this person (each opens the report
@@ -66,7 +67,7 @@ const fileBase = (r: Result) => r.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'
 const needsInput = (e: Entry) => e.params.some((p) => p === 'by' || p === 'student');
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
 
-type View = { kind: 'home' } | { kind: 'report'; entry: Entry; params: Params; asked?: string; result?: Result } | { kind: 'saved' };
+type View = { kind: 'home' } | { kind: 'report'; entry: Entry; params: Params; asked?: string; result?: Result } | { kind: 'saved' } | { kind: 'digest' };
 
 /** A link straight to a report: /reports?report=<key>&params=<json>. Used by TALI Ask's "Open as report". */
 function fromUrl(reports: Entry[]): { entry: Entry; params: Params } | null {
@@ -80,6 +81,7 @@ function fromUrl(reports: Entry[]): { entry: Entry; params: Params } | null {
 
 export function ReportLibrary({ classic, classicLabel, classicOpen }: { classic?: ReactNode; classicLabel?: string; classicOpen?: boolean }) {
   const { data: cat, error } = useApi<Catalogue>('/reports/library');
+  const { data: digest } = useApi<DigestState>('/reports/digest');
   const [view, setView] = useState<View>({ kind: 'home' });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -108,6 +110,7 @@ export function ReportLibrary({ classic, classicLabel, classicOpen }: { classic?
   if (error) return <>{classic}</>; // not a Reports role: the older page only
   if (!cat) return <div className={clsx('flex items-center gap-2 text-sm py-16 justify-center', muted)}><Loader2 size={16} className="animate-spin" /> Loading reports…</div>;
 
+  if (view.kind === 'digest') return <DigestPanel onBack={() => setView({ kind: 'home' })} />;
   if (view.kind === 'saved') return <SavedPanel reports={cat.reports} onBack={() => setView({ kind: 'home' })} onOpen={(s) => { const e = byKey(s.key); if (e) void run(e, { ...s.params, ...(s.period !== 'default' && s.period !== 'fixed' ? { period: s.period } : {}) }); }} />;
 
   if (view.kind === 'report') {
@@ -142,7 +145,10 @@ export function ReportLibrary({ classic, classicLabel, classicOpen }: { classic?
       {/* Its own row above the numbers, so nothing overlaps at any width. */}
       <div className="flex items-center justify-between gap-3">
         <h2 className={clsx('font-semibold', strong)}>At a glance</h2>
-        <Button size="sm" variant="secondary" onClick={() => { setView({ kind: 'saved' }); top(); }}><Bookmark size={14} className="mr-1.5" />Saved &amp; scheduled</Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          {digest?.on && (digest.canManage || digest.mine) && <Button size="sm" variant="secondary" onClick={() => { setView({ kind: 'digest' }); top(); }}><Mail size={14} className="mr-1.5" />Leadership digest</Button>}
+          <Button size="sm" variant="secondary" onClick={() => { setView({ kind: 'saved' }); top(); }}><Bookmark size={14} className="mr-1.5" />Saved &amp; scheduled</Button>
+        </div>
       </div>
       <KeyNumbers reports={cat.reports} onOpen={(k, p) => { const e = byKey(k); if (e) void run(e, p); }} />
       </div>

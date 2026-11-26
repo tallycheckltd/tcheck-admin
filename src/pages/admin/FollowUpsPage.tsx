@@ -13,6 +13,7 @@ import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { StatCard } from '../../components/ui/StatCard';
+import { RetentionImpactCard } from './RetentionImpactCard';
 
 /**
  * Follow-ups (F3, spec 2026-10-20) — where advisers work the students the weekly rules flagged.
@@ -238,6 +239,7 @@ export function FollowUpsPage() {
             <p className={clsx('text-xs mt-3', muted)}>You see the numbers only. Students' names are visible to the staff working their cases.</p>
           </GlassCard>
           <TrackRecordCard />
+          <RetentionImpactCard />
         </>
       ) : (
         <>
@@ -299,6 +301,7 @@ export function FollowUpsPage() {
             )}
           </GlassCard>
           {data?.stats && <TrackRecordCard />}
+          {data?.stats && <RetentionImpactCard />}
         </>
       )}
       {openId && <CasePanel id={openId} onClose={() => setOpenId(null)} onChanged={refetch} />}
